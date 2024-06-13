@@ -1,0 +1,145 @@
+./suricata/include/linux/bpf.h:237: * verifier will perform strict alignment checking as if the kernel
+./suricata/include/linux/bpf.h:244: * verifier will allow any alignment whatsoever.  On platforms
+./suricata/include/linux/bpf.h:246: * as sparc and mips) the verifier validates that all loads and
+./suricata/include/linux/bpf.h:251: * context and memory access aspects of the verifier, but because
+./suricata/include/linux/bpf.h:351:             __u32           log_level;      /* verbosity level of verifier */
+./suricata/include/linux/bpf.h:615: *           previously done by the verifier are invalidated and must be
+./suricata/include/linux/bpf.h:640: *           previously done by the verifier are invalidated and must be
+./suricata/include/linux/bpf.h:672: *           previously done by the verifier are invalidated and must be
+./suricata/include/linux/bpf.h:727: *           previously done by the verifier are invalidated and must be
+./suricata/include/linux/bpf.h:792: *           previously done by the verifier are invalidated and must be
+./suricata/include/linux/bpf.h:804: *           previously done by the verifier are invalidated and must be
+./suricata/include/linux/bpf.h:1152: *          previously done by the verifier are invalidated and must be
+./suricata/include/linux/bpf.h:1265: *          previously done by the verifier are invalidated and must be
+./suricata/include/linux/bpf.h:1294: *          to be an invariant for the write part only, the verifier
+./suricata/include/linux/bpf.h:1301: *          previously done by the verifier are invalidated and must be
+./suricata/include/linux/bpf.h:1353: *          previously done by the verifier are invalidated and must be
+./suricata/include/linux/bpf.h:1368: *          previously done by the verifier are invalidated and must be
+./suricata/include/linux/bpf.h:1495: *          previously done by the verifier are invalidated and must be
+./suricata/include/linux/bpf.h:1574: *          previously done by the verifier are invalidated and must be
+./suricata/include/linux/bpf.h:1801: *          previously done by the verifier are invalidated and must be
+./suricata/include/linux/bpf.h:1835: *          previously done by the verifier are invalidated and must be
+./suricata/include/linux/bpf.h:2003: *          previously done by the verifier are invalidated and must be
+./suricata/include/linux/bpf.h:2018: *          previously done by the verifier are invalidated and must be
+./suricata/include/linux/bpf.h:2034: *          previously done by the verifier are invalidated and must be
+./suricata/include/linux/bpf.h:2063: *          previously done by the verifier are invalidated and must be
+./falco/bpf/probe.c:136:        /* Duplicated here to avoid verifier madness */
+./falco/bpf/filler_helpers.h:26:/* Helper used to please the verifier with operations on the number of arguments */
+./falco/bpf/filler_helpers.h:106: * to please the verifier since we set the max component len to 4096 bytes.
+./falco/bpf/filler_helpers.h:110: *       128 KB           128 KB (Free space to please the verifier)
+./falco/bpf/filler_helpers.h:118: * This helps the verifier to understand that our offset never overcomes
+./falco/bpf/filler_helpers.h:210:                * verifier issues on s390x (5.15.0-75-generic Ubuntu s390x)
+./falco/bpf/filler_helpers.h:223:                *    to please some old verifiers like (Oracle Linux 4.14).
+./falco/bpf/filler_helpers.h:414:       int len = ulen & 0xfff; /* required by BPF verifier */
+./falco/bpf/filler_helpers.h:1207:      /* We increment the current argument - to make verifier happy, properly check it */
+./falco/bpf/filler_helpers.h:1268:      /* We increment the current argument - to make verifier happy, properly check it */
+./falco/bpf/filler_helpers.h:1285:      /* We increment the current argument - to make verifier happy, properly check it */
+./falco/bpf/filler_helpers.h:1302:      /* We increment the current argument - to make verifier happy, properly check it */
+./falco/bpf/filler_helpers.h:1319:      /* We increment the current argument - to make verifier happy, properly check it */
+./falco/bpf/filler_helpers.h:1336:      /* We increment the current argument - to make verifier happy, properly check it */
+./falco/bpf/filler_helpers.h:1353:      /* We increment the current argument - to make verifier happy, properly check it */
+./falco/bpf/filler_helpers.h:1370:      /* We increment the current argument - to make verifier happy, properly check it */
+./falco/bpf/filler_helpers.h:1387:      /* We increment the current argument - to make verifier happy, properly check it */
+./falco/bpf/fillers.h:737:                      // The 14 iovec count limit is due to old kernels verifiers
+./falco/bpf/fillers.h:3528:      * fix verifier issues on Amazolinux2 (Kernel 4.14.309-231.529.amzn2.x86_64)
+./falco/bpf/fillers.h:3563:              * with the verifier on debian10 (4.19.0-25-amd64). Sending an empty param exceeds
+./falco/bpf/fillers.h:3564:              * the complexity limit of the verifier for this reason we simply return an error code.
+./falco/bpf/fillers.h:5272: * - We cannot loop over all threads of the group due to BPF verifier limits (MAX_THREADS_GROUPS) -> return -1
+./falco/bpf/fillers.h:5320:      * verifier limits we return `-1` immediately in this
+./falco/bpf/fillers.h:5401:             /* Here again we can return -1 in case we have verifier limits issues */
+./falco/bpf/fillers.h:6129:      * in order to avoid verifier issues on aarch64.
+./falco/bpf/types.h:214: * Due to the way the verifier works with accessing variable memory,
+./falco/modern_bpf/helpers/base/push_data.h:93:/* Helper used to please the verifier during reading
+./falco/modern_bpf/helpers/store/auxmap_store_params.h:40: * size to make the verifier understand that there will always be
+./falco/modern_bpf/helpers/store/auxmap_store_params.h:1652: * to please the verifier since we set the max component len to 4096 bytes.
+./falco/modern_bpf/helpers/store/auxmap_store_params.h:1656: * In this case we start from the end (128 KB) and we leave 8192 bytes to please the verifier.
+./falco/modern_bpf/helpers/store/auxmap_store_params.h:1721:/* We need the unroll here otherwise the verifier complains about back-edges */
+./falco/modern_bpf/maps/maps.h:192: * @brief We use this map to let the verifier understand the content of our array of maps (`ringbuf_maps`)
+./falco/modern_bpf/programs/attached/events/sched_process_fork.bpf.c:214:        * for the verifier (limit 1000000 instructions).
+./falco/modern_bpf/programs/attached/events/sched_process_exit.bpf.c:19: * - We cannot loop over all threads of the group due to BPF verifier limits (MAX_THREADS_GROUPS) -> return -1
+./falco/modern_bpf/programs/attached/events/sched_process_exit.bpf.c:63:         * verifier limits we return `-1` immediately in this
+./falco/modern_bpf/programs/attached/events/sched_process_exit.bpf.c:131:               /* Here again we can return -1 in case we have verifier limits issues */
+./falco/modern_bpf/programs/attached/events/sched_process_exit.bpf.c:156:        * It seems like the verifier is not able to recognize the `ringbuf` pointer as a real pointer
+./falco/modern_bpf/programs/attached/events/sched_process_exit.bpf.c:157:        * after a certain number of instructions but it considers it as an `invariant` causing a verifier error like:
+./falco/modern_bpf/programs/tail_called/events/syscall_dispatched_events/fork.bpf.c:163:         * for the verifier (limit 1000000 instructions).
+./falco/modern_bpf/programs/tail_called/events/syscall_dispatched_events/fork.bpf.c:213:         * for the verifier (limit 1000000 instructions).
+./falco/modern_bpf/programs/tail_called/events/syscall_dispatched_events/execveat.bpf.c:179:     * for the verifier (limit 1000000 instructions).
+./falco/modern_bpf/programs/tail_called/events/syscall_dispatched_events/vfork.bpf.c:161:        * for the verifier (limit 1000000 instructions).
+./falco/modern_bpf/programs/tail_called/events/syscall_dispatched_events/vfork.bpf.c:211:        * for the verifier (limit 1000000 instructions).
+./falco/modern_bpf/programs/tail_called/events/syscall_dispatched_events/clone3.bpf.c:161:       * for the verifier (limit 1000000 instructions).
+./falco/modern_bpf/programs/tail_called/events/syscall_dispatched_events/clone3.bpf.c:218:       * for the verifier (limit 1000000 instructions).
+./falco/modern_bpf/programs/tail_called/events/syscall_dispatched_events/execve.bpf.c:165:       * for the verifier (limit 1000000 instructions).
+./falco/modern_bpf/programs/tail_called/events/syscall_dispatched_events/clone.bpf.c:161:        * for the verifier (limit 1000000 instructions).
+./falco/modern_bpf/programs/tail_called/events/syscall_dispatched_events/clone.bpf.c:221:        * for the verifier (limit 1000000 instructions).
+./falco/modern_bpf/shared_definitions/struct_definitions.h:16: * Here we have 128 KB as dimension to guarantee the verifier
+./cilium/lib/pcap.h:96: * templating. Meaning, when disabled, the verifier's dead code elimination
+./cilium/lib/drop.h:55: /* Mask needed to calm verifier. */
+./cilium/lib/proxy_hairpin.h:38:        bpf_barrier(); /* verifier workaround */
+./cilium/lib/mcast.h:177:                       /* verifier seems to only be happy with a packet bounds check
+./cilium/lib/mcast.h:337: * callback functions must return 1 or 0 to pass eBPF verifier.
+./cilium/lib/static_data.h:57:   * which gets frozen after being populated. This makes the verifier treat its
+./cilium/lib/icmp6.h:184:       __u16 payload_len = 0; /* FIXME: Uninit of this causes verifier bug */
+./cilium/lib/lb.h:544:           * rejected by the verifier.
+./cilium/lib/common.h:809: * The verifier only exposes the first 5 slots in cb[], so this enum
+./cilium/lib/proxy.h:75:         * implementation, the 'struct bpf_sock *' has a different verifier
+./cilium/lib/conntrack.h:148:           /* verifier workaround: we don't use reference here. */
+./cilium/tests/bpftest/bpf_test.go:47:          " code coverage instrumentation, needed if code coverage breaks the verifier")
+./cilium/tests/bpftest/bpf_test.go:169:         t.Fatalf("verifier error: %+v", ve)
+./cilium/tests/tc_nodeport_l3_dev.c:82:  * but bpf verifier doesn't allow us to do so, and kernel also doesn't
+./cilium/tests/tc_nodeport_l3_dev.c:210:         * but bpf verifier doesn't allow us to do so, and kernel also doesn't
+./cilium/tests/Makefile:13:# eBPF verifier enforces unaligned access checks where necessary, so don't
+./cilium/bpf_overlay.c:59:      /* verifier workaround (dereference of modified ctx ptr) */
+./cilium/bpf_overlay.c:239:      * verifier error in the kernel 4.19 that when we only do
+./cilium/bpf_overlay.c:240:      * revalidate after the revSNAT, verifier detects an error
+./cilium/bpf_overlay.c:289:     /* verifier workaround (dereference of modified ctx ptr) */
+./cilium/bpf_lxc.c:972:          * handling here, but turns out that verifier cannot handle it.
+./cilium/include/bpf/ctx/xdp.h:42:      /* LLVM tends to generate code that verifier doesn't understand,
+./cilium/include/bpf/ctx/xdp.h:98: * use since it otherwise triggers a verifier error.
+./cilium/include/bpf/builtins.h:13:/* Unfortunately verifier forces aligned stack access while other memory
+./cilium/include/bpf/helpers.h:75: * e.g. as a map value buffer. Otherwise verifier will trip over it with
+./cilium/include/bpf/compiler.h:82:     /* Workaround to avoid verifier complaint:
+./cilium/include/bpf/compiler.h:101:/* {READ,WRITE}_ONCE() with verifier workaround via bpf_barrier(). */
+./cilium/include/bpf/access.h:19:       /* LLVM tends to optimize code away that is needed for the verifier to
+./cilium/include/linux/bpf.h:1130: * verifier will perform strict alignment checking as if the kernel
+./cilium/include/linux/bpf.h:1137: * verifier will allow any alignment whatsoever.  On platforms
+./cilium/include/linux/bpf.h:1139: * as sparc and mips) the verifier validates that all loads and
+./cilium/include/linux/bpf.h:1144: * context and memory access aspects of the verifier, but because
+./cilium/include/linux/bpf.h:1153: * through implicit zero extension. Therefore verifier notifies JIT back-ends
+./cilium/include/linux/bpf.h:1157: * hence hasn't used verifier's analysis result. But, we really want to have a
+./cilium/include/linux/bpf.h:1161: * So, this flag is introduced. Once it is set, verifier will randomize high
+./cilium/include/linux/bpf.h:1163: * Then, if verifier is not doing correct analysis, such randomization will
+./cilium/include/linux/bpf.h:1168:/* The verifier internal test flag. Behavior is undefined */
+./cilium/include/linux/bpf.h:1171:/* If BPF_F_SLEEPABLE is used in BPF_PROG_LOAD command, the verifier will
+./cilium/include/linux/bpf.h:1217: * verifier type:    CONST_PTR_TO_MAP
+./cilium/include/linux/bpf.h:1228: * verifier type:    PTR_TO_MAP_VALUE
+./cilium/include/linux/bpf.h:1239: * verifier type:    PTR_TO_BTF_ID or PTR_TO_MEM, depending on whether the var
+./cilium/include/linux/bpf.h:1249: * verifier type:    PTR_TO_FUNC.
+./cilium/include/linux/bpf.h:1421:              __u32           log_level;      /* verbosity level of verifier */
+./cilium/include/linux/bpf.h:1850: *            previously done by the verifier are invalidated and must be
+./cilium/include/linux/bpf.h:1875: *            previously done by the verifier are invalidated and must be
+./cilium/include/linux/bpf.h:1907: *            previously done by the verifier are invalidated and must be
+./cilium/include/linux/bpf.h:1962: *            previously done by the verifier are invalidated and must be
+./cilium/include/linux/bpf.h:2033: *            previously done by the verifier are invalidated and must be
+./cilium/include/linux/bpf.h:2045: *            previously done by the verifier are invalidated and must be
+./cilium/include/linux/bpf.h:2398: *            previously done by the verifier are invalidated and must be
+./cilium/include/linux/bpf.h:2513: *            previously done by the verifier are invalidated and must be
+./cilium/include/linux/bpf.h:2543: *            to be an invariant for the write part only, the verifier
+./cilium/include/linux/bpf.h:2550: *            previously done by the verifier are invalidated and must be
+./cilium/include/linux/bpf.h:2604: *            previously done by the verifier are invalidated and must be
+./cilium/include/linux/bpf.h:2619: *            previously done by the verifier are invalidated and must be
+./cilium/include/linux/bpf.h:2777: *            previously done by the verifier are invalidated and must be
+./cilium/include/linux/bpf.h:2861: *            previously done by the verifier are invalidated and must be
+./cilium/include/linux/bpf.h:3108: *            previously done by the verifier are invalidated and must be
+./cilium/include/linux/bpf.h:3143: *            previously done by the verifier are invalidated and must be
+./cilium/include/linux/bpf.h:3351: *            previously done by the verifier are invalidated and must be
+./cilium/include/linux/bpf.h:3366: *            previously done by the verifier are invalidated and must be
+./cilium/include/linux/bpf.h:3382: *            previously done by the verifier are invalidated and must be
+./cilium/include/linux/bpf.h:3411: *            previously done by the verifier are invalidated and must be
+./cilium/include/linux/bpf.h:4916: *            On input *mtu_len* must be a valid pointer, else verifier will
+./cilium/include/linux/bpf.h:5045: *            The verifier will reject the program if *timer* is not from
+./cilium/include/linux/bpf.h:5231: *            and will be rejected by the verifier.
+./cilium/include/linux/bpf.h:5416: *            reservation fails. This is enforced by the verifier.
+./cilium/include/linux/bpf.h:5583: *            verifier.
+./cilium/Makefile.bpf:7:# eBPF verifier enforces unaligned access checks where necessary, so don't
+./cilium/bpf_host.c:843:                 * The info == NULL test is soley to satisfy verifier requirements
+

@@ -1,0 +1,43 @@
+./suricata/hash_func01.h:20:    /* Main loop */
+./suricata/hash_func01.h:21:#pragma clang loop unroll(full)
+./suricata/include/linux/bpf.h:1061: *          **bpf_probe_read**\ (), which can be used with unrolled loops
+./falco/bpf/filler_helpers.h:156:       /* Populated inside the loop */
+./falco/bpf/filler_helpers.h:246:        * Replace the first `/` we added in the loop with `\0`
+./falco/bpf/fillers.h:512:       * in this way we can fill `nfds` after the for loop.
+./falco/bpf/fillers.h:5272: * - We cannot loop over all threads of the group due to BPF verifier limits (MAX_THREADS_GROUPS) -> return -1
+./falco/bpf/fillers.h:5299:     /* If we cannot loop over all threads, we cannot know the right reaper */
+./falco/bpf/fillers.h:6128:     /* Please note: we have to perform this action outside the `for` loop
+./falco/modern_bpf/helpers/store/auxmap_store_params.h:1030:                     * we have an enforcement after the for loop.
+./falco/modern_bpf/helpers/store/auxmap_store_params.h:1078:                     * we have an enforcement after the for loop.
+./falco/modern_bpf/helpers/store/auxmap_store_params.h:1335:    /* As a result of this for loop we can have three cases:
+./falco/modern_bpf/helpers/store/auxmap_store_params.h:1715:    /* Populated inside the loop */
+./falco/modern_bpf/helpers/store/auxmap_store_params.h:1795:     * Replace the first `/` we added in the loop with `\0`
+./falco/modern_bpf/programs/attached/events/sched_process_exit.bpf.c:19: * - We cannot loop over all threads of the group due to BPF verifier limits (MAX_THREADS_GROUPS) -> return -1
+./falco/modern_bpf/programs/attached/events/sched_process_exit.bpf.c:42:        /* We cannot loop over all threads, we cannot know the right reaper */
+./cilium/lib/identity.h:168:     * destination endpoint evaluates the policy. As the packet would loop
+./cilium/lib/identity.h:175:     * the proxy, as the packet would loop and/or the connection be reset
+./cilium/lib/mcast.h:158:       /* start a bounded loop which exits when we hit the total number of
+./cilium/lib/mcast.h:165:               /* Wrap this in an if, instead of breaking out of the loop,
+./cilium/lib/mcast.h:172:                * >= 5.3 with support for bounded loops.
+./cilium/lib/mcast.h:366:        * perform delivery, this would cause a loop, since the sender's node
+./cilium/lib/ghash.h:47: * example, when A = 2576980349, 4 MSBs of (k * A) loop over 0x9, 0x3, 0xc, 0x6,
+./cilium/bpf_lxc.c:1501:         * redirection to the ingress proxy as we would loop forever.
+./cilium/bpf_lxc.c:1808:         * redirection to the ingress proxy as we would loop forever.
+./cilium/include/bpf/builtins.h:266:     * selecting __bpf_memcmp_builtin(), clang generats a memcmp loop.
+./cilium/include/bpf/builtins.h:270:     * breaks this loop and resolves both needs at once.
+./cilium/include/linux/if_arp.h:83:#define ARPHRD_FCAL  785             /* Fibrechannel arbitrated loop */
+./cilium/include/linux/if_arp.h:84:#define ARPHRD_FCPL  786             /* Fibrechannel public loop     */
+./cilium/include/linux/bpf.h:2307: *            **bpf_probe_read**\ (), which can be used with unrolled loops
+./cilium/include/linux/bpf.h:5213: * long bpf_loop(u32 nr_loops, void *callback_fn, void *callback_ctx, u64 flags)
+./cilium/include/linux/bpf.h:5215: *            For **nr_loops**, call **callback_fn** function
+./cilium/include/linux/bpf.h:5220: *            Currently, the **flags** must be 0. Currently, nr_loops is
+./cilium/include/linux/bpf.h:5221: *            limited to 1 << 23 (~8 million) loops.
+./cilium/include/linux/bpf.h:5225: *            where **index** is the current index in the loop. The index
+./cilium/include/linux/bpf.h:5229: *            loop. If return value is 1, the helper will skip the rest of
+./cilium/include/linux/bpf.h:5230: *            the loops and return. Other return values are not used now,
+./cilium/include/linux/bpf.h:5234: *            The number of loops performed, **-EINVAL** for invalid **flags**,
+./cilium/include/linux/bpf.h:5235: *            **-E2BIG** if **nr_loops** exceeds the maximum number of loops.
+./cilium/include/linux/bpf.h:5829:      FN(loop, 181, ##ctx)                            \
+./cilium/bpf_host.c:847:                 * anything about it as otherwise we'll run into a routing loop.
+./cilium/bpf_host.c:1494:        * looping forever (e.g., bpf_host@eth0 => cilium_wg0 =>
+
