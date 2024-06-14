@@ -28,3 +28,11 @@ Falco writes many helper functions and macros to handle these problems, for exam
 ```c
 #define SAFE_ARG_NUMBER(x) x & (PPM_MAX_EVENT_PARAMS - 1)
 ```
+
+## LLVM compiler
+
+LLVM tends to generate code that verifier doesn't understand. People write ASM code directly to pass that.
+
+# Verifier Pitfalls
+
+https://github.com/cilium/cilium/issues/5130

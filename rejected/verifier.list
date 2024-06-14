@@ -75,46 +75,5 @@
 ./cilium/include/bpf/compiler.h:82:     /* Workaround to avoid verifier complaint:
 ./cilium/include/bpf/compiler.h:101:/* {READ,WRITE}_ONCE() with verifier workaround via bpf_barrier(). */
 ./cilium/include/bpf/access.h:19:       /* LLVM tends to optimize code away that is needed for the verifier to
-./cilium/include/linux/bpf.h:1130: * verifier will perform strict alignment checking as if the kernel
-./cilium/include/linux/bpf.h:1137: * verifier will allow any alignment whatsoever.  On platforms
-./cilium/include/linux/bpf.h:1139: * as sparc and mips) the verifier validates that all loads and
-./cilium/include/linux/bpf.h:1144: * context and memory access aspects of the verifier, but because
-./cilium/include/linux/bpf.h:1153: * through implicit zero extension. Therefore verifier notifies JIT back-ends
-./cilium/include/linux/bpf.h:1157: * hence hasn't used verifier's analysis result. But, we really want to have a
-./cilium/include/linux/bpf.h:1161: * So, this flag is introduced. Once it is set, verifier will randomize high
-./cilium/include/linux/bpf.h:1163: * Then, if verifier is not doing correct analysis, such randomization will
-./cilium/include/linux/bpf.h:1168:/* The verifier internal test flag. Behavior is undefined */
-./cilium/include/linux/bpf.h:1171:/* If BPF_F_SLEEPABLE is used in BPF_PROG_LOAD command, the verifier will
-./cilium/include/linux/bpf.h:1217: * verifier type:    CONST_PTR_TO_MAP
-./cilium/include/linux/bpf.h:1228: * verifier type:    PTR_TO_MAP_VALUE
-./cilium/include/linux/bpf.h:1239: * verifier type:    PTR_TO_BTF_ID or PTR_TO_MEM, depending on whether the var
-./cilium/include/linux/bpf.h:1249: * verifier type:    PTR_TO_FUNC.
-./cilium/include/linux/bpf.h:1421:              __u32           log_level;      /* verbosity level of verifier */
-./cilium/include/linux/bpf.h:1850: *            previously done by the verifier are invalidated and must be
-./cilium/include/linux/bpf.h:1875: *            previously done by the verifier are invalidated and must be
-./cilium/include/linux/bpf.h:1907: *            previously done by the verifier are invalidated and must be
-./cilium/include/linux/bpf.h:1962: *            previously done by the verifier are invalidated and must be
-./cilium/include/linux/bpf.h:2033: *            previously done by the verifier are invalidated and must be
-./cilium/include/linux/bpf.h:2045: *            previously done by the verifier are invalidated and must be
-./cilium/include/linux/bpf.h:2398: *            previously done by the verifier are invalidated and must be
-./cilium/include/linux/bpf.h:2513: *            previously done by the verifier are invalidated and must be
-./cilium/include/linux/bpf.h:2543: *            to be an invariant for the write part only, the verifier
-./cilium/include/linux/bpf.h:2550: *            previously done by the verifier are invalidated and must be
-./cilium/include/linux/bpf.h:2604: *            previously done by the verifier are invalidated and must be
-./cilium/include/linux/bpf.h:2619: *            previously done by the verifier are invalidated and must be
-./cilium/include/linux/bpf.h:2777: *            previously done by the verifier are invalidated and must be
-./cilium/include/linux/bpf.h:2861: *            previously done by the verifier are invalidated and must be
-./cilium/include/linux/bpf.h:3108: *            previously done by the verifier are invalidated and must be
-./cilium/include/linux/bpf.h:3143: *            previously done by the verifier are invalidated and must be
-./cilium/include/linux/bpf.h:3351: *            previously done by the verifier are invalidated and must be
-./cilium/include/linux/bpf.h:3366: *            previously done by the verifier are invalidated and must be
-./cilium/include/linux/bpf.h:3382: *            previously done by the verifier are invalidated and must be
-./cilium/include/linux/bpf.h:3411: *            previously done by the verifier are invalidated and must be
-./cilium/include/linux/bpf.h:4916: *            On input *mtu_len* must be a valid pointer, else verifier will
-./cilium/include/linux/bpf.h:5045: *            The verifier will reject the program if *timer* is not from
-./cilium/include/linux/bpf.h:5231: *            and will be rejected by the verifier.
-./cilium/include/linux/bpf.h:5416: *            reservation fails. This is enforced by the verifier.
-./cilium/include/linux/bpf.h:5583: *            verifier.
-./cilium/Makefile.bpf:7:# eBPF verifier enforces unaligned access checks where necessary, so don't
 ./cilium/bpf_host.c:843:                 * The info == NULL test is soley to satisfy verifier requirements
 

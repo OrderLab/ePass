@@ -1,6 +1,5 @@
 ./suricata/hash_func01.h:20:    /* Main loop */
 ./suricata/hash_func01.h:21:#pragma clang loop unroll(full)
-./suricata/include/linux/bpf.h:1061: *          **bpf_probe_read**\ (), which can be used with unrolled loops
 ./falco/bpf/filler_helpers.h:156:       /* Populated inside the loop */
 ./falco/bpf/filler_helpers.h:246:        * Replace the first `/` we added in the loop with `\0`
 ./falco/bpf/fillers.h:512:       * in this way we can fill `nfds` after the for loop.
@@ -27,17 +26,6 @@
 ./cilium/include/bpf/builtins.h:270:     * breaks this loop and resolves both needs at once.
 ./cilium/include/linux/if_arp.h:83:#define ARPHRD_FCAL  785             /* Fibrechannel arbitrated loop */
 ./cilium/include/linux/if_arp.h:84:#define ARPHRD_FCPL  786             /* Fibrechannel public loop     */
-./cilium/include/linux/bpf.h:2307: *            **bpf_probe_read**\ (), which can be used with unrolled loops
-./cilium/include/linux/bpf.h:5213: * long bpf_loop(u32 nr_loops, void *callback_fn, void *callback_ctx, u64 flags)
-./cilium/include/linux/bpf.h:5215: *            For **nr_loops**, call **callback_fn** function
-./cilium/include/linux/bpf.h:5220: *            Currently, the **flags** must be 0. Currently, nr_loops is
-./cilium/include/linux/bpf.h:5221: *            limited to 1 << 23 (~8 million) loops.
-./cilium/include/linux/bpf.h:5225: *            where **index** is the current index in the loop. The index
-./cilium/include/linux/bpf.h:5229: *            loop. If return value is 1, the helper will skip the rest of
-./cilium/include/linux/bpf.h:5230: *            the loops and return. Other return values are not used now,
-./cilium/include/linux/bpf.h:5234: *            The number of loops performed, **-EINVAL** for invalid **flags**,
-./cilium/include/linux/bpf.h:5235: *            **-E2BIG** if **nr_loops** exceeds the maximum number of loops.
-./cilium/include/linux/bpf.h:5829:      FN(loop, 181, ##ctx)                            \
 ./cilium/bpf_host.c:847:                 * anything about it as otherwise we'll run into a routing loop.
 ./cilium/bpf_host.c:1494:        * looping forever (e.g., bpf_host@eth0 => cilium_wg0 =>
 
