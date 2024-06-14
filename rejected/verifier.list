@@ -1,28 +1,3 @@
-./suricata/include/linux/bpf.h:237: * verifier will perform strict alignment checking as if the kernel
-./suricata/include/linux/bpf.h:244: * verifier will allow any alignment whatsoever.  On platforms
-./suricata/include/linux/bpf.h:246: * as sparc and mips) the verifier validates that all loads and
-./suricata/include/linux/bpf.h:251: * context and memory access aspects of the verifier, but because
-./suricata/include/linux/bpf.h:351:             __u32           log_level;      /* verbosity level of verifier */
-./suricata/include/linux/bpf.h:615: *           previously done by the verifier are invalidated and must be
-./suricata/include/linux/bpf.h:640: *           previously done by the verifier are invalidated and must be
-./suricata/include/linux/bpf.h:672: *           previously done by the verifier are invalidated and must be
-./suricata/include/linux/bpf.h:727: *           previously done by the verifier are invalidated and must be
-./suricata/include/linux/bpf.h:792: *           previously done by the verifier are invalidated and must be
-./suricata/include/linux/bpf.h:804: *           previously done by the verifier are invalidated and must be
-./suricata/include/linux/bpf.h:1152: *          previously done by the verifier are invalidated and must be
-./suricata/include/linux/bpf.h:1265: *          previously done by the verifier are invalidated and must be
-./suricata/include/linux/bpf.h:1294: *          to be an invariant for the write part only, the verifier
-./suricata/include/linux/bpf.h:1301: *          previously done by the verifier are invalidated and must be
-./suricata/include/linux/bpf.h:1353: *          previously done by the verifier are invalidated and must be
-./suricata/include/linux/bpf.h:1368: *          previously done by the verifier are invalidated and must be
-./suricata/include/linux/bpf.h:1495: *          previously done by the verifier are invalidated and must be
-./suricata/include/linux/bpf.h:1574: *          previously done by the verifier are invalidated and must be
-./suricata/include/linux/bpf.h:1801: *          previously done by the verifier are invalidated and must be
-./suricata/include/linux/bpf.h:1835: *          previously done by the verifier are invalidated and must be
-./suricata/include/linux/bpf.h:2003: *          previously done by the verifier are invalidated and must be
-./suricata/include/linux/bpf.h:2018: *          previously done by the verifier are invalidated and must be
-./suricata/include/linux/bpf.h:2034: *          previously done by the verifier are invalidated and must be
-./suricata/include/linux/bpf.h:2063: *          previously done by the verifier are invalidated and must be
 ./falco/bpf/probe.c:136:        /* Duplicated here to avoid verifier madness */
 ./falco/bpf/filler_helpers.h:26:/* Helper used to please the verifier with operations on the number of arguments */
 ./falco/bpf/filler_helpers.h:106: * to please the verifier since we set the max component len to 4096 bytes.
