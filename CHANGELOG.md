@@ -1,8 +1,26 @@
 # 24 June
 
+Found an issue: https://github.com/solana-labs/solana/issues/20323.
+
+We could use runtime optimization strategy (profile based optimization).
+
+`bpf_prog*` --> Verifier --> JIT
+
+==>
+
+`bpf_prog*` --> Verifier --> **To SSA** --> Optimization/Insert runtime code --> **Register alloc, back to bytecode** --> JIT
+
+## Profiling
+
+Insert profiling code like LLVM profiler, get the hot path ==> Try verify hot path and remove check code on hot path.
+
+Read JIT code.
+
 # 21 June
 
 Design the basic architecture.
+
+Transform eBPF prog to SSA form at runtime to help analyze/optimize during runtime.
 
 # 20 June
 
