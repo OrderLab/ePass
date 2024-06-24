@@ -20,7 +20,7 @@ Read JIT code.
 
 Design the basic architecture.
 
-![]("docs/architecture.png")
+![](docs/architecture.png)
 
 Transform eBPF prog to SSA form at runtime to help analyze/optimize during runtime.
 
