@@ -4,12 +4,13 @@
 #include <elf.h>
 #include <string.h>
 #include <linux/bpf.h>
-#include <cstdint>
+#include <stdint.h>
+#include "bpf_ir.h"
 
 void print_item(FILE *fd, Elf64_Ehdr eh, Elf64_Shdr sh_table[]) {
-    int   i;
-    char *sh_str;
-    char *buff;
+    int   i      = 0;
+    char *sh_str = NULL;
+    char *buff   = NULL;
 
     buff = malloc(sh_table[eh.e_shstrndx].sh_size);
 
@@ -20,7 +21,6 @@ void print_item(FILE *fd, Elf64_Ehdr eh, Elf64_Shdr sh_table[]) {
     sh_str = buff;
 
     for (i = 0; i < eh.e_shnum; i++) {
-        // printf("Section %d: %s\n", i, (sh_str + sh_table[i].sh_name));
         if (!strcmp("xdp", (sh_str + sh_table[i].sh_name))) {
             printf("Found section\t\".text\"\n");
             printf("at offset\t0x%08x\n", (unsigned int)sh_table[i].sh_offset);
@@ -29,27 +29,27 @@ void print_item(FILE *fd, Elf64_Ehdr eh, Elf64_Shdr sh_table[]) {
         }
     }
 
-    /*Code to print or store string data*/
     if (i < eh.e_shnum) {
         uint64_t size     = sh_table[i].sh_size;
         uint32_t insn_cnt = size / 8;
         char    *mydata   = malloc(size);
         fseek(fd, sh_table[i].sh_offset, SEEK_SET);
         fread(mydata, 1, size, fd);
-        for (int j = 0; j < size; j++) {
-            printf("%d\n ", (uint8_t)mydata[j]);
-        }
-        // puts(mydata);
+        struct bpf_insn *prog = (struct bpf_insn *)mydata;
+        gen_bb(prog, size / sizeof(struct bpf_insn));
     }
 }
 
-int main() {
-    FILE       *fp = NULL;  // Pointer used to access current file
-    char       *program_name;
-    Elf64_Ehdr  elf_header;  // Elf header
-    Elf64_Shdr *sh_table;    // Elf symbol table
+int main(int argc, char **argv) {
+    if (argc <= 1) {
+        return -1;
+    }
+    FILE       *fp           = NULL;  // Pointer used to access current file
+    char       *program_name = NULL;
+    Elf64_Shdr *sh_table     = NULL;  // Elf symbol table
+    Elf64_Ehdr  elf_header;           // Elf header
 
-    program_name = "loop1.o";
+    program_name = argv[1];
     fp           = fopen(program_name, "r");
 
     fseek(fp, 0, SEEK_SET);
