@@ -26,6 +26,15 @@ int compare_num(const void *a, const void *b) {
     return as->entrance > bs->entrance;
 }
 
+void no_dup_push(struct array *arr, size_t val) {
+    for (size_t i = 0; i < arr->num_elem; ++i) {
+        if (((size_t *)(arr->data))[i] == val) {
+            return;
+        }
+    }
+    array_push(arr, &val);
+}
+
 // Add current_pos --> entrance_pos in bb_entrances
 void add_entrance_info(struct bpf_insn *insns, struct array *bb_entrances, size_t entrance_pos,
                        size_t current_pos) {
@@ -33,7 +42,7 @@ void add_entrance_info(struct bpf_insn *insns, struct array *bb_entrances, size_
         struct bb_entrance_info *entry = ((struct bb_entrance_info *)(bb_entrances->data)) + i;
         if (entry->entrance == entrance_pos) {
             // Already has this entrance, add a pred
-            array_push(&entry->bb.preds, &current_pos);
+            no_dup_push(&entry->bb.preds, current_pos);
             return;
         }
     }
@@ -41,16 +50,33 @@ void add_entrance_info(struct bpf_insn *insns, struct array *bb_entrances, size_
     struct array preds    = array_init(sizeof(size_t));
     size_t       last_pos = entrance_pos - 1;
     __u8         code     = code_of_insn(insns[last_pos]);
-    if (!(code == 0x09 || code == 0x0) && last_pos != current_pos) {
+    if (!(code == 0x09 || code == 0x0)) {
         // BPF_EXIT
-        array_push(&preds, &last_pos);
+        no_dup_push(&preds, last_pos);
     }
-    array_push(&preds, &current_pos);
+    no_dup_push(&preds, current_pos);
     struct bb_entrance_info new_bb;
     new_bb.entrance = entrance_pos;
     new_bb.bb.preds = preds;
+    new_bb.bb.succs = array_init(sizeof(struct pre_ir_basic_block *));
     array_push(bb_entrances, &new_bb);
 }
+
+// Return the parent BB of a instruction
+struct pre_ir_basic_block *get_bb_parent(struct array *bb_entrance, size_t pos) {
+    size_t                   bb_id = 0;
+    struct bb_entrance_info *bbs   = (struct bb_entrance_info *)(bb_entrance->data);
+    for (size_t i = 1; i < bb_entrance->num_elem; ++i) {
+        struct bb_entrance_info *entry = bbs + i;
+        if (entry->entrance <= pos) {
+            bb_id++;
+        } else {
+            break;
+        }
+    }
+    return &bbs[bb_id].bb;
+}
+
 void init_entrance_info(struct array *bb_entrances, size_t entrance_pos) {
     for (size_t i = 0; i < bb_entrances->num_elem; ++i) {
         struct bb_entrance_info *entry = ((struct bb_entrance_info *)(bb_entrances->data)) + i;
@@ -67,7 +93,7 @@ void init_entrance_info(struct array *bb_entrances, size_t entrance_pos) {
     array_push(bb_entrances, &new_bb);
 }
 
-void gen_bb(struct bpf_insn *insns, size_t len) {
+struct pre_ir_basic_block *gen_bb(struct bpf_insn *insns, size_t len) {
     struct array bb_entrance = array_init(sizeof(struct bb_entrance_info));
     // First, scan the code to find all the BB entrances
     for (size_t i = 0; i < len; ++i) {
@@ -119,10 +145,75 @@ void gen_bb(struct bpf_insn *insns, size_t len) {
             }
         }
     }
+
+    // Create the first BB (entry block)
+    struct bb_entrance_info bb_entry_info;
+    bb_entry_info.entrance = 0;
+    bb_entry_info.bb.preds = array_null();
+    bb_entry_info.bb.succs = array_init(sizeof(struct pre_ir_basic_block *));
+    array_push(&bb_entrance, &bb_entry_info);
+
+    // Sort the BBs
     qsort(bb_entrance.data, bb_entrance.num_elem, bb_entrance.elem_size, &compare_num);
     // Generate real basic blocks
+
+    struct bb_entrance_info *all_bbs = ((struct bb_entrance_info *)(bb_entrance.data));
+
+    // Print the BB
     for (size_t i = 0; i < bb_entrance.num_elem; ++i) {
-        struct bb_entrance_info entry = ((struct bb_entrance_info *)(bb_entrance.data))[i];
+        struct bb_entrance_info entry = all_bbs[i];
         printf("%ld: %ld\n", entry.entrance, entry.bb.preds.num_elem);
     }
+
+    // Init preds
+    for (size_t i = 0; i < bb_entrance.num_elem; ++i) {
+        struct bb_entrance_info *entry = all_bbs + i;
+        entry->bb.id                   = i;
+    }
+    for (size_t i = 0; i < bb_entrance.num_elem; ++i) {
+        struct bb_entrance_info *entry = all_bbs + i;
+        // entry->bb.id                   = i;
+
+        struct array preds     = entry->bb.preds;
+        struct array new_preds = array_init(sizeof(struct pre_ir_basic_block *));
+        for (size_t j = 0; j < preds.num_elem; ++j) {
+            size_t                     pred_pos  = ((size_t *)(preds.data))[j];
+            struct pre_ir_basic_block *parent_bb = get_bb_parent(&bb_entrance, pred_pos);
+            printf("%ld Parent %ld\n", i, parent_bb->id);
+            // We push the address to the array
+            array_push(&new_preds, &parent_bb);
+            // Add entry->bb to the succ of parent_bb
+            array_push(&parent_bb->succs, &entry->bb);
+        }
+        array_free(&preds);
+        entry->bb.preds = new_preds;
+    }
+    // Return the entry BB
+    // TODO: Collect garbage
+    for (size_t i = 0; i < all_bbs[0].bb.succs.num_elem; ++i) {
+        struct pre_ir_basic_block *pred =
+            ((struct pre_ir_basic_block **)(all_bbs[0].bb.succs.data))[i];
+        printf("%ld ", pred->id);
+    }
+    return &all_bbs[0].bb;
+}
+
+void print_cfg(struct pre_ir_basic_block *bb) {
+    printf("BB %ld:\n", bb->id);
+    printf("preds (%ld): ", bb->preds.num_elem);
+    for (size_t i = 0; i < bb->preds.num_elem; ++i) {
+        struct pre_ir_basic_block *pred = ((struct pre_ir_basic_block **)(bb->preds.data))[i];
+        printf("%ld ", pred->id);
+    }
+    printf("\nsuccs (%ld): ", bb->succs.num_elem);
+    for (size_t i = 0; i < bb->succs.num_elem; ++i) {
+        struct pre_ir_basic_block *pred = ((struct pre_ir_basic_block **)(bb->succs.data))[i];
+        printf("%ld ", pred->id);
+    }
+    printf("\n");
+}
+
+void construct_ir(struct bpf_insn *insns, size_t len) {
+    struct pre_ir_basic_block *bb_entry = gen_bb(insns, len);
+    print_cfg(bb_entry);
 }

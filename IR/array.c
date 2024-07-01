@@ -19,6 +19,15 @@ struct array array_init(size_t size) {
     return res;
 }
 
+struct array array_null() {
+    struct array res;
+    res.data      = NULL;
+    res.max_elem  = 0;
+    res.elem_size = 0;
+    res.num_elem  = 0;
+    return res;
+}
+
 void array_push(struct array *arr, void *data) {
     if (arr->num_elem >= arr->max_elem) {
         // Reallocate
@@ -34,5 +43,5 @@ void array_push(struct array *arr, void *data) {
 }
 
 void array_free(struct array *arr) {
-    __free(arr);
+    __free(arr->data);
 }

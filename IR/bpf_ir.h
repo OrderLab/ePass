@@ -6,7 +6,8 @@
 #include "array.h"
 // #include <linux/types.h>
 
-void gen_bb(struct bpf_insn *insns, size_t len);
+void construct_ir(struct bpf_insn *insns, size_t len);
+struct pre_ir_basic_block *gen_bb(struct bpf_insn *insns, size_t len);
 // First stage, transform to a pre-IR code
 
 struct pre_ir_insn {
@@ -23,6 +24,7 @@ struct pre_ir_insn {
 
 struct ir_insn;
 struct pre_ir_basic_block {
+    size_t id;
     struct pre_ir_insn *pre_insns;
     struct ir_insn     *ir_insns;
 

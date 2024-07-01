@@ -14,5 +14,5 @@ struct array {
 struct array array_init(size_t);
 void         array_push(struct array *, void *);
 void         array_free(struct array *);
-
+struct array array_null();
 #endif
