@@ -23,7 +23,6 @@ struct pre_ir_insn {
 
 struct ir_insn;
 struct pre_ir_basic_block {
-    size_t id;
     struct pre_ir_insn *pre_insns;
     struct ir_insn     *ir_insns;
 
