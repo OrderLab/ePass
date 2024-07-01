@@ -170,6 +170,7 @@ struct pre_ir_basic_block *gen_bb(struct bpf_insn *insns, size_t len) {
         real_bb->id                        = i;
         real_bb->self                      = real_bb;
         real_bb->succs                     = array_init(sizeof(struct pre_ir_basic_block *));
+        real_bb->visited                   = 0;
         entry->bb.self                     = real_bb;
     }
     for (size_t i = 0; i < bb_entrance.num_elem; ++i) {
@@ -197,6 +198,10 @@ struct pre_ir_basic_block *gen_bb(struct bpf_insn *insns, size_t len) {
 }
 
 void print_cfg(struct pre_ir_basic_block *bb) {
+    if (bb->visited) {
+        return;
+    }
+    bb->visited = 1;
     printf("BB %ld:\n", bb->id);
     printf("preds (%ld): ", bb->preds.num_elem);
     for (size_t i = 0; i < bb->preds.num_elem; ++i) {
@@ -205,10 +210,14 @@ void print_cfg(struct pre_ir_basic_block *bb) {
     }
     printf("\nsuccs (%ld): ", bb->succs.num_elem);
     for (size_t i = 0; i < bb->succs.num_elem; ++i) {
-        struct pre_ir_basic_block *pred = ((struct pre_ir_basic_block **)(bb->succs.data))[i];
-        printf("%ld ", pred->id);
+        struct pre_ir_basic_block *succ = ((struct pre_ir_basic_block **)(bb->succs.data))[i];
+        printf("%ld ", succ->id);
     }
     printf("\n");
+    for (size_t i = 0; i < bb->succs.num_elem; ++i) {
+        struct pre_ir_basic_block *succ = ((struct pre_ir_basic_block **)(bb->succs.data))[i];
+        print_cfg(succ);
+    }
 }
 
 void construct_ir(struct bpf_insn *insns, size_t len) {

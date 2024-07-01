@@ -31,6 +31,7 @@ struct pre_ir_basic_block {
     struct array               preds;
     struct array               succs;
     struct pre_ir_basic_block *self;
+    __u8                       visited;
 };
 
 // Second stage, transform to IR
