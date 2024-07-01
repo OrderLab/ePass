@@ -9,6 +9,17 @@ struct bb_entrance_info {
     struct pre_ir_basic_block bb;
 };
 
+__u8 class_of_insn(struct bpf_insn insn) {
+    return insn.code & 0b00000111;
+}
+
+__u8 src_of_insn(struct bpf_insn insn) {
+    return (insn.code & 0b00001000) >> 3;
+}
+__u8 code_of_insn(struct bpf_insn insn) {
+    return (insn.code & 0b11110000) >> 4;
+}
+
 int compare_num(const void *a, const void *b) {
     struct bb_entrance_info *as = (struct bb_entrance_info *)a;
     struct bb_entrance_info *bs = (struct bb_entrance_info *)b;
@@ -16,7 +27,8 @@ int compare_num(const void *a, const void *b) {
 }
 
 // Add current_pos --> entrance_pos in bb_entrances
-void add_entrance_info(struct array *bb_entrances, size_t entrance_pos, size_t current_pos) {
+void add_entrance_info(struct bpf_insn *insns, struct array *bb_entrances, size_t entrance_pos,
+                       size_t current_pos) {
     for (size_t i = 0; i < bb_entrances->num_elem; ++i) {
         struct bb_entrance_info *entry = ((struct bb_entrance_info *)(bb_entrances->data)) + i;
         if (entry->entrance == entrance_pos) {
@@ -26,7 +38,13 @@ void add_entrance_info(struct array *bb_entrances, size_t entrance_pos, size_t c
         }
     }
     // New entrance
-    struct array preds = array_init(sizeof(size_t));
+    struct array preds    = array_init(sizeof(size_t));
+    size_t       last_pos = entrance_pos - 1;
+    __u8         code     = code_of_insn(insns[last_pos]);
+    if (!(code == 0x09 || code == 0x0) && last_pos != current_pos) {
+        // BPF_EXIT
+        array_push(&preds, &last_pos);
+    }
     array_push(&preds, &current_pos);
     struct bb_entrance_info new_bb;
     new_bb.entrance = entrance_pos;
@@ -54,15 +72,15 @@ void gen_bb(struct bpf_insn *insns, size_t len) {
     // First, scan the code to find all the BB entrances
     for (size_t i = 0; i < len; ++i) {
         struct bpf_insn insn = insns[i];
-        __u8 class           = insn.code & 0b00000111;
-        __u8 src             = (insn.code & 0b00001000) >> 3;
-        __u8 code            = (insn.code & 0b11110000) >> 4;
-        // TODO: What if insns[i+1] is a pseudo instruction?
-        if (i + 1 < len && insns[i + 1].code == 0) {
-            // TODO
-            exit(-1);
-        }
+        __u8 class           = class_of_insn(insn);
+        __u8 src             = src_of_insn(insn);
+        __u8 code            = code_of_insn(insn);
         if (class == 0x05 || class == 0x06) {
+            if (i + 1 < len && insns[i + 1].code == 0) {
+                // TODO: What if insns[i+1] is a pseudo instruction?
+                printf("Error");
+                exit(-1);
+            }
             if (code == 0x0) {
                 // Direct Jump
                 size_t pos = 0;
@@ -79,12 +97,13 @@ void gen_bb(struct bpf_insn *insns, size_t len) {
                 }
                 // Add to bb entrance
                 // This is one-way control flow
-                add_entrance_info(&bb_entrance, pos, i);
+                add_entrance_info(insns, &bb_entrance, pos, i);
             }
             if ((code >= 0x1 && code <= 0x07) || (code >= 0xa && code <= 0xd)) {
                 // Add offset
                 size_t pos = (__s16)i + insn.off + 1;
-                add_entrance_info(&bb_entrance, pos, i);
+                add_entrance_info(insns, &bb_entrance, pos, i);
+                add_entrance_info(insns, &bb_entrance, i + 1, i);
             }
             if (code == 0x08) {
                 // BPF_CALL
