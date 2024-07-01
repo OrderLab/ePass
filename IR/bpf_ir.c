@@ -171,7 +171,36 @@ struct pre_ir_basic_block *gen_bb(struct bpf_insn *insns, size_t len) {
         real_bb->self                      = real_bb;
         real_bb->succs                     = array_init(sizeof(struct pre_ir_basic_block *));
         real_bb->visited                   = 0;
+        real_bb->pre_insns                 = NULL;
+        real_bb->ir_insns                  = NULL;
         entry->bb.self                     = real_bb;
+        real_bb->start_pos                 = entry->entrance;
+        real_bb->end_pos = i + 1 < bb_entrance.num_elem ? all_bbs[i + 1].entrance : len;
+    }
+    // Allocate instructions
+    for (size_t i = 0; i < bb_entrance.num_elem; ++i) {
+        struct pre_ir_basic_block *real_bb = all_bbs[i].bb.self;
+        real_bb->pre_insns =
+            __malloc(sizeof(struct pre_ir_insn) * (real_bb->end_pos - real_bb->start_pos));
+        size_t bb_pos = 0;
+        for (size_t pos = real_bb->start_pos; pos < real_bb->end_pos; ++pos, ++bb_pos) {
+            struct bpf_insn    insn = insns[pos];
+            struct pre_ir_insn new_insn;
+            new_insn.instruction_class = class_of_insn(insn);
+            new_insn.code              = code_of_insn(insn);
+            new_insn.source            = src_of_insn(insn);
+            new_insn.src_reg           = insn.src_reg;
+            new_insn.dst_reg           = insn.dst_reg;
+            new_insn.imm               = insn.imm;
+            new_insn.imm64             = 0;
+            new_insn.off               = insn.off;
+            if (pos + 1 < real_bb->end_pos && insns[pos + 1].code == 0) {
+                new_insn.imm64 = ((__s64)(insns[pos + 1].imm) << 32) | insn.imm;
+                pos++;
+            }
+            real_bb->pre_insns[bb_pos] = new_insn;
+        }
+        real_bb->len = bb_pos;
     }
     for (size_t i = 0; i < bb_entrance.num_elem; ++i) {
         struct bb_entrance_info *entry = all_bbs + i;
@@ -203,6 +232,11 @@ void print_cfg(struct pre_ir_basic_block *bb) {
     }
     bb->visited = 1;
     printf("BB %ld:\n", bb->id);
+    for (size_t i = 0; i < bb->len; ++i) {
+        struct pre_ir_insn insn = bb->pre_insns[i];
+        printf("%x %x %llx\n", insn.code, insn.imm, insn.imm64);
+    }
+    printf("\n");
     printf("preds (%ld): ", bb->preds.num_elem);
     for (size_t i = 0; i < bb->preds.num_elem; ++i) {
         struct pre_ir_basic_block *pred = ((struct pre_ir_basic_block **)(bb->preds.data))[i];
