@@ -1,3 +1,23 @@
+# 1 July
+
+Continue to write code on BB gen and SSA pass to generate IR.
+
+# 28 June
+
+Writing basic code for IR and BB gen.
+
+# 27 June
+
+Searching for related projects (x86 to LLVM IR decompiler).
+
+# 26 June
+
+Reading SSA literatures.
+
+# 25 June
+
+Designing IR.
+
 # 24 June
 
 Found an issue: https://github.com/solana-labs/solana/issues/20323.
