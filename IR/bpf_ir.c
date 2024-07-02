@@ -1,5 +1,6 @@
 #include "bpf_ir.h"
 #include <linux/bpf.h>
+#include <linux/bpf_common.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include "array.h"
@@ -253,6 +254,16 @@ void print_cfg(struct pre_ir_basic_block *bb) {
         print_cfg(succ);
     }
 }
+
+struct block_val{
+    struct ir_basic_block* block;
+    struct ir_value * value;
+};
+
+struct ssa_transform_env {
+    // Array of blocks
+    struct array currentDef[MAX_BPF_REG];
+};
 
 void construct_ir(struct bpf_insn *insns, size_t len) {
     struct pre_ir_basic_block *bb_entry = gen_bb(insns, len);
