@@ -4,6 +4,7 @@
 #include <linux/bpf.h>
 #include <stddef.h>
 #include "array.h"
+#include "list.h"
 // #include <linux/types.h>
 
 void                       construct_ir(struct bpf_insn *insns, size_t len);
@@ -55,9 +56,15 @@ struct ir_constant {
     } type;
 };
 
+/**
+    VALUE = CONSTANT | INSN
+
+    "r1 = constant" pattern will use `CONSTANT` which will not be added to BB.
+ */
 struct ir_value {
     union {
         struct ir_constant constant_d;
+        struct ir_insn    *insn_d;
     } data;
     enum {
         IR_VALUE_CONSTANT,
@@ -65,7 +72,33 @@ struct ir_value {
     } type;
 };
 
+/**
+    INSN =
+          ALLOC <size in bytes>
+        | ALLOCP <size in bytes> <stack position>
+        | STORE <value>, <value>
+        | LOAD <value>
+        | ADD <value>, <value>
+        | SUB <value>, <value>
+        | MUL <value>, <value>
+        | MOV <value>
+        | CALL <value>
+        | EXIT
+        | JA <value>
+        | JEQ <value>, <value>
+        | JGT <value>, <value>
+        | JGE <value>, <value>
+        | JLT <value>, <value>
+        | JLE <value>, <value>
+        | JNE <value>, <value>
+ */
 struct ir_insn {
+    ir_value v1;
+    ir_value v2;
+
+    // Used in ALLOC instructions
+    __u32 alloc_size;
+    __u32 stack_pos;
     enum {
         IR_INSN_ALLOC,   // alloc <size in bytes>
         IR_INSN_ALLOCP,  // alloc <size in bytes> <stack position>
@@ -88,8 +121,16 @@ struct ir_insn {
         IR_INSN_JLE,
         IR_INSN_JNE,
     } op;
+    struct list_head ptr;
 };
 
-struct ir_basic_block {};
+/**
+    IR Basic Block
+ */
+struct ir_basic_block {
+    struct list_head ir_insn_head;
+    struct array     preds;
+    struct array     succs;
+};
 
 #endif
