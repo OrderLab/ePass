@@ -559,13 +559,23 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
                 new_insn->op             = IR_INSN_RET;
                 new_insn->v1             = read_variable(env, BPF_REG_0, bb);
                 insert_insn_back(bb->ir_bb, new_insn);
-            } else {
-                // Conditional Jump
+            } else if (BPF_OP(code) == BPF_CALL) {
+                // TODO
+                // imm is the function id
                 struct ir_insn *new_insn = __malloc(sizeof(struct ir_insn));
-                new_insn->v1             = read_variable(env, insn.dst_reg, bb);
-                new_insn->v2             = read_variable(env, insn.src_reg, bb);
-                new_insn->op             = IR_INSN_JEQ;
+                new_insn->op             = IR_INSN_CALL;
+                new_insn->fid            = insn.imm;
+
+                // TODO: use map to find the actual numbers
+                new_insn->f_arg_num = 0;
                 insert_insn_back(bb->ir_bb, new_insn);
+                struct ir_value new_val;
+                new_val.type        = IR_VALUE_INSN;
+                new_val.data.insn_d = new_insn;
+                write_variable(env, BPF_REG_0, bb, new_val);
+            } else {
+                // TODO
+                exit(1);
             }
         } else {
             // TODO

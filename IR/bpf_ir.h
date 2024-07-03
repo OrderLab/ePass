@@ -144,7 +144,7 @@ struct ir_insn {
     // Used in RAW instructions
     struct ir_address_value addr_val;
 
-    __u32 fid;
+    __s32 fid;
     __u32 f_arg_num;
     enum {
         IR_INSN_ALLOC,
