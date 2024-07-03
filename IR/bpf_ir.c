@@ -180,7 +180,6 @@ struct pre_ir_basic_block *gen_bb(struct bpf_insn *insns, size_t len) {
         real_bb->succs                     = array_init(sizeof(struct pre_ir_basic_block *));
         real_bb->visited                   = 0;
         real_bb->pre_insns                 = NULL;
-        real_bb->ir_insns                  = NULL;
         entry->bb.self                     = real_bb;
         real_bb->start_pos                 = entry->entrance;
         real_bb->end_pos = i + 1 < bb_entrance.num_elem ? all_bbs[i + 1].entrance : len;
@@ -353,13 +352,15 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
         return;
     }
     // Fill the BB
-    bb->filled = 1;
     assert(bb->ir_bb == NULL);
     // Initialize th IR BB
     bb->ir_bb = __malloc(sizeof(struct ir_basic_block));
     init_ir_bb(bb->ir_bb);
+    for (size_t i = 0; i < bb->len; ++i) {
+        struct pre_ir_insn insn = bb->pre_insns[i];
+    }
+    bb->filled = 1;
     // Finish filling
-
     for (size_t i = 0; i < bb->succs.num_elem; ++i) {
         struct pre_ir_basic_block *succ = ((struct pre_ir_basic_block **)(bb->succs.data))[i];
         transform_bb(env, succ);

@@ -26,12 +26,19 @@ struct pre_ir_insn {
 struct ir_insn;
 struct ir_basic_block;
 struct pre_ir_basic_block {
-    size_t              id;
-    size_t              start_pos;
-    size_t              end_pos;
+    // An ID used to debug
+    size_t id;
+
+    // Start position in the original insns
+    size_t start_pos;
+
+    // End position in the original insns
+    size_t end_pos;
+
+    // The number of instructions in this basic block (modified length)
     size_t              len;
+
     struct pre_ir_insn *pre_insns;
-    struct ir_insn     *ir_insns;
 
     struct array               preds;
     struct array               succs;
