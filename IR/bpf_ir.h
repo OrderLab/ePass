@@ -6,6 +6,9 @@
 #include "array.h"
 #include "list.h"
 
+/**
+    Pre-IR instructions, similar to `bpf_insn`
+ */
 struct pre_ir_insn {
     __u8 opcode;
 
@@ -18,8 +21,9 @@ struct pre_ir_insn {
     size_t pos;  // Original position
 };
 
-// Second stage, transform to IR
-
+/**
+    IR Constants
+ */
 struct ir_constant {
     union {
         __u16 u16_d;
@@ -40,7 +44,7 @@ struct ir_constant {
 };
 
 /**
-    VALUE = CONSTANT | INSN
+    VALUE = CONSTANT | INSN | FUNCTIONARG | STACK_PTR
 
     "r1 = constant" pattern will use `CONSTANT` which will not be added to BB.
  */
@@ -58,12 +62,18 @@ struct ir_value {
     } type;
 };
 
+/**
+    Value plus an offset
+ */
 struct ir_address_value {
     // The value might be stack pointer
     struct ir_value value;
     __s16           offset;
 };
 
+/**
+    A single phi value entry
+ */
 struct phi_value {
     struct ir_value        value;
     struct ir_basic_block *bb;
@@ -162,6 +172,11 @@ struct ir_insn {
     enum ir_vr_type type;
 };
 
+/**
+    Pre-IR BB
+
+    This includes many data structures needed to generate the IR.
+ */
 struct pre_ir_basic_block {
     // An ID used to debug
     size_t id;
@@ -201,16 +216,25 @@ struct ir_basic_block {
     __u8                       _visited;
 };
 
+/**
+    The BB value used in currentDef
+ */
 struct bb_val {
     struct pre_ir_basic_block *bb;
     struct ir_value            val;
 };
 
+/**
+    BB with the raw entrance position
+ */
 struct bb_entrance_info {
     size_t                     entrance;
     struct pre_ir_basic_block *bb;
 };
 
+/**
+    Generated BB information
+ */
 struct bb_info {
     struct pre_ir_basic_block *entry;
 
@@ -218,6 +242,9 @@ struct bb_info {
     struct array all_bbs;
 };
 
+/**
+    The environment data for transformation
+ */
 struct ssa_transform_env {
     // Array of bb_val (which is (BB, Value) pair)
     struct array   currentDef[MAX_BPF_REG];
@@ -227,7 +254,7 @@ struct ssa_transform_env {
     struct array sp_users;
 };
 
-// functions
+// helper functions
 
 void write_variable(struct ssa_transform_env *env, __u8 reg, struct pre_ir_basic_block *bb,
                     struct ir_value val);
