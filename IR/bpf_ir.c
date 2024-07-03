@@ -90,6 +90,13 @@ void init_ir_bb(struct ir_basic_block *bb) {
     bb->succs = array_init(sizeof(struct ir_basic_block *));
 }
 
+struct bb_info{
+    struct pre_ir_basic_block *entry;
+
+    // Array of (entrance, bb)
+    struct array all_bbs;
+};
+
 struct pre_ir_basic_block *gen_bb(struct bpf_insn *insns, size_t len) {
     struct array bb_entrance = array_init(sizeof(struct bb_entrance_info));
     // First, scan the code to find all the BB entrances
@@ -223,7 +230,7 @@ struct pre_ir_basic_block *gen_bb(struct bpf_insn *insns, size_t len) {
     return entry_bb;
 }
 
-void print_cfg(struct pre_ir_basic_block *bb) {
+void print_pre_ir_cfg(struct pre_ir_basic_block *bb) {
     if (bb->visited) {
         return;
     }
@@ -247,7 +254,7 @@ void print_cfg(struct pre_ir_basic_block *bb) {
     printf("\n");
     for (size_t i = 0; i < bb->succs.num_elem; ++i) {
         struct pre_ir_basic_block *succ = ((struct pre_ir_basic_block **)(bb->succs.data))[i];
-        print_cfg(succ);
+        print_pre_ir_cfg(succ);
     }
 }
 
@@ -349,6 +356,13 @@ enum ir_vr_type to_ir_ld_u(__u8 size) {
             exit(1);
     }
 }
+
+/**
+    Initialize the IR BBs
+
+    Allocate memory and set the preds and succs.
+ */
+void init_ir_bbs(struct pre_ir_basic_block *entry) {}`1
 
 void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) {
     assert(!bb->sealed);
@@ -592,7 +606,7 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
 
 void construct_ir(struct bpf_insn *insns, size_t len) {
     struct pre_ir_basic_block *bb_entry = gen_bb(insns, len);
-    print_cfg(bb_entry);
+    print_pre_ir_cfg(bb_entry);
     struct ssa_transform_env env = init_env(bb_entry);
     transform_bb(&env, bb_entry);
 }
