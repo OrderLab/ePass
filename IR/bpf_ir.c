@@ -87,6 +87,9 @@ void init_ir_bb(struct pre_ir_basic_block *bb) {
     bb->ir_bb           = __malloc(sizeof(struct ir_basic_block));
     bb->ir_bb->_visited = 0;
     bb->ir_bb->_pre_bb  = bb;
+    for (__u8 i = 0; i < MAX_BPF_REG; ++i) {
+        bb->incompletePhis[i] = NULL;
+    }
     INIT_LIST_HEAD(&bb->ir_bb->ir_insn_head);
     bb->ir_bb->preds = array_init(sizeof(struct ir_basic_block *));
     bb->ir_bb->succs = array_init(sizeof(struct ir_basic_block *));
@@ -286,7 +289,9 @@ struct ssa_transform_env init_env(struct bb_info info) {
 void seal_block(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) {
     // Seal a BB
     for (__u8 i = 0; i < MAX_BPF_REG; ++i) {
-        add_phi_operands(env, i, bb->incompletePhis[i]);
+        if (bb->incompletePhis[i]) {
+            add_phi_operands(env, i, bb->incompletePhis[i]);
+        }
     }
     bb->sealed = 1;
 }
@@ -381,14 +386,14 @@ struct ir_value read_variable(struct ssa_transform_env *env, __u8 reg,
 struct ir_insn *create_insn_back(struct ir_basic_block *bb) {
     struct ir_insn *insn = __malloc(sizeof(struct ir_insn));
     insn->parent_bb      = bb;
-    list_add_tail(&bb->ir_insn_head, &insn->ptr);
+    list_add_tail(&insn->ptr, &bb->ir_insn_head);
     return insn;
 }
 
 struct ir_insn *create_insn_front(struct ir_basic_block *bb) {
     struct ir_insn *insn = __malloc(sizeof(struct ir_insn));
     insn->parent_bb      = bb;
-    list_add(&bb->ir_insn_head, &insn->ptr);
+    list_add(&insn->ptr, &bb->ir_insn_head);
     return insn;
 }
 
@@ -626,11 +631,6 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
             new_insn->v1.type                       = IR_VALUE_CONSTANT;
             new_insn->v1.data.constant_d.type       = IR_CONSTANT_S32;
             new_insn->v1.data.constant_d.data.s32_d = insn.imm;
-
-            struct ir_value new_val;
-            new_val.type        = IR_VALUE_INSN;
-            new_val.data.insn_d = new_insn;
-            write_variable(env, insn.dst_reg, bb, new_val);
         } else if (BPF_CLASS(code) == BPF_STX && BPF_MODE(code) == BPF_MEM) {
             // *(size *) (dst + offset) = src
             struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
@@ -641,11 +641,6 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
             new_insn->vr_type  = to_ir_ld_u(BPF_SIZE(code));
             new_insn->addr_val = addr_val;
             new_insn->v1       = read_variable(env, insn.src_reg, bb);
-
-            struct ir_value new_val;
-            new_val.type        = IR_VALUE_INSN;
-            new_val.data.insn_d = new_insn;
-            write_variable(env, insn.dst_reg, bb, new_val);
         } else if (BPF_CLASS(code) == BPF_JMP) {
             if (BPF_OP(code) == BPF_JA) {
                 // Direct Jump
