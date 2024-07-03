@@ -155,7 +155,11 @@ struct ir_insn {
     } op;
     struct list_head       ptr;
     struct ir_basic_block *parent_bb;
-    enum ir_vr_type        type;
+
+    struct array users;
+
+    // Might be useful?
+    enum ir_vr_type type;
 };
 
 struct pre_ir_basic_block {
@@ -218,6 +222,9 @@ struct ssa_transform_env {
     // Array of bb_val (which is (BB, Value) pair)
     struct array   currentDef[MAX_BPF_REG];
     struct bb_info info;
+
+    // Stack pointer (r10) users
+    struct array sp_users;
 };
 
 // functions
@@ -240,4 +247,7 @@ struct ir_insn *add_phi_operands(struct ssa_transform_env *env, __u8 reg, struct
 struct ir_insn *create_insn_back(struct ir_basic_block *bb);
 
 struct ir_insn *create_insn_front(struct ir_basic_block *bb);
+
+void add_user(struct ssa_transform_env *env, struct ir_insn *user, struct ir_value val);
+
 #endif
