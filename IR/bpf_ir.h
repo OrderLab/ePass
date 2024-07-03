@@ -13,7 +13,9 @@ struct pre_ir_insn {
     __u8  src_reg;
     __s16 off;
     __s32 imm;
-    __s64 imm64; /* signed immediate constant for 64-bit immediate */
+    __s64 imm64;  // signed immediate constant for 64-bit immediate
+
+    size_t pos;  // Original position
 };
 
 struct ir_insn;
@@ -89,6 +91,11 @@ struct ir_address_value {
     __s16           offset;
 };
 
+struct phi_value {
+    struct ir_value        value;
+    struct ir_basic_block *bb;
+};
+
 /**
     Virtual Register Type
  */
@@ -117,13 +124,14 @@ enum ir_vr_type {
         | MOV <value>
         | CALL <function id> <arg_num> <values...>
         | RET <value>
-        | JA <value>
-        | JEQ <value>, <value>
-        | JGT <value>, <value>
-        | JGE <value>, <value>
-        | JLT <value>, <value>
-        | JLE <value>, <value>
-        | JNE <value>, <value>
+        | JA <bb>
+        | JEQ <value>, <value>, <bb>
+        | JGT <value>, <value>, <bb>
+        | JGE <value>, <value>, <bb>
+        | JLT <value>, <value>, <bb>
+        | JLE <value>, <value>, <bb>
+        | JNE <value>, <value>, <bb>
+        | PHI <phi_value>
  */
 struct ir_insn {
     struct ir_value v1;
@@ -138,6 +146,11 @@ struct ir_insn {
 
     // Used in RAW instructions
     struct ir_address_value addr_val;
+
+    struct ir_basic_block *bb;
+
+    // Array of phi_value
+    struct array phi;
 
     __s32 fid;
     __u32 f_arg_num;
@@ -164,6 +177,8 @@ struct ir_insn {
         IR_INSN_JLT,
         IR_INSN_JLE,
         IR_INSN_JNE,
+        // PHI
+        IR_INSN_PHI
     } op;
     struct list_head ptr;
     enum ir_vr_type  type;
@@ -176,6 +191,7 @@ struct ir_basic_block {
     struct list_head ir_insn_head;
     struct array     preds;
     struct array     succs;
+    __u8             _visited;
 };
 
 struct bb_val {
@@ -197,7 +213,7 @@ struct bb_info {
 
 struct ssa_transform_env {
     // Array of bb_val (which is (BB, Value) pair)
-    struct array currentDef[MAX_BPF_REG];
+    struct array   currentDef[MAX_BPF_REG];
     struct bb_info info;
 };
 

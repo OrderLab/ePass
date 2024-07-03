@@ -7,6 +7,7 @@
 #include <stddef.h>
 #include "array.h"
 #include "list.h"
+#include "dbg.h"
 
 int compare_num(const void *a, const void *b) {
     struct bb_entrance_info *as = (struct bb_entrance_info *)a;
@@ -83,7 +84,8 @@ void init_entrance_info(struct array *bb_entrances, size_t entrance_pos) {
 }
 
 void init_ir_bb(struct pre_ir_basic_block *bb) {
-    bb->ir_bb = __malloc(sizeof(struct ir_basic_block));
+    bb->ir_bb           = __malloc(sizeof(struct ir_basic_block));
+    bb->ir_bb->_visited = 0;
     INIT_LIST_HEAD(&bb->ir_bb->ir_insn_head);
     bb->ir_bb->preds = array_init(sizeof(struct ir_basic_block *));
     bb->ir_bb->succs = array_init(sizeof(struct ir_basic_block *));
@@ -98,8 +100,7 @@ struct bb_info gen_bb(struct bpf_insn *insns, size_t len) {
         if (BPF_CLASS(code) == BPF_JMP || BPF_CLASS(code) == BPF_JMP32) {
             if (i + 1 < len && insns[i + 1].code == 0) {
                 // TODO: What if insns[i+1] is a pseudo instruction?
-                printf("Error");
-                exit(-1);
+                CRITICAL("Error");
             }
             if (BPF_OP(code) == BPF_JA) {
                 // Direct Jump
@@ -155,10 +156,10 @@ struct bb_info gen_bb(struct bpf_insn *insns, size_t len) {
     struct bb_entrance_info *all_bbs = ((struct bb_entrance_info *)(bb_entrance.data));
 
     // Print the BB
-    for (size_t i = 0; i < bb_entrance.num_elem; ++i) {
-        struct bb_entrance_info entry = all_bbs[i];
-        printf("%ld: %ld\n", entry.entrance, entry.bb->preds.num_elem);
-    }
+    // for (size_t i = 0; i < bb_entrance.num_elem; ++i) {
+    //     struct bb_entrance_info entry = all_bbs[i];
+    //     printf("%ld: %ld\n", entry.entrance, entry.bb->preds.num_elem);
+    // }
 
     // Init preds
     for (size_t i = 0; i < bb_entrance.num_elem; ++i) {
@@ -190,6 +191,7 @@ struct bb_info gen_bb(struct bpf_insn *insns, size_t len) {
             new_insn.imm     = insn.imm;
             new_insn.imm64   = 0;
             new_insn.off     = insn.off;
+            new_insn.pos     = pos;
             if (pos + 1 < real_bb->end_pos && insns[pos + 1].code == 0) {
                 new_insn.imm64 = ((__s64)(insns[pos + 1].imm) << 32) | insn.imm;
                 pos++;
@@ -251,6 +253,20 @@ void print_pre_ir_cfg(struct pre_ir_basic_block *bb) {
     }
 }
 
+void print_ir_cfg(struct ir_basic_block *bb) {
+    if (bb->_visited) {
+        return;
+    }
+    bb->_visited = 1;
+    printf("BB %p\n", bb);
+    printf("preds (%ld)\n", bb->preds.num_elem);
+    printf("succs (%ld)\n", bb->succs.num_elem);
+    for (size_t i = 0; i < bb->succs.num_elem; ++i) {
+        struct ir_basic_block *succ = ((struct ir_basic_block **)(bb->succs.data))[i];
+        print_ir_cfg(succ);
+    }
+}
+
 struct ssa_transform_env init_env(struct bb_info info) {
     struct ssa_transform_env env;
     for (size_t i = 0; i < MAX_BPF_REG; ++i) {
@@ -276,7 +292,7 @@ void write_variable(struct ssa_transform_env *env, __u8 reg, struct pre_ir_basic
                     struct ir_value val) {
     if (reg >= MAX_BPF_REG - 1) {
         // Stack pointer is read-only
-        exit(1);
+        CRITICAL("Error");
     }
     // Write a variable to a BB
     struct array *currentDef = &env->currentDef[reg];
@@ -299,7 +315,7 @@ void write_variable(struct ssa_transform_env *env, __u8 reg, struct pre_ir_basic
 struct ir_value read_variable_recursive(struct ssa_transform_env *env, __u8 reg,
                                         struct pre_ir_basic_block *bb) {
     // TODO
-    exit(1);
+    CRITICAL("Error");
 }
 
 struct ir_value read_variable(struct ssa_transform_env *env, __u8 reg,
@@ -332,7 +348,7 @@ enum ir_vr_type to_ir_ld_s(__u8 size) {
         case BPF_DW:
             return IR_VR_TYPE_S8;
         default:
-            exit(1);
+            CRITICAL("Error");
     }
 }
 
@@ -347,7 +363,7 @@ enum ir_vr_type to_ir_ld_u(__u8 size) {
         case BPF_DW:
             return IR_VR_TYPE_U8;
         default:
-            exit(1);
+            CRITICAL("Error");
     }
 }
 
@@ -374,6 +390,17 @@ void init_ir_bbs(struct ssa_transform_env *env) {
             array_push(&irbb->succs, &succ->ir_bb);
         }
     }
+}
+
+struct ir_basic_block *get_ir_bb_from_position(struct ssa_transform_env *env, size_t pos) {
+    // Iterate through all the BBs
+    for (size_t i = 0; i < env->info.all_bbs.num_elem; ++i) {
+        struct bb_entrance_info *info = &((struct bb_entrance_info *)(env->info.all_bbs.data))[i];
+        if (info->entrance == pos) {
+            return info->bb->ir_bb;
+        }
+    }
+    CRITICAL("Error");
 }
 
 void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) {
@@ -451,7 +478,7 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
                     write_variable(env, insn.dst_reg, bb, new_val);
                 } else {
                     // TODO
-                    exit(1);
+                    CRITICAL("Error");
                 }
             } else if (BPF_SRC(code) == BPF_X) {
                 // Register
@@ -490,11 +517,11 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
                     write_variable(env, insn.dst_reg, bb, read_variable(env, insn.src_reg, bb));
                 } else {
                     // TODO
-                    exit(1);
+                    CRITICAL("Error");
                 }
             } else {
                 // IMPOSSIBLE
-                exit(1);
+                CRITICAL("Error");
             }
         } else if (BPF_CLASS(code) == BPF_LD && BPF_MODE(code) == BPF_IMM &&
                    BPF_SIZE(code) == BPF_DW) {
@@ -569,11 +596,10 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
             if (BPF_OP(code) == BPF_JA) {
                 // Direct Jump
                 // PC += offset
-                struct ir_insn *new_insn                = __malloc(sizeof(struct ir_insn));
-                new_insn->op                            = IR_INSN_JA;
-                new_insn->v1.type                       = IR_VALUE_CONSTANT;
-                new_insn->v1.data.constant_d.type       = IR_CONSTANT_S16;
-                new_insn->v1.data.constant_d.data.s16_d = insn.off;
+                struct ir_insn *new_insn = __malloc(sizeof(struct ir_insn));
+                new_insn->op             = IR_INSN_JA;
+                size_t pos               = insn.pos + insn.off + 1;
+                new_insn->bb             = get_ir_bb_from_position(env, pos);
                 insert_insn_back(bb->ir_bb, new_insn);
             } else if (BPF_OP(code) == BPF_EXIT) {
                 // Exit
@@ -597,11 +623,11 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
                 write_variable(env, BPF_REG_0, bb, new_val);
             } else {
                 // TODO
-                exit(1);
+                CRITICAL("Error");
             }
         } else {
             // TODO
-            exit(1);
+            CRITICAL("Error");
         }
     }
     bb->filled = 1;
@@ -632,9 +658,10 @@ void free_all_bb(struct ssa_transform_env *env) {
 
 void construct_ir(struct bpf_insn *insns, size_t len) {
     struct bb_info info = gen_bb(insns, len);
-    print_pre_ir_cfg(info.entry);
-    // struct ssa_transform_env env = init_env(info);
-    // init_ir_bbs(&env);
-    // transform_bb(&env, info.entry);
-    // free_all_bb(&env);
+    // print_pre_ir_cfg(info.entry);
+    struct ssa_transform_env env = init_env(info);
+    init_ir_bbs(&env);
+    transform_bb(&env, info.entry);
+    print_ir_cfg(info.entry->ir_bb);
+    free_all_bb(&env);
 }
