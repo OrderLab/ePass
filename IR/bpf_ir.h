@@ -5,11 +5,6 @@
 #include <stddef.h>
 #include "array.h"
 #include "list.h"
-// #include <linux/types.h>
-
-void                       construct_ir(struct bpf_insn *insns, size_t len);
-struct pre_ir_basic_block *gen_bb(struct bpf_insn *insns, size_t len);
-// First stage, transform to a pre-IR code
 
 struct pre_ir_insn {
     __u8 opcode;
@@ -38,10 +33,10 @@ struct pre_ir_basic_block {
 
     struct pre_ir_insn *pre_insns;
 
-    struct array               preds;
-    struct array               succs;
-    struct pre_ir_basic_block *self;
-    __u8                       visited;
+    struct array preds;
+    struct array succs;
+
+    __u8 visited;
 
     __u8                   sealed;
     __u8                   filled;
@@ -188,9 +183,22 @@ struct bb_val {
     struct ir_value            val;
 };
 
+struct bb_entrance_info {
+    size_t                     entrance;
+    struct pre_ir_basic_block *bb;
+};
+
+struct bb_info {
+    struct pre_ir_basic_block *entry;
+
+    // Array of bb_entrance_info
+    struct array all_bbs;
+};
+
 struct ssa_transform_env {
     // Array of bb_val (which is (BB, Value) pair)
     struct array currentDef[MAX_BPF_REG];
+    struct bb_info info;
 };
 
 // functions
@@ -203,4 +211,8 @@ struct ir_value read_variable_recursive(struct ssa_transform_env *env, __u8 reg,
 
 struct ir_value read_variable(struct ssa_transform_env *env, __u8 reg,
                               struct pre_ir_basic_block *bb);
+
+void           construct_ir(struct bpf_insn *insns, size_t len);
+struct bb_info gen_bb(struct bpf_insn *insns, size_t len);
+
 #endif

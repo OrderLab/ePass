@@ -4,13 +4,9 @@
 #include <linux/bpf_common.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stddef.h>
 #include "array.h"
 #include "list.h"
-
-struct bb_entrance_info {
-    size_t                    entrance;
-    struct pre_ir_basic_block bb;
-};
 
 int compare_num(const void *a, const void *b) {
     struct bb_entrance_info *as = (struct bb_entrance_info *)a;
@@ -34,7 +30,7 @@ void add_entrance_info(struct bpf_insn *insns, struct array *bb_entrances, size_
         struct bb_entrance_info *entry = ((struct bb_entrance_info *)(bb_entrances->data)) + i;
         if (entry->entrance == entrance_pos) {
             // Already has this entrance, add a pred
-            no_dup_push(&entry->bb.preds, current_pos);
+            no_dup_push(&entry->bb->preds, current_pos);
             return;
         }
     }
@@ -48,8 +44,9 @@ void add_entrance_info(struct bpf_insn *insns, struct array *bb_entrances, size_
     }
     no_dup_push(&preds, current_pos);
     struct bb_entrance_info new_bb;
-    new_bb.entrance = entrance_pos;
-    new_bb.bb.preds = preds;
+    new_bb.entrance  = entrance_pos;
+    new_bb.bb        = __malloc(sizeof(struct pre_ir_basic_block));
+    new_bb.bb->preds = preds;
     array_push(bb_entrances, &new_bb);
 }
 
@@ -65,7 +62,7 @@ struct pre_ir_basic_block *get_bb_parent(struct array *bb_entrance, size_t pos) 
             break;
         }
     }
-    return bbs[bb_id].bb.self;
+    return bbs[bb_id].bb;
 }
 
 void init_entrance_info(struct array *bb_entrances, size_t entrance_pos) {
@@ -79,25 +76,20 @@ void init_entrance_info(struct array *bb_entrances, size_t entrance_pos) {
     // New entrance
     struct array            preds = array_init(sizeof(size_t));
     struct bb_entrance_info new_bb;
-    new_bb.entrance = entrance_pos;
-    new_bb.bb.preds = preds;
+    new_bb.entrance  = entrance_pos;
+    new_bb.bb        = __malloc(sizeof(struct pre_ir_basic_block));
+    new_bb.bb->preds = preds;
     array_push(bb_entrances, &new_bb);
 }
 
-void init_ir_bb(struct ir_basic_block *bb) {
-    INIT_LIST_HEAD(&bb->ir_insn_head);
-    bb->preds = array_init(sizeof(struct ir_basic_block *));
-    bb->succs = array_init(sizeof(struct ir_basic_block *));
+void init_ir_bb(struct pre_ir_basic_block *bb) {
+    bb->ir_bb = __malloc(sizeof(struct ir_basic_block));
+    INIT_LIST_HEAD(&bb->ir_bb->ir_insn_head);
+    bb->ir_bb->preds = array_init(sizeof(struct ir_basic_block *));
+    bb->ir_bb->succs = array_init(sizeof(struct ir_basic_block *));
 }
 
-struct bb_info{
-    struct pre_ir_basic_block *entry;
-
-    // Array of (entrance, bb)
-    struct array all_bbs;
-};
-
-struct pre_ir_basic_block *gen_bb(struct bpf_insn *insns, size_t len) {
+struct bb_info gen_bb(struct bpf_insn *insns, size_t len) {
     struct array bb_entrance = array_init(sizeof(struct bb_entrance_info));
     // First, scan the code to find all the BB entrances
     for (size_t i = 0; i < len; ++i) {
@@ -151,8 +143,9 @@ struct pre_ir_basic_block *gen_bb(struct bpf_insn *insns, size_t len) {
 
     // Create the first BB (entry block)
     struct bb_entrance_info bb_entry_info;
-    bb_entry_info.entrance = 0;
-    bb_entry_info.bb.preds = array_null();
+    bb_entry_info.entrance  = 0;
+    bb_entry_info.bb        = __malloc(sizeof(struct pre_ir_basic_block));
+    bb_entry_info.bb->preds = array_null();
     array_push(&bb_entrance, &bb_entry_info);
 
     // Sort the BBs
@@ -164,28 +157,27 @@ struct pre_ir_basic_block *gen_bb(struct bpf_insn *insns, size_t len) {
     // Print the BB
     for (size_t i = 0; i < bb_entrance.num_elem; ++i) {
         struct bb_entrance_info entry = all_bbs[i];
-        printf("%ld: %ld\n", entry.entrance, entry.bb.preds.num_elem);
+        printf("%ld: %ld\n", entry.entrance, entry.bb->preds.num_elem);
     }
 
     // Init preds
     for (size_t i = 0; i < bb_entrance.num_elem; ++i) {
         struct bb_entrance_info   *entry   = all_bbs + i;
-        struct pre_ir_basic_block *real_bb = __malloc(sizeof(struct pre_ir_basic_block));
+        struct pre_ir_basic_block *real_bb = entry->bb;
         real_bb->id                        = i;
-        real_bb->self                      = real_bb;
         real_bb->succs                     = array_init(sizeof(struct pre_ir_basic_block *));
         real_bb->visited                   = 0;
         real_bb->pre_insns                 = NULL;
-        entry->bb.self                     = real_bb;
         real_bb->start_pos                 = entry->entrance;
         real_bb->end_pos = i + 1 < bb_entrance.num_elem ? all_bbs[i + 1].entrance : len;
         real_bb->filled  = 0;
         real_bb->sealed  = 0;
         real_bb->ir_bb   = NULL;
     }
+
     // Allocate instructions
     for (size_t i = 0; i < bb_entrance.num_elem; ++i) {
-        struct pre_ir_basic_block *real_bb = all_bbs[i].bb.self;
+        struct pre_ir_basic_block *real_bb = all_bbs[i].bb;
         real_bb->pre_insns =
             __malloc(sizeof(struct pre_ir_insn) * (real_bb->end_pos - real_bb->start_pos));
         size_t bb_pos = 0;
@@ -209,7 +201,7 @@ struct pre_ir_basic_block *gen_bb(struct bpf_insn *insns, size_t len) {
     for (size_t i = 0; i < bb_entrance.num_elem; ++i) {
         struct bb_entrance_info *entry = all_bbs + i;
 
-        struct array preds     = entry->bb.preds;
+        struct array preds     = entry->bb->preds;
         struct array new_preds = array_init(sizeof(struct pre_ir_basic_block *));
         for (size_t j = 0; j < preds.num_elem; ++j) {
             size_t pred_pos = ((size_t *)(preds.data))[j];
@@ -218,16 +210,17 @@ struct pre_ir_basic_block *gen_bb(struct bpf_insn *insns, size_t len) {
             // We push the address to the array
             array_push(&new_preds, &parent_bb);
             // Add entry->bb to the succ of parent_bb
-            array_push(&parent_bb->succs, &entry->bb.self);
+            array_push(&parent_bb->succs, &entry->bb);
         }
         array_free(&preds);
-        entry->bb.self->preds = new_preds;
+        entry->bb->preds = new_preds;
     }
     // Return the entry BB
     // TODO: Remove BBs impossible to reach
-    struct pre_ir_basic_block *entry_bb = all_bbs[0].bb.self;
-    array_free(&bb_entrance);
-    return entry_bb;
+    struct bb_info ret;
+    ret.entry   = all_bbs[0].bb;
+    ret.all_bbs = bb_entrance;
+    return ret;
 }
 
 void print_pre_ir_cfg(struct pre_ir_basic_block *bb) {
@@ -258,17 +251,18 @@ void print_pre_ir_cfg(struct pre_ir_basic_block *bb) {
     }
 }
 
-struct ssa_transform_env init_env(struct pre_ir_basic_block *entry) {
+struct ssa_transform_env init_env(struct bb_info info) {
     struct ssa_transform_env env;
     for (size_t i = 0; i < MAX_BPF_REG; ++i) {
         env.currentDef[i] = array_init(sizeof(struct bb_val));
     }
+    env.info = info;
     // Initialize function argument
     // TODO: more than one arg
     struct ir_value val;
     val.type        = IR_VALUE_FUNCTIONARG;
     val.data.arg_id = 0;
-    write_variable(&env, 0, entry, val);
+    write_variable(&env, 0, info.entry, val);
     return env;
 }
 
@@ -362,7 +356,25 @@ enum ir_vr_type to_ir_ld_u(__u8 size) {
 
     Allocate memory and set the preds and succs.
  */
-void init_ir_bbs(struct pre_ir_basic_block *entry) {}`1
+void init_ir_bbs(struct ssa_transform_env *env) {
+    for (size_t i = 0; i < env->info.all_bbs.num_elem; ++i) {
+        struct pre_ir_basic_block *bb = ((struct bb_entrance_info *)(env->info.all_bbs.data))[i].bb;
+        init_ir_bb(bb);
+    }
+    // Set the preds and succs
+    for (size_t i = 0; i < env->info.all_bbs.num_elem; ++i) {
+        struct pre_ir_basic_block *bb = ((struct bb_entrance_info *)(env->info.all_bbs.data))[i].bb;
+        struct ir_basic_block     *irbb = bb->ir_bb;
+        for (size_t j = 0; j < bb->preds.num_elem; ++j) {
+            struct pre_ir_basic_block *pred = ((struct pre_ir_basic_block **)(bb->preds.data))[j];
+            array_push(&irbb->preds, &pred->ir_bb);
+        }
+        for (size_t j = 0; j < bb->succs.num_elem; ++j) {
+            struct pre_ir_basic_block *succ = ((struct pre_ir_basic_block **)(bb->succs.data))[j];
+            array_push(&irbb->succs, &succ->ir_bb);
+        }
+    }
+}
 
 void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) {
     assert(!bb->sealed);
@@ -384,10 +396,6 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
         return;
     }
     // Fill the BB
-    assert(bb->ir_bb == NULL);
-    // Initialize th IR BB
-    bb->ir_bb = __malloc(sizeof(struct ir_basic_block));
-    init_ir_bb(bb->ir_bb);
     for (size_t i = 0; i < bb->len; ++i) {
         struct pre_ir_insn insn = bb->pre_insns[i];
         __u8               code = insn.opcode;
@@ -604,9 +612,29 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
     }
 }
 
+void free_all_bb(struct ssa_transform_env *env) {
+    for (size_t i = 0; i < MAX_BPF_REG; ++i) {
+        struct array *currentDef = &env->currentDef[i];
+        array_free(currentDef);
+    }
+    for (size_t i = 0; i < env->info.all_bbs.num_elem; ++i) {
+        struct pre_ir_basic_block *bb = ((struct bb_entrance_info *)(env->info.all_bbs.data))[i].bb;
+
+        array_free(&bb->preds);
+        array_free(&bb->succs);
+        free(bb->pre_insns);
+        array_free(&bb->ir_bb->preds);
+        array_free(&bb->ir_bb->succs);
+        free(bb->ir_bb);
+        free(bb);
+    }
+}
+
 void construct_ir(struct bpf_insn *insns, size_t len) {
-    struct pre_ir_basic_block *bb_entry = gen_bb(insns, len);
-    print_pre_ir_cfg(bb_entry);
-    struct ssa_transform_env env = init_env(bb_entry);
-    transform_bb(&env, bb_entry);
+    struct bb_info info = gen_bb(insns, len);
+    print_pre_ir_cfg(info.entry);
+    // struct ssa_transform_env env = init_env(info);
+    // init_ir_bbs(&env);
+    // transform_bb(&env, info.entry);
+    // free_all_bb(&env);
 }
