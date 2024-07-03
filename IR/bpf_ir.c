@@ -1,4 +1,5 @@
 #include "bpf_ir.h"
+#include <assert.h>
 #include <linux/bpf.h>
 #include <linux/bpf_common.h>
 #include <stdio.h>
@@ -93,6 +94,12 @@ void init_entrance_info(struct array *bb_entrances, size_t entrance_pos) {
     array_push(bb_entrances, &new_bb);
 }
 
+void init_ir_bb(struct ir_basic_block *bb) {
+    INIT_LIST_HEAD(&bb->ir_insn_head);
+    bb->preds = array_init(sizeof(struct ir_basic_block *));
+    bb->succs = array_init(sizeof(struct ir_basic_block *));
+}
+
 struct pre_ir_basic_block *gen_bb(struct bpf_insn *insns, size_t len) {
     struct array bb_entrance = array_init(sizeof(struct bb_entrance_info));
     // First, scan the code to find all the BB entrances
@@ -177,6 +184,9 @@ struct pre_ir_basic_block *gen_bb(struct bpf_insn *insns, size_t len) {
         entry->bb.self                     = real_bb;
         real_bb->start_pos                 = entry->entrance;
         real_bb->end_pos = i + 1 < bb_entrance.num_elem ? all_bbs[i + 1].entrance : len;
+        real_bb->filled  = 0;
+        real_bb->sealed  = 0;
+        real_bb->ir_bb   = NULL;
     }
     // Allocate instructions
     for (size_t i = 0; i < bb_entrance.num_elem; ++i) {
@@ -255,17 +265,110 @@ void print_cfg(struct pre_ir_basic_block *bb) {
     }
 }
 
-struct block_val{
-    struct ir_basic_block* block;
-    struct ir_value * value;
+struct bb_val {
+    struct pre_ir_basic_block *bb;
+    struct ir_value            val;
 };
 
 struct ssa_transform_env {
-    // Array of blocks
+    // Array of bb_val (which is (BB, Value) pair)
     struct array currentDef[MAX_BPF_REG];
 };
+
+struct ssa_transform_env init_env() {
+    struct ssa_transform_env env;
+    for (size_t i = 0; i < MAX_BPF_REG; ++i) {
+        env.currentDef[i] = array_init(sizeof(struct bb_val));
+    }
+    return env;
+}
+
+void seal_block(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) {
+    // Seal a BB
+    // TODO
+    bb->sealed = 1;
+}
+
+void write_variable(struct ssa_transform_env *env, __u8 reg, struct pre_ir_basic_block *bb,
+                    struct ir_value val) {
+    if (reg >= MAX_BPF_REG - 1) {
+        // Stack pointer is read-only
+        exit(1);
+    }
+    // Write a variable to a BB
+    struct array *currentDef = &env->currentDef[reg];
+    // Traverse the array to find if there exists a value in the same BB
+    for (size_t i = 0; i < currentDef->num_elem; ++i) {
+        struct bb_val *bval = ((struct bb_val *)(currentDef->data)) + i;
+        if (bval->bb == bb) {
+            // Found
+            bval->val = val;
+            return;
+        }
+    }
+    // Not found
+    struct bb_val new_val;
+    new_val.bb  = bb;
+    new_val.val = val;
+    array_push(currentDef, &new_val);
+}
+
+struct ir_value read_variable_recursive(struct ssa_transform_env *env, __u8 reg,
+                                        struct pre_ir_basic_block *bb) {
+    // TODO
+    exit(1);
+}
+
+struct ir_value read_variable(struct ssa_transform_env *env, __u8 reg,
+                              struct pre_ir_basic_block *bb) {
+    // Read a variable from a BB
+    struct array *currentDef = &env->currentDef[reg];
+    for (size_t i = 0; i < currentDef->num_elem; ++i) {
+        struct bb_val *bval = ((struct bb_val *)(currentDef->data)) + i;
+        if (bval->bb == bb) {
+            // Found
+            return bval->val;
+        }
+    }
+    // Not found
+    return read_variable_recursive(env, reg, bb);
+}
+void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) {
+    assert(!bb->sealed);
+    // Try sealing a BB
+    __u8 pred_all_filled = 1;
+    for (size_t i = 0; i < bb->preds.num_elem; ++i) {
+        struct pre_ir_basic_block *pred = ((struct pre_ir_basic_block **)(bb->preds.data))[i];
+        if (!pred->filled) {
+            // Not filled
+            pred_all_filled = 0;
+            break;
+        }
+    }
+    if (pred_all_filled) {
+        seal_block(env, bb);
+    }
+    if (bb->filled) {
+        // Already visited (filled)
+        return;
+    }
+    // Fill the BB
+    bb->filled = 1;
+    assert(bb->ir_bb == NULL);
+    // Initialize th IR BB
+    bb->ir_bb = __malloc(sizeof(struct ir_basic_block));
+    init_ir_bb(bb->ir_bb);
+    // Finish filling
+
+    for (size_t i = 0; i < bb->succs.num_elem; ++i) {
+        struct pre_ir_basic_block *succ = ((struct pre_ir_basic_block **)(bb->succs.data))[i];
+        transform_bb(env, succ);
+    }
+}
 
 void construct_ir(struct bpf_insn *insns, size_t len) {
     struct pre_ir_basic_block *bb_entry = gen_bb(insns, len);
     print_cfg(bb_entry);
+    struct ssa_transform_env env = init_env();
+    transform_bb(&env, bb_entry);
 }

@@ -24,6 +24,7 @@ struct pre_ir_insn {
 };
 
 struct ir_insn;
+struct ir_basic_block;
 struct pre_ir_basic_block {
     size_t              id;
     size_t              start_pos;
@@ -36,6 +37,10 @@ struct pre_ir_basic_block {
     struct array               succs;
     struct pre_ir_basic_block *self;
     __u8                       visited;
+
+    __u8                   sealed;
+    __u8                   filled;
+    struct ir_basic_block *ir_bb;
 };
 
 // Second stage, transform to IR
@@ -93,8 +98,8 @@ struct ir_value {
         | JNE <value>, <value>
  */
 struct ir_insn {
-    ir_value v1;
-    ir_value v2;
+    struct ir_value v1;
+    struct ir_value v2;
 
     // Used in ALLOC instructions
     __u32 alloc_size;
