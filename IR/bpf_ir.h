@@ -18,33 +18,6 @@ struct pre_ir_insn {
     size_t pos;  // Original position
 };
 
-struct ir_insn;
-struct ir_basic_block;
-struct pre_ir_basic_block {
-    // An ID used to debug
-    size_t id;
-
-    // Start position in the original insns
-    size_t start_pos;
-
-    // End position in the original insns
-    size_t end_pos;
-
-    // The number of instructions in this basic block (modified length)
-    size_t len;
-
-    struct pre_ir_insn *pre_insns;
-
-    struct array preds;
-    struct array succs;
-
-    __u8 visited;
-
-    __u8                   sealed;
-    __u8                   filled;
-    struct ir_basic_block *ir_bb;
-};
-
 // Second stage, transform to IR
 
 struct ir_constant {
@@ -63,7 +36,6 @@ struct ir_constant {
         IR_CONSTANT_S32,
         IR_CONSTANT_U64,
         IR_CONSTANT_S64,
-        IR_CONSTANT_STACK_ADDR,
     } type;
 };
 
@@ -82,6 +54,7 @@ struct ir_value {
         IR_VALUE_CONSTANT,
         IR_VALUE_FUNCTIONARG,
         IR_VALUE_INSN,
+        IR_VALUE_STACK_PTR,
     } type;
 };
 
@@ -180,8 +153,35 @@ struct ir_insn {
         // PHI
         IR_INSN_PHI
     } op;
-    struct list_head ptr;
-    enum ir_vr_type  type;
+    struct list_head       ptr;
+    struct ir_basic_block *parent_bb;
+    enum ir_vr_type        type;
+};
+
+struct pre_ir_basic_block {
+    // An ID used to debug
+    size_t id;
+
+    // Start position in the original insns
+    size_t start_pos;
+
+    // End position in the original insns
+    size_t end_pos;
+
+    // The number of instructions in this basic block (modified length)
+    size_t len;
+
+    struct pre_ir_insn *pre_insns;
+
+    struct array preds;
+    struct array succs;
+
+    __u8 visited;
+
+    __u8                   sealed;
+    __u8                   filled;
+    struct ir_basic_block *ir_bb;
+    struct ir_insn        *incompletePhis[MAX_BPF_REG];
 };
 
 /**
@@ -191,7 +191,10 @@ struct ir_basic_block {
     struct list_head ir_insn_head;
     struct array     preds;
     struct array     succs;
-    __u8             _visited;
+
+    // Used for construction and debugging
+    struct pre_ir_basic_block *_pre_bb;
+    __u8                       _visited;
 };
 
 struct bb_val {
@@ -228,7 +231,13 @@ struct ir_value read_variable_recursive(struct ssa_transform_env *env, __u8 reg,
 struct ir_value read_variable(struct ssa_transform_env *env, __u8 reg,
                               struct pre_ir_basic_block *bb);
 
-void           construct_ir(struct bpf_insn *insns, size_t len);
+void construct_ir(struct bpf_insn *insns, size_t len);
+
 struct bb_info gen_bb(struct bpf_insn *insns, size_t len);
 
+struct ir_insn *add_phi_operands(struct ssa_transform_env *env, __u8 reg, struct ir_insn *insn);
+
+struct ir_insn *create_insn_back(struct ir_basic_block *bb);
+
+struct ir_insn *create_insn_front(struct ir_basic_block *bb);
 #endif

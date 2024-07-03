@@ -86,6 +86,7 @@ void init_entrance_info(struct array *bb_entrances, size_t entrance_pos) {
 void init_ir_bb(struct pre_ir_basic_block *bb) {
     bb->ir_bb           = __malloc(sizeof(struct ir_basic_block));
     bb->ir_bb->_visited = 0;
+    bb->ir_bb->_pre_bb  = bb;
     INIT_LIST_HEAD(&bb->ir_bb->ir_insn_head);
     bb->ir_bb->preds = array_init(sizeof(struct ir_basic_block *));
     bb->ir_bb->succs = array_init(sizeof(struct ir_basic_block *));
@@ -284,7 +285,9 @@ struct ssa_transform_env init_env(struct bb_info info) {
 
 void seal_block(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) {
     // Seal a BB
-    // TODO
+    for (__u8 i = 0; i < MAX_BPF_REG; ++i) {
+        add_phi_operands(env, i, bb->incompletePhis[i]);
+    }
     bb->sealed = 1;
 }
 
@@ -312,15 +315,57 @@ void write_variable(struct ssa_transform_env *env, __u8 reg, struct pre_ir_basic
     array_push(currentDef, &new_val);
 }
 
+struct ir_insn *add_phi_operands(struct ssa_transform_env *env, __u8 reg, struct ir_insn *insn) {
+    // insn must be a (initialized) PHI instruction
+    if (insn->type != IR_INSN_PHI) {
+        CRITICAL("Not a PHI node");
+    }
+    for (size_t i = 0; i < insn->parent_bb->preds.num_elem; ++i) {
+        struct ir_basic_block *pred = ((struct ir_basic_block **)(insn->parent_bb->preds.data))[i];
+        struct phi_value       phi;
+        phi.bb    = pred;
+        phi.value = read_variable(env, reg, pred->_pre_bb);
+        array_push(&insn->phi, &phi);
+    }
+    // TODO: try remove trivial phi
+    return insn;
+}
+
 struct ir_value read_variable_recursive(struct ssa_transform_env *env, __u8 reg,
                                         struct pre_ir_basic_block *bb) {
-    // TODO
-    CRITICAL("Error");
+    struct ir_value val;
+    if (!bb->sealed) {
+        // Incomplete CFG
+        struct ir_insn *new_insn = create_insn_front(bb->ir_bb);
+        new_insn->type           = IR_INSN_PHI;
+        new_insn->phi            = array_init(sizeof(struct phi_value));
+        bb->incompletePhis[reg]  = new_insn;
+    } else if (bb->preds.num_elem == 1) {
+        val = read_variable(env, reg, ((struct pre_ir_basic_block **)(bb->preds.data))[0]);
+    } else {
+        struct ir_insn *new_insn = create_insn_front(bb->ir_bb);
+        new_insn->type           = IR_INSN_PHI;
+        new_insn->phi            = array_init(sizeof(struct phi_value));
+        val.type                 = IR_VALUE_INSN;
+        val.data.insn_d          = new_insn;
+        write_variable(env, reg, bb, val);
+        new_insn        = add_phi_operands(env, reg, new_insn);
+        val.type        = IR_VALUE_INSN;
+        val.data.insn_d = new_insn;
+    }
+    write_variable(env, reg, bb, val);
+    return val;
 }
 
 struct ir_value read_variable(struct ssa_transform_env *env, __u8 reg,
                               struct pre_ir_basic_block *bb) {
     // Read a variable from a BB
+    if (reg == BPF_REG_10) {
+        // Stack pointer
+        struct ir_value val;
+        val.type = IR_VALUE_STACK_PTR;
+        return val;
+    }
     struct array *currentDef = &env->currentDef[reg];
     for (size_t i = 0; i < currentDef->num_elem; ++i) {
         struct bb_val *bval = ((struct bb_val *)(currentDef->data)) + i;
@@ -333,8 +378,18 @@ struct ir_value read_variable(struct ssa_transform_env *env, __u8 reg,
     return read_variable_recursive(env, reg, bb);
 }
 
-void insert_insn_back(struct ir_basic_block *bb, struct ir_insn *insn) {
+struct ir_insn *create_insn_back(struct ir_basic_block *bb) {
+    struct ir_insn *insn = __malloc(sizeof(struct ir_insn));
+    insn->parent_bb      = bb;
     list_add_tail(&bb->ir_insn_head, &insn->ptr);
+    return insn;
+}
+
+struct ir_insn *create_insn_front(struct ir_basic_block *bb) {
+    struct ir_insn *insn = __malloc(sizeof(struct ir_insn));
+    insn->parent_bb      = bb;
+    list_add(&bb->ir_insn_head, &insn->ptr);
+    return insn;
 }
 
 enum ir_vr_type to_ir_ld_s(__u8 size) {
@@ -426,45 +481,45 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
     for (size_t i = 0; i < bb->len; ++i) {
         struct pre_ir_insn insn = bb->pre_insns[i];
         __u8               code = insn.opcode;
-        if (BPF_CLASS(code) == BPF_ALU) {
+        if (BPF_CLASS(code) == BPF_ALU || BPF_CLASS(code) == BPF_ALU64) {
             // 32-bit ALU class
+            // TODO: 64-bit ALU class
             if (BPF_SRC(code) == BPF_K) {
                 // Immediate
                 if (BPF_OP(code) == BPF_ADD) {
-                    struct ir_insn *new_insn = __malloc(sizeof(struct ir_insn));
+                    struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
                     new_insn->op             = IR_INSN_ADD;
                     new_insn->v1             = read_variable(env, insn.dst_reg, bb);
                     struct ir_constant c;
                     c.data.s32_d = insn.imm;
                     new_insn->v2 =
                         (struct ir_value){.type = IR_VALUE_CONSTANT, .data.constant_d = c};
-                    insert_insn_back(bb->ir_bb, new_insn);
                     struct ir_value new_val;
                     new_val.type        = IR_VALUE_INSN;
                     new_val.data.insn_d = new_insn;
                     write_variable(env, insn.dst_reg, bb, new_val);
                 } else if (BPF_OP(code) == BPF_SUB) {
-                    struct ir_insn *new_insn = __malloc(sizeof(struct ir_insn));
+                    struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
                     new_insn->op             = IR_INSN_SUB;
                     new_insn->v1             = read_variable(env, insn.dst_reg, bb);
                     struct ir_constant c;
                     c.data.s32_d = insn.imm;
                     new_insn->v2 =
                         (struct ir_value){.type = IR_VALUE_CONSTANT, .data.constant_d = c};
-                    insert_insn_back(bb->ir_bb, new_insn);
+
                     struct ir_value new_val;
                     new_val.type        = IR_VALUE_INSN;
                     new_val.data.insn_d = new_insn;
                     write_variable(env, insn.dst_reg, bb, new_val);
                 } else if (BPF_OP(code) == BPF_MUL) {
-                    struct ir_insn *new_insn = __malloc(sizeof(struct ir_insn));
+                    struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
                     new_insn->op             = IR_INSN_MUL;
                     new_insn->v1             = read_variable(env, insn.dst_reg, bb);
                     struct ir_constant c;
                     c.data.s32_d = insn.imm;
                     new_insn->v2 =
                         (struct ir_value){.type = IR_VALUE_CONSTANT, .data.constant_d = c};
-                    insert_insn_back(bb->ir_bb, new_insn);
+
                     struct ir_value new_val;
                     new_val.type        = IR_VALUE_INSN;
                     new_val.data.insn_d = new_insn;
@@ -483,31 +538,30 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
             } else if (BPF_SRC(code) == BPF_X) {
                 // Register
                 if (BPF_OP(code) == BPF_ADD) {
-                    struct ir_insn *new_insn = __malloc(sizeof(struct ir_insn));
+                    struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
                     new_insn->op             = IR_INSN_ADD;
                     new_insn->v1             = read_variable(env, insn.dst_reg, bb);
                     new_insn->v2             = read_variable(env, insn.src_reg, bb);
-                    insert_insn_back(bb->ir_bb, new_insn);
+
                     struct ir_value new_val;
                     new_val.type        = IR_VALUE_INSN;
                     new_val.data.insn_d = new_insn;
                     write_variable(env, insn.dst_reg, bb, new_val);
                 } else if (BPF_OP(code) == BPF_SUB) {
-                    struct ir_insn *new_insn = __malloc(sizeof(struct ir_insn));
+                    struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
                     new_insn->op             = IR_INSN_SUB;
                     new_insn->v1             = read_variable(env, insn.dst_reg, bb);
                     new_insn->v2             = read_variable(env, insn.src_reg, bb);
-                    insert_insn_back(bb->ir_bb, new_insn);
+
                     struct ir_value new_val;
                     new_val.type        = IR_VALUE_INSN;
                     new_val.data.insn_d = new_insn;
                     write_variable(env, insn.dst_reg, bb, new_val);
                 } else if (BPF_OP(code) == BPF_MUL) {
-                    struct ir_insn *new_insn = __malloc(sizeof(struct ir_insn));
+                    struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
                     new_insn->op             = IR_INSN_MUL;
                     new_insn->v1             = read_variable(env, insn.dst_reg, bb);
                     new_insn->v2             = read_variable(env, insn.src_reg, bb);
-                    insert_insn_back(bb->ir_bb, new_insn);
                     struct ir_value new_val;
                     new_val.type        = IR_VALUE_INSN;
                     new_val.data.insn_d = new_insn;
@@ -531,14 +585,14 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
             // dst = *(signed size *) (src + offset)
             // https://www.kernel.org/doc/html/v6.6/bpf/standardization/instruction-set.html#sign-extension-load-operations
 
-            struct ir_insn *new_insn = __malloc(sizeof(struct ir_insn));
+            struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
             new_insn->op             = IR_INSN_LOADRAW;
             struct ir_address_value addr_val;
             addr_val.value     = read_variable(env, insn.src_reg, bb);
             addr_val.offset    = insn.off;
             new_insn->vr_type  = to_ir_ld_u(BPF_SIZE(code));
             new_insn->addr_val = addr_val;
-            insert_insn_back(bb->ir_bb, new_insn);
+
             struct ir_value new_val;
             new_val.type        = IR_VALUE_INSN;
             new_val.data.insn_d = new_insn;
@@ -548,21 +602,21 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
             // dst = *(unsigned size *) (src + offset)
             // https://www.kernel.org/doc/html/v6.6/bpf/standardization/instruction-set.html#regular-load-and-store-operations
             // TODO: use LOAD instead of LOADRAW
-            struct ir_insn *new_insn = __malloc(sizeof(struct ir_insn));
+            struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
             new_insn->op             = IR_INSN_LOADRAW;
             struct ir_address_value addr_val;
             addr_val.value     = read_variable(env, insn.src_reg, bb);
             addr_val.offset    = insn.off;
             new_insn->vr_type  = to_ir_ld_u(BPF_SIZE(code));
             new_insn->addr_val = addr_val;
-            insert_insn_back(bb->ir_bb, new_insn);
+
             struct ir_value new_val;
             new_val.type        = IR_VALUE_INSN;
             new_val.data.insn_d = new_insn;
             write_variable(env, insn.dst_reg, bb, new_val);
         } else if (BPF_CLASS(code) == BPF_ST && BPF_MODE(code) == BPF_MEM) {
             // *(size *) (dst + offset) = imm32
-            struct ir_insn *new_insn = __malloc(sizeof(struct ir_insn));
+            struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
             new_insn->op             = IR_INSN_STORERAW;
             struct ir_address_value addr_val;
             addr_val.value                          = read_variable(env, insn.dst_reg, bb);
@@ -572,14 +626,14 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
             new_insn->v1.type                       = IR_VALUE_CONSTANT;
             new_insn->v1.data.constant_d.type       = IR_CONSTANT_S32;
             new_insn->v1.data.constant_d.data.s32_d = insn.imm;
-            insert_insn_back(bb->ir_bb, new_insn);
+
             struct ir_value new_val;
             new_val.type        = IR_VALUE_INSN;
             new_val.data.insn_d = new_insn;
             write_variable(env, insn.dst_reg, bb, new_val);
         } else if (BPF_CLASS(code) == BPF_STX && BPF_MODE(code) == BPF_MEM) {
             // *(size *) (dst + offset) = src
-            struct ir_insn *new_insn = __malloc(sizeof(struct ir_insn));
+            struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
             new_insn->op             = IR_INSN_STORERAW;
             struct ir_address_value addr_val;
             addr_val.value     = read_variable(env, insn.dst_reg, bb);
@@ -587,7 +641,7 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
             new_insn->vr_type  = to_ir_ld_u(BPF_SIZE(code));
             new_insn->addr_val = addr_val;
             new_insn->v1       = read_variable(env, insn.src_reg, bb);
-            insert_insn_back(bb->ir_bb, new_insn);
+
             struct ir_value new_val;
             new_val.type        = IR_VALUE_INSN;
             new_val.data.insn_d = new_insn;
@@ -596,27 +650,27 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
             if (BPF_OP(code) == BPF_JA) {
                 // Direct Jump
                 // PC += offset
-                struct ir_insn *new_insn = __malloc(sizeof(struct ir_insn));
+                struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
                 new_insn->op             = IR_INSN_JA;
                 size_t pos               = insn.pos + insn.off + 1;
                 new_insn->bb             = get_ir_bb_from_position(env, pos);
-                insert_insn_back(bb->ir_bb, new_insn);
+
             } else if (BPF_OP(code) == BPF_EXIT) {
                 // Exit
-                struct ir_insn *new_insn = __malloc(sizeof(struct ir_insn));
+                struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
                 new_insn->op             = IR_INSN_RET;
                 new_insn->v1             = read_variable(env, BPF_REG_0, bb);
-                insert_insn_back(bb->ir_bb, new_insn);
+
             } else if (BPF_OP(code) == BPF_CALL) {
                 // TODO
                 // imm is the function id
-                struct ir_insn *new_insn = __malloc(sizeof(struct ir_insn));
+                struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
                 new_insn->op             = IR_INSN_CALL;
                 new_insn->fid            = insn.imm;
 
                 // TODO: use map to find the actual numbers
                 new_insn->f_arg_num = 0;
-                insert_insn_back(bb->ir_bb, new_insn);
+
                 struct ir_value new_val;
                 new_val.type        = IR_VALUE_INSN;
                 new_val.data.insn_d = new_insn;
@@ -627,6 +681,7 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
             }
         } else {
             // TODO
+            printf("Class 0x%02x not supported\n", BPF_CLASS(code));
             CRITICAL("Error");
         }
     }

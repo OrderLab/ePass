@@ -11,7 +11,8 @@ void __noinline call2() {
 
 SEC("xdp")
 int prog(void *ctx) {
-    char s1[] = "hello world my friend";
+    // char s1[] = "hello world my friend";
+    char s1[] = "1";
     bpf_trace_printk(s1, sizeof(s1));
     call1();
     call2();
