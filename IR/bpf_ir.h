@@ -12,9 +12,7 @@ struct pre_ir_basic_block *gen_bb(struct bpf_insn *insns, size_t len);
 // First stage, transform to a pre-IR code
 
 struct pre_ir_insn {
-    __u8 code;
-    __u8 source;
-    __u8 instruction_class;
+    __u8 opcode;
 
     __u8  dst_reg;
     __u8  src_reg;
@@ -36,7 +34,7 @@ struct pre_ir_basic_block {
     size_t end_pos;
 
     // The number of instructions in this basic block (modified length)
-    size_t              len;
+    size_t len;
 
     struct pre_ir_insn *pre_insns;
 
@@ -77,9 +75,11 @@ struct ir_value {
     union {
         struct ir_constant constant_d;
         struct ir_insn    *insn_d;
+        __u8               arg_id;
     } data;
     enum {
         IR_VALUE_CONSTANT,
+        IR_VALUE_FUNCTIONARG,
         IR_VALUE_INSN,
     } type;
 };
@@ -145,4 +145,24 @@ struct ir_basic_block {
     struct array     succs;
 };
 
+struct bb_val {
+    struct pre_ir_basic_block *bb;
+    struct ir_value            val;
+};
+
+struct ssa_transform_env {
+    // Array of bb_val (which is (BB, Value) pair)
+    struct array currentDef[MAX_BPF_REG];
+};
+
+// functions
+
+void write_variable(struct ssa_transform_env *env, __u8 reg, struct pre_ir_basic_block *bb,
+                    struct ir_value val);
+
+struct ir_value read_variable_recursive(struct ssa_transform_env *env, __u8 reg,
+                                        struct pre_ir_basic_block *bb);
+
+struct ir_value read_variable(struct ssa_transform_env *env, __u8 reg,
+                              struct pre_ir_basic_block *bb);
 #endif
