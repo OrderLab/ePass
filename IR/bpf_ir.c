@@ -320,6 +320,36 @@ void insert_insn_back(struct ir_basic_block *bb, struct ir_insn *insn) {
     list_add_tail(&bb->ir_insn_head, &insn->ptr);
 }
 
+enum ir_vr_type to_ir_ld_s(__u8 size) {
+    switch (size) {
+        case BPF_W:
+            return IR_VR_TYPE_S4;
+        case BPF_H:
+            return IR_VR_TYPE_S2;
+        case BPF_B:
+            return IR_VR_TYPE_S1;
+        case BPF_DW:
+            return IR_VR_TYPE_S8;
+        default:
+            exit(1);
+    }
+}
+
+enum ir_vr_type to_ir_ld_u(__u8 size) {
+    switch (size) {
+        case BPF_W:
+            return IR_VR_TYPE_U4;
+        case BPF_H:
+            return IR_VR_TYPE_U2;
+        case BPF_B:
+            return IR_VR_TYPE_U1;
+        case BPF_DW:
+            return IR_VR_TYPE_U8;
+        default:
+            exit(1);
+    }
+}
+
 void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) {
     assert(!bb->sealed);
     // Try sealing a BB
@@ -444,18 +474,99 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
                 // IMPOSSIBLE
                 exit(1);
             }
-        } else if (BPF_CLASS(code) == BPF_LD) {
-            // Memory class
-            if (BPF_MODE(code) == BPF_IMM) {
-                // 64-bit immediate instructions
-            } else if (BPF_MODE(code) == BPF_MEM) {
-                // Regular memory access
-            } else {
-                // TODO
-                exit(1);
-            }
-        } else if (BPF_CLASS(code) == BPF_ST) {
+        } else if (BPF_CLASS(code) == BPF_LD && BPF_MODE(code) == BPF_IMM &&
+                   BPF_SIZE(code) == BPF_DW) {
+            // 64-bit immediate load
+            // TODO
+        } else if (BPF_CLASS(code) == BPF_LDX && BPF_MODE(code) == BPF_MEMSX) {
+            // dst = *(signed size *) (src + offset)
+            // https://www.kernel.org/doc/html/v6.6/bpf/standardization/instruction-set.html#sign-extension-load-operations
+
+            struct ir_insn *new_insn = __malloc(sizeof(struct ir_insn));
+            new_insn->op             = IR_INSN_LOADRAW;
+            struct ir_address_value addr_val;
+            addr_val.value     = read_variable(env, insn.src_reg, bb);
+            addr_val.offset    = insn.off;
+            new_insn->vr_type  = to_ir_ld_u(BPF_SIZE(code));
+            new_insn->addr_val = addr_val;
+            insert_insn_back(bb->ir_bb, new_insn);
+            struct ir_value new_val;
+            new_val.type        = IR_VALUE_INSN;
+            new_val.data.insn_d = new_insn;
+            write_variable(env, insn.dst_reg, bb, new_val);
+        } else if (BPF_CLASS(code) == BPF_LDX && BPF_MODE(code) == BPF_MEM) {
+            // Regular load
+            // dst = *(unsigned size *) (src + offset)
+            // https://www.kernel.org/doc/html/v6.6/bpf/standardization/instruction-set.html#regular-load-and-store-operations
+            // TODO: use LOAD instead of LOADRAW
+            struct ir_insn *new_insn = __malloc(sizeof(struct ir_insn));
+            new_insn->op             = IR_INSN_LOADRAW;
+            struct ir_address_value addr_val;
+            addr_val.value     = read_variable(env, insn.src_reg, bb);
+            addr_val.offset    = insn.off;
+            new_insn->vr_type  = to_ir_ld_u(BPF_SIZE(code));
+            new_insn->addr_val = addr_val;
+            insert_insn_back(bb->ir_bb, new_insn);
+            struct ir_value new_val;
+            new_val.type        = IR_VALUE_INSN;
+            new_val.data.insn_d = new_insn;
+            write_variable(env, insn.dst_reg, bb, new_val);
+        } else if (BPF_CLASS(code) == BPF_ST && BPF_MODE(code) == BPF_MEM) {
+            // *(size *) (dst + offset) = imm32
+            struct ir_insn *new_insn = __malloc(sizeof(struct ir_insn));
+            new_insn->op             = IR_INSN_STORERAW;
+            struct ir_address_value addr_val;
+            addr_val.value                          = read_variable(env, insn.dst_reg, bb);
+            addr_val.offset                         = insn.off;
+            new_insn->vr_type                       = to_ir_ld_u(BPF_SIZE(code));
+            new_insn->addr_val                      = addr_val;
+            new_insn->v1.type                       = IR_VALUE_CONSTANT;
+            new_insn->v1.data.constant_d.type       = IR_CONSTANT_S32;
+            new_insn->v1.data.constant_d.data.s32_d = insn.imm;
+            insert_insn_back(bb->ir_bb, new_insn);
+            struct ir_value new_val;
+            new_val.type        = IR_VALUE_INSN;
+            new_val.data.insn_d = new_insn;
+            write_variable(env, insn.dst_reg, bb, new_val);
+        } else if (BPF_CLASS(code) == BPF_STX && BPF_MODE(code) == BPF_MEM) {
+            // *(size *) (dst + offset) = src
+            struct ir_insn *new_insn = __malloc(sizeof(struct ir_insn));
+            new_insn->op             = IR_INSN_STORERAW;
+            struct ir_address_value addr_val;
+            addr_val.value     = read_variable(env, insn.dst_reg, bb);
+            addr_val.offset    = insn.off;
+            new_insn->vr_type  = to_ir_ld_u(BPF_SIZE(code));
+            new_insn->addr_val = addr_val;
+            new_insn->v1       = read_variable(env, insn.src_reg, bb);
+            insert_insn_back(bb->ir_bb, new_insn);
+            struct ir_value new_val;
+            new_val.type        = IR_VALUE_INSN;
+            new_val.data.insn_d = new_insn;
+            write_variable(env, insn.dst_reg, bb, new_val);
         } else if (BPF_CLASS(code) == BPF_JMP) {
+            if (BPF_OP(code) == BPF_JA) {
+                // Direct Jump
+                // PC += offset
+                struct ir_insn *new_insn                = __malloc(sizeof(struct ir_insn));
+                new_insn->op                            = IR_INSN_JA;
+                new_insn->v1.type                       = IR_VALUE_CONSTANT;
+                new_insn->v1.data.constant_d.type       = IR_CONSTANT_S16;
+                new_insn->v1.data.constant_d.data.s16_d = insn.off;
+                insert_insn_back(bb->ir_bb, new_insn);
+            } else if (BPF_OP(code) == BPF_EXIT) {
+                // Exit
+                struct ir_insn *new_insn = __malloc(sizeof(struct ir_insn));
+                new_insn->op             = IR_INSN_RET;
+                new_insn->v1             = read_variable(env, BPF_REG_0, bb);
+                insert_insn_back(bb->ir_bb, new_insn);
+            } else {
+                // Conditional Jump
+                struct ir_insn *new_insn = __malloc(sizeof(struct ir_insn));
+                new_insn->v1             = read_variable(env, insn.dst_reg, bb);
+                new_insn->v2             = read_variable(env, insn.src_reg, bb);
+                new_insn->op             = IR_INSN_JEQ;
+                insert_insn_back(bb->ir_bb, new_insn);
+            }
         } else {
             // TODO
             exit(1);

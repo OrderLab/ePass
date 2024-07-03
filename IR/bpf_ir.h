@@ -52,12 +52,16 @@ struct pre_ir_basic_block {
 
 struct ir_constant {
     union {
+        __u16 u16_d;
+        __s16 s16_d;
         __u32 u32_d;
         __s32 s32_d;
         __u64 u64_d;
         __s64 s64_d;
     } data;
     enum {
+        IR_CONSTANT_U16,
+        IR_CONSTANT_S16,
         IR_CONSTANT_U32,
         IR_CONSTANT_S32,
         IR_CONSTANT_U64,
@@ -84,18 +88,40 @@ struct ir_value {
     } type;
 };
 
+struct ir_address_value {
+    // The value might be stack pointer
+    struct ir_value value;
+    __s16           offset;
+};
+
+/**
+    Virtual Register Type
+ */
+enum ir_vr_type {
+    IR_VR_TYPE_U1,
+    IR_VR_TYPE_U2,
+    IR_VR_TYPE_U4,
+    IR_VR_TYPE_U8,
+    IR_VR_TYPE_S1,
+    IR_VR_TYPE_S2,
+    IR_VR_TYPE_S4,
+    IR_VR_TYPE_S8,
+    IR_VR_TYPE_PTR,
+};
+
 /**
     INSN =
-          ALLOC <size in bytes>
-        | ALLOCP <size in bytes> <stack position>
-        | STORE <value>, <value>
-        | LOAD <value>
+          ALLOC <ir_vr_type>
+        | STORE <value:ptr>, <value>
+        | LOAD <ir_vr_type> <value:ptr>
+        | STORERAW <ir_vr_type> <ir_address_value>, <value>
+        | LOADRAW <ir_vr_type> <ir_address_value>
         | ADD <value>, <value>
         | SUB <value>, <value>
         | MUL <value>, <value>
         | MOV <value>
-        | CALL <value>
-        | EXIT
+        | CALL <function id> <arg_num> <values...>
+        | RET <value>
         | JA <value>
         | JEQ <value>, <value>
         | JGT <value>, <value>
@@ -108,22 +134,33 @@ struct ir_insn {
     struct ir_value v1;
     struct ir_value v2;
 
+    // Used in CALL instructions
+    struct ir_value v3;
+    struct ir_value v4;
+
     // Used in ALLOC instructions
-    __u32 alloc_size;
-    __u32 stack_pos;
+    enum ir_vr_type vr_type;
+
+    // Used in RAW instructions
+    struct ir_address_value addr_val;
+
+    __u32 fid;
+    __u32 f_arg_num;
     enum {
-        IR_INSN_ALLOC,   // alloc <size in bytes>
-        IR_INSN_ALLOCP,  // alloc <size in bytes> <stack position>
-        IR_INSN_STORE,   // store <value>, <value>
-        IR_INSN_LOAD,    // load <value>
+        IR_INSN_ALLOC,
+        IR_INSN_ALLOCP,
+        IR_INSN_STORE,
+        IR_INSN_LOAD,
+        IR_INSN_STORERAW,
+        IR_INSN_LOADRAW,
         // ALU
-        IR_INSN_ADD,  // add <value>, <value>
-        IR_INSN_SUB,  // sub <value>, <value>
+        IR_INSN_ADD,
+        IR_INSN_SUB,
         IR_INSN_MUL,
         IR_INSN_MOV,  // mov
         // CALL EXIT
         IR_INSN_CALL,
-        IR_INSN_EXIT,
+        IR_INSN_RET,
         // JMP
         IR_INSN_JA,
         IR_INSN_JEQ,
@@ -134,6 +171,7 @@ struct ir_insn {
         IR_INSN_JNE,
     } op;
     struct list_head ptr;
+    enum ir_vr_type  type;
 };
 
 /**
