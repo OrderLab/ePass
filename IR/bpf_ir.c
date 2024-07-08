@@ -8,6 +8,7 @@
 #include "array.h"
 #include "list.h"
 #include "dbg.h"
+#include "read.h"
 
 int compare_num(const void *a, const void *b) {
     struct bb_entrance_info *as = (struct bb_entrance_info *)a;
@@ -738,7 +739,9 @@ void free_all_bb(struct ssa_transform_env *env) {
     }
 }
 
-void construct_ir(struct bpf_insn *insns, size_t len) {
+// Interface implementation
+
+void run(struct bpf_insn *insns, size_t len) {
     struct bb_info info = gen_bb(insns, len);
     // print_pre_ir_cfg(info.entry);
     struct ssa_transform_env env = init_env(info);
