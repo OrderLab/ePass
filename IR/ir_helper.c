@@ -167,7 +167,23 @@ void print_ir_insn(struct ir_insn *insn) {
             print_ir_value(insn->v2);
             break;
         case IR_INSN_CALL:
-            printf("call %d [%d]", insn->fid, insn->f_arg_num);
+            printf("call __built_in_func_%d(", insn->fid);
+            if (insn->f_arg_num >= 1) {
+                print_ir_value(insn->v1);
+            }
+            if (insn->f_arg_num >= 2) {
+                printf(", ");
+                print_ir_value(insn->v2);
+            }
+            if (insn->f_arg_num >= 3) {
+                printf(", ");
+                print_ir_value(insn->v3);
+            }
+            if (insn->f_arg_num >= 4) {
+                printf(", ");
+                print_ir_value(insn->v4);
+            }
+            printf(")");
             break;
         case IR_INSN_RET:
             printf("ret ");

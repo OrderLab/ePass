@@ -10,6 +10,9 @@
 #include "dbg.h"
 #include "read.h"
 
+// TODO: Change this to real function
+static __u32 helper_func_arg_num[100] = {1, 1, 1, 1, 1, 1, 2, 1, 1};
+
 int compare_num(const void *a, const void *b) {
     struct bb_entrance_info *as = (struct bb_entrance_info *)a;
     struct bb_entrance_info *bs = (struct bb_entrance_info *)b;
@@ -87,7 +90,7 @@ void init_entrance_info(struct array *bb_entrances, size_t entrance_pos) {
 void init_ir_bb(struct pre_ir_basic_block *bb) {
     bb->ir_bb           = __malloc(sizeof(struct ir_basic_block));
     bb->ir_bb->_visited = 0;
-    bb->ir_bb->_id = bb->id;
+    bb->ir_bb->_id      = bb->id;
     bb->ir_bb->_pre_bb  = bb;
     for (__u8 i = 0; i < MAX_BPF_REG; ++i) {
         bb->incompletePhis[i] = NULL;
@@ -332,7 +335,7 @@ struct ir_value read_variable_recursive(struct ssa_transform_env *env, __u8 reg,
     if (!bb->sealed) {
         // Incomplete CFG
         struct ir_insn *new_insn = create_insn_front(bb->ir_bb);
-        new_insn->op           = IR_INSN_PHI;
+        new_insn->op             = IR_INSN_PHI;
         new_insn->phi            = array_init(sizeof(struct phi_value));
         bb->incompletePhis[reg]  = new_insn;
         val.type                 = IR_VALUE_INSN;
@@ -341,7 +344,7 @@ struct ir_value read_variable_recursive(struct ssa_transform_env *env, __u8 reg,
         val = read_variable(env, reg, ((struct pre_ir_basic_block **)(bb->preds.data))[0]);
     } else {
         struct ir_insn *new_insn = create_insn_front(bb->ir_bb);
-        new_insn->op           = IR_INSN_PHI;
+        new_insn->op             = IR_INSN_PHI;
         new_insn->phi            = array_init(sizeof(struct phi_value));
         val.type                 = IR_VALUE_INSN;
         val.data.insn_d          = new_insn;
@@ -471,6 +474,21 @@ struct ir_basic_block *get_ir_bb_from_position(struct ssa_transform_env *env, si
     CRITICAL("Error");
 }
 
+struct ir_value get_src_value(struct ssa_transform_env *env, struct pre_ir_basic_block *bb,
+                              struct pre_ir_insn insn) {
+    __u8 code = insn.opcode;
+    if (BPF_SRC(code) == BPF_K) {
+        struct ir_constant c;
+        c.data.s32_d = insn.imm;
+        c.type       = IR_CONSTANT_S32;
+        return (struct ir_value){.type = IR_VALUE_CONSTANT, .data.constant_d = c};
+    } else if (BPF_SRC(code) == BPF_X) {
+        return read_variable(env, insn.src_reg, bb);
+    } else {
+        CRITICAL("Error");
+    }
+}
+
 void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) {
     assert(!bb->sealed);
     // Try sealing a BB
@@ -497,111 +515,49 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
         if (BPF_CLASS(code) == BPF_ALU || BPF_CLASS(code) == BPF_ALU64) {
             // 32-bit ALU class
             // TODO: 64-bit ALU class
-            if (BPF_SRC(code) == BPF_K) {
-                // Immediate
-                if (BPF_OP(code) == BPF_ADD) {
-                    struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
-                    new_insn->op             = IR_INSN_ADD;
-                    new_insn->v1             = read_variable(env, insn.dst_reg, bb);
-                    add_user(env, new_insn, new_insn->v1);
-                    struct ir_constant c;
-                    c.data.s32_d = insn.imm;
-                    c.type       = IR_CONSTANT_S32;
-                    new_insn->v2 =
-                        (struct ir_value){.type = IR_VALUE_CONSTANT, .data.constant_d = c};
-                    struct ir_value new_val;
-                    new_val.type        = IR_VALUE_INSN;
-                    new_val.data.insn_d = new_insn;
-                    write_variable(env, insn.dst_reg, bb, new_val);
-                } else if (BPF_OP(code) == BPF_SUB) {
-                    struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
-                    new_insn->op             = IR_INSN_SUB;
-                    new_insn->v1             = read_variable(env, insn.dst_reg, bb);
-                    add_user(env, new_insn, new_insn->v1);
-                    struct ir_constant c;
-                    c.data.s32_d = insn.imm;
-                    c.type       = IR_CONSTANT_S32;
-                    new_insn->v2 =
-                        (struct ir_value){.type = IR_VALUE_CONSTANT, .data.constant_d = c};
+            if (BPF_OP(code) == BPF_ADD) {
+                struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
+                new_insn->op             = IR_INSN_ADD;
+                new_insn->v1             = read_variable(env, insn.dst_reg, bb);
+                new_insn->v2             = get_src_value(env, bb, insn);
+                add_user(env, new_insn, new_insn->v1);
+                add_user(env, new_insn, new_insn->v2);
 
-                    struct ir_value new_val;
-                    new_val.type        = IR_VALUE_INSN;
-                    new_val.data.insn_d = new_insn;
-                    write_variable(env, insn.dst_reg, bb, new_val);
-                } else if (BPF_OP(code) == BPF_MUL) {
-                    struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
-                    new_insn->op             = IR_INSN_MUL;
-                    new_insn->v1             = read_variable(env, insn.dst_reg, bb);
-                    add_user(env, new_insn, new_insn->v1);
-                    struct ir_constant c;
-                    c.data.s32_d = insn.imm;
-                    c.type       = IR_CONSTANT_S32;
-                    new_insn->v2 =
-                        (struct ir_value){.type = IR_VALUE_CONSTANT, .data.constant_d = c};
+                struct ir_value new_val;
+                new_val.type        = IR_VALUE_INSN;
+                new_val.data.insn_d = new_insn;
+                write_variable(env, insn.dst_reg, bb, new_val);
+            } else if (BPF_OP(code) == BPF_SUB) {
+                struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
+                new_insn->op             = IR_INSN_SUB;
+                new_insn->v1             = read_variable(env, insn.dst_reg, bb);
+                new_insn->v2             = get_src_value(env, bb, insn);
+                add_user(env, new_insn, new_insn->v1);
+                add_user(env, new_insn, new_insn->v2);
 
-                    struct ir_value new_val;
-                    new_val.type        = IR_VALUE_INSN;
-                    new_val.data.insn_d = new_insn;
-                    write_variable(env, insn.dst_reg, bb, new_val);
-                } else if (BPF_OP(code) == BPF_MOV) {
-                    // Do not create instructions
-                    struct ir_value new_val;
-                    new_val.type                       = IR_VALUE_CONSTANT;
-                    new_val.data.constant_d.type       = IR_CONSTANT_S32;
-                    new_val.data.constant_d.data.s32_d = insn.imm;
-                    write_variable(env, insn.dst_reg, bb, new_val);
-                } else {
-                    // TODO
-                    CRITICAL("Error");
-                }
-            } else if (BPF_SRC(code) == BPF_X) {
-                // Register
-                if (BPF_OP(code) == BPF_ADD) {
-                    struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
-                    new_insn->op             = IR_INSN_ADD;
-                    new_insn->v1             = read_variable(env, insn.dst_reg, bb);
-                    new_insn->v2             = read_variable(env, insn.src_reg, bb);
-                    add_user(env, new_insn, new_insn->v1);
-                    add_user(env, new_insn, new_insn->v2);
-
-                    struct ir_value new_val;
-                    new_val.type        = IR_VALUE_INSN;
-                    new_val.data.insn_d = new_insn;
-                    write_variable(env, insn.dst_reg, bb, new_val);
-                } else if (BPF_OP(code) == BPF_SUB) {
-                    struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
-                    new_insn->op             = IR_INSN_SUB;
-                    new_insn->v1             = read_variable(env, insn.dst_reg, bb);
-                    new_insn->v2             = read_variable(env, insn.src_reg, bb);
-                    add_user(env, new_insn, new_insn->v1);
-                    add_user(env, new_insn, new_insn->v2);
-
-                    struct ir_value new_val;
-                    new_val.type        = IR_VALUE_INSN;
-                    new_val.data.insn_d = new_insn;
-                    write_variable(env, insn.dst_reg, bb, new_val);
-                } else if (BPF_OP(code) == BPF_MUL) {
-                    struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
-                    new_insn->op             = IR_INSN_MUL;
-                    new_insn->v1             = read_variable(env, insn.dst_reg, bb);
-                    new_insn->v2             = read_variable(env, insn.src_reg, bb);
-                    add_user(env, new_insn, new_insn->v1);
-                    add_user(env, new_insn, new_insn->v2);
-                    struct ir_value new_val;
-                    new_val.type        = IR_VALUE_INSN;
-                    new_val.data.insn_d = new_insn;
-                    write_variable(env, insn.dst_reg, bb, new_val);
-                } else if (BPF_OP(code) == BPF_MOV) {
-                    // Do not create instructions
-                    write_variable(env, insn.dst_reg, bb, read_variable(env, insn.src_reg, bb));
-                } else {
-                    // TODO
-                    CRITICAL("Error");
-                }
+                struct ir_value new_val;
+                new_val.type        = IR_VALUE_INSN;
+                new_val.data.insn_d = new_insn;
+                write_variable(env, insn.dst_reg, bb, new_val);
+            } else if (BPF_OP(code) == BPF_MUL) {
+                struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
+                new_insn->op             = IR_INSN_MUL;
+                new_insn->v1             = read_variable(env, insn.dst_reg, bb);
+                new_insn->v2             = get_src_value(env, bb, insn);
+                add_user(env, new_insn, new_insn->v1);
+                add_user(env, new_insn, new_insn->v2);
+                struct ir_value new_val;
+                new_val.type        = IR_VALUE_INSN;
+                new_val.data.insn_d = new_insn;
+                write_variable(env, insn.dst_reg, bb, new_val);
+            } else if (BPF_OP(code) == BPF_MOV) {
+                // Do not create instructions
+                write_variable(env, insn.dst_reg, bb, get_src_value(env, bb, insn));
             } else {
-                // IMPOSSIBLE
+                // TODO
                 CRITICAL("Error");
             }
+
         } else if (BPF_CLASS(code) == BPF_LD && BPF_MODE(code) == BPF_IMM &&
                    BPF_SIZE(code) == BPF_DW) {
             // 64-bit immediate load
@@ -680,16 +636,38 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
                 struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
                 new_insn->op             = IR_INSN_RET;
                 new_insn->v1             = read_variable(env, BPF_REG_0, bb);
+            } else if (BPF_OP(code) == BPF_JEQ) {
+                // Jump if equal
+                struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
+                new_insn->op             = IR_INSN_JEQ;
 
             } else if (BPF_OP(code) == BPF_CALL) {
-                // TODO
                 // imm is the function id
                 struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
                 new_insn->op             = IR_INSN_CALL;
                 new_insn->fid            = insn.imm;
-
-                // TODO: use map to find the actual numbers
-                new_insn->f_arg_num = 0;
+                if (insn.imm < 0) {
+                    printf("Not supported function call\n");
+                    new_insn->f_arg_num = 0;
+                } else {
+                    new_insn->f_arg_num = helper_func_arg_num[insn.imm];
+                    if (new_insn->f_arg_num >= 1) {
+                        new_insn->v1 = read_variable(env, BPF_REG_1, bb);
+                    }
+                    if (new_insn->f_arg_num >= 2) {
+                        new_insn->v2 = read_variable(env, BPF_REG_2, bb);
+                    }
+                    if (new_insn->f_arg_num >= 3) {
+                        new_insn->v3 = read_variable(env, BPF_REG_3, bb);
+                    }
+                    if (new_insn->f_arg_num >= 4) {
+                        new_insn->v4 = read_variable(env, BPF_REG_4, bb);
+                    }
+                    if (new_insn->f_arg_num >= 5) {
+                        // Not supported
+                        CRITICAL("Too many arguments");
+                    }
+                }
 
                 struct ir_value new_val;
                 new_val.type        = IR_VALUE_INSN;
