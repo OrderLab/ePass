@@ -252,6 +252,8 @@ struct ssa_transform_env {
 
     // Stack pointer (r10) users
     struct array sp_users;
+
+    __u32 __insn_cnt;
 };
 
 // helper functions
