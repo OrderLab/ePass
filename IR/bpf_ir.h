@@ -279,4 +279,6 @@ struct ir_insn *create_insn_front(struct ir_basic_block *bb);
 
 void add_user(struct ssa_transform_env *env, struct ir_insn *user, struct ir_value val);
 
+void print_ir_prog(struct ssa_transform_env *env);
+
 #endif

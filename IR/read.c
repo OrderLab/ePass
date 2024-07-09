@@ -31,12 +31,12 @@ void print_item(FILE *fd, Elf64_Ehdr eh, Elf64_Shdr sh_table[]) {
 
     if (i < eh.e_shnum) {
         uint64_t size     = sh_table[i].sh_size;
-        uint32_t insn_cnt = size / 8;
+        uint32_t insn_cnt = size / sizeof(struct bpf_insn);
         char    *mydata   = malloc(size);
         fseek(fd, sh_table[i].sh_offset, SEEK_SET);
         fread(mydata, 1, size, fd);
         struct bpf_insn *prog = (struct bpf_insn *)mydata;
-        run(prog, size / sizeof(struct bpf_insn));
+        run(prog, insn_cnt);
     }
 }
 

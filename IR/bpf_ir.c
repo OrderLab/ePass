@@ -259,20 +259,6 @@ void print_pre_ir_cfg(struct pre_ir_basic_block *bb) {
     }
 }
 
-void print_ir_cfg(struct ir_basic_block *bb) {
-    if (bb->_visited) {
-        return;
-    }
-    bb->_visited = 1;
-    printf("BB %p\n", bb);
-    printf("preds (%ld)\n", bb->preds.num_elem);
-    printf("succs (%ld)\n", bb->succs.num_elem);
-    for (size_t i = 0; i < bb->succs.num_elem; ++i) {
-        struct ir_basic_block *succ = ((struct ir_basic_block **)(bb->succs.data))[i];
-        print_ir_cfg(succ);
-    }
-}
-
 struct ssa_transform_env init_env(struct bb_info info) {
     struct ssa_transform_env env;
     for (size_t i = 0; i < MAX_BPF_REG; ++i) {
@@ -325,7 +311,7 @@ void write_variable(struct ssa_transform_env *env, __u8 reg, struct pre_ir_basic
 
 struct ir_insn *add_phi_operands(struct ssa_transform_env *env, __u8 reg, struct ir_insn *insn) {
     // insn must be a (initialized) PHI instruction
-    if (insn->type != IR_INSN_PHI) {
+    if (insn->op != IR_INSN_PHI) {
         CRITICAL("Not a PHI node");
     }
     for (size_t i = 0; i < insn->parent_bb->preds.num_elem; ++i) {
@@ -346,14 +332,14 @@ struct ir_value read_variable_recursive(struct ssa_transform_env *env, __u8 reg,
     if (!bb->sealed) {
         // Incomplete CFG
         struct ir_insn *new_insn = create_insn_front(bb->ir_bb);
-        new_insn->type           = IR_INSN_PHI;
+        new_insn->op           = IR_INSN_PHI;
         new_insn->phi            = array_init(sizeof(struct phi_value));
         bb->incompletePhis[reg]  = new_insn;
     } else if (bb->preds.num_elem == 1) {
         val = read_variable(env, reg, ((struct pre_ir_basic_block **)(bb->preds.data))[0]);
     } else {
         struct ir_insn *new_insn = create_insn_front(bb->ir_bb);
-        new_insn->type           = IR_INSN_PHI;
+        new_insn->op           = IR_INSN_PHI;
         new_insn->phi            = array_init(sizeof(struct phi_value));
         val.type                 = IR_VALUE_INSN;
         val.data.insn_d          = new_insn;
@@ -748,6 +734,6 @@ void run(struct bpf_insn *insns, size_t len) {
     struct ssa_transform_env env = init_env(info);
     init_ir_bbs(&env);
     transform_bb(&env, info.entry);
-    print_ir_cfg(info.entry->ir_bb);
+    print_ir_prog(&env);
     free_all_bb(&env);
 }
