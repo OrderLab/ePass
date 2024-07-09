@@ -3,31 +3,27 @@
 #include "dbg.h"
 #include "list.h"
 
-/**
-    Utils to print the program
- */
-
 /// Reset visited flag
 void clean_env(struct ssa_transform_env *env) {
     for (size_t i = 0; i < env->info.all_bbs.num_elem; ++i) {
         struct bb_entrance_info info  = ((struct bb_entrance_info *)(env->info.all_bbs.data))[i];
-        struct ir_basic_block   *ir_bb = info.bb->ir_bb;
-        ir_bb->_visited                = 0;
+        struct ir_basic_block  *ir_bb = info.bb->ir_bb;
+        ir_bb->_visited               = 0;
     }
 }
 
-/// Reset instruction ID
-void clean_insn_id(struct ssa_transform_env *env){
+/// Reset instruction/BB ID
+void clean_id(struct ssa_transform_env *env) {
     for (size_t i = 0; i < env->info.all_bbs.num_elem; ++i) {
         struct bb_entrance_info info  = ((struct bb_entrance_info *)(env->info.all_bbs.data))[i];
-        struct ir_basic_block   *ir_bb = info.bb->ir_bb;
-        struct list_head *p = NULL;
+        struct ir_basic_block  *ir_bb = info.bb->ir_bb;
+        ir_bb->_id                    = -1;
+        struct list_head *p           = NULL;
         list_for_each(p, &ir_bb->ir_insn_head) {
             struct ir_insn *insn = list_entry(p, struct ir_insn, ptr);
-            insn->_insn_id = 0;
+            insn->_insn_id       = -1;
         }
     }
-
 }
 
 void print_constant(struct ir_constant d) {
@@ -256,7 +252,7 @@ void print_ir_insn(struct ir_insn *insn) {
 }
 
 void print_ir_bb(struct ir_basic_block *bb) {
-    if(bb->_visited){
+    if (bb->_visited) {
         return;
     }
     bb->_visited = 1;
@@ -274,11 +270,12 @@ void print_ir_bb(struct ir_basic_block *bb) {
     }
 }
 
-void assign_id(struct ir_basic_block *bb, size_t *cnt) {
+void assign_id(struct ir_basic_block *bb, size_t *cnt, size_t *bb_cnt) {
     if (bb->_visited) {
         return;
     }
-    bb->_visited = 1;
+    bb->_visited        = 1;
+    bb->_id             = (*bb_cnt)++;
     struct list_head *p = NULL;
     list_for_each(p, &bb->ir_insn_head) {
         struct ir_insn *insn = list_entry(p, struct ir_insn, ptr);
@@ -286,15 +283,16 @@ void assign_id(struct ir_basic_block *bb, size_t *cnt) {
     }
     for (size_t i = 0; i < bb->succs.num_elem; ++i) {
         struct ir_basic_block *next = ((struct ir_basic_block **)(bb->succs.data))[i];
-        assign_id(next, cnt);
+        assign_id(next, cnt, bb_cnt);
     }
 }
 
 void print_ir_prog(struct ssa_transform_env *env) {
     size_t cnt = 0;
+    size_t bb_cnt = 0;
     clean_env(env);
-    assign_id(env->info.entry->ir_bb, &cnt);
+    assign_id(env->info.entry->ir_bb, &cnt, &bb_cnt);
     clean_env(env);
     print_ir_bb(env->info.entry->ir_bb);
-    clean_insn_id(env);
+    clean_id(env);
 }
