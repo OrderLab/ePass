@@ -7,15 +7,27 @@
     Utils to print the program
  */
 
-/**
-    Clean all IR flags (e.g. visited)
- */
+/// Reset visited flag
 void clean_env(struct ssa_transform_env *env) {
     for (size_t i = 0; i < env->info.all_bbs.num_elem; ++i) {
         struct bb_entrance_info info  = ((struct bb_entrance_info *)(env->info.all_bbs.data))[i];
         struct ir_basic_block   *ir_bb = info.bb->ir_bb;
         ir_bb->_visited                = 0;
     }
+}
+
+/// Reset instruction ID
+void clean_insn_id(struct ssa_transform_env *env){
+    for (size_t i = 0; i < env->info.all_bbs.num_elem; ++i) {
+        struct bb_entrance_info info  = ((struct bb_entrance_info *)(env->info.all_bbs.data))[i];
+        struct ir_basic_block   *ir_bb = info.bb->ir_bb;
+        struct list_head *p = NULL;
+        list_for_each(p, &ir_bb->ir_insn_head) {
+            struct ir_insn *insn = list_entry(p, struct ir_insn, ptr);
+            insn->_insn_id = 0;
+        }
+    }
+
 }
 
 void print_constant(struct ir_constant d) {
@@ -109,10 +121,10 @@ void print_vr_type(enum ir_vr_type t) {
 
 void print_phi(struct array *phi) {
     for (size_t i = 0; i < phi->num_elem; ++i) {
-        struct phi_value *v = ((struct phi_value **)(phi->data))[i];
+        struct phi_value v = ((struct phi_value *)(phi->data))[i];
         printf(" <");
-        printf("b%zu -> ", v->bb->_id);
-        print_ir_value(v->value);
+        printf("b%zu -> ", v.bb->_id);
+        print_ir_value(v.value);
         printf(">");
     }
 }
@@ -280,7 +292,9 @@ void assign_id(struct ir_basic_block *bb, size_t *cnt) {
 
 void print_ir_prog(struct ssa_transform_env *env) {
     size_t cnt = 0;
+    clean_env(env);
     assign_id(env->info.entry->ir_bb, &cnt);
     clean_env(env);
     print_ir_bb(env->info.entry->ir_bb);
+    clean_insn_id(env);
 }

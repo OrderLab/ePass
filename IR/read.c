@@ -37,7 +37,9 @@ void print_item(FILE *fd, Elf64_Ehdr eh, Elf64_Shdr sh_table[]) {
         fread(mydata, 1, size, fd);
         struct bpf_insn *prog = (struct bpf_insn *)mydata;
         run(prog, insn_cnt);
+        free(mydata);
     }
+    free(buff);
 }
 
 int main(int argc, char **argv) {
@@ -60,6 +62,7 @@ int main(int argc, char **argv) {
     fread(sh_table, 1, elf_header.e_shentsize * elf_header.e_shnum, fp);
 
     print_item(fp, elf_header, sh_table);
-
+    free(sh_table);
+    fclose(fp);
     return 0;
 }

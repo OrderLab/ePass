@@ -3,6 +3,6 @@
 
 #include <stdlib.h>
 
-#define CRITICAL(str) {printf("%s, %s, %d\n", str, __FUNCTION__, __LINE__); exit(1);}
+#define CRITICAL(str) {printf("<%s>:%d %s\n", __FUNCTION__, __LINE__, str); exit(1);}
 
 #endif
