@@ -104,7 +104,6 @@ enum ir_vr_type {
         | ADD <value>, <value>
         | SUB <value>, <value>
         | MUL <value>, <value>
-        | MOV <value>
         | CALL <function id> <arg_num> <values...>
         | RET <value>
         | JA <bb>
@@ -139,7 +138,6 @@ struct ir_insn {
     __u32 f_arg_num;
     enum {
         IR_INSN_ALLOC,
-        IR_INSN_ALLOCP,
         IR_INSN_STORE,
         IR_INSN_LOAD,
         IR_INSN_STORERAW,
@@ -148,7 +146,6 @@ struct ir_insn {
         IR_INSN_ADD,
         IR_INSN_SUB,
         IR_INSN_MUL,
-        IR_INSN_MOV,  // mov
         // CALL EXIT
         IR_INSN_CALL,
         IR_INSN_RET,
@@ -169,7 +166,11 @@ struct ir_insn {
     struct array users;
 
     // Might be useful?
+    // Too difficult, need BTF
     enum ir_vr_type type;
+
+    // Used when generating the real code
+    size_t _insn_id;
 };
 
 /**
@@ -214,6 +215,7 @@ struct ir_basic_block {
     // Used for construction and debugging
     struct pre_ir_basic_block *_pre_bb;
     __u8                       _visited;
+    size_t                     _id;
 };
 
 /**
@@ -253,7 +255,7 @@ struct ssa_transform_env {
     // Stack pointer (r10) users
     struct array sp_users;
 
-    __u32 __insn_cnt;
+    size_t _insn_cnt;
 };
 
 // helper functions

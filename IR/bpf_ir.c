@@ -87,6 +87,7 @@ void init_entrance_info(struct array *bb_entrances, size_t entrance_pos) {
 void init_ir_bb(struct pre_ir_basic_block *bb) {
     bb->ir_bb           = __malloc(sizeof(struct ir_basic_block));
     bb->ir_bb->_visited = 0;
+    bb->ir_bb->_id = bb->id;
     bb->ir_bb->_pre_bb  = bb;
     for (__u8 i = 0; i < MAX_BPF_REG; ++i) {
         bb->incompletePhis[i] = NULL;
