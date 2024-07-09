@@ -637,10 +637,53 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
                 new_insn->op             = IR_INSN_RET;
                 new_insn->v1             = read_variable(env, BPF_REG_0, bb);
             } else if (BPF_OP(code) == BPF_JEQ) {
-                // Jump if equal
+                // PC += offset if dst == src
                 struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
                 new_insn->op             = IR_INSN_JEQ;
-
+                new_insn->v1             = read_variable(env, insn.dst_reg, bb);
+                new_insn->v2             = get_src_value(env, bb, insn);
+                size_t pos               = insn.pos + insn.off + 1;
+                new_insn->bb             = get_ir_bb_from_position(env, pos);
+            } else if (BPF_OP(code) == BPF_JLT) {
+                // PC += offset if dst < src
+                struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
+                new_insn->op             = IR_INSN_JLT;
+                new_insn->v1             = read_variable(env, insn.dst_reg, bb);
+                new_insn->v2             = get_src_value(env, bb, insn);
+                size_t pos               = insn.pos + insn.off + 1;
+                new_insn->bb             = get_ir_bb_from_position(env, pos);
+            } else if (BPF_OP(code) == BPF_JLE) {
+                // PC += offset if dst <= src
+                struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
+                new_insn->op             = IR_INSN_JLE;
+                new_insn->v1             = read_variable(env, insn.dst_reg, bb);
+                new_insn->v2             = get_src_value(env, bb, insn);
+                size_t pos               = insn.pos + insn.off + 1;
+                new_insn->bb             = get_ir_bb_from_position(env, pos);
+            } else if (BPF_OP(code) == BPF_JGT) {
+                // PC += offset if dst > src
+                struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
+                new_insn->op             = IR_INSN_JGT;
+                new_insn->v1             = read_variable(env, insn.dst_reg, bb);
+                new_insn->v2             = get_src_value(env, bb, insn);
+                size_t pos               = insn.pos + insn.off + 1;
+                new_insn->bb             = get_ir_bb_from_position(env, pos);
+            } else if (BPF_OP(code) == BPF_JGE) {
+                // PC += offset if dst >= src
+                struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
+                new_insn->op             = IR_INSN_JGE;
+                new_insn->v1             = read_variable(env, insn.dst_reg, bb);
+                new_insn->v2             = get_src_value(env, bb, insn);
+                size_t pos               = insn.pos + insn.off + 1;
+                new_insn->bb             = get_ir_bb_from_position(env, pos);
+            } else if (BPF_OP(code) == BPF_JNE) {
+                // PC += offset if dst != src
+                struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
+                new_insn->op             = IR_INSN_JNE;
+                new_insn->v1             = read_variable(env, insn.dst_reg, bb);
+                new_insn->v2             = get_src_value(env, bb, insn);
+                size_t pos               = insn.pos + insn.off + 1;
+                new_insn->bb             = get_ir_bb_from_position(env, pos);
             } else if (BPF_OP(code) == BPF_CALL) {
                 // imm is the function id
                 struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
