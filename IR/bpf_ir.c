@@ -335,6 +335,8 @@ struct ir_value read_variable_recursive(struct ssa_transform_env *env, __u8 reg,
         new_insn->op           = IR_INSN_PHI;
         new_insn->phi            = array_init(sizeof(struct phi_value));
         bb->incompletePhis[reg]  = new_insn;
+        val.type                 = IR_VALUE_INSN;
+        val.data.insn_d          = new_insn;
     } else if (bb->preds.num_elem == 1) {
         val = read_variable(env, reg, ((struct pre_ir_basic_block **)(bb->preds.data))[0]);
     } else {
@@ -504,6 +506,7 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
                     add_user(env, new_insn, new_insn->v1);
                     struct ir_constant c;
                     c.data.s32_d = insn.imm;
+                    c.type       = IR_CONSTANT_S32;
                     new_insn->v2 =
                         (struct ir_value){.type = IR_VALUE_CONSTANT, .data.constant_d = c};
                     struct ir_value new_val;
@@ -517,6 +520,7 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
                     add_user(env, new_insn, new_insn->v1);
                     struct ir_constant c;
                     c.data.s32_d = insn.imm;
+                    c.type       = IR_CONSTANT_S32;
                     new_insn->v2 =
                         (struct ir_value){.type = IR_VALUE_CONSTANT, .data.constant_d = c};
 
@@ -531,6 +535,7 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
                     add_user(env, new_insn, new_insn->v1);
                     struct ir_constant c;
                     c.data.s32_d = insn.imm;
+                    c.type       = IR_CONSTANT_S32;
                     new_insn->v2 =
                         (struct ir_value){.type = IR_VALUE_CONSTANT, .data.constant_d = c};
 

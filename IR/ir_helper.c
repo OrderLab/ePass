@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "bpf_ir.h"
+#include "dbg.h"
 #include "list.h"
 
 /**
@@ -11,8 +12,8 @@
  */
 void clean_env(struct ssa_transform_env *env) {
     for (size_t i = 0; i < env->info.all_bbs.num_elem; ++i) {
-        struct bb_entrance_info *info  = ((struct bb_entrance_info **)(env->info.all_bbs.data))[i];
-        struct ir_basic_block   *ir_bb = info->bb->ir_bb;
+        struct bb_entrance_info info  = ((struct bb_entrance_info *)(env->info.all_bbs.data))[i];
+        struct ir_basic_block   *ir_bb = info.bb->ir_bb;
         ir_bb->_visited                = 0;
     }
 }
@@ -37,11 +38,13 @@ void print_constant(struct ir_constant d) {
         case IR_CONSTANT_U16:
             printf("%u", d.data.u16_d);
             break;
+        default:
+            CRITICAL("Unknown constant type");
     }
 }
 
 void print_insn_ptr(struct ir_insn *insn) {
-    printf("\%%d", insn->_insn_id);
+    printf("%%%zu", insn->_insn_id);
 }
 
 void print_ir_value(struct ir_value v) {
@@ -50,7 +53,7 @@ void print_ir_value(struct ir_value v) {
             print_insn_ptr(v.data.insn_d);
             break;
         case IR_VALUE_STACK_PTR:
-            printf("stack_ptr");
+            printf("SP");
             break;
         case IR_VALUE_CONSTANT:
             print_constant(v.data.constant_d);
@@ -58,6 +61,8 @@ void print_ir_value(struct ir_value v) {
         case IR_VALUE_FUNCTIONARG:
             printf("arg%d", v.data.arg_id);
             break;
+        default:
+            CRITICAL("Unknown IR value type");
     }
 }
 
@@ -71,32 +76,34 @@ void print_address_value(struct ir_address_value v) {
 void print_vr_type(enum ir_vr_type t) {
     switch (t) {
         case IR_VR_TYPE_U1:
-            printf("u1");
-            break;
-        case IR_VR_TYPE_U8:
             printf("u8");
             break;
+        case IR_VR_TYPE_U8:
+            printf("u64");
+            break;
         case IR_VR_TYPE_U2:
-            printf("u2");
+            printf("u16");
             break;
         case IR_VR_TYPE_U4:
-            printf("u4");
+            printf("u32");
             break;
         case IR_VR_TYPE_S1:
-            printf("s1");
+            printf("s8");
             break;
         case IR_VR_TYPE_S2:
-            printf("s2");
+            printf("s16");
             break;
         case IR_VR_TYPE_S4:
-            printf("s4");
+            printf("s32");
             break;
         case IR_VR_TYPE_S8:
-            printf("s8");
+            printf("s64");
             break;
         case IR_VR_TYPE_PTR:
             printf("ptr");
             break;
+        default:
+            CRITICAL("Unknown VR type");
     }
 }
 
@@ -138,6 +145,7 @@ void print_ir_insn(struct ir_insn *insn) {
             print_vr_type(insn->vr_type);
             printf(" ");
             print_address_value(insn->addr_val);
+            printf(" ");
             print_ir_value(insn->v1);
             break;
         case IR_INSN_ADD:
@@ -214,6 +222,8 @@ void print_ir_insn(struct ir_insn *insn) {
             printf("phi ");
             print_phi(&insn->phi);
             break;
+        default:
+            CRITICAL("Unknown IR insn");
     }
 }
 
@@ -226,7 +236,7 @@ void print_ir_bb(struct ir_basic_block *bb) {
     struct list_head *p = NULL;
     list_for_each(p, &bb->ir_insn_head) {
         struct ir_insn *insn = list_entry(p, struct ir_insn, ptr);
-        printf("  \%%d = ", insn->_insn_id);
+        printf("  %%%zu = ", insn->_insn_id);
         print_ir_insn(insn);
         printf("\n");
     }
