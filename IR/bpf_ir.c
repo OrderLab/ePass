@@ -1,5 +1,4 @@
 #include "bpf_ir.h"
-#include <assert.h>
 #include <linux/bpf.h>
 #include <linux/bpf_common.h>
 #include <stdio.h>
@@ -88,9 +87,9 @@ void init_entrance_info(struct array *bb_entrances, size_t entrance_pos) {
 }
 
 void init_ir_bb(struct pre_ir_basic_block *bb) {
-    bb->ir_bb           = __malloc(sizeof(struct ir_basic_block));
-    bb->ir_bb->_visited = 0;
-    bb->ir_bb->_pre_bb  = bb;
+    bb->ir_bb            = __malloc(sizeof(struct ir_basic_block));
+    bb->ir_bb->_visited  = 0;
+    bb->ir_bb->user_data = bb;
     for (__u8 i = 0; i < MAX_BPF_REG; ++i) {
         bb->incompletePhis[i] = NULL;
     }
@@ -319,7 +318,7 @@ struct ir_insn *add_phi_operands(struct ssa_transform_env *env, __u8 reg, struct
         struct ir_basic_block *pred = ((struct ir_basic_block **)(insn->parent_bb->preds.data))[i];
         struct phi_value       phi;
         phi.bb    = pred;
-        phi.value = read_variable(env, reg, pred->_pre_bb);
+        phi.value = read_variable(env, reg, (struct pre_ir_basic_block *)pred->user_data);
         add_user(env, insn, phi.value);
         array_push(&insn->phi, &phi);
     }
@@ -746,22 +745,16 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
     }
 }
 
-void free_all_bb(struct ssa_transform_env *env) {
-    for (size_t i = 0; i < MAX_BPF_REG; ++i) {
-        struct array *currentDef = &env->currentDef[i];
-        array_free(currentDef);
-    }
-    for (size_t i = 0; i < env->info.all_bbs.num_elem; ++i) {
-        struct pre_ir_basic_block *bb = ((struct bb_entrance_info *)(env->info.all_bbs.data))[i].bb;
+void free_function(struct ir_function *fun) {
+    array_free(&fun->sp_users);
+    for (size_t i = 0; i < fun->all_bbs.num_elem; ++i) {
+        struct ir_basic_block *bb = ((struct ir_basic_block **)(fun->all_bbs.data))[i];
 
         array_free(&bb->preds);
         array_free(&bb->succs);
-        free(bb->pre_insns);
-        array_free(&bb->ir_bb->preds);
-        array_free(&bb->ir_bb->succs);
         // Free the instructions
         struct ir_insn *pos, *n;
-        list_for_each_entry_safe(pos, n, &bb->ir_bb->ir_insn_head, ptr) {
+        list_for_each_entry_safe(pos, n, &bb->ir_insn_head, ptr) {
             list_del(&pos->ptr);
             array_free(&pos->users);
             if (pos->op == IR_INSN_PHI) {
@@ -769,9 +762,30 @@ void free_all_bb(struct ssa_transform_env *env) {
             }
             free(pos);
         }
-        free(bb->ir_bb);
         free(bb);
     }
+}
+
+struct ir_function gen_function(struct ssa_transform_env *env) {
+    struct ir_function func;
+    func.arg_num  = 1;
+    func.entry    = env->info.entry->ir_bb;
+    func.sp_users = env->sp_users;
+    func.all_bbs  = array_init(sizeof(struct ir_basic_block *));
+    for (size_t i = 0; i < MAX_BPF_REG; ++i) {
+        struct array *currentDef = &env->currentDef[i];
+        array_free(currentDef);
+    }
+    for (size_t i = 0; i < env->info.all_bbs.num_elem; ++i) {
+        struct pre_ir_basic_block *bb = ((struct bb_entrance_info *)(env->info.all_bbs.data))[i].bb;
+        array_free(&bb->preds);
+        array_free(&bb->succs);
+        free(bb->pre_insns);
+        bb->ir_bb->user_data = NULL;
+        array_push(&func.all_bbs, &bb->ir_bb);
+        free(bb);
+    }
+    return func;
 }
 
 // Interface implementation
@@ -781,8 +795,14 @@ void run(struct bpf_insn *insns, size_t len) {
     print_pre_ir_cfg(info.entry);
     struct ssa_transform_env env = init_env(info);
     init_ir_bbs(&env);
-    clean_env(&env);
     transform_bb(&env, info.entry);
-    print_ir_prog(&env);
-    free_all_bb(&env);
+    struct ir_function fun = gen_function(&env);
+    // Drop env
+    print_ir_prog(&fun);
+    // Start IR manipulation
+
+    // End IR manipulation
+
+    // Free the memory
+    free_function(&fun);
 }

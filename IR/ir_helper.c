@@ -4,21 +4,19 @@
 #include "list.h"
 
 /// Reset visited flag
-void clean_env(struct ssa_transform_env *env) {
-    for (size_t i = 0; i < env->info.all_bbs.num_elem; ++i) {
-        struct bb_entrance_info info  = ((struct bb_entrance_info *)(env->info.all_bbs.data))[i];
-        struct ir_basic_block  *ir_bb = info.bb->ir_bb;
-        ir_bb->_visited               = 0;
+void clean_env(struct ir_function *fun) {
+    for (size_t i = 0; i < fun->all_bbs.num_elem; ++i) {
+        struct ir_basic_block *ir_bb = ((struct ir_basic_block **)(fun->all_bbs.data))[i];
+        ir_bb->_visited              = 0;
     }
 }
 
 /// Reset instruction/BB ID
-void clean_id(struct ssa_transform_env *env) {
-    for (size_t i = 0; i < env->info.all_bbs.num_elem; ++i) {
-        struct bb_entrance_info info  = ((struct bb_entrance_info *)(env->info.all_bbs.data))[i];
-        struct ir_basic_block  *ir_bb = info.bb->ir_bb;
-        ir_bb->_id                    = -1;
-        struct list_head *p           = NULL;
+void clean_id(struct ir_function *fun) {
+    for (size_t i = 0; i < fun->all_bbs.num_elem; ++i) {
+        struct ir_basic_block *ir_bb = ((struct ir_basic_block **)(fun->all_bbs.data))[i];
+        ir_bb->_id                   = -1;
+        struct list_head *p          = NULL;
         list_for_each(p, &ir_bb->ir_insn_head) {
             struct ir_insn *insn = list_entry(p, struct ir_insn, ptr);
             insn->_insn_id       = -1;
@@ -287,12 +285,12 @@ void assign_id(struct ir_basic_block *bb, size_t *cnt, size_t *bb_cnt) {
     }
 }
 
-void print_ir_prog(struct ssa_transform_env *env) {
-    size_t cnt = 0;
+void print_ir_prog(struct ir_function *fun) {
+    size_t cnt    = 0;
     size_t bb_cnt = 0;
-    clean_env(env);
-    assign_id(env->info.entry->ir_bb, &cnt, &bb_cnt);
-    clean_env(env);
-    print_ir_bb(env->info.entry->ir_bb);
-    clean_id(env);
+    clean_env(fun);
+    assign_id(fun->entry, &cnt, &bb_cnt);
+    clean_env(fun);
+    print_ir_bb(fun->entry);
+    clean_id(fun);
 }

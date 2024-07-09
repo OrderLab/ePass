@@ -171,6 +171,7 @@ struct ir_insn {
 
     // Used when generating the real code
     size_t _insn_id;
+    void  *user_data;
 };
 
 /**
@@ -213,9 +214,9 @@ struct ir_basic_block {
     struct array     succs;
 
     // Used for construction and debugging
-    struct pre_ir_basic_block *_pre_bb;
-    __u8                       _visited;
-    size_t                     _id;
+    __u8   _visited;
+    size_t _id;
+    void  *user_data;
 };
 
 /**
@@ -256,6 +257,21 @@ struct ssa_transform_env {
     struct array sp_users;
 };
 
+struct ir_function {
+    size_t arg_num;
+
+    // Array of struct pre_ir_basic_block *, no entrance information anymore
+    struct array all_bbs;
+
+    // The entry block
+    struct ir_basic_block *entry;
+
+    // Store any information about the function
+
+    // Stack pointer (r10) users. Should be readonly. No more manual stack access should be allowed.
+    struct array sp_users;
+};
+
 // helper functions
 
 void write_variable(struct ssa_transform_env *env, __u8 reg, struct pre_ir_basic_block *bb,
@@ -279,11 +295,11 @@ struct ir_insn *create_insn_front(struct ir_basic_block *bb);
 
 void add_user(struct ssa_transform_env *env, struct ir_insn *user, struct ir_value val);
 
-void clean_env(struct ssa_transform_env *);
+void clean_env(struct ir_function *);
 
-void clean_id(struct ssa_transform_env *);
+void clean_id(struct ir_function *);
 
-void print_ir_prog(struct ssa_transform_env *);
+void print_ir_prog(struct ir_function *);
 
 void print_ir_insn(struct ir_insn *);
 
