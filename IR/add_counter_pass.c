@@ -2,8 +2,7 @@
 
 void add_counter(struct ir_function *fun) {
     struct ir_basic_block **pos;
-    struct array           *arr = &fun->all_bbs;
-    array_for(pos, arr) {
+    array_for(pos, fun->reachable_bbs) {
         print_raw_ir_bb(*pos);
     }
 }
