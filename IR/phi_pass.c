@@ -47,7 +47,7 @@ void try_remove_trivial_phi(struct ir_insn *phi) {
         }
         if (user->op == IR_INSN_PHI) {
             struct phi_value *pv_pos2;
-            array_for(pv_pos2, user->phi){
+            array_for(pv_pos2, user->phi) {
                 if (ir_value_equal(pv_pos2->value, phi_val)) {
                     pv_pos2->value = same;
                 }

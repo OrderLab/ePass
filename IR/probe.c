@@ -9,7 +9,7 @@ void run(struct bpf_insn *insns, size_t len) {
         if (code == 0) {
             continue;
         }
-        printf("%02x\t%02x\t%02x\t%02x\t%02x\t%d\n", BPF_CLASS(code), BPF_SIZE(code), BPF_MODE(code),
-               BPF_OP(code), BPF_SRC(code), insns[i].imm);
+        printf("%02x\t%02x\t%02x\t%02x\t%02x\t%d\n", BPF_CLASS(code), BPF_SIZE(code),
+               BPF_MODE(code), BPF_OP(code), BPF_SRC(code), insns[i].imm);
     }
 }

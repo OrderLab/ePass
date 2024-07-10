@@ -82,8 +82,8 @@ struct list_head {
 static inline void __list_add(struct list_head *newl, struct list_head *prev,
                               struct list_head *next) {
     next->prev = newl;
-    newl->next  = next;
-    newl->prev  = prev;
+    newl->next = next;
+    newl->prev = prev;
     prev->next = newl;
 }
 
