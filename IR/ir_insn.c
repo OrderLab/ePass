@@ -24,6 +24,14 @@ void insert_at(struct ir_insn *new_insn, struct ir_insn *insn, enum insert_posit
     }
 }
 
+void insert_at_bb(struct ir_insn *new_insn, struct ir_basic_block *bb, enum insert_position pos) {
+    if (pos == INSERT_BACK) {
+        list_add_tail(&new_insn->list_ptr, &bb->ir_insn_head);
+    } else {
+        list_add(&new_insn->list_ptr, &bb->ir_insn_head);
+    }
+}
+
 struct ir_insn *create_alloc_insn_base(struct ir_basic_block *bb, enum ir_vr_type type) {
     struct ir_insn *new_insn = create_insn_base(bb);
     new_insn->op             = IR_INSN_ALLOC;
@@ -34,4 +42,10 @@ struct ir_insn *create_alloc_insn_base(struct ir_basic_block *bb, enum ir_vr_typ
 void create_alloc_insn(struct ir_insn *insn, enum ir_vr_type type, enum insert_position pos) {
     struct ir_insn *new_insn = create_alloc_insn_base(insn->parent_bb, type);
     insert_at(new_insn, insn, pos);
+}
+
+void create_alloc_insn_bb(struct ir_basic_block *bb, enum ir_vr_type type,
+                          enum insert_position pos) {
+    struct ir_insn *new_insn = create_alloc_insn_base(bb, type);
+    insert_at_bb(new_insn, bb, pos);
 }

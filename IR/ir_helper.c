@@ -198,49 +198,49 @@ void print_ir_insn(struct ir_insn *insn) {
             print_ir_value(insn->values[0]);
             break;
         case IR_INSN_JA:
-            printf("ja b%zu", insn->bb->_id);
+            printf("ja b%zu", insn->bb1->_id);
             break;
         case IR_INSN_JEQ:
             printf("jeq ");
             print_ir_value(insn->values[0]);
             printf(", ");
             print_ir_value(insn->values[1]);
-            printf(", b%zu", insn->bb->_id);
+            printf(", b%zu/b%zu", insn->bb1->_id, insn->bb2->_id);
             break;
         case IR_INSN_JGT:
             printf("jgt ");
             print_ir_value(insn->values[0]);
             printf(", ");
             print_ir_value(insn->values[1]);
-            printf(", b%zu", insn->bb->_id);
+            printf(", b%zu/b%zu", insn->bb1->_id, insn->bb2->_id);
             break;
         case IR_INSN_JGE:
             printf("jge ");
             print_ir_value(insn->values[0]);
             printf(", ");
             print_ir_value(insn->values[1]);
-            printf(", b%zu", insn->bb->_id);
+            printf(", b%zu/b%zu", insn->bb1->_id, insn->bb2->_id);
             break;
         case IR_INSN_JLT:
             printf("jlt ");
             print_ir_value(insn->values[0]);
             printf(", ");
             print_ir_value(insn->values[1]);
-            printf(", b%zu", insn->bb->_id);
+            printf(", b%zu/b%zu", insn->bb1->_id, insn->bb2->_id);
             break;
         case IR_INSN_JLE:
             printf("jle ");
             print_ir_value(insn->values[0]);
             printf(", ");
             print_ir_value(insn->values[1]);
-            printf(", b%zu", insn->bb->_id);
+            printf(", b%zu/b%zu", insn->bb1->_id, insn->bb2->_id);
             break;
         case IR_INSN_JNE:
             printf("jne ");
             print_ir_value(insn->values[0]);
             printf(", ");
             print_ir_value(insn->values[1]);
-            printf(", b%zu", insn->bb->_id);
+            printf(", b%zu/b%zu", insn->bb1->_id, insn->bb2->_id);
             break;
         case IR_INSN_PHI:
             printf("phi ");

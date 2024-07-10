@@ -634,7 +634,7 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
                 struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
                 new_insn->op             = IR_INSN_JA;
                 size_t pos               = insn.pos + insn.off + 1;
-                new_insn->bb             = get_ir_bb_from_position(env, pos);
+                new_insn->bb1            = get_ir_bb_from_position(env, pos);
             } else if (BPF_OP(code) == BPF_EXIT) {
                 // Exit
                 struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
@@ -651,7 +651,8 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
                 add_user(env, new_insn, new_insn->values[0]);
                 add_user(env, new_insn, new_insn->values[1]);
                 size_t pos   = insn.pos + insn.off + 1;
-                new_insn->bb = get_ir_bb_from_position(env, pos);
+                new_insn->bb1 = get_ir_bb_from_position(env, insn.pos + 1);
+                new_insn->bb2 = get_ir_bb_from_position(env, pos);
             } else if (BPF_OP(code) == BPF_JLT) {
                 // PC += offset if dst < src
                 struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
@@ -662,7 +663,8 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
                 add_user(env, new_insn, new_insn->values[0]);
                 add_user(env, new_insn, new_insn->values[1]);
                 size_t pos   = insn.pos + insn.off + 1;
-                new_insn->bb = get_ir_bb_from_position(env, pos);
+                new_insn->bb1 = get_ir_bb_from_position(env, insn.pos + 1);
+                new_insn->bb2 = get_ir_bb_from_position(env, pos);
             } else if (BPF_OP(code) == BPF_JLE) {
                 // PC += offset if dst <= src
                 struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
@@ -673,7 +675,8 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
                 add_user(env, new_insn, new_insn->values[0]);
                 add_user(env, new_insn, new_insn->values[1]);
                 size_t pos   = insn.pos + insn.off + 1;
-                new_insn->bb = get_ir_bb_from_position(env, pos);
+                new_insn->bb1 = get_ir_bb_from_position(env, insn.pos + 1);
+                new_insn->bb2 = get_ir_bb_from_position(env, pos);
             } else if (BPF_OP(code) == BPF_JGT) {
                 // PC += offset if dst > src
                 struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
@@ -684,7 +687,8 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
                 add_user(env, new_insn, new_insn->values[0]);
                 add_user(env, new_insn, new_insn->values[1]);
                 size_t pos   = insn.pos + insn.off + 1;
-                new_insn->bb = get_ir_bb_from_position(env, pos);
+                new_insn->bb1 = get_ir_bb_from_position(env, insn.pos + 1);
+                new_insn->bb2 = get_ir_bb_from_position(env, pos);
             } else if (BPF_OP(code) == BPF_JGE) {
                 // PC += offset if dst >= src
                 struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
@@ -695,7 +699,8 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
                 add_user(env, new_insn, new_insn->values[0]);
                 add_user(env, new_insn, new_insn->values[1]);
                 size_t pos   = insn.pos + insn.off + 1;
-                new_insn->bb = get_ir_bb_from_position(env, pos);
+                new_insn->bb1 = get_ir_bb_from_position(env, insn.pos + 1);
+                new_insn->bb2 = get_ir_bb_from_position(env, pos);
             } else if (BPF_OP(code) == BPF_JNE) {
                 // PC += offset if dst != src
                 struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
@@ -706,7 +711,8 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
                 add_user(env, new_insn, new_insn->values[0]);
                 add_user(env, new_insn, new_insn->values[1]);
                 size_t pos   = insn.pos + insn.off + 1;
-                new_insn->bb = get_ir_bb_from_position(env, pos);
+                new_insn->bb1 = get_ir_bb_from_position(env, insn.pos + 1);
+                new_insn->bb2 = get_ir_bb_from_position(env, pos);
             } else if (BPF_OP(code) == BPF_CALL) {
                 // imm is the function id
                 struct ir_insn *new_insn = create_insn_back(bb->ir_bb);

@@ -110,12 +110,12 @@ enum ir_vr_type {
         | CALL <function id> <arg_num> <values...>
         | RET <value>
         | JA <bb>
-        | JEQ <value>, <value>, <bb>
-        | JGT <value>, <value>, <bb>
-        | JGE <value>, <value>, <bb>
-        | JLT <value>, <value>, <bb>
-        | JLE <value>, <value>, <bb>
-        | JNE <value>, <value>, <bb>
+        | JEQ <value>, <value>, <bb>, <bb>
+        | JGT <value>, <value>, <bb>, <bb>
+        | JGE <value>, <value>, <bb>, <bb>
+        | JLT <value>, <value>, <bb>, <bb>
+        | JLE <value>, <value>, <bb>, <bb>
+        | JNE <value>, <value>, <bb>, <bb>
         | PHI <phi_value>
  */
 struct ir_insn {
@@ -128,7 +128,9 @@ struct ir_insn {
     // Used in RAW instructions
     struct ir_address_value addr_val;
 
-    struct ir_basic_block *bb;
+    // Used in JMP instructions
+    struct ir_basic_block *bb1;
+    struct ir_basic_block *bb2;
 
     // Array of phi_value
     struct array phi;
@@ -218,10 +220,10 @@ struct ir_basic_block {
     struct list_head ir_insn_head;
 
     // Array of struct ir_basic_block *
-    struct array     preds;
-    
+    struct array preds;
+
     // Array of struct ir_basic_block *
-    struct array     succs;
+    struct array succs;
 
     // Used for construction and debugging
     __u8   _visited;

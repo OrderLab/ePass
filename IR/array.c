@@ -3,7 +3,9 @@
 #include <string.h>
 
 void *__malloc(size_t size) {
-    return malloc(size);
+    void *data = malloc(size);
+    memset(data, 0, size);
+    return data;
 }
 
 void __free(void *ptr) {
