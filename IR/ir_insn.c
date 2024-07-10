@@ -177,3 +177,25 @@ struct ir_insn *create_jlt_insn_bb(struct ir_basic_block *bb, struct ir_value va
     insert_at_bb(new_insn, bb, pos);
     return new_insn;
 }
+
+struct ir_insn *create_ret_insn_base(struct ir_basic_block *bb, struct ir_value val) {
+    struct ir_insn *new_insn = create_insn_base(bb);
+    new_insn->op             = IR_INSN_RET;
+    new_insn->values[0]      = val;
+    val_add_user(val, new_insn);
+    return new_insn;
+}
+
+struct ir_insn *create_ret_insn(struct ir_insn *insn, struct ir_value val,
+                                enum insert_position pos) {
+    struct ir_insn *new_insn = create_ret_insn_base(insn->parent_bb, val);
+    insert_at(new_insn, insn, pos);
+    return new_insn;
+}
+
+struct ir_insn *create_ret_insn_bb(struct ir_basic_block *bb, struct ir_value val,
+                                   enum insert_position pos) {
+    struct ir_insn *new_insn = create_ret_insn_base(bb, val);
+    insert_at_bb(new_insn, bb, pos);
+    return new_insn;
+}

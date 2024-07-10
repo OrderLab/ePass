@@ -12,7 +12,9 @@ void add_counter(struct ir_function *fun) {
     create_store_insn(alloc_insn, alloc_insn, val, INSERT_BACK);
     struct ir_basic_block **pos;
 
-    struct ir_basic_block *err_bb = create_bb(fun);
+    struct ir_basic_block *err_bb  = create_bb(fun);
+    val.data.constant_d.data.u64_d = 1;
+    create_ret_insn_bb(err_bb, val, INSERT_BACK);
 
     array_for(pos, fun->reachable_bbs) {
         struct ir_basic_block *bb   = *pos;

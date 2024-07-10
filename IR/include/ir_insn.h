@@ -41,4 +41,10 @@ struct ir_insn *create_jlt_insn_bb(struct ir_basic_block *bb, struct ir_value va
                                    struct ir_value val2, struct ir_basic_block *to_bb1,
                                    struct ir_basic_block *to_bb2, enum insert_position pos);
 
+struct ir_insn *create_ret_insn(struct ir_insn *insn, struct ir_value val,
+                                enum insert_position pos);
+
+struct ir_insn *create_ret_insn_bb(struct ir_basic_block *bb, struct ir_value val,
+                                   enum insert_position pos);
+
 #endif
