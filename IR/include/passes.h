@@ -9,7 +9,7 @@
  */
 static void (*passes[])(struct ir_function *fun) = {
     gen_reachable_bbs,
-    remove_trivial_phi,
+    // remove_trivial_phi,
 };
 
 #endif

@@ -172,7 +172,7 @@ struct ir_insn {
 
     // Might be useful?
     // Too difficult, need BTF
-    enum ir_vr_type type;
+    // enum ir_vr_type type;
 
     // Used when generating the real code
     size_t _insn_id;
@@ -216,7 +216,11 @@ struct pre_ir_basic_block {
  */
 struct ir_basic_block {
     struct list_head ir_insn_head;
+
+    // Array of struct ir_basic_block *
     struct array     preds;
+    
+    // Array of struct ir_basic_block *
     struct array     succs;
 
     // Used for construction and debugging

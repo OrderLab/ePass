@@ -42,6 +42,18 @@ void array_push(struct array *arr, void *data) {
     arr->num_elem++;
 }
 
+void array_erase(struct array *arr, size_t idx) {
+    if (idx >= arr->num_elem) {
+        return;
+    }
+    // Shift elements
+    for (size_t i = idx; i < arr->num_elem - 1; ++i) {
+        memcpy((char *)(arr->data) + arr->elem_size * i,
+               (char *)(arr->data) + arr->elem_size * (i + 1), arr->elem_size);
+    }
+    arr->num_elem--;
+}
+
 void array_free(struct array *arr) {
     __free(arr->data);
 }

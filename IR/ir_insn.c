@@ -3,9 +3,9 @@
 #include "dbg.h"
 #include "list.h"
 
-struct ir_insn *create_insn_base(struct ir_insn *insn) {
+struct ir_insn *create_insn_base(struct ir_basic_block *bb) {
     struct ir_insn *new_insn = __malloc(sizeof(struct ir_insn));
-    new_insn->parent_bb      = insn->parent_bb;
+    new_insn->parent_bb      = bb;
     return new_insn;
 }
 
@@ -24,8 +24,14 @@ void insert_at(struct ir_insn *new_insn, struct ir_insn *insn, enum insert_posit
     }
 }
 
-void create_alloc_insn(struct ir_insn *insn, enum insert_position pos) {
-    struct ir_insn *new_insn = create_insn_base(insn);
+struct ir_insn *create_alloc_insn_base(struct ir_basic_block *bb, enum ir_vr_type type) {
+    struct ir_insn *new_insn = create_insn_base(bb);
     new_insn->op             = IR_INSN_ALLOC;
+    new_insn->vr_type        = type;
+    return new_insn;
+}
+
+void create_alloc_insn(struct ir_insn *insn, enum ir_vr_type type, enum insert_position pos) {
+    struct ir_insn *new_insn = create_alloc_insn_base(insn->parent_bb, type);
     insert_at(new_insn, insn, pos);
 }
