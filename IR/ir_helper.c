@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stdio.h>
+#include "array.h"
 #include "bpf_ir.h"
 #include "dbg.h"
 #include "list.h"
@@ -284,10 +285,8 @@ void print_ir_insn(struct ir_insn *insn) {
     }
 }
 
-void print_raw_ir_insn(struct ir_insn *insn){
-    if (insn->_insn_id == SIZE_MAX) {
-        printf("%p = ", insn);
-    }
+void print_raw_ir_insn(struct ir_insn *insn) {
+    printf("%p = ", insn);
     print_ir_insn(insn);
     printf("\n");
 }
@@ -311,6 +310,16 @@ void print_ir_bb(struct ir_basic_block *bb) {
     }
 }
 
+void print_raw_ir_bb(struct ir_basic_block *bb) {
+    printf("b%p:\n", bb);
+    struct list_head *p = NULL;
+    list_for_each(p, &bb->ir_insn_head) {
+        struct ir_insn *insn = list_entry(p, struct ir_insn, list_ptr);
+        printf("  ");
+        print_raw_ir_insn(insn);
+    }
+}
+
 void assign_id(struct ir_basic_block *bb, size_t *cnt, size_t *bb_cnt) {
     if (bb->_visited) {
         return;
@@ -322,9 +331,9 @@ void assign_id(struct ir_basic_block *bb, size_t *cnt, size_t *bb_cnt) {
         struct ir_insn *insn = list_entry(p, struct ir_insn, list_ptr);
         insn->_insn_id       = (*cnt)++;
     }
-    for (size_t i = 0; i < bb->succs.num_elem; ++i) {
-        struct ir_basic_block *next = ((struct ir_basic_block **)(bb->succs.data))[i];
-        assign_id(next, cnt, bb_cnt);
+    struct ir_basic_block **next;
+    array_for(next, &bb->succs) {
+        assign_id(*next, cnt, bb_cnt);
     }
 }
 

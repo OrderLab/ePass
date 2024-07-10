@@ -320,6 +320,8 @@ void print_ir_value(struct ir_value v);
 
 void print_raw_ir_insn(struct ir_insn *insn);
 
+void print_raw_ir_bb(struct ir_basic_block *bb);
+
 __u8 ir_value_equal(struct ir_value a, struct ir_value b);
 
 #endif

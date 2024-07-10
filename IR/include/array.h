@@ -20,4 +20,7 @@ void         array_erase(struct array *arr, size_t idx);
 void        *__malloc(size_t size);
 void         __free(void *ptr);
 
+#define array_for(pos, arr) \
+    for (pos = ((typeof(pos))(arr)->data); pos < (typeof(pos))(arr)->data + (arr)->num_elem; pos++)
+
 #endif
