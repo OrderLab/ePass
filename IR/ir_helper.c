@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include <stdio.h>
 #include "bpf_ir.h"
 #include "dbg.h"
@@ -57,7 +58,19 @@ void print_constant(struct ir_constant d) {
 }
 
 void print_insn_ptr(struct ir_insn *insn) {
+    if (insn->_insn_id == SIZE_MAX) {
+        printf("%p", insn);
+        return;
+    }
     printf("%%%zu", insn->_insn_id);
+}
+
+void print_bb_ptr(struct ir_basic_block *insn) {
+    if (insn->_id == SIZE_MAX) {
+        printf("b%p", insn);
+        return;
+    }
+    printf("b%zu", insn->_id);
 }
 
 void print_ir_value(struct ir_value v) {
@@ -127,7 +140,8 @@ void print_phi(struct array *phi) {
     for (size_t i = 0; i < phi->num_elem; ++i) {
         struct phi_value v = ((struct phi_value *)(phi->data))[i];
         printf(" <");
-        printf("b%zu -> ", v.bb->_id);
+        print_bb_ptr(v.bb);
+        printf(" -> ");
         print_ir_value(v.value);
         printf(">");
     }
@@ -198,57 +212,84 @@ void print_ir_insn(struct ir_insn *insn) {
             print_ir_value(insn->values[0]);
             break;
         case IR_INSN_JA:
-            printf("ja b%zu", insn->bb1->_id);
+            printf("ja ");
+            print_bb_ptr(insn->bb1);
             break;
         case IR_INSN_JEQ:
             printf("jeq ");
             print_ir_value(insn->values[0]);
             printf(", ");
             print_ir_value(insn->values[1]);
-            printf(", b%zu/b%zu", insn->bb1->_id, insn->bb2->_id);
+            printf(", ");
+            print_bb_ptr(insn->bb1);
+            printf("/");
+            print_bb_ptr(insn->bb2);
             break;
         case IR_INSN_JGT:
             printf("jgt ");
             print_ir_value(insn->values[0]);
             printf(", ");
             print_ir_value(insn->values[1]);
-            printf(", b%zu/b%zu", insn->bb1->_id, insn->bb2->_id);
+            printf(", ");
+            print_bb_ptr(insn->bb1);
+            printf("/");
+            print_bb_ptr(insn->bb2);
             break;
         case IR_INSN_JGE:
             printf("jge ");
             print_ir_value(insn->values[0]);
             printf(", ");
             print_ir_value(insn->values[1]);
-            printf(", b%zu/b%zu", insn->bb1->_id, insn->bb2->_id);
+            printf(", ");
+            print_bb_ptr(insn->bb1);
+            printf("/");
+            print_bb_ptr(insn->bb2);
             break;
         case IR_INSN_JLT:
             printf("jlt ");
             print_ir_value(insn->values[0]);
             printf(", ");
             print_ir_value(insn->values[1]);
-            printf(", b%zu/b%zu", insn->bb1->_id, insn->bb2->_id);
+            printf(", ");
+            print_bb_ptr(insn->bb1);
+            printf("/");
+            print_bb_ptr(insn->bb2);
             break;
         case IR_INSN_JLE:
             printf("jle ");
             print_ir_value(insn->values[0]);
             printf(", ");
             print_ir_value(insn->values[1]);
-            printf(", b%zu/b%zu", insn->bb1->_id, insn->bb2->_id);
+            printf(", ");
+            print_bb_ptr(insn->bb1);
+            printf("/");
+            print_bb_ptr(insn->bb2);
             break;
         case IR_INSN_JNE:
             printf("jne ");
             print_ir_value(insn->values[0]);
             printf(", ");
             print_ir_value(insn->values[1]);
-            printf(", b%zu/b%zu", insn->bb1->_id, insn->bb2->_id);
+            printf(", ");
+            print_bb_ptr(insn->bb1);
+            printf("/");
+            print_bb_ptr(insn->bb2);
             break;
         case IR_INSN_PHI:
-            printf("phi ");
+            printf("phi");
             print_phi(&insn->phi);
             break;
         default:
             CRITICAL("Unknown IR insn");
     }
+}
+
+void print_raw_ir_insn(struct ir_insn *insn){
+    if (insn->_insn_id == SIZE_MAX) {
+        printf("%p = ", insn);
+    }
+    print_ir_insn(insn);
+    printf("\n");
 }
 
 void print_ir_bb(struct ir_basic_block *bb) {

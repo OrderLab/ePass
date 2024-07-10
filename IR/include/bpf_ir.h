@@ -316,6 +316,10 @@ void print_ir_prog(struct ir_function *);
 
 void print_ir_insn(struct ir_insn *);
 
+void print_ir_value(struct ir_value v);
+
+void print_raw_ir_insn(struct ir_insn *insn);
+
 __u8 ir_value_equal(struct ir_value a, struct ir_value b);
 
 #endif

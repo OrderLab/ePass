@@ -8,6 +8,8 @@ enum insert_position {
     INSERT_FRONT,
 };
 
+void erase_insn(struct ir_insn *insn);
+
 void create_undef_insn(struct ir_insn *insn, enum insert_position pos);
 
 void create_alloc_insn_bb(struct ir_basic_block *bb, enum ir_vr_type type,

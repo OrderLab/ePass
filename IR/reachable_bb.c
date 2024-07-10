@@ -7,7 +7,7 @@ void add_reach(struct ir_function *fun, struct ir_basic_block *bb) {
         return;
     }
     bb->_visited = 1;
-    array_push(&fun->reachable_bbs, bb);
+    array_push(&fun->reachable_bbs, &bb);
 
     for (size_t i = 0; i < bb->succs.num_elem; ++i) {
         struct ir_basic_block *succ = ((struct ir_basic_block **)(bb->succs.data))[i];
