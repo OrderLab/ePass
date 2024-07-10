@@ -86,14 +86,14 @@ struct phi_value {
     Virtual Register Type
  */
 enum ir_vr_type {
-    IR_VR_TYPE_U1,
-    IR_VR_TYPE_U2,
-    IR_VR_TYPE_U4,
     IR_VR_TYPE_U8,
-    IR_VR_TYPE_S1,
-    IR_VR_TYPE_S2,
-    IR_VR_TYPE_S4,
+    IR_VR_TYPE_U16,
+    IR_VR_TYPE_U32,
+    IR_VR_TYPE_U64,
     IR_VR_TYPE_S8,
+    IR_VR_TYPE_S16,
+    IR_VR_TYPE_S32,
+    IR_VR_TYPE_S64,
     IR_VR_TYPE_PTR,
 };
 

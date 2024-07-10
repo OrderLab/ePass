@@ -41,19 +41,27 @@ void disconnect_bb(struct ir_basic_block *from, struct ir_basic_block *to) {
     }
 }
 
-void split_bb(struct ir_function *fun, struct ir_insn *insn) {
-    struct ir_basic_block *bb = insn->parent_bb;
-    struct ir_basic_block * new_bb = create_bb(fun);
-    new_bb->succs = bb->succs;
-    bb->succs = array_init(sizeof(struct ir_basic_block *));
+struct ir_basic_block *split_bb(struct ir_function *fun, struct ir_insn *insn) {
+    struct ir_basic_block *bb     = insn->parent_bb;
+    struct ir_basic_block *new_bb = create_bb(fun);
+    new_bb->succs                 = bb->succs;
+    bb->succs                     = array_init(sizeof(struct ir_basic_block *));
     connect_bb(bb, new_bb);
     // Move all instructions after insn to new_bb
     struct list_head *p = insn->list_ptr.next;
     while (p != &bb->ir_insn_head) {
         struct ir_insn *cur = list_entry(p, struct ir_insn, list_ptr);
-        p = p->next;
+        p                   = p->next;
         list_del(&cur->list_ptr);
         list_add_tail(&cur->list_ptr, &new_bb->ir_insn_head);
         cur->parent_bb = new_bb;
     }
+    return new_bb;
+}
+
+struct ir_insn *get_last_insn(struct ir_basic_block *bb) {
+    if (list_empty(&bb->ir_insn_head)) {
+        return NULL;
+    }
+    return list_entry(bb->ir_insn_head.prev, struct ir_insn, list_ptr);
 }

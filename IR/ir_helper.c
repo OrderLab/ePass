@@ -105,28 +105,28 @@ void print_address_value(struct ir_address_value v) {
 
 void print_vr_type(enum ir_vr_type t) {
     switch (t) {
-        case IR_VR_TYPE_U1:
+        case IR_VR_TYPE_U8:
             printf("u8");
             break;
-        case IR_VR_TYPE_U8:
+        case IR_VR_TYPE_U64:
             printf("u64");
             break;
-        case IR_VR_TYPE_U2:
+        case IR_VR_TYPE_U16:
             printf("u16");
             break;
-        case IR_VR_TYPE_U4:
+        case IR_VR_TYPE_U32:
             printf("u32");
             break;
-        case IR_VR_TYPE_S1:
+        case IR_VR_TYPE_S8:
             printf("s8");
             break;
-        case IR_VR_TYPE_S2:
+        case IR_VR_TYPE_S16:
             printf("s16");
             break;
-        case IR_VR_TYPE_S4:
+        case IR_VR_TYPE_S32:
             printf("s32");
             break;
-        case IR_VR_TYPE_S8:
+        case IR_VR_TYPE_S64:
             printf("s64");
             break;
         case IR_VR_TYPE_PTR:
@@ -158,12 +158,16 @@ void print_ir_insn(struct ir_insn *insn) {
             print_vr_type(insn->vr_type);
             break;
         case IR_INSN_STORE:
-            // TODO
-            printf("store");
+            printf("store ");
+            print_ir_value(insn->values[0]);
+            printf(", ");
+            print_ir_value(insn->values[1]);
             break;
         case IR_INSN_LOAD:
-            // TODO
-            printf("load");
+            printf("load ");
+            print_vr_type(insn->vr_type);
+            printf(", ");
+            print_ir_value(insn->values[0]);
             break;
         case IR_INSN_LOADRAW:
             printf("loadraw ");
@@ -332,7 +336,7 @@ void assign_id(struct ir_basic_block *bb, size_t *cnt, size_t *bb_cnt) {
         insn->_insn_id       = (*cnt)++;
     }
     struct ir_basic_block **next;
-    array_for(next, &bb->succs) {
+    array_for(next, bb->succs) {
         assign_id(*next, cnt, bb_cnt);
     }
 }

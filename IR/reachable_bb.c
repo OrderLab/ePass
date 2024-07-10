@@ -10,7 +10,7 @@ void add_reach(struct ir_function *fun, struct ir_basic_block *bb) {
     array_push(&fun->reachable_bbs, &bb);
 
     struct ir_basic_block **succ;
-    array_for(succ, &bb->succs) {
+    array_for(succ, bb->succs) {
         add_reach(fun, *succ);
     }
 }
