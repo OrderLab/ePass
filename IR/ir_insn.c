@@ -1,5 +1,6 @@
 #include "ir_insn.h"
 #include "bpf_ir.h"
+#include "dbg.h"
 #include "list.h"
 
 struct ir_insn *create_insn_base(struct ir_insn *insn) {
@@ -8,11 +9,18 @@ struct ir_insn *create_insn_base(struct ir_insn *insn) {
     return new_insn;
 }
 
+__u8 is_last_insn(struct ir_insn *insn) {
+    return insn->parent_bb->ir_insn_head.prev == &insn->list_ptr;
+}
+
 void insert_at(struct ir_insn *new_insn, struct ir_insn *insn, enum insert_position pos) {
     if (pos == INSERT_BACK) {
-        list_add(&new_insn->ptr, &insn->ptr);
+        if (is_last_insn(insn)) {
+            CRITICAL("Cannot insert at the back of the last instruction");
+        }
+        list_add(&new_insn->list_ptr, &insn->list_ptr);
     } else {
-        list_add_tail(&new_insn->ptr, &insn->ptr);
+        list_add_tail(&new_insn->list_ptr, &insn->list_ptr);
     }
 }
 

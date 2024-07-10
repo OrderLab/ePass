@@ -161,7 +161,7 @@ struct ir_insn {
     } op;
 
     // Linked list
-    struct list_head ptr;
+    struct list_head list_ptr;
 
     // Parent BB
     struct ir_basic_block *parent_bb;

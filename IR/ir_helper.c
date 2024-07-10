@@ -11,7 +11,7 @@ void clean_env(struct ir_function *fun) {
         bb->user_data             = NULL;
         struct list_head *p       = NULL;
         list_for_each(p, &bb->ir_insn_head) {
-            struct ir_insn *insn = list_entry(p, struct ir_insn, ptr);
+            struct ir_insn *insn = list_entry(p, struct ir_insn, list_ptr);
             insn->user_data      = NULL;
             insn->_visited       = 0;
         }
@@ -25,7 +25,7 @@ void clean_id(struct ir_function *fun) {
         ir_bb->_id                   = -1;
         struct list_head *p          = NULL;
         list_for_each(p, &ir_bb->ir_insn_head) {
-            struct ir_insn *insn = list_entry(p, struct ir_insn, ptr);
+            struct ir_insn *insn = list_entry(p, struct ir_insn, list_ptr);
             insn->_insn_id       = -1;
         }
     }
@@ -259,7 +259,7 @@ void print_ir_bb(struct ir_basic_block *bb) {
     printf("b%zu:\n", bb->_id);
     struct list_head *p = NULL;
     list_for_each(p, &bb->ir_insn_head) {
-        struct ir_insn *insn = list_entry(p, struct ir_insn, ptr);
+        struct ir_insn *insn = list_entry(p, struct ir_insn, list_ptr);
         printf("  %%%zu = ", insn->_insn_id);
         print_ir_insn(insn);
         printf("\n");
@@ -278,7 +278,7 @@ void assign_id(struct ir_basic_block *bb, size_t *cnt, size_t *bb_cnt) {
     bb->_id             = (*bb_cnt)++;
     struct list_head *p = NULL;
     list_for_each(p, &bb->ir_insn_head) {
-        struct ir_insn *insn = list_entry(p, struct ir_insn, ptr);
+        struct ir_insn *insn = list_entry(p, struct ir_insn, list_ptr);
         insn->_insn_id       = (*cnt)++;
     }
     for (size_t i = 0; i < bb->succs.num_elem; ++i) {

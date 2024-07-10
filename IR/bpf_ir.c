@@ -384,14 +384,14 @@ struct ir_insn *create_insn() {
 struct ir_insn *create_insn_back(struct ir_basic_block *bb) {
     struct ir_insn *insn = create_insn();
     insn->parent_bb      = bb;
-    list_add_tail(&insn->ptr, &bb->ir_insn_head);
+    list_add_tail(&insn->list_ptr, &bb->ir_insn_head);
     return insn;
 }
 
 struct ir_insn *create_insn_front(struct ir_basic_block *bb) {
     struct ir_insn *insn = create_insn();
     insn->parent_bb      = bb;
-    list_add(&insn->ptr, &bb->ir_insn_head);
+    list_add(&insn->list_ptr, &bb->ir_insn_head);
     return insn;
 }
 
@@ -759,8 +759,8 @@ void free_function(struct ir_function *fun) {
         array_free(&bb->succs);
         // Free the instructions
         struct ir_insn *pos, *n;
-        list_for_each_entry_safe(pos, n, &bb->ir_insn_head, ptr) {
-            list_del(&pos->ptr);
+        list_for_each_entry_safe(pos, n, &bb->ir_insn_head, list_ptr) {
+            list_del(&pos->list_ptr);
             array_free(&pos->users);
             if (pos->op == IR_INSN_PHI) {
                 array_free(&pos->phi);

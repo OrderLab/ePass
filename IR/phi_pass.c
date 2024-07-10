@@ -49,7 +49,7 @@ void remove_trivial_phi(struct ir_function *fun) {
         struct ir_basic_block *bb = ((struct ir_basic_block **)(fun->reachable_bbs.data))[i];
         struct list_head      *p  = NULL;
         list_for_each(p, &bb->ir_insn_head) {
-            struct ir_insn *insn = list_entry(p, struct ir_insn, ptr);
+            struct ir_insn *insn = list_entry(p, struct ir_insn, list_ptr);
             try_remove_trivial_phi(insn);
         }
     }

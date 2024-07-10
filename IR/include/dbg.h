@@ -2,6 +2,7 @@
 #define DEBUG_H
 
 #include <stdlib.h>
+#include <stdio.h>
 
 #define CRITICAL(str) {printf("<%s>:%d %s\n", __FUNCTION__, __LINE__, str); exit(1);}
 
