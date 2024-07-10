@@ -6,6 +6,8 @@
 #include "array.h"
 #include "list.h"
 
+#define MAX_FUNC_ARG 5
+
 /**
     Pre-IR instructions, similar to `bpf_insn`
  */
@@ -59,6 +61,7 @@ struct ir_value {
         IR_VALUE_FUNCTIONARG,
         IR_VALUE_INSN,
         IR_VALUE_STACK_PTR,
+        IR_VALUE_UNDEF,
     } type;
 };
 
@@ -116,12 +119,8 @@ enum ir_vr_type {
         | PHI <phi_value>
  */
 struct ir_insn {
-    struct ir_value v1;
-    struct ir_value v2;
-
-    // Used in CALL instructions
-    struct ir_value v3;
-    struct ir_value v4;
+    struct ir_value values[MAX_FUNC_ARG];
+    __u8            value_num;
 
     // Used in ALLOC instructions
     enum ir_vr_type vr_type;
@@ -160,9 +159,15 @@ struct ir_insn {
         // PHI
         IR_INSN_PHI
     } op;
-    struct list_head       ptr;
+
+    // Linked list
+    struct list_head ptr;
+
+    // Parent BB
     struct ir_basic_block *parent_bb;
 
+    // Array of struct ir_insn *
+    // Users
     struct array users;
 
     // Might be useful?
@@ -172,6 +177,7 @@ struct ir_insn {
     // Used when generating the real code
     size_t _insn_id;
     void  *user_data;
+    __u8   _visited;
 };
 
 /**
@@ -267,6 +273,7 @@ struct ir_function {
     struct ir_basic_block *entry;
 
     // Store any information about the function
+    struct array reachable_bbs;
 
     // Stack pointer (r10) users. Should be readonly. No more manual stack access should be allowed.
     struct array sp_users;
@@ -302,5 +309,7 @@ void clean_id(struct ir_function *);
 void print_ir_prog(struct ir_function *);
 
 void print_ir_insn(struct ir_insn *);
+
+__u8 ir_value_equal(struct ir_value a, struct ir_value b);
 
 #endif

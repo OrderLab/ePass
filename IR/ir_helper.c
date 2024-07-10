@@ -6,8 +6,15 @@
 /// Reset visited flag
 void clean_env(struct ir_function *fun) {
     for (size_t i = 0; i < fun->all_bbs.num_elem; ++i) {
-        struct ir_basic_block *ir_bb = ((struct ir_basic_block **)(fun->all_bbs.data))[i];
-        ir_bb->_visited              = 0;
+        struct ir_basic_block *bb = ((struct ir_basic_block **)(fun->all_bbs.data))[i];
+        bb->_visited              = 0;
+        bb->user_data             = NULL;
+        struct list_head *p       = NULL;
+        list_for_each(p, &bb->ir_insn_head) {
+            struct ir_insn *insn = list_entry(p, struct ir_insn, ptr);
+            insn->user_data      = NULL;
+            insn->_visited       = 0;
+        }
     }
 }
 
@@ -66,6 +73,9 @@ void print_ir_value(struct ir_value v) {
             break;
         case IR_VALUE_FUNCTIONARG:
             printf("arg%d", v.data.arg_id);
+            break;
+        case IR_VALUE_UNDEF:
+            printf("undef");
             break;
         default:
             CRITICAL("Unknown IR value type");
@@ -152,92 +162,84 @@ void print_ir_insn(struct ir_insn *insn) {
             printf(" ");
             print_address_value(insn->addr_val);
             printf(" ");
-            print_ir_value(insn->v1);
+            print_ir_value(insn->values[0]);
             break;
         case IR_INSN_ADD:
             printf("add ");
-            print_ir_value(insn->v1);
+            print_ir_value(insn->values[0]);
             printf(", ");
-            print_ir_value(insn->v2);
+            print_ir_value(insn->values[1]);
             break;
         case IR_INSN_SUB:
             printf("sub ");
-            print_ir_value(insn->v1);
+            print_ir_value(insn->values[0]);
             printf(", ");
-            print_ir_value(insn->v2);
+            print_ir_value(insn->values[1]);
             break;
         case IR_INSN_MUL:
             printf("mul ");
-            print_ir_value(insn->v1);
+            print_ir_value(insn->values[0]);
             printf(", ");
-            print_ir_value(insn->v2);
+            print_ir_value(insn->values[1]);
             break;
         case IR_INSN_CALL:
             printf("call __built_in_func_%d(", insn->fid);
             if (insn->f_arg_num >= 1) {
-                print_ir_value(insn->v1);
+                print_ir_value(insn->values[0]);
             }
-            if (insn->f_arg_num >= 2) {
+            for (size_t i = 1; i < insn->f_arg_num; ++i) {
                 printf(", ");
-                print_ir_value(insn->v2);
-            }
-            if (insn->f_arg_num >= 3) {
-                printf(", ");
-                print_ir_value(insn->v3);
-            }
-            if (insn->f_arg_num >= 4) {
-                printf(", ");
-                print_ir_value(insn->v4);
+                print_ir_value(insn->values[i]);
             }
             printf(")");
             break;
         case IR_INSN_RET:
             printf("ret ");
-            print_ir_value(insn->v1);
+            print_ir_value(insn->values[0]);
             break;
         case IR_INSN_JA:
             printf("ja b%zu", insn->bb->_id);
             break;
         case IR_INSN_JEQ:
             printf("jeq ");
-            print_ir_value(insn->v1);
+            print_ir_value(insn->values[0]);
             printf(", ");
-            print_ir_value(insn->v2);
+            print_ir_value(insn->values[1]);
             printf(", b%zu", insn->bb->_id);
             break;
         case IR_INSN_JGT:
             printf("jgt ");
-            print_ir_value(insn->v1);
+            print_ir_value(insn->values[0]);
             printf(", ");
-            print_ir_value(insn->v2);
+            print_ir_value(insn->values[1]);
             printf(", b%zu", insn->bb->_id);
             break;
         case IR_INSN_JGE:
             printf("jge ");
-            print_ir_value(insn->v1);
+            print_ir_value(insn->values[0]);
             printf(", ");
-            print_ir_value(insn->v2);
+            print_ir_value(insn->values[1]);
             printf(", b%zu", insn->bb->_id);
             break;
         case IR_INSN_JLT:
             printf("jlt ");
-            print_ir_value(insn->v1);
+            print_ir_value(insn->values[0]);
             printf(", ");
-            print_ir_value(insn->v2);
+            print_ir_value(insn->values[1]);
             printf(", b%zu", insn->bb->_id);
             break;
         case IR_INSN_JLE:
             printf("jle ");
-            print_ir_value(insn->v1);
+            print_ir_value(insn->values[0]);
             printf(", ");
-            print_ir_value(insn->v2);
+            print_ir_value(insn->values[1]);
             printf(", b%zu", insn->bb->_id);
             break;
         case IR_INSN_JNE:
             printf("jne ");
-            print_ir_value(insn->v1);
+            print_ir_value(insn->values[0]);
             printf(", ");
-            print_ir_value(insn->v2);
+            print_ir_value(insn->values[1]);
             printf(", b%zu", insn->bb->_id);
             break;
         case IR_INSN_PHI:
