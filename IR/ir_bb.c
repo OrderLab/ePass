@@ -21,18 +21,9 @@ struct ir_basic_block *create_bb(struct ir_function *fun) {
     return new_bb;
 }
 
-void push_unique_bb(struct array *bbs, struct ir_basic_block *bb) {
-    for (size_t i = 0; i < bbs->num_elem; ++i) {
-        if (((struct ir_basic_block **)(bbs->data))[i] == bb) {
-            return;
-        }
-    }
-    array_push(bbs, &bb);
-}
-
 void connect_bb(struct ir_basic_block *from, struct ir_basic_block *to) {
-    push_unique_bb(&from->succs, to);
-    push_unique_bb(&to->preds, from);
+    array_push_unique(&from->succs, &to);
+    array_push_unique(&to->preds, &from);
 }
 
 void disconnect_bb(struct ir_basic_block *from, struct ir_basic_block *to) {

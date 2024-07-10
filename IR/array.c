@@ -44,6 +44,15 @@ void array_push(struct array *arr, void *data) {
     arr->num_elem++;
 }
 
+void array_push_unique(struct array *arr, void *data) {
+    for (size_t i = 0; i < arr->num_elem; ++i) {
+        if (memcmp((char *)(arr->data) + arr->elem_size * i, data, arr->elem_size) == 0) {
+            return;
+        }
+    }
+    array_push(arr, data);
+}
+
 void array_erase(struct array *arr, size_t idx) {
     if (idx >= arr->num_elem) {
         return;

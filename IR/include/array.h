@@ -13,6 +13,7 @@ struct array {
 
 struct array array_init(size_t);
 void         array_push(struct array *, void *);
+void         array_push_unique(struct array *arr, void *data);
 void         array_free(struct array *);
 struct array array_null();
 void         array_erase(struct array *arr, size_t idx);

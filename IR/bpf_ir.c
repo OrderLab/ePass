@@ -19,15 +19,6 @@ int compare_num(const void *a, const void *b) {
     return as->entrance > bs->entrance;
 }
 
-void no_dup_push(struct array *arr, size_t val) {
-    for (size_t i = 0; i < arr->num_elem; ++i) {
-        if (((size_t *)(arr->data))[i] == val) {
-            return;
-        }
-    }
-    array_push(arr, &val);
-}
-
 // Add current_pos --> entrance_pos in bb_entrances
 void add_entrance_info(struct bpf_insn *insns, struct array *bb_entrances, size_t entrance_pos,
                        size_t current_pos) {
@@ -35,7 +26,7 @@ void add_entrance_info(struct bpf_insn *insns, struct array *bb_entrances, size_
         struct bb_entrance_info *entry = ((struct bb_entrance_info *)(bb_entrances->data)) + i;
         if (entry->entrance == entrance_pos) {
             // Already has this entrance, add a pred
-            no_dup_push(&entry->bb->preds, current_pos);
+            array_push_unique(&entry->bb->preds, &current_pos);
             return;
         }
     }
@@ -45,9 +36,9 @@ void add_entrance_info(struct bpf_insn *insns, struct array *bb_entrances, size_
     __u8         code     = insns[last_pos].code;
     if (!(BPF_OP(code) == BPF_JA || BPF_OP(code) == BPF_EXIT)) {
         // BPF_EXIT
-        no_dup_push(&preds, last_pos);
+        array_push_unique(&preds, &last_pos);
     }
-    no_dup_push(&preds, current_pos);
+    array_push_unique(&preds, &current_pos);
     struct bb_entrance_info new_bb;
     new_bb.entrance  = entrance_pos;
     new_bb.bb        = __malloc(sizeof(struct pre_ir_basic_block));
@@ -428,10 +419,10 @@ enum ir_vr_type to_ir_ld_u(__u8 size) {
 // User uses val
 void add_user(struct ssa_transform_env *env, struct ir_insn *user, struct ir_value val) {
     if (val.type == IR_VALUE_INSN) {
-        array_push(&val.data.insn_d->users, &user);
+        array_push_unique(&val.data.insn_d->users, &user);
     }
     if (val.type == IR_VALUE_STACK_PTR) {
-        array_push(&env->sp_users, &user);
+        array_push_unique(&env->sp_users, &user);
     }
 }
 
