@@ -11,7 +11,7 @@
 static void (*passes[])(struct ir_function *fun) = {
     gen_reachable_bbs,
     remove_trivial_phi,
-    add_counter,
+    // add_counter,
 };
 
 #endif

@@ -555,7 +555,28 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
         } else if (BPF_CLASS(code) == BPF_LD && BPF_MODE(code) == BPF_IMM &&
                    BPF_SIZE(code) == BPF_DW) {
             // 64-bit immediate load
-            // TODO
+            if (insn.src_reg == 0x0) {
+                // TODO
+                struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
+                new_insn->op             = IR_INSN_LOADRAW;
+                struct ir_address_value addr_val;
+                struct ir_value imm_ptr;
+                imm_ptr.type = IR_VALUE_CONSTANT;
+                imm_ptr.data.constant_d.type = IR_CONSTANT_U64;
+                imm_ptr.data.constant_d.data.u64_d = insn.imm64;
+                addr_val.value = imm_ptr;
+                add_user(env, new_insn, addr_val.value);
+                addr_val.offset    = 0;
+                new_insn->vr_type  = IR_VR_TYPE_U64;
+                new_insn->addr_val = addr_val;
+
+                struct ir_value new_val;
+                new_val.type        = IR_VALUE_INSN;
+                new_val.data.insn_d = new_insn;
+                write_variable(env, insn.dst_reg, bb, new_val);
+            } else {
+                CRITICAL("Not supported");
+            }
         } else if (BPF_CLASS(code) == BPF_LDX && BPF_MODE(code) == BPF_MEMSX) {
             // dst = *(signed size *) (src + offset)
             // https://www.kernel.org/doc/html/v6.6/bpf/standardization/instruction-set.html#sign-extension-load-operations
