@@ -29,7 +29,7 @@ int prog(struct xdp_md *ctx) {
         goto end;
     }
     __u64 res = arr[id];
-    call(res);  // Not Pass
+    call(res);
 end:
     return XDP_DROP;
 }
