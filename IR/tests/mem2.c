@@ -17,7 +17,7 @@ int __noinline call(__u64 i) {
 
 SEC("xdp")
 int prog(struct xdp_md *ctx) {
-    int id = bpf_ktime_get_ns() % 20;
+    int id = bpf_ktime_get_ns() % 20;   // We cannot use 10 here
     __u64 arr[10] = {};
     for (__u32 i = 0; i < 10; ++i) {
         arr[i] = i;
