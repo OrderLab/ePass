@@ -30,6 +30,10 @@ int prog(struct xdp_md *ctx) {
     }
     __u64 res = arr[id];
     call(res);
+    #pragma nounroll
+    for (__u32 i = 0; i < 10; ++i) {
+        call(arr[i]);
+    }
 end:
     return XDP_DROP;
 }
