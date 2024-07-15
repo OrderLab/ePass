@@ -33,6 +33,7 @@ int prog(struct xdp_md *ctx) {
     #pragma nounroll
     for (__u32 i = 0; i < 10; ++i) {
         call(arr[i]);
+        arr[i] = i + 1;
     }
 end:
     return XDP_DROP;
