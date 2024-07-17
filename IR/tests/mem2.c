@@ -17,7 +17,7 @@ int __noinline call(__u64 i) {
 
 SEC("xdp")
 int prog(struct xdp_md *ctx) {
-    int id = bpf_ktime_get_ns() % 20;   // We cannot use 10 here
+    int   id      = bpf_ktime_get_ns() % 20;  // We cannot use 10 here
     __u64 arr[10] = {};
     for (__u32 i = 0; i < 10; ++i) {
         arr[i] = i;
@@ -25,12 +25,12 @@ int prog(struct xdp_md *ctx) {
     call(arr[9]);  // Pass
     // call(arr[10]);  // Not Pass
     // call(arr[11]);  // Not Pass
-    if (id > 9 || id < 0) { // Work
+    if (id > 9 || id < 0) {  // Work
         goto end;
     }
     __u64 res = arr[id];
     call(res);
-    #pragma nounroll
+#pragma nounroll
     for (__u32 i = 0; i < 10; ++i) {
         call(arr[i]);
         arr[i] = i + 1;

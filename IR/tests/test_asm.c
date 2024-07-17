@@ -30,9 +30,9 @@ void __noinline pk_l(char *s) {
 
 SEC("xdp")
 int prog(void *ctx) {
-    int s = spill(1, 2);
+    int         s        = spill(1, 2);
     static char ores[10] = "helloggg";
-    static char res[10] = "helloworld";
+    static char res[10]  = "helloworld";
     for (int i = 0; i < 10; ++i) {
         pk(res[i]);
     }

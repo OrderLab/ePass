@@ -37,7 +37,7 @@ void add_stack_offset(struct ir_function *fun, __s16 offset) {
                     val.data.constant_d.type       = IR_CONSTANT_S16;
                     val.data.constant_d.data.s16_d = offset;
                     struct ir_insn *new_insn =
-                        create_bin_insn(insn, pv_pos2->value, val,IR_INSN_ADD, INSERT_FRONT);
+                        create_bin_insn(insn, pv_pos2->value, val, IR_INSN_ADD, INSERT_FRONT);
                     val.type        = IR_VALUE_INSN;
                     val.data.insn_d = new_insn;
                     pv_pos2->value  = val;
