@@ -785,11 +785,11 @@ void free_function(struct ir_function *fun) {
 }
 
 struct ir_function gen_function(struct ssa_transform_env *env) {
-    struct ir_function func;
-    func.arg_num  = 1;
-    func.entry    = env->info.entry->ir_bb;
-    func.sp_users = env->sp_users;
-    func.all_bbs  = array_init(sizeof(struct ir_basic_block *));
+    struct ir_function fun;
+    fun.arg_num  = 1;
+    fun.entry    = env->info.entry->ir_bb;
+    fun.sp_users = env->sp_users;
+    fun.all_bbs  = array_init(sizeof(struct ir_basic_block *));
     for (size_t i = 0; i < MAX_BPF_REG; ++i) {
         struct array *currentDef = &env->currentDef[i];
         array_free(currentDef);
@@ -800,10 +800,10 @@ struct ir_function gen_function(struct ssa_transform_env *env) {
         array_free(&bb->succs);
         free(bb->pre_insns);
         bb->ir_bb->user_data = NULL;
-        array_push(&func.all_bbs, &bb->ir_bb);
+        array_push(&fun.all_bbs, &bb->ir_bb);
         free(bb);
     }
-    return func;
+    return fun;
 }
 
 __u8 ir_value_equal(struct ir_value a, struct ir_value b) {

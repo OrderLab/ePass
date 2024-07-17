@@ -17,9 +17,14 @@ struct ir_function {
 
     // Stack pointer (r10) users. Should be readonly. No more manual stack access should be allowed.
     struct array sp_users;
+
+    // Array of struct ir_constraint. Value constraints.
+    struct array value_constraints;
 };
 
 // Helper functions
+
+struct ir_function gen_function(struct ssa_transform_env *env);
 
 void clean_env(struct ir_function *);
 
