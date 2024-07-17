@@ -45,4 +45,5 @@ void add_stack_offset(struct ir_function *fun, __s16 offset) {
             }
         }
     }
+    array_free(&fun->sp_users);
 }

@@ -36,22 +36,22 @@ void clean_id(struct ir_function *fun) {
 void print_constant(struct ir_constant d) {
     switch (d.type) {
         case IR_CONSTANT_S32:
-            printf("%d", d.data.s32_d);
+            printf("%x", d.data.s32_d);
             break;
         case IR_CONSTANT_U32:
-            printf("%u", d.data.u32_d);
+            printf("%x", d.data.u32_d);
             break;
         case IR_CONSTANT_U64:
-            printf("%llu", d.data.u64_d);
+            printf("%llx", d.data.u64_d);
             break;
         case IR_CONSTANT_S64:
-            printf("%lld", d.data.s64_d);
+            printf("%llx", d.data.s64_d);
             break;
         case IR_CONSTANT_S16:
-            printf("%d", d.data.s16_d);
+            printf("%x", d.data.s16_d);
             break;
         case IR_CONSTANT_U16:
-            printf("%u", d.data.u16_d);
+            printf("%x", d.data.u16_d);
             break;
         default:
             CRITICAL("Unknown constant type");

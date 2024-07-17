@@ -67,4 +67,5 @@ void array_erase(struct array *arr, size_t idx) {
 
 void array_free(struct array *arr) {
     __free(arr->data);
+    *arr = array_null();
 }

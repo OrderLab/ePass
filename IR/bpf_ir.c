@@ -193,7 +193,8 @@ struct bb_info gen_bb(struct bpf_insn *insns, size_t len) {
             new_insn.off     = insn.off;
             new_insn.pos     = pos;
             if (pos + 1 < real_bb->end_pos && insns[pos + 1].code == 0) {
-                new_insn.imm64 = ((__s64)(insns[pos + 1].imm) << 32) | insn.imm;
+                __u64 imml = (__u64)insn.imm & 0xFFFFFFFF;
+                new_insn.imm64 = ((__s64)(insns[pos + 1].imm) << 32) | imml;
                 pos++;
             }
             real_bb->pre_insns[bb_pos] = new_insn;
@@ -561,11 +562,11 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
                 struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
                 new_insn->op             = IR_INSN_LOADRAW;
                 struct ir_address_value addr_val;
-                struct ir_value imm_ptr;
-                imm_ptr.type = IR_VALUE_CONSTANT;
-                imm_ptr.data.constant_d.type = IR_CONSTANT_U64;
+                struct ir_value         imm_ptr;
+                imm_ptr.type                       = IR_VALUE_CONSTANT;
+                imm_ptr.data.constant_d.type       = IR_CONSTANT_U64;
                 imm_ptr.data.constant_d.data.u64_d = insn.imm64;
-                addr_val.value = imm_ptr;
+                addr_val.value                     = imm_ptr;
                 add_user(env, new_insn, addr_val.value);
                 addr_val.offset    = 0;
                 new_insn->vr_type  = IR_VR_TYPE_U64;
