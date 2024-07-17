@@ -23,4 +23,6 @@ void         __free(void *ptr);
 #define array_for(pos, arr) \
     for (pos = ((typeof(pos))(arr.data)); pos < (typeof(pos))(arr.data) + arr.num_elem; pos++)
 
+#define INIT_ARRAY(type) array_init(sizeof(type))
+
 #endif

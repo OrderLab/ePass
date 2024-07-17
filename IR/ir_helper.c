@@ -4,6 +4,7 @@
 #include "bpf_ir.h"
 #include "dbg.h"
 #include "list.h"
+#include "ir_fun.h"
 
 /// Reset visited flag
 void clean_env(struct ir_function *fun) {
@@ -36,22 +37,34 @@ void clean_id(struct ir_function *fun) {
 void print_constant(struct ir_constant d) {
     switch (d.type) {
         case IR_CONSTANT_S32:
-            printf("%d", d.data.s32_d);
+            if (d.data.s32_d < 0) {
+                printf("-0x%x", -d.data.s32_d);
+            } else {
+                printf("0x%x", d.data.s32_d);
+            }
             break;
         case IR_CONSTANT_U32:
-            printf("%u", d.data.u32_d);
+            printf("0x%x", d.data.u32_d);
             break;
         case IR_CONSTANT_U64:
-            printf("%llu", d.data.u64_d);
+            printf("0x%llx", d.data.u64_d);
             break;
         case IR_CONSTANT_S64:
-            printf("%lld", d.data.s64_d);
+            if (d.data.s64_d < 0) {
+                printf("-0x%llx", -d.data.s64_d);
+            } else {
+                printf("0x%llx", d.data.s64_d);
+            }
             break;
         case IR_CONSTANT_S16:
-            printf("%d", d.data.s16_d);
+            if (d.data.s16_d < 0) {
+                printf("-0x%x", -d.data.s16_d);
+            } else {
+                printf("0x%x", d.data.s16_d);
+            }
             break;
         case IR_CONSTANT_U16:
-            printf("%u", d.data.u16_d);
+            printf("0x%x", d.data.u16_d);
             break;
         default:
             CRITICAL("Unknown constant type");
@@ -283,6 +296,18 @@ void print_ir_insn(struct ir_insn *insn) {
         case IR_INSN_PHI:
             printf("phi");
             print_phi(&insn->phi);
+            break;
+        case IR_INSN_LSH:
+            printf("lsh ");
+            print_ir_value(insn->values[0]);
+            printf(", ");
+            print_ir_value(insn->values[1]);
+            break;
+        case IR_INSN_MOD:
+            printf("mod ");
+            print_ir_value(insn->values[0]);
+            printf(", ");
+            print_ir_value(insn->values[1]);
             break;
         default:
             CRITICAL("Unknown IR insn");

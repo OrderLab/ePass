@@ -1,3 +1,6 @@
+# Assembly code
+*.s
+
 # Prerequisites
 *.d
 

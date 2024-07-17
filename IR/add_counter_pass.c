@@ -32,15 +32,15 @@ void add_counter(struct ir_function *fun) {
         val1.data.constant_d.type       = IR_CONSTANT_U64;
         val1.data.constant_d.data.u64_d = len;
         struct ir_value val2;
-        val2.type                         = IR_VALUE_INSN;
-        val2.data.insn_d                  = load_insn;
-        struct ir_insn *added             = create_add_insn(load_insn, val1, val2, INSERT_BACK);
-        val.data.insn_d                   = added;
+        val2.type             = IR_VALUE_INSN;
+        val2.data.insn_d      = load_insn;
+        struct ir_insn *added = create_bin_insn(load_insn, val1, val2, IR_INSN_ADD, INSERT_BACK);
+        val.data.insn_d       = added;
         struct ir_insn        *store_back = create_store_insn(added, alloc_insn, val, INSERT_BACK);
         struct ir_basic_block *new_bb     = split_bb(fun, store_back);
         val2.data.insn_d                  = added;
         val1.data.constant_d.data.u64_d   = 0x10000;
-        create_jlt_insn(store_back, val1, val2, new_bb, err_bb, INSERT_BACK);
+        create_jbin_insn(store_back, val1, val2, new_bb, err_bb, IR_INSN_JLT, INSERT_BACK);
         // Manually connect BBs
         connect_bb(bb, err_bb);
     }

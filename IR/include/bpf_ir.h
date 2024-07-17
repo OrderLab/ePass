@@ -23,6 +23,15 @@ struct pre_ir_insn {
     size_t pos;  // Original position
 };
 
+enum ir_constant_type {
+    IR_CONSTANT_U16,
+    IR_CONSTANT_S16,
+    IR_CONSTANT_U32,
+    IR_CONSTANT_S32,
+    IR_CONSTANT_U64,
+    IR_CONSTANT_S64,
+};
+
 /**
     IR Constants
  */
@@ -35,14 +44,15 @@ struct ir_constant {
         __u64 u64_d;
         __s64 s64_d;
     } data;
-    enum {
-        IR_CONSTANT_U16,
-        IR_CONSTANT_S16,
-        IR_CONSTANT_U32,
-        IR_CONSTANT_S32,
-        IR_CONSTANT_U64,
-        IR_CONSTANT_S64,
-    } type;
+    enum ir_constant_type type;
+};
+
+enum ir_value_type {
+    IR_VALUE_CONSTANT,
+    IR_VALUE_FUNCTIONARG,
+    IR_VALUE_INSN,
+    IR_VALUE_STACK_PTR,
+    IR_VALUE_UNDEF,
 };
 
 /**
@@ -56,13 +66,7 @@ struct ir_value {
         struct ir_insn    *insn_d;
         __u8               arg_id;
     } data;
-    enum {
-        IR_VALUE_CONSTANT,
-        IR_VALUE_FUNCTIONARG,
-        IR_VALUE_INSN,
-        IR_VALUE_STACK_PTR,
-        IR_VALUE_UNDEF,
-    } type;
+    enum ir_value_type type;
 };
 
 /**
@@ -97,6 +101,33 @@ enum ir_vr_type {
     IR_VR_TYPE_PTR,
 };
 
+enum ir_insn_type {
+    IR_INSN_ALLOC,
+    IR_INSN_STORE,
+    IR_INSN_LOAD,
+    IR_INSN_STORERAW,
+    IR_INSN_LOADRAW,
+    // ALU
+    IR_INSN_ADD,
+    IR_INSN_SUB,
+    IR_INSN_MUL,
+    IR_INSN_LSH,
+    IR_INSN_MOD,
+    // CALL EXIT
+    IR_INSN_CALL,
+    IR_INSN_RET,
+    // JMP
+    IR_INSN_JA,
+    IR_INSN_JEQ,
+    IR_INSN_JGT,
+    IR_INSN_JGE,
+    IR_INSN_JLT,
+    IR_INSN_JLE,
+    IR_INSN_JNE,
+    // PHI
+    IR_INSN_PHI
+};
+
 /**
     INSN =
           ALLOC <ir_vr_type>
@@ -107,16 +138,20 @@ enum ir_vr_type {
         | ADD <value>, <value>
         | SUB <value>, <value>
         | MUL <value>, <value>
+        | LSH <value>, <value>
+        | MOD <value>, <value>
         | CALL <function id> <arg_num> <values...>
         | RET <value>
         | JA <bb>
-        | JEQ <value>, <value>, <bb>, <bb>
-        | JGT <value>, <value>, <bb>, <bb>
-        | JGE <value>, <value>, <bb>, <bb>
-        | JLT <value>, <value>, <bb>, <bb>
-        | JLE <value>, <value>, <bb>, <bb>
-        | JNE <value>, <value>, <bb>, <bb>
+        | JEQ <value>, <value>, <bb_next>, <bb>
+        | JGT <value>, <value>, <bb_next>, <bb>
+        | JGE <value>, <value>, <bb_next>, <bb>
+        | JLT <value>, <value>, <bb_next>, <bb>
+        | JLE <value>, <value>, <bb_next>, <bb>
+        | JNE <value>, <value>, <bb_next>, <bb>
         | PHI <phi_value>
+    
+    Note. <bb_next> must be the next basic block.
  */
 struct ir_insn {
     struct ir_value values[MAX_FUNC_ARG];
@@ -135,32 +170,9 @@ struct ir_insn {
     // Array of phi_value
     struct array phi;
 
-    __s32 fid;
-    __u32 f_arg_num;
-    enum {
-        IR_INSN_ALLOC,
-        IR_INSN_STORE,
-        IR_INSN_LOAD,
-        IR_INSN_STORERAW,
-        IR_INSN_LOADRAW,
-        // ALU
-        IR_INSN_ADD,
-        IR_INSN_SUB,
-        IR_INSN_MUL,
-        // CALL EXIT
-        IR_INSN_CALL,
-        IR_INSN_RET,
-        // JMP
-        IR_INSN_JA,
-        IR_INSN_JEQ,
-        IR_INSN_JGT,
-        IR_INSN_JGE,
-        IR_INSN_JLT,
-        IR_INSN_JLE,
-        IR_INSN_JNE,
-        // PHI
-        IR_INSN_PHI
-    } op;
+    __s32             fid;
+    __u32             f_arg_num;
+    enum ir_insn_type op;
 
     // Linked list
     struct list_head list_ptr;
@@ -269,22 +281,6 @@ struct ssa_transform_env {
     struct array sp_users;
 };
 
-struct ir_function {
-    size_t arg_num;
-
-    // Array of struct pre_ir_basic_block *, no entrance information anymore
-    struct array all_bbs;
-
-    // The entry block
-    struct ir_basic_block *entry;
-
-    // Store any information about the function
-    struct array reachable_bbs;
-
-    // Stack pointer (r10) users. Should be readonly. No more manual stack access should be allowed.
-    struct array sp_users;
-};
-
 // helper functions
 
 void write_variable(struct ssa_transform_env *env, __u8 reg, struct pre_ir_basic_block *bb,
@@ -307,12 +303,6 @@ struct ir_insn *create_insn_back(struct ir_basic_block *bb);
 struct ir_insn *create_insn_front(struct ir_basic_block *bb);
 
 void add_user(struct ssa_transform_env *env, struct ir_insn *user, struct ir_value val);
-
-void clean_env(struct ir_function *);
-
-void clean_id(struct ir_function *);
-
-void print_ir_prog(struct ir_function *);
 
 void print_ir_insn(struct ir_insn *);
 

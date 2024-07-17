@@ -4,7 +4,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stddef.h>
+#include "add_stack_offset.h"
 #include "array.h"
+#include "ir_insn.h"
 #include "list.h"
 #include "dbg.h"
 #include "passes.h"
@@ -192,7 +194,8 @@ struct bb_info gen_bb(struct bpf_insn *insns, size_t len) {
             new_insn.off     = insn.off;
             new_insn.pos     = pos;
             if (pos + 1 < real_bb->end_pos && insns[pos + 1].code == 0) {
-                new_insn.imm64 = ((__s64)(insns[pos + 1].imm) << 32) | insn.imm;
+                __u64 imml     = (__u64)insn.imm & 0xFFFFFFFF;
+                new_insn.imm64 = ((__s64)(insns[pos + 1].imm) << 32) | imml;
                 pos++;
             }
             real_bb->pre_insns[bb_pos] = new_insn;
@@ -507,39 +510,27 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
             // 32-bit ALU class
             // TODO: 64-bit ALU class
             if (BPF_OP(code) == BPF_ADD) {
-                struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
-                new_insn->op             = IR_INSN_ADD;
-                new_insn->values[0]      = read_variable(env, insn.dst_reg, bb);
-                new_insn->values[1]      = get_src_value(env, bb, insn);
-                new_insn->value_num      = 2;
-                add_user(env, new_insn, new_insn->values[0]);
-                add_user(env, new_insn, new_insn->values[1]);
+                struct ir_insn *new_insn =
+                    create_bin_insn_bb(bb->ir_bb, read_variable(env, insn.dst_reg, bb),
+                                       get_src_value(env, bb, insn), IR_INSN_ADD, INSERT_BACK);
 
                 struct ir_value new_val;
                 new_val.type        = IR_VALUE_INSN;
                 new_val.data.insn_d = new_insn;
                 write_variable(env, insn.dst_reg, bb, new_val);
             } else if (BPF_OP(code) == BPF_SUB) {
-                struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
-                new_insn->op             = IR_INSN_SUB;
-                new_insn->values[0]      = read_variable(env, insn.dst_reg, bb);
-                new_insn->values[1]      = get_src_value(env, bb, insn);
-                new_insn->value_num      = 2;
-                add_user(env, new_insn, new_insn->values[0]);
-                add_user(env, new_insn, new_insn->values[1]);
+                struct ir_insn *new_insn =
+                    create_bin_insn_bb(bb->ir_bb, read_variable(env, insn.dst_reg, bb),
+                                       get_src_value(env, bb, insn), IR_INSN_SUB, INSERT_BACK);
 
                 struct ir_value new_val;
                 new_val.type        = IR_VALUE_INSN;
                 new_val.data.insn_d = new_insn;
                 write_variable(env, insn.dst_reg, bb, new_val);
             } else if (BPF_OP(code) == BPF_MUL) {
-                struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
-                new_insn->op             = IR_INSN_MUL;
-                new_insn->values[0]      = read_variable(env, insn.dst_reg, bb);
-                new_insn->values[1]      = get_src_value(env, bb, insn);
-                new_insn->value_num      = 2;
-                add_user(env, new_insn, new_insn->values[0]);
-                add_user(env, new_insn, new_insn->values[1]);
+                struct ir_insn *new_insn =
+                    create_bin_insn_bb(bb->ir_bb, read_variable(env, insn.dst_reg, bb),
+                                       get_src_value(env, bb, insn), IR_INSN_MUL, INSERT_BACK);
                 struct ir_value new_val;
                 new_val.type        = IR_VALUE_INSN;
                 new_val.data.insn_d = new_insn;
@@ -547,7 +538,26 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
             } else if (BPF_OP(code) == BPF_MOV) {
                 // Do not create instructions
                 write_variable(env, insn.dst_reg, bb, get_src_value(env, bb, insn));
-            } else {
+            } else if (BPF_OP(code) == BPF_LSH) {
+                struct ir_insn *new_insn =
+                    create_bin_insn_bb(bb->ir_bb, read_variable(env, insn.dst_reg, bb),
+                                       get_src_value(env, bb, insn), IR_INSN_LSH, INSERT_BACK);
+                struct ir_value new_val;
+                new_val.type        = IR_VALUE_INSN;
+                new_val.data.insn_d = new_insn;
+                write_variable(env, insn.dst_reg, bb, new_val);
+            } else if (BPF_OP(code) == BPF_MOD) {
+                // dst = (src != 0) ? (dst % src) : dst
+                struct ir_insn *new_insn =
+                    create_bin_insn_bb(bb->ir_bb, read_variable(env, insn.dst_reg, bb),
+                                       get_src_value(env, bb, insn), IR_INSN_MOD, INSERT_BACK);
+                struct ir_value new_val;
+                new_val.type        = IR_VALUE_INSN;
+                new_val.data.insn_d = new_insn;
+                write_variable(env, insn.dst_reg, bb, new_val);
+            }
+
+            else {
                 // TODO
                 CRITICAL("Error");
             }
@@ -555,7 +565,16 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
         } else if (BPF_CLASS(code) == BPF_LD && BPF_MODE(code) == BPF_IMM &&
                    BPF_SIZE(code) == BPF_DW) {
             // 64-bit immediate load
-            // TODO
+            if (insn.src_reg == 0x0) {
+                // immediate value
+                struct ir_value imm_val;
+                imm_val.type                       = IR_VALUE_CONSTANT;
+                imm_val.data.constant_d.type       = IR_CONSTANT_U64;
+                imm_val.data.constant_d.data.u64_d = insn.imm64;
+                write_variable(env, insn.dst_reg, bb, imm_val);
+            } else {
+                CRITICAL("Not supported");
+            }
         } else if (BPF_CLASS(code) == BPF_LDX && BPF_MODE(code) == BPF_MEMSX) {
             // dst = *(signed size *) (src + offset)
             // https://www.kernel.org/doc/html/v6.6/bpf/standardization/instruction-set.html#sign-extension-load-operations
@@ -628,10 +647,7 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
                 new_insn->bb1            = get_ir_bb_from_position(env, pos);
             } else if (BPF_OP(code) == BPF_EXIT) {
                 // Exit
-                struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
-                new_insn->op             = IR_INSN_RET;
-                new_insn->values[0]      = read_variable(env, BPF_REG_0, bb);
-                new_insn->value_num      = 1;
+                create_ret_insn_bb(bb->ir_bb, read_variable(env, BPF_REG_0, bb), INSERT_BACK);
             } else if (BPF_OP(code) == BPF_JEQ) {
                 // PC += offset if dst == src
                 struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
@@ -769,11 +785,11 @@ void free_function(struct ir_function *fun) {
 }
 
 struct ir_function gen_function(struct ssa_transform_env *env) {
-    struct ir_function func;
-    func.arg_num  = 1;
-    func.entry    = env->info.entry->ir_bb;
-    func.sp_users = env->sp_users;
-    func.all_bbs  = array_init(sizeof(struct ir_basic_block *));
+    struct ir_function fun;
+    fun.arg_num  = 1;
+    fun.entry    = env->info.entry->ir_bb;
+    fun.sp_users = env->sp_users;
+    fun.all_bbs  = array_init(sizeof(struct ir_basic_block *));
     for (size_t i = 0; i < MAX_BPF_REG; ++i) {
         struct array *currentDef = &env->currentDef[i];
         array_free(currentDef);
@@ -784,10 +800,10 @@ struct ir_function gen_function(struct ssa_transform_env *env) {
         array_free(&bb->succs);
         free(bb->pre_insns);
         bb->ir_bb->user_data = NULL;
-        array_push(&func.all_bbs, &bb->ir_bb);
+        array_push(&fun.all_bbs, &bb->ir_bb);
         free(bb);
     }
-    return func;
+    return fun;
 }
 
 __u8 ir_value_equal(struct ir_value a, struct ir_value b) {
@@ -835,6 +851,11 @@ void run(struct bpf_insn *insns, size_t len) {
     // End IR manipulation
     printf("--------------------\n");
     print_ir_prog(&fun);
+
+    // Test
+    // add_stack_offset(&fun, -8);
+    // printf("--------------------\n");
+    // print_ir_prog(&fun);
 
     // Free the memory
     free_function(&fun);
