@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stddef.h>
+#include "add_stack_offset.h"
 #include "array.h"
 #include "ir_insn.h"
 #include "list.h"
@@ -880,6 +881,11 @@ void run(struct bpf_insn *insns, size_t len) {
     run_passes(&fun);
 
     // End IR manipulation
+    printf("--------------------\n");
+    print_ir_prog(&fun);
+
+    // Test
+    add_stack_offset(&fun, -8);
     printf("--------------------\n");
     print_ir_prog(&fun);
 
