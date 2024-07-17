@@ -561,6 +561,19 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
                 new_val.type        = IR_VALUE_INSN;
                 new_val.data.insn_d = new_insn;
                 write_variable(env, insn.dst_reg, bb, new_val);
+            } else if (BPF_OP(code) == BPF_MOD) {
+                // dst = (src != 0) ? (dst % src) : dst
+                struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
+                new_insn->op             = IR_INSN_MOD;
+                new_insn->values[0]      = read_variable(env, insn.dst_reg, bb);
+                new_insn->values[1]      = get_src_value(env, bb, insn);
+                new_insn->value_num      = 2;
+                add_user(env, new_insn, new_insn->values[0]);
+                add_user(env, new_insn, new_insn->values[1]);
+                struct ir_value new_val;
+                new_val.type        = IR_VALUE_INSN;
+                new_val.data.insn_d = new_insn;
+                write_variable(env, insn.dst_reg, bb, new_val);
             }
 
             else {
