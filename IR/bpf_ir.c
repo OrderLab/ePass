@@ -586,24 +586,12 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
                    BPF_SIZE(code) == BPF_DW) {
             // 64-bit immediate load
             if (insn.src_reg == 0x0) {
-                // TODO
-                struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
-                new_insn->op             = IR_INSN_LOADRAW;
-                struct ir_address_value addr_val;
-                struct ir_value         imm_ptr;
-                imm_ptr.type                       = IR_VALUE_CONSTANT;
-                imm_ptr.data.constant_d.type       = IR_CONSTANT_U64;
-                imm_ptr.data.constant_d.data.u64_d = insn.imm64;
-                addr_val.value                     = imm_ptr;
-                add_user(env, new_insn, addr_val.value);
-                addr_val.offset    = 0;
-                new_insn->vr_type  = IR_VR_TYPE_U64;
-                new_insn->addr_val = addr_val;
-
-                struct ir_value new_val;
-                new_val.type        = IR_VALUE_INSN;
-                new_val.data.insn_d = new_insn;
-                write_variable(env, insn.dst_reg, bb, new_val);
+                // immediate value
+                struct ir_value imm_val;
+                imm_val.type                       = IR_VALUE_CONSTANT;
+                imm_val.data.constant_d.type       = IR_CONSTANT_U64;
+                imm_val.data.constant_d.data.u64_d = insn.imm64;
+                write_variable(env, insn.dst_reg, bb, imm_val);
             } else {
                 CRITICAL("Not supported");
             }
@@ -885,9 +873,9 @@ void run(struct bpf_insn *insns, size_t len) {
     print_ir_prog(&fun);
 
     // Test
-    add_stack_offset(&fun, -8);
-    printf("--------------------\n");
-    print_ir_prog(&fun);
+    // add_stack_offset(&fun, -8);
+    // printf("--------------------\n");
+    // print_ir_prog(&fun);
 
     // Free the memory
     free_function(&fun);
