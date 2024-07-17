@@ -2,6 +2,7 @@
 #define __BPF_IR_BB_H__
 
 #include "bpf_ir.h"
+#include "ir_fun.h"
 
 /// Get the number of instructions in a basic block
 size_t bb_len(struct ir_basic_block *);

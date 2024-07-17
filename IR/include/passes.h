@@ -4,6 +4,7 @@
 #include "phi_pass.h"
 #include "reachable_bb.h"
 #include "add_counter_pass.h"
+#include "ir_fun.h"
 
 /**
     All function passes.

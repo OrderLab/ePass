@@ -279,22 +279,6 @@ struct ssa_transform_env {
     struct array sp_users;
 };
 
-struct ir_function {
-    size_t arg_num;
-
-    // Array of struct pre_ir_basic_block *, no entrance information anymore
-    struct array all_bbs;
-
-    // The entry block
-    struct ir_basic_block *entry;
-
-    // Store any information about the function
-    struct array reachable_bbs;
-
-    // Stack pointer (r10) users. Should be readonly. No more manual stack access should be allowed.
-    struct array sp_users;
-};
-
 // helper functions
 
 void write_variable(struct ssa_transform_env *env, __u8 reg, struct pre_ir_basic_block *bb,
@@ -317,12 +301,6 @@ struct ir_insn *create_insn_back(struct ir_basic_block *bb);
 struct ir_insn *create_insn_front(struct ir_basic_block *bb);
 
 void add_user(struct ssa_transform_env *env, struct ir_insn *user, struct ir_value val);
-
-void clean_env(struct ir_function *);
-
-void clean_id(struct ir_function *);
-
-void print_ir_prog(struct ir_function *);
 
 void print_ir_insn(struct ir_insn *);
 

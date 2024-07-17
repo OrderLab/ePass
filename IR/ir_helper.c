@@ -4,6 +4,7 @@
 #include "bpf_ir.h"
 #include "dbg.h"
 #include "list.h"
+#include "ir_fun.h"
 
 /// Reset visited flag
 void clean_env(struct ir_function *fun) {
