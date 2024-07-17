@@ -4,8 +4,10 @@ $(NAME).o: $(NAME).c
 $(NAME).nop.o: $(NAME).c
 	clang -O0 -I/usr/include/$(shell uname -m)-linux-gnu -g -target bpf -c $< -o $@
 
+$(NAME).nop.s: $(NAME).nop.o
+	llvm-objdump -S $< > $@
+
 $(NAME).s: $(NAME).o
-	# clang -O2 -I/usr/include/$(shell uname -m)-linux-gnu -target bpf -S -o $(NAME).s $(NAME).c
 	llvm-objdump -S $< > $@
 
 sobj: $(NAME).s
