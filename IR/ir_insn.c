@@ -115,10 +115,10 @@ struct ir_insn *create_load_insn_bb(struct ir_basic_block *bb, enum ir_vr_type t
     return new_insn;
 }
 
-struct ir_insn *create_add_insn_base(struct ir_basic_block *bb, struct ir_value val1,
-                                     struct ir_value val2) {
+struct ir_insn *create_bin_insn_base(struct ir_basic_block *bb, struct ir_value val1,
+                                     struct ir_value val2, enum ir_insn_type ty) {
     struct ir_insn *new_insn = create_insn_base(bb);
-    new_insn->op             = IR_INSN_ADD;
+    new_insn->op             = ty;
     new_insn->values[0]      = val1;
     new_insn->values[1]      = val2;
     val_add_user(val1, new_insn);
@@ -126,16 +126,17 @@ struct ir_insn *create_add_insn_base(struct ir_basic_block *bb, struct ir_value 
     return new_insn;
 }
 
-struct ir_insn *create_add_insn(struct ir_insn *insn, struct ir_value val1, struct ir_value val2,
-                                enum insert_position pos) {
-    struct ir_insn *new_insn = create_add_insn_base(insn->parent_bb, val1, val2);
+struct ir_insn *create_bin_insn(struct ir_insn *insn, struct ir_value val1, struct ir_value val2,
+                                enum ir_insn_type ty, enum insert_position pos) {
+    struct ir_insn *new_insn = create_bin_insn_base(insn->parent_bb, val1, val2, ty);
     insert_at(new_insn, insn, pos);
     return new_insn;
 }
 
-struct ir_insn *create_add_insn_bb(struct ir_basic_block *bb, struct ir_value val1,
-                                   struct ir_value val2, enum insert_position pos) {
-    struct ir_insn *new_insn = create_add_insn_base(bb, val1, val2);
+struct ir_insn *create_bin_insn_bb(struct ir_basic_block *bb, struct ir_value val1,
+                                   struct ir_value val2, enum ir_insn_type ty,
+                                   enum insert_position pos) {
+    struct ir_insn *new_insn = create_bin_insn_base(bb, val1, val2, ty);
     insert_at_bb(new_insn, bb, pos);
     return new_insn;
 }

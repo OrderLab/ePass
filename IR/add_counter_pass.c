@@ -34,7 +34,7 @@ void add_counter(struct ir_function *fun) {
         struct ir_value val2;
         val2.type                         = IR_VALUE_INSN;
         val2.data.insn_d                  = load_insn;
-        struct ir_insn *added             = create_add_insn(load_insn, val1, val2, INSERT_BACK);
+        struct ir_insn *added             = create_bin_insn(load_insn, val1, val2, INSERT_BACK);
         val.data.insn_d                   = added;
         struct ir_insn        *store_back = create_store_insn(added, alloc_insn, val, INSERT_BACK);
         struct ir_basic_block *new_bb     = split_bb(fun, store_back);
