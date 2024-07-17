@@ -143,13 +143,15 @@ enum ir_insn_type {
         | CALL <function id> <arg_num> <values...>
         | RET <value>
         | JA <bb>
-        | JEQ <value>, <value>, <bb>, <bb>
-        | JGT <value>, <value>, <bb>, <bb>
-        | JGE <value>, <value>, <bb>, <bb>
-        | JLT <value>, <value>, <bb>, <bb>
-        | JLE <value>, <value>, <bb>, <bb>
-        | JNE <value>, <value>, <bb>, <bb>
+        | JEQ <value>, <value>, <bb_next>, <bb>
+        | JGT <value>, <value>, <bb_next>, <bb>
+        | JGE <value>, <value>, <bb_next>, <bb>
+        | JLT <value>, <value>, <bb_next>, <bb>
+        | JLE <value>, <value>, <bb_next>, <bb>
+        | JNE <value>, <value>, <bb_next>, <bb>
         | PHI <phi_value>
+    
+    Note. <bb_next> must be the next basic block.
  */
 struct ir_insn {
     struct ir_value values[MAX_FUNC_ARG];

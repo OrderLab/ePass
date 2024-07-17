@@ -40,7 +40,7 @@ void add_counter(struct ir_function *fun) {
         struct ir_basic_block *new_bb     = split_bb(fun, store_back);
         val2.data.insn_d                  = added;
         val1.data.constant_d.data.u64_d   = 0x10000;
-        create_jlt_insn(store_back, val1, val2, new_bb, err_bb, INSERT_BACK);
+        create_jbin_insn(store_back, val1, val2, new_bb, err_bb, IR_INSN_JLT, INSERT_BACK);
         // Manually connect BBs
         connect_bb(bb, err_bb);
     }

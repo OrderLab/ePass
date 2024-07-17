@@ -1,6 +1,10 @@
 #include "add_constraint_pass.h"
 #include "array.h"
+#include "bpf_ir.h"
 #include "constraint.h"
+#include "dbg.h"
+#include "ir_bb.h"
+#include "ir_insn.h"
 
 // Initialize some testing constraints
 void init_test_constraints(struct ir_function *fun) {
@@ -8,5 +12,31 @@ void init_test_constraints(struct ir_function *fun) {
 }
 
 void add_constraint(struct ir_function *fun) {
-    init_test_constraints(fun);
+    init_test_constraints(fun);  // For testing purpose
+
+    struct ir_basic_block *err_bb = create_bb(fun);
+    struct ir_value        val;
+    val.type                       = IR_VALUE_CONSTANT;
+    val.data.constant_d.type       = IR_CONSTANT_U64;
+    val.data.constant_d.data.u64_d = 1;
+    create_ret_insn_bb(err_bb, val, INSERT_BACK);
+
+    struct ir_constraint *pos;
+    array_for(pos, fun->value_constraints) {
+        struct ir_constraint c = *pos;
+        if (c.type == CONSTRAINT_TYPE_VALUE_EQUAL) {
+            struct ir_basic_block *newbb = split_bb(fun, c.pos);
+            create_jbin_insn(c.pos, c.val, c.cval, newbb, err_bb, IR_INSN_JNE, INSERT_FRONT);
+            connect_bb(c.pos->parent_bb, err_bb);
+        } else if (c.type == CONSTRAINT_TYPE_VALUE_RANGE) {
+            struct ir_basic_block *newbb = split_bb(fun, c.pos);
+            create_jbin_insn(c.pos, c.val, c.start, newbb, err_bb, IR_INSN_JLT, INSERT_FRONT);
+            connect_bb(c.pos->parent_bb, err_bb);
+            struct ir_basic_block *newbb2 = split_bb(fun, c.pos);
+            create_jbin_insn(c.pos, c.val, c.end, newbb2, err_bb, IR_INSN_JGE, INSERT_FRONT);
+            connect_bb(c.pos->parent_bb, err_bb);
+        } else {
+            CRITICAL("Error");
+        }
+    }
 }

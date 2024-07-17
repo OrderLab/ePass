@@ -11,15 +11,16 @@ enum constraint_type {
 struct ir_constraint {
     enum constraint_type type;
 
-    // Range: [start, start + size)
-    __u64 start;
-    __u64 size;
+    // Range: [start, end)
+    struct ir_value start;
+    struct ir_value end;
 
     // Constrain value
-    __u64 cval;
+    struct ir_value cval;
 
     // Real value to be compared
     struct ir_value val;
+    struct ir_insn *pos;
 };
 
 #endif

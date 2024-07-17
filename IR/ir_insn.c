@@ -149,11 +149,32 @@ struct ir_insn *prev_insn(struct ir_insn *insn) {
     return list_entry(prev, struct ir_insn, list_ptr);
 }
 
-struct ir_insn *create_jlt_insn_base(struct ir_basic_block *bb, struct ir_value val1,
-                                     struct ir_value val2, struct ir_basic_block *to_bb1,
-                                     struct ir_basic_block *to_bb2) {
+struct ir_insn *create_ja_insn_base(struct ir_basic_block *bb, struct ir_basic_block *to_bb) {
     struct ir_insn *new_insn = create_insn_base(bb);
-    new_insn->op             = IR_INSN_JLT;
+    new_insn->op             = IR_INSN_JA;
+    new_insn->bb1            = to_bb;
+    return new_insn;
+}
+
+struct ir_insn *create_ja_insn(struct ir_insn *insn, struct ir_basic_block *to_bb,
+                               enum insert_position pos) {
+    struct ir_insn *new_insn = create_ja_insn_base(insn->parent_bb, to_bb);
+    insert_at(new_insn, insn, pos);
+    return new_insn;
+}
+
+struct ir_insn *create_ja_insn_bb(struct ir_basic_block *bb, struct ir_basic_block *to_bb,
+                                  enum insert_position pos) {
+    struct ir_insn *new_insn = create_ja_insn_base(bb, to_bb);
+    insert_at_bb(new_insn, bb, pos);
+    return new_insn;
+}
+
+struct ir_insn *create_jbin_insn_base(struct ir_basic_block *bb, struct ir_value val1,
+                                      struct ir_value val2, struct ir_basic_block *to_bb1,
+                                      struct ir_basic_block *to_bb2, enum ir_insn_type ty) {
+    struct ir_insn *new_insn = create_insn_base(bb);
+    new_insn->op             = ty;
     new_insn->values[0]      = val1;
     new_insn->values[1]      = val2;
     new_insn->bb1            = to_bb1;
@@ -163,18 +184,20 @@ struct ir_insn *create_jlt_insn_base(struct ir_basic_block *bb, struct ir_value 
     return new_insn;
 }
 
-struct ir_insn *create_jlt_insn(struct ir_insn *insn, struct ir_value val1, struct ir_value val2,
-                                struct ir_basic_block *to_bb1, struct ir_basic_block *to_bb2,
-                                enum insert_position pos) {
-    struct ir_insn *new_insn = create_jlt_insn_base(insn->parent_bb, val1, val2, to_bb1, to_bb2);
+struct ir_insn *create_jbin_insn(struct ir_insn *insn, struct ir_value val1, struct ir_value val2,
+                                 struct ir_basic_block *to_bb1, struct ir_basic_block *to_bb2,
+                                 enum ir_insn_type ty, enum insert_position pos) {
+    struct ir_insn *new_insn =
+        create_jbin_insn_base(insn->parent_bb, val1, val2, to_bb1, to_bb2, ty);
     insert_at(new_insn, insn, pos);
     return new_insn;
 }
 
-struct ir_insn *create_jlt_insn_bb(struct ir_basic_block *bb, struct ir_value val1,
-                                   struct ir_value val2, struct ir_basic_block *to_bb1,
-                                   struct ir_basic_block *to_bb2, enum insert_position pos) {
-    struct ir_insn *new_insn = create_jlt_insn_base(bb, val1, val2, to_bb1, to_bb2);
+struct ir_insn *create_jbin_insn_bb(struct ir_basic_block *bb, struct ir_value val1,
+                                    struct ir_value val2, struct ir_basic_block *to_bb1,
+                                    struct ir_basic_block *to_bb2, enum ir_insn_type ty,
+                                    enum insert_position pos) {
+    struct ir_insn *new_insn = create_jbin_insn_base(bb, val1, val2, to_bb1, to_bb2, ty);
     insert_at_bb(new_insn, bb, pos);
     return new_insn;
 }
