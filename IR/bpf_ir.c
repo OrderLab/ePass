@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <stddef.h>
 #include "array.h"
+#include "ir_insn.h"
 #include "list.h"
 #include "dbg.h"
 #include "passes.h"
@@ -649,10 +650,7 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
                 new_insn->bb1            = get_ir_bb_from_position(env, pos);
             } else if (BPF_OP(code) == BPF_EXIT) {
                 // Exit
-                struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
-                new_insn->op             = IR_INSN_RET;
-                new_insn->values[0]      = read_variable(env, BPF_REG_0, bb);
-                new_insn->value_num      = 1;
+                create_ret_insn_bb(bb->ir_bb, read_variable(env, BPF_REG_0, bb), INSERT_BACK);
             } else if (BPF_OP(code) == BPF_JEQ) {
                 // PC += offset if dst == src
                 struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
