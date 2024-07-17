@@ -107,6 +107,7 @@ enum ir_vr_type {
         | ADD <value>, <value>
         | SUB <value>, <value>
         | MUL <value>, <value>
+        | LSH <value>, <value>
         | CALL <function id> <arg_num> <values...>
         | RET <value>
         | JA <bb>
@@ -147,6 +148,7 @@ struct ir_insn {
         IR_INSN_ADD,
         IR_INSN_SUB,
         IR_INSN_MUL,
+        IR_INSN_LSH,
         // CALL EXIT
         IR_INSN_CALL,
         IR_INSN_RET,

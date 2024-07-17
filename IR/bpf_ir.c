@@ -193,7 +193,7 @@ struct bb_info gen_bb(struct bpf_insn *insns, size_t len) {
             new_insn.off     = insn.off;
             new_insn.pos     = pos;
             if (pos + 1 < real_bb->end_pos && insns[pos + 1].code == 0) {
-                __u64 imml = (__u64)insn.imm & 0xFFFFFFFF;
+                __u64 imml     = (__u64)insn.imm & 0xFFFFFFFF;
                 new_insn.imm64 = ((__s64)(insns[pos + 1].imm) << 32) | imml;
                 pos++;
             }
@@ -549,7 +549,21 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
             } else if (BPF_OP(code) == BPF_MOV) {
                 // Do not create instructions
                 write_variable(env, insn.dst_reg, bb, get_src_value(env, bb, insn));
-            } else {
+            } else if (BPF_OP(code) == BPF_LSH) {
+                struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
+                new_insn->op             = IR_INSN_LSH;
+                new_insn->values[0]      = read_variable(env, insn.dst_reg, bb);
+                new_insn->values[1]      = get_src_value(env, bb, insn);
+                new_insn->value_num      = 2;
+                add_user(env, new_insn, new_insn->values[0]);
+                add_user(env, new_insn, new_insn->values[1]);
+                struct ir_value new_val;
+                new_val.type        = IR_VALUE_INSN;
+                new_val.data.insn_d = new_insn;
+                write_variable(env, insn.dst_reg, bb, new_val);
+            }
+
+            else {
                 // TODO
                 CRITICAL("Error");
             }
