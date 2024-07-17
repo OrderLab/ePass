@@ -11,7 +11,8 @@
     All function passes.
  */
 static void (*passes[])(struct ir_function *fun) = {
-    gen_reachable_bbs, remove_trivial_phi, add_constraint,
+    gen_reachable_bbs, remove_trivial_phi,
+    // add_constraint,
     // add_counter,
 };
 
