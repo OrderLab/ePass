@@ -11,6 +11,24 @@ struct ir_insn *create_insn_base(struct ir_basic_block *bb) {
     return new_insn;
 }
 
+struct array find_value_uses(struct ir_insn *insn) {
+    struct array uses = INIT_ARRAY(struct ir_value *);
+    struct ir_value *pos;
+
+    for (__u8 j = 0; j < insn->value_num; ++j) {
+        pos = &insn->values[j];
+        array_push(&uses, &pos);
+    }
+    if (insn->op == IR_INSN_PHI) {
+        struct phi_value *pv_pos2;
+        array_for(pv_pos2, insn->phi) {
+            pos = &pv_pos2->value;
+            array_push(&uses, &pos);
+        }
+    }
+    return uses;
+}
+
 __u8 is_last_insn(struct ir_insn *insn) {
     return insn->parent_bb->ir_insn_head.prev == &insn->list_ptr;
 }

@@ -6,7 +6,6 @@
 #include <stddef.h>
 #include "add_stack_offset.h"
 #include "array.h"
-#include "ir_insn.h"
 #include "list.h"
 #include "dbg.h"
 #include "passes.h"
@@ -479,6 +478,28 @@ struct ir_value get_src_value(struct ssa_transform_env *env, struct pre_ir_basic
         CRITICAL("Error");
     }
 }
+struct ir_insn *create_alu_bin(struct ir_basic_block *bb, struct ir_value val1,
+                               struct ir_value val2, enum ir_insn_type ty,
+                               struct ssa_transform_env *env) {
+    struct ir_insn *new_insn = create_insn_back(bb);
+    new_insn->op             = ty;
+    new_insn->values[0]      = val1;
+    new_insn->values[1]      = val2;
+    new_insn->value_num      = 2;
+    add_user(env, new_insn, new_insn->values[0]);
+    add_user(env, new_insn, new_insn->values[1]);
+    return new_insn;
+}
+
+void alu_write(struct ssa_transform_env *env, enum ir_insn_type ty, struct pre_ir_insn insn,
+               struct pre_ir_basic_block *bb) {
+    struct ir_insn *new_insn = create_alu_bin(bb->ir_bb, read_variable(env, insn.dst_reg, bb),
+                                              get_src_value(env, bb, insn), ty, env);
+    struct ir_value new_val;
+    new_val.type        = IR_VALUE_INSN;
+    new_val.data.insn_d = new_insn;
+    write_variable(env, insn.dst_reg, bb, new_val);
+}
 
 void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) {
     printf("Transforming BB%zu\n", bb->id);
@@ -510,51 +531,19 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
             // 32-bit ALU class
             // TODO: 64-bit ALU class
             if (BPF_OP(code) == BPF_ADD) {
-                struct ir_insn *new_insn =
-                    create_bin_insn_bb(bb->ir_bb, read_variable(env, insn.dst_reg, bb),
-                                       get_src_value(env, bb, insn), IR_INSN_ADD, INSERT_BACK);
-
-                struct ir_value new_val;
-                new_val.type        = IR_VALUE_INSN;
-                new_val.data.insn_d = new_insn;
-                write_variable(env, insn.dst_reg, bb, new_val);
+                alu_write(env, IR_INSN_ADD, insn, bb);
             } else if (BPF_OP(code) == BPF_SUB) {
-                struct ir_insn *new_insn =
-                    create_bin_insn_bb(bb->ir_bb, read_variable(env, insn.dst_reg, bb),
-                                       get_src_value(env, bb, insn), IR_INSN_SUB, INSERT_BACK);
-
-                struct ir_value new_val;
-                new_val.type        = IR_VALUE_INSN;
-                new_val.data.insn_d = new_insn;
-                write_variable(env, insn.dst_reg, bb, new_val);
+                alu_write(env, IR_INSN_SUB, insn, bb);
             } else if (BPF_OP(code) == BPF_MUL) {
-                struct ir_insn *new_insn =
-                    create_bin_insn_bb(bb->ir_bb, read_variable(env, insn.dst_reg, bb),
-                                       get_src_value(env, bb, insn), IR_INSN_MUL, INSERT_BACK);
-                struct ir_value new_val;
-                new_val.type        = IR_VALUE_INSN;
-                new_val.data.insn_d = new_insn;
-                write_variable(env, insn.dst_reg, bb, new_val);
+                alu_write(env, IR_INSN_MUL, insn, bb);
             } else if (BPF_OP(code) == BPF_MOV) {
                 // Do not create instructions
                 write_variable(env, insn.dst_reg, bb, get_src_value(env, bb, insn));
             } else if (BPF_OP(code) == BPF_LSH) {
-                struct ir_insn *new_insn =
-                    create_bin_insn_bb(bb->ir_bb, read_variable(env, insn.dst_reg, bb),
-                                       get_src_value(env, bb, insn), IR_INSN_LSH, INSERT_BACK);
-                struct ir_value new_val;
-                new_val.type        = IR_VALUE_INSN;
-                new_val.data.insn_d = new_insn;
-                write_variable(env, insn.dst_reg, bb, new_val);
+                alu_write(env, IR_INSN_LSH, insn, bb);
             } else if (BPF_OP(code) == BPF_MOD) {
                 // dst = (src != 0) ? (dst % src) : dst
-                struct ir_insn *new_insn =
-                    create_bin_insn_bb(bb->ir_bb, read_variable(env, insn.dst_reg, bb),
-                                       get_src_value(env, bb, insn), IR_INSN_MOD, INSERT_BACK);
-                struct ir_value new_val;
-                new_val.type        = IR_VALUE_INSN;
-                new_val.data.insn_d = new_insn;
-                write_variable(env, insn.dst_reg, bb, new_val);
+                alu_write(env, IR_INSN_MOD, insn, bb);
             }
 
             else {
@@ -647,7 +636,10 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
                 new_insn->bb1            = get_ir_bb_from_position(env, pos);
             } else if (BPF_OP(code) == BPF_EXIT) {
                 // Exit
-                create_ret_insn_bb(bb->ir_bb, read_variable(env, BPF_REG_0, bb), INSERT_BACK);
+                struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
+                new_insn->op             = IR_INSN_RET;
+                new_insn->values[0]      = read_variable(env, BPF_REG_0, bb);
+                new_insn->value_num      = 1;
             } else if (BPF_OP(code) == BPF_JEQ) {
                 // PC += offset if dst == src
                 struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
@@ -853,9 +845,9 @@ void run(struct bpf_insn *insns, size_t len) {
     print_ir_prog(&fun);
 
     // Test
-    // add_stack_offset(&fun, -8);
-    // printf("--------------------\n");
-    // print_ir_prog(&fun);
+    add_stack_offset(&fun, -8);
+    printf("--------------------\n");
+    print_ir_prog(&fun);
 
     // Free the memory
     free_function(&fun);

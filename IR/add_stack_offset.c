@@ -1,4 +1,5 @@
 #include "add_stack_offset.h"
+#include <stdio.h>
 #include "array.h"
 #include "bpf_ir.h"
 #include "ir_insn.h"
@@ -11,39 +12,26 @@ void add_stack_offset(struct ir_function *fun, __s16 offset) {
 
         if (insn->op == IR_INSN_LOADRAW || insn->op == IR_INSN_STORERAW) {
             insn->addr_val.offset += offset;
+            continue;
         }
-
-        for (__u8 j = 0; j < insn->value_num; ++j) {
-            if (insn->values[j].type == IR_VALUE_STACK_PTR) {
+        struct array      value_uses = find_value_uses(insn);
+        struct ir_value **pos2;
+        array_for(pos2, value_uses) {
+            struct ir_value *val = *pos2;
+            if (val->type == IR_VALUE_STACK_PTR) {
                 // Stack pointer as value
-                struct ir_value val;
-                val.type                       = IR_VALUE_CONSTANT;
-                val.data.constant_d.type       = IR_CONSTANT_S16;
-                val.data.constant_d.data.s16_d = offset;
+                struct ir_value new_val;
+                new_val.type                       = IR_VALUE_CONSTANT;
+                new_val.data.constant_d.type       = IR_CONSTANT_S16;
+                new_val.data.constant_d.data.s16_d = offset;
                 struct ir_insn *new_insn =
-                    create_bin_insn(insn, insn->values[j], val, IR_INSN_ADD, INSERT_FRONT);
-                val.type        = IR_VALUE_INSN;
-                val.data.insn_d = new_insn;
-                insn->values[j] = val;
+                    create_bin_insn(insn, *val, new_val, IR_INSN_ADD, INSERT_FRONT);
+                new_val.type        = IR_VALUE_INSN;
+                new_val.data.insn_d = new_insn;
+                *val                = new_val;
             }
         }
-        if (insn->op == IR_INSN_PHI) {
-            struct phi_value *pv_pos2;
-            array_for(pv_pos2, insn->phi) {
-                if (pv_pos2->value.type == IR_VALUE_STACK_PTR) {
-                    // Stack pointer as value
-                    struct ir_value val;
-                    val.type                       = IR_VALUE_CONSTANT;
-                    val.data.constant_d.type       = IR_CONSTANT_S16;
-                    val.data.constant_d.data.s16_d = offset;
-                    struct ir_insn *new_insn =
-                        create_bin_insn(insn, pv_pos2->value, val, IR_INSN_ADD, INSERT_FRONT);
-                    val.type        = IR_VALUE_INSN;
-                    val.data.insn_d = new_insn;
-                    pv_pos2->value  = val;
-                }
-            }
-        }
+        array_free(&value_uses);
     }
     array_free(&fun->sp_users);
 }
