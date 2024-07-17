@@ -1,5 +1,4 @@
 #include "add_stack_offset.h"
-#include <stdio.h>
 #include "array.h"
 #include "bpf_ir.h"
 #include "ir_insn.h"

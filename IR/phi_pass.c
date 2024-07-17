@@ -40,19 +40,15 @@ void try_remove_trivial_phi(struct ir_insn *phi) {
         if (user == phi) {
             continue;
         }
-        for (__u8 j = 0; j < user->value_num; ++j) {
-            if (ir_value_equal(user->values[j], phi_val)) {
-                user->values[j] = same;
+
+        struct array      value_uses = find_value_uses(user);
+        struct ir_value **pos2;
+        array_for(pos2, value_uses) {
+            if (ir_value_equal(**pos2, phi_val)) {
+                **pos2 = same;
             }
         }
-        if (user->op == IR_INSN_PHI) {
-            struct phi_value *pv_pos2;
-            array_for(pv_pos2, user->phi) {
-                if (ir_value_equal(pv_pos2->value, phi_val)) {
-                    pv_pos2->value = same;
-                }
-            }
-        }
+        array_free(&value_uses);
     }
     erase_insn(phi);
 }
