@@ -131,7 +131,7 @@ enum ir_insn_type {
 /**
     INSN =
           ALLOC <ir_vr_type>
-        | STORE <value:ptr>, <value>
+        | STORE <ir_vr_type> <value:ptr>, <value>
         | LOAD <ir_vr_type> <value:ptr>
         | STORERAW <ir_vr_type> <ir_address_value>, <value>
         | LOADRAW <ir_vr_type> <ir_address_value>
@@ -157,7 +157,7 @@ struct ir_insn {
     struct ir_value values[MAX_FUNC_ARG];
     __u8            value_num;
 
-    // Used in ALLOC instructions
+    // Used in ALLOC and instructions
     enum ir_vr_type vr_type;
 
     // Used in RAW instructions
