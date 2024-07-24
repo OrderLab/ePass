@@ -71,9 +71,17 @@ Allocate a space on stack or on a register (decided by the code gen).
 
 ### `store`
 
-Syntax: `store <vr_type> <values[0]> <values[1]>`
+Syntax: `store <values[0]> <values[1]>`
 
-Store a value `values[1]` in an address `values[0]` with size `vr_type`.
+Requirement: `values[0]` is an `alloc` instruction.
+
+Store a value `values[1]` in an address `values[0]`.
+
+### `storeraw`
+
+Syntax: `storeraw <vr_type> <addr_val> <values[0]>`
+
+Store a value `values[0]` in manually set `addr_val` with size `vr_type`.
 
 ## BasicBlock
 
