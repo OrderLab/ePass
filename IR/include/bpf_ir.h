@@ -171,7 +171,7 @@ struct ir_insn {
     struct array phi;
 
     __s32             fid;
-    __u32             f_arg_num;
+    // __u32             f_arg_num;
     enum ir_insn_type op;
 
     // Linked list

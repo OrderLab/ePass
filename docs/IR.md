@@ -69,6 +69,13 @@ Syntax: `alloc <vr_type>`.
 
 Allocate a space on stack or on a register (decided by the code gen).
 
+Example:
+
+```
+%1 = alloc IR_VR_TYPE_U32
+%2 = store %1 200
+```
+
 ### `store`
 
 Syntax: `store <values[0]> <values[1]>`
@@ -77,11 +84,73 @@ Requirement: `values[0]` is an `alloc` instruction.
 
 Store a value `values[1]` in an address `values[0]`.
 
+### `load`
+
+Syntax: `load <vr_type> <values[0]>`
+
+Requirement: `values[0]` is an `alloc` instruction.
+
+Load a value `values[0]` with size `vr_type`.
+
 ### `storeraw`
 
 Syntax: `storeraw <vr_type> <addr_val> <values[0]>`
 
 Store a value `values[0]` in manually set `addr_val` with size `vr_type`.
+
+### `loadraw`
+
+Syntax: `loadraw <vr_type> <addr_val>`
+
+Load a value `addr_val` with size `vr_type`.
+
+### ALU Binary Instructions
+
+This includes `add`, `sub`, etc.
+
+Syntax: `INSN <values[0]> <values[1]`
+
+Do ALU binary computation.
+
+Example:
+
+```
+%3 = add %1 %2
+```
+
+### `call`
+
+Syntax: `call <fid> <values[0]> <values[1]>...`
+
+Call a eBPF helper function with arguments `values[0]`...
+
+### `ret`
+
+Syntax: `ret <values[0]>`
+
+Exit the program with exit code `values[0]`.
+
+### `ja`
+
+Syntax: `ja <bb1>`
+
+Jump to basic block `bb1`.
+
+### Conditional Jump Instructions
+
+Syntax: `INSN <values[0]> <values[1]> <bb1> <bb2>`
+
+Do condition jump based on testing `values[0]` and `values[1]`.
+
+`bb1` is the basic block next to this basic block if not jumping, `bb2` is the basic block to jump.
+
+Requirement: `bb1` must be next to this basic block.
+
+### `phi`
+
+Syntax: `phi <phi[0]> <phi[1]>...`
+
+Phi instruction. `phi` is an array of `phi_value`. Each `phi_value` is a `(ir_value, ir_basic_block*)` pair.
 
 ## BasicBlock
 
