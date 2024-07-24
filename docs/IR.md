@@ -74,3 +74,41 @@ Allocate a space on stack or on a register (decided by the code gen).
 Syntax: `store <vr_type> <values[0]> <values[1]>`
 
 Store a value `values[1]` in an address `values[0]` with size `vr_type`.
+
+## BasicBlock
+
+The basic block structure is `struct ir_basic_block*`.
+
+The instructions in the basic block is stored in `ir_insn_head`. It is a doubly linked list.
+
+The predecessors and successors are stored in `preds` and `succs`. They are arrays of `struct ir_basic_block *`.
+
+Users could add custom data in the `user_data` field. Make sure to free the user data after using it.
+
+## How to build IR
+
+### Create a new instruction
+
+Use functions in `ir_insn`.
+
+It's possible to create an instruction after/before one existing instruction or at the back/front of a basic block.
+
+For example, to create a `alloc` instruction, there are two functions:
+
+```c
+
+struct ir_insn *create_alloc_insn(struct ir_insn *insn, enum ir_vr_type type,
+                                  enum insert_position pos);
+
+struct ir_insn *create_alloc_insn_bb(struct ir_basic_block *bb, enum ir_vr_type type,
+                                     enum insert_position pos);
+```
+
+`insn` is the instruction that you want to insert after/before. `type` is the specific data needed for this instruction. `pos` is the relative position to insert. There are two options: 
+
+```c
+enum insert_position {
+    INSERT_BACK,
+    INSERT_FRONT,
+};
+```

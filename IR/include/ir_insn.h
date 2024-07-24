@@ -15,6 +15,9 @@ void erase_insn(struct ir_insn *insn);
 
 struct ir_insn *prev_insn(struct ir_insn *insn);
 
+struct ir_insn *create_alloc_insn(struct ir_insn *insn, enum ir_vr_type type,
+                                  enum insert_position pos);
+
 struct ir_insn *create_alloc_insn_bb(struct ir_basic_block *bb, enum ir_vr_type type,
                                      enum insert_position pos);
 
