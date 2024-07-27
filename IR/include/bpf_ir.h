@@ -56,7 +56,7 @@ enum ir_value_type {
 };
 
 /**
-    VALUE = CONSTANT | INSN | FUNCTIONARG | STACK_PTR
+    VALUE = CONSTANT | INSN | FUNCTIONARG
 
     "r1 = constant" pattern will use `CONSTANT` which will not be added to BB.
  */
@@ -140,7 +140,7 @@ enum ir_insn_type {
         | MUL <value>, <value>
         | LSH <value>, <value>
         | MOD <value>, <value>
-        | CALL <function id> <arg_num> <values...>
+        | CALL <function id> <values...>
         | RET <value>
         | JA <bb>
         | JEQ <value>, <value>, <bb_next>, <bb>

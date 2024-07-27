@@ -73,7 +73,7 @@ Example:
 
 ```
 %1 = alloc IR_VR_TYPE_U32
-%2 = store %1 200
+store %1 200
 ```
 
 ### `store`

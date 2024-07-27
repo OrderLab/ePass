@@ -9,6 +9,7 @@
 #include "list.h"
 #include "dbg.h"
 #include "passes.h"
+#include "reachable_bb.h"
 #include "read.h"
 
 // TODO: Change this to real function
@@ -719,18 +720,16 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
                 new_insn->fid            = insn.imm;
                 if (insn.imm < 0) {
                     printf("Not supported function call\n");
-                    new_insn->f_arg_num = 0;
                     new_insn->value_num = 0;
                 } else {
-                    new_insn->f_arg_num = helper_func_arg_num[insn.imm];
-                    if (new_insn->f_arg_num > MAX_FUNC_ARG) {
+                    new_insn->value_num = helper_func_arg_num[insn.imm];
+                    if (new_insn->value_num > MAX_FUNC_ARG) {
                         CRITICAL("Too many arguments");
                     }
-                    for (size_t j = 0; j < new_insn->f_arg_num; ++j) {
+                    for (size_t j = 0; j < new_insn->value_num; ++j) {
                         new_insn->values[j] = read_variable(env, BPF_REG_1 + j, bb);
                         add_user(env, new_insn, new_insn->values[j]);
                     }
-                    new_insn->value_num = new_insn->f_arg_num;
                 }
 
                 struct ir_value new_val;
@@ -778,10 +777,11 @@ void free_function(struct ir_function *fun) {
 
 struct ir_function gen_function(struct ssa_transform_env *env) {
     struct ir_function fun;
-    fun.arg_num  = 1;
-    fun.entry    = env->info.entry->ir_bb;
-    fun.sp_users = env->sp_users;
-    fun.all_bbs  = array_init(sizeof(struct ir_basic_block *));
+    fun.arg_num       = 1;
+    fun.entry         = env->info.entry->ir_bb;
+    fun.sp_users      = env->sp_users;
+    fun.all_bbs       = array_init(sizeof(struct ir_basic_block *));
+    fun.reachable_bbs = array_init(sizeof(struct ir_basic_block *));
     for (size_t i = 0; i < MAX_BPF_REG; ++i) {
         struct array *currentDef = &env->currentDef[i];
         array_free(currentDef);
@@ -820,6 +820,7 @@ __u8 ir_value_equal(struct ir_value a, struct ir_value b) {
 void run_passes(struct ir_function *fun) {
     for (size_t i = 0; i < sizeof(passes) / sizeof(passes[0]); ++i) {
         clean_env(fun);
+        gen_reachable_bbs(fun);
         passes[i](fun);
     }
 }
