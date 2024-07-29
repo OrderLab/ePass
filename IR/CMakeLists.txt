@@ -15,6 +15,8 @@ add_executable(
     add_counter_pass.c
     add_stack_offset.c
     add_constraint_pass.c
+    live_variable.c
+    cut_bb_pass.c
 )
 
 add_executable(probe probe.c read.c array.c)

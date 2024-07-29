@@ -241,6 +241,9 @@ struct ir_basic_block {
     __u8   _visited;
     size_t _id;
     void  *user_data;
+
+    // Array of struct ir_insn *
+    struct array users;
 };
 
 /**
@@ -313,5 +316,7 @@ void print_raw_ir_insn(struct ir_insn *insn);
 void print_raw_ir_bb(struct ir_basic_block *bb);
 
 __u8 ir_value_equal(struct ir_value a, struct ir_value b);
+
+struct ir_basic_block* init_ir_bb_raw();
 
 #endif

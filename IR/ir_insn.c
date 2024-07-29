@@ -171,6 +171,7 @@ struct ir_insn *create_ja_insn_base(struct ir_basic_block *bb, struct ir_basic_b
     struct ir_insn *new_insn = create_insn_base(bb);
     new_insn->op             = IR_INSN_JA;
     new_insn->bb1            = to_bb;
+    array_push(&to_bb->users, &new_insn);
     return new_insn;
 }
 
@@ -199,6 +200,8 @@ struct ir_insn *create_jbin_insn_base(struct ir_basic_block *bb, struct ir_value
     new_insn->bb2            = to_bb2;
     val_add_user(val1, new_insn);
     val_add_user(val2, new_insn);
+    array_push(&to_bb1->users, &new_insn);
+    array_push(&to_bb2->users, &new_insn);
     return new_insn;
 }
 

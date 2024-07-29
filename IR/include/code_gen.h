@@ -4,11 +4,14 @@
 #include "ir_fun.h"
 
 // Extra information needed for code generation for each basic block
-struct ir_bb_cg_extra{
+struct ir_bb_cg_extra {
     struct array in;
     struct array out;
     struct array gen;
     struct array kill;
 };
+
+// For debugging
+void liveness_analysis(struct ir_function *fun);
 
 #endif

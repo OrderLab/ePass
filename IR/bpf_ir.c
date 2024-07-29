@@ -80,16 +80,23 @@ void init_entrance_info(struct array *bb_entrances, size_t entrance_pos) {
     array_push(bb_entrances, &new_bb);
 }
 
+struct ir_basic_block *init_ir_bb_raw() {
+    struct ir_basic_block *new_bb = __malloc(sizeof(struct ir_basic_block));
+    INIT_LIST_HEAD(&new_bb->ir_insn_head);
+    new_bb->user_data = NULL;
+    new_bb->preds     = INIT_ARRAY(struct ir_basic_block *);
+    new_bb->succs     = INIT_ARRAY(struct ir_basic_block *);
+    new_bb->users     = INIT_ARRAY(struct ir_insn *);
+    return new_bb;
+}
+
 void init_ir_bb(struct pre_ir_basic_block *bb) {
-    bb->ir_bb            = __malloc(sizeof(struct ir_basic_block));
+    bb->ir_bb            = init_ir_bb_raw();
     bb->ir_bb->_visited  = 0;
     bb->ir_bb->user_data = bb;
     for (__u8 i = 0; i < MAX_BPF_REG; ++i) {
         bb->incompletePhis[i] = NULL;
     }
-    INIT_LIST_HEAD(&bb->ir_bb->ir_insn_head);
-    bb->ir_bb->preds = array_init(sizeof(struct ir_basic_block *));
-    bb->ir_bb->succs = array_init(sizeof(struct ir_basic_block *));
 }
 
 struct bb_info gen_bb(struct bpf_insn *insns, size_t len) {
@@ -635,6 +642,7 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
                 new_insn->op             = IR_INSN_JA;
                 size_t pos               = insn.pos + insn.off + 1;
                 new_insn->bb1            = get_ir_bb_from_position(env, pos);
+                // array_push(&bb->ir_bb->users, &new_insn);
             } else if (BPF_OP(code) == BPF_EXIT) {
                 // Exit
                 struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
@@ -761,6 +769,7 @@ void free_function(struct ir_function *fun) {
 
         array_free(&bb->preds);
         array_free(&bb->succs);
+        array_free(&bb->users);
         // Free the instructions
         struct ir_insn *pos, *n;
         list_for_each_entry_safe(pos, n, &bb->ir_insn_head, list_ptr) {
@@ -846,9 +855,9 @@ void run(struct bpf_insn *insns, size_t len) {
     print_ir_prog(&fun);
 
     // Test
-    add_stack_offset(&fun, -8);
-    printf("--------------------\n");
-    print_ir_prog(&fun);
+    // add_stack_offset(&fun, -8);
+    // printf("--------------------\n");
+    // print_ir_prog(&fun);
 
     // Free the memory
     free_function(&fun);
