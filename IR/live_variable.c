@@ -2,6 +2,7 @@
 #include "array.h"
 #include "code_gen.h"
 #include "ir_fun.h"
+#include "list.h"
 
 void init_bb_info(struct ir_function *fun) {
     struct ir_basic_block **pos;
@@ -32,5 +33,16 @@ void free_bb_info(struct ir_function *fun) {
 
 void liveness_analysis(struct ir_function *fun) {
     init_bb_info(fun);
+    struct ir_basic_block **pos;
+    // For each BB
+    array_for(pos, fun->reachable_bbs){
+        struct ir_basic_block *bb = *pos;
+        struct ir_bb_cg_extra *bb_cg = bb->user_data;
+        struct ir_insn        *pos2;
+        // For each operation in reverse
+        list_for_each_entry_reverse(pos2, &bb->ir_insn_head, list_ptr){
+            
+        }
+    }
     free_bb_info(fun);
 }

@@ -13,6 +13,10 @@ struct array find_value_uses(struct ir_insn *insn);
 
 void erase_insn(struct ir_insn *insn);
 
+int is_void(struct ir_insn *insn);
+
+int is_jmp(struct ir_insn *insn);
+
 struct ir_insn *prev_insn(struct ir_insn *insn);
 
 struct ir_insn *create_alloc_insn(struct ir_insn *insn, enum ir_vr_type type,

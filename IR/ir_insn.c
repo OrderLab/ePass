@@ -12,7 +12,7 @@ struct ir_insn *create_insn_base(struct ir_basic_block *bb) {
 }
 
 struct array find_value_uses(struct ir_insn *insn) {
-    struct array uses = INIT_ARRAY(struct ir_value *);
+    struct array     uses = INIT_ARRAY(struct ir_value *);
     struct ir_value *pos;
 
     for (__u8 j = 0; j < insn->value_num; ++j) {
@@ -240,4 +240,13 @@ struct ir_insn *create_ret_insn_bb(struct ir_basic_block *bb, struct ir_value va
     struct ir_insn *new_insn = create_ret_insn_base(bb, val);
     insert_at_bb(new_insn, bb, pos);
     return new_insn;
+}
+
+int is_jmp(struct ir_insn *insn) {
+    return insn->op >= IR_INSN_JA && insn->op <= IR_INSN_JNE;
+}
+
+int is_void(struct ir_insn *insn) {
+    return insn->op == IR_INSN_RET || is_jmp(insn) || insn->op == IR_INSN_STORERAW ||
+           insn->op == IR_INSN_STORE;
 }
