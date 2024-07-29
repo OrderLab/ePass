@@ -216,10 +216,10 @@ void print_ir_insn(struct ir_insn *insn) {
             break;
         case IR_INSN_CALL:
             printf("call __built_in_func_%d(", insn->fid);
-            if (insn->f_arg_num >= 1) {
+            if (insn->value_num >= 1) {
                 print_ir_value(insn->values[0]);
             }
-            for (size_t i = 1; i < insn->f_arg_num; ++i) {
+            for (size_t i = 1; i < insn->value_num; ++i) {
                 printf(", ");
                 print_ir_value(insn->values[i]);
             }
@@ -320,7 +320,7 @@ void print_raw_ir_insn(struct ir_insn *insn) {
     printf("\n");
 }
 
-void print_ir_bb(struct ir_basic_block *bb) {
+void print_ir_bb(struct ir_basic_block *bb, void (*post_fun)(struct ir_basic_block *)) {
     if (bb->_visited) {
         return;
     }
@@ -333,9 +333,12 @@ void print_ir_bb(struct ir_basic_block *bb) {
         print_ir_insn(insn);
         printf("\n");
     }
+    if (post_fun) {
+        post_fun(bb);
+    }
     for (size_t i = 0; i < bb->succs.num_elem; ++i) {
         struct ir_basic_block *next = ((struct ir_basic_block **)(bb->succs.data))[i];
-        print_ir_bb(next);
+        print_ir_bb(next, post_fun);
     }
 }
 
@@ -372,6 +375,16 @@ void print_ir_prog(struct ir_function *fun) {
     clean_env(fun);
     assign_id(fun->entry, &cnt, &bb_cnt);
     clean_env(fun);
-    print_ir_bb(fun->entry);
+    print_ir_bb(fun->entry, NULL);
+    clean_id(fun);
+}
+
+void print_ir_prog_advanced(struct ir_function *fun, void (*post_fun)(struct ir_basic_block *)) {
+    size_t cnt    = 0;
+    size_t bb_cnt = 0;
+    clean_env(fun);
+    assign_id(fun->entry, &cnt, &bb_cnt);
+    clean_env(fun);
+    print_ir_bb(fun->entry, post_fun);
     clean_id(fun);
 }

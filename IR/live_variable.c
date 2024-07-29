@@ -1,4 +1,5 @@
 // Live variable analysis
+#include <stdio.h>
 #include "array.h"
 #include "bpf_ir.h"
 #include "code_gen.h"
@@ -144,9 +145,36 @@ void in_out(struct ir_function *fun) {
     }
 }
 
+void print_bb_extra(struct ir_basic_block *bb) {
+    struct ir_bb_cg_extra *bb_cg = bb->user_data;
+    printf("------\nGen: ");
+    struct ir_insn **pos;
+    array_for(pos, bb_cg->gen) {
+        struct ir_insn *insn = *pos;
+        print_ir_insn(insn);
+    }
+    printf("\nKill: ");
+    array_for(pos, bb_cg->kill) {
+        struct ir_insn *insn = *pos;
+        print_ir_insn(insn);
+    }
+    printf("\nIn: ");
+    array_for(pos, bb_cg->in) {
+        struct ir_insn *insn = *pos;
+        print_ir_insn(insn);
+    }
+    printf("\nOut: ");
+    array_for(pos, bb_cg->out) {
+        struct ir_insn *insn = *pos;
+        print_ir_insn(insn);
+    }
+    printf("\n------\n");
+}
+
 void liveness_analysis(struct ir_function *fun) {
     init_bb_info(fun);
     gen_kill(fun);
     in_out(fun);
+    print_ir_prog_advanced(fun, &print_bb_extra);
     free_bb_info(fun);
 }

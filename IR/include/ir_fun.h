@@ -32,4 +32,6 @@ void clean_id(struct ir_function *);
 
 void print_ir_prog(struct ir_function *);
 
+void print_ir_prog_advanced(struct ir_function *fun, void (*post_fun)(struct ir_basic_block *));
+
 #endif
