@@ -11,7 +11,7 @@ struct ir_insn *create_insn_base(struct ir_basic_block *bb) {
     return new_insn;
 }
 
-struct array find_value_uses(struct ir_insn *insn) {
+struct array get_operands(struct ir_insn *insn) {
     struct array     uses = INIT_ARRAY(struct ir_value *);
     struct ir_value *pos;
 

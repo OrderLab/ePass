@@ -41,7 +41,7 @@ void try_remove_trivial_phi(struct ir_insn *phi) {
             continue;
         }
 
-        struct array      value_uses = find_value_uses(user);
+        struct array      value_uses = get_operands(user);
         struct ir_value **pos2;
         array_for(pos2, value_uses) {
             if (ir_value_equal(**pos2, phi_val)) {

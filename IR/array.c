@@ -65,6 +65,23 @@ void array_erase(struct array *arr, size_t idx) {
     arr->num_elem--;
 }
 
+void array_clear(struct array *arr) {
+    __free(arr->data);
+    arr->data     = __malloc(arr->elem_size * 4);
+    arr->max_elem = 4;
+    arr->num_elem = 0;
+}
+
+struct array array_clone(struct array *arr) {
+    struct array res;
+    res.num_elem     = arr->num_elem;
+    res.max_elem     = arr->max_elem;
+    res.elem_size    = arr->elem_size;
+    res.data         = __malloc(arr->max_elem * arr->elem_size);
+    memcpy(res.data, arr->data, arr->num_elem * arr->elem_size);
+    return res;
+}
+
 void array_free(struct array *arr) {
     __free(arr->data);
     *arr = array_null();

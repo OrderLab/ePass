@@ -9,7 +9,7 @@ enum insert_position {
 };
 
 // Return an array of struct ir_value*
-struct array find_value_uses(struct ir_insn *insn);
+struct array get_operands(struct ir_insn *insn);
 
 void erase_insn(struct ir_insn *insn);
 
