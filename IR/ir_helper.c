@@ -3,11 +3,12 @@
 #include "array.h"
 #include "bpf_ir.h"
 #include "dbg.h"
+#include "ir_insn.h"
 #include "list.h"
 #include "ir_fun.h"
 
 /// Reset visited flag
-void clean_env(struct ir_function *fun) {
+void clean_env_all(struct ir_function *fun) {
     for (size_t i = 0; i < fun->all_bbs.num_elem; ++i) {
         struct ir_basic_block *bb = ((struct ir_basic_block **)(fun->all_bbs.data))[i];
         bb->_visited              = 0;
@@ -16,6 +17,18 @@ void clean_env(struct ir_function *fun) {
         list_for_each(p, &bb->ir_insn_head) {
             struct ir_insn *insn = list_entry(p, struct ir_insn, list_ptr);
             insn->user_data      = NULL;
+            insn->_visited       = 0;
+        }
+    }
+}
+
+void clean_env(struct ir_function *fun) {
+    for (size_t i = 0; i < fun->all_bbs.num_elem; ++i) {
+        struct ir_basic_block *bb = ((struct ir_basic_block **)(fun->all_bbs.data))[i];
+        bb->_visited              = 0;
+        struct list_head *p       = NULL;
+        list_for_each(p, &bb->ir_insn_head) {
+            struct ir_insn *insn = list_entry(p, struct ir_insn, list_ptr);
             insn->_visited       = 0;
         }
     }
@@ -329,7 +342,11 @@ void print_ir_bb(struct ir_basic_block *bb, void (*post_fun)(struct ir_basic_blo
     struct list_head *p = NULL;
     list_for_each(p, &bb->ir_insn_head) {
         struct ir_insn *insn = list_entry(p, struct ir_insn, list_ptr);
-        printf("  %%%zu = ", insn->_insn_id);
+        if (is_void(insn)) {
+            printf("  ");
+        } else {
+            printf("  %%%zu = ", insn->_insn_id);
+        }
         print_ir_insn(insn);
         printf("\n");
     }
@@ -361,7 +378,9 @@ void assign_id(struct ir_basic_block *bb, size_t *cnt, size_t *bb_cnt) {
     struct list_head *p = NULL;
     list_for_each(p, &bb->ir_insn_head) {
         struct ir_insn *insn = list_entry(p, struct ir_insn, list_ptr);
-        insn->_insn_id       = (*cnt)++;
+        if (!is_void(insn)) {
+            insn->_insn_id = (*cnt)++;
+        }
     }
     struct ir_basic_block **next;
     array_for(next, bb->succs) {

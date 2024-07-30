@@ -1,8 +1,10 @@
 // Live variable analysis
 #include <stdio.h>
+#include <time.h>
 #include "array.h"
 #include "bpf_ir.h"
 #include "code_gen.h"
+#include "dbg.h"
 #include "ir_fun.h"
 #include "ir_insn.h"
 #include "list.h"
@@ -12,10 +14,10 @@ void init_bb_info(struct ir_function *fun) {
     array_for(pos, fun->reachable_bbs) {
         struct ir_basic_block *bb    = *pos;
         struct ir_bb_cg_extra *bb_cg = __malloc(sizeof(struct ir_bb_cg_extra));
-        bb_cg->gen                   = array_init(sizeof(struct ir_instr *));
-        bb_cg->kill                  = array_init(sizeof(struct ir_instr *));
-        bb_cg->in                    = array_init(sizeof(struct ir_instr *));
-        bb_cg->out                   = array_init(sizeof(struct ir_instr *));
+        bb_cg->gen                   = INIT_ARRAY(struct ir_instr *);
+        bb_cg->kill                  = INIT_ARRAY(struct ir_instr *);
+        bb_cg->in                    = INIT_ARRAY(struct ir_instr *);
+        bb_cg->out                   = INIT_ARRAY(struct ir_instr *);
         bb->user_data                = bb_cg;
     }
 }
@@ -147,34 +149,37 @@ void in_out(struct ir_function *fun) {
 
 void print_bb_extra(struct ir_basic_block *bb) {
     struct ir_bb_cg_extra *bb_cg = bb->user_data;
-    printf("------\nGen: ");
+    if (bb->user_data == NULL) {
+        CRITICAL("NULL user data");
+    }
+    printf("--\nGen:");
     struct ir_insn **pos;
     array_for(pos, bb_cg->gen) {
         struct ir_insn *insn = *pos;
-        print_ir_insn(insn);
+        printf(" %%%zu", insn->_insn_id);
     }
-    printf("\nKill: ");
+    printf("\nKill:");
     array_for(pos, bb_cg->kill) {
         struct ir_insn *insn = *pos;
-        print_ir_insn(insn);
+        printf(" %%%zu", insn->_insn_id);
     }
-    printf("\nIn: ");
+    printf("\nIn:");
     array_for(pos, bb_cg->in) {
         struct ir_insn *insn = *pos;
-        print_ir_insn(insn);
+        printf(" %%%zu", insn->_insn_id);
     }
-    printf("\nOut: ");
+    printf("\nOut:");
     array_for(pos, bb_cg->out) {
         struct ir_insn *insn = *pos;
-        print_ir_insn(insn);
+        printf(" %%%zu", insn->_insn_id);
     }
-    printf("\n------\n");
+    printf("\n--\n");
 }
 
 void liveness_analysis(struct ir_function *fun) {
     init_bb_info(fun);
-    // gen_kill(fun);
+    gen_kill(fun);
     // in_out(fun);
-    // print_ir_prog_advanced(fun, print_bb_extra);
+    print_ir_prog_advanced(fun, print_bb_extra);
     free_bb_info(fun);
 }

@@ -322,6 +322,7 @@ struct ir_insn *add_phi_operands(struct ssa_transform_env *env, __u8 reg, struct
         phi.bb    = pred;
         phi.value = read_variable(env, reg, (struct pre_ir_basic_block *)pred->user_data);
         add_user(env, insn, phi.value);
+        array_push(&pred->users, &insn);
         array_push(&insn->phi, &phi);
     }
     return insn;
@@ -840,9 +841,11 @@ __u8 ir_value_equal(struct ir_value a, struct ir_value b) {
 
 void run_passes(struct ir_function *fun) {
     for (size_t i = 0; i < sizeof(passes) / sizeof(passes[0]); ++i) {
-        clean_env(fun);
+        clean_env_all(fun);
         gen_reachable_bbs(fun);
         passes[i](fun);
+        printf("--------------------\n");
+        print_ir_prog(fun);
     }
 }
 
@@ -863,8 +866,8 @@ void run(struct bpf_insn *insns, size_t len) {
     run_passes(&fun);
 
     // End IR manipulation
-    printf("--------------------\n");
-    print_ir_prog(&fun);
+    // printf("--------------------\n");
+    // print_ir_prog(&fun);
 
     // Test
     // add_stack_offset(&fun, -8);

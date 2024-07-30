@@ -17,13 +17,32 @@ void cut_bb(struct ir_function *fun) {
                 CRITICAL("Empty BB with > 1 successors");
             }
             struct ir_basic_block **pos2;
+            struct ir_basic_block  *next = ((struct ir_basic_block **)(bb->succs.data))[0];
             array_for(pos2, bb->preds) {
                 struct ir_basic_block  *pred = *pos2;
                 struct ir_basic_block **pos3;
                 array_for(pos3, pred->succs) {
                     struct ir_basic_block *succ = *pos3;
                     if (succ == bb) {
-                        *pos3 = ((struct ir_basic_block **)(bb->succs.data))[0];
+                        *pos3 = next;
+                    }
+                }
+            }
+            struct ir_insn **pos4;
+            array_for(pos4, bb->users) {
+                struct ir_insn *user = *pos4;
+                if (user->bb1 == bb) {
+                    user->bb1 = next;
+                }
+                if (user->bb2 == bb) {
+                    user->bb2 = next;
+                }
+                if (user->op == IR_INSN_PHI) {
+                    struct phi_value *pos5;
+                    array_for(pos5, user->phi) {
+                        if (pos5->bb == bb) {
+                            pos5->bb = next;
+                        }
                     }
                 }
             }
