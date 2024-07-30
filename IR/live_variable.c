@@ -122,6 +122,7 @@ void in_out(struct ir_function *fun) {
     int change = 1;
     // For each BB
     while (change) {
+        change = 0;
         struct ir_basic_block **pos;
         array_for(pos, fun->reachable_bbs) {
             struct ir_basic_block  *bb     = *pos;
@@ -173,13 +174,14 @@ void print_bb_extra(struct ir_basic_block *bb) {
         struct ir_insn *insn = *pos;
         printf(" %%%zu", insn->_insn_id);
     }
-    printf("\n--\n");
+    printf("\n-------------\n");
 }
 
 void liveness_analysis(struct ir_function *fun) {
     init_bb_info(fun);
     gen_kill(fun);
     // in_out(fun);
+    printf("--------------\n");
     print_ir_prog_advanced(fun, print_bb_extra);
     free_bb_info(fun);
 }

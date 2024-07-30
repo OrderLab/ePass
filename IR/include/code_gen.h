@@ -9,6 +9,7 @@ struct ir_bb_cg_extra {
     struct array out;
     struct array gen;
     struct array kill;
+    struct array def;
 };
 
 // For debugging
