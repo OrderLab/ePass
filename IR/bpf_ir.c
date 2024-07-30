@@ -642,7 +642,7 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
                 new_insn->op             = IR_INSN_JA;
                 size_t pos               = insn.pos + insn.off + 1;
                 new_insn->bb1            = get_ir_bb_from_position(env, pos);
-                // array_push(&bb->ir_bb->users, &new_insn);
+                array_push(&new_insn->bb1->users, &new_insn);
             } else if (BPF_OP(code) == BPF_EXIT) {
                 // Exit
                 struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
@@ -661,6 +661,8 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
                 size_t pos    = insn.pos + insn.off + 1;
                 new_insn->bb1 = get_ir_bb_from_position(env, insn.pos + 1);
                 new_insn->bb2 = get_ir_bb_from_position(env, pos);
+                array_push(&new_insn->bb1->users, &new_insn);
+                array_push(&new_insn->bb2->users, &new_insn);
             } else if (BPF_OP(code) == BPF_JLT) {
                 // PC += offset if dst < src
                 struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
@@ -673,6 +675,8 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
                 size_t pos    = insn.pos + insn.off + 1;
                 new_insn->bb1 = get_ir_bb_from_position(env, insn.pos + 1);
                 new_insn->bb2 = get_ir_bb_from_position(env, pos);
+                array_push(&new_insn->bb1->users, &new_insn);
+                array_push(&new_insn->bb2->users, &new_insn);
             } else if (BPF_OP(code) == BPF_JLE) {
                 // PC += offset if dst <= src
                 struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
@@ -685,6 +689,8 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
                 size_t pos    = insn.pos + insn.off + 1;
                 new_insn->bb1 = get_ir_bb_from_position(env, insn.pos + 1);
                 new_insn->bb2 = get_ir_bb_from_position(env, pos);
+                array_push(&new_insn->bb1->users, &new_insn);
+                array_push(&new_insn->bb2->users, &new_insn);
             } else if (BPF_OP(code) == BPF_JGT) {
                 // PC += offset if dst > src
                 struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
@@ -697,6 +703,8 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
                 size_t pos    = insn.pos + insn.off + 1;
                 new_insn->bb1 = get_ir_bb_from_position(env, insn.pos + 1);
                 new_insn->bb2 = get_ir_bb_from_position(env, pos);
+                array_push(&new_insn->bb1->users, &new_insn);
+                array_push(&new_insn->bb2->users, &new_insn);
             } else if (BPF_OP(code) == BPF_JGE) {
                 // PC += offset if dst >= src
                 struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
@@ -709,6 +717,8 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
                 size_t pos    = insn.pos + insn.off + 1;
                 new_insn->bb1 = get_ir_bb_from_position(env, insn.pos + 1);
                 new_insn->bb2 = get_ir_bb_from_position(env, pos);
+                array_push(&new_insn->bb1->users, &new_insn);
+                array_push(&new_insn->bb2->users, &new_insn);
             } else if (BPF_OP(code) == BPF_JNE) {
                 // PC += offset if dst != src
                 struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
@@ -721,6 +731,8 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
                 size_t pos    = insn.pos + insn.off + 1;
                 new_insn->bb1 = get_ir_bb_from_position(env, insn.pos + 1);
                 new_insn->bb2 = get_ir_bb_from_position(env, pos);
+                array_push(&new_insn->bb1->users, &new_insn);
+                array_push(&new_insn->bb2->users, &new_insn);
             } else if (BPF_OP(code) == BPF_CALL) {
                 // imm is the function id
                 struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
