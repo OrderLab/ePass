@@ -322,6 +322,9 @@ void print_ir_insn(struct ir_insn *insn) {
             printf(", ");
             print_ir_value(insn->values[1]);
             break;
+        case IR_INSN_ASSIGN:
+            print_ir_value(insn->values[0]);
+            break;
         default:
             CRITICAL("Unknown IR insn");
     }

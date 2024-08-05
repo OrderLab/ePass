@@ -12,7 +12,8 @@
     All function passes.
  */
 static void (*passes[])(struct ir_function *fun) = {
-    remove_trivial_phi, liveness_analysis,
+    remove_trivial_phi,
+    // liveness_analysis,
     // add_constraint,
     // add_counter,
 };

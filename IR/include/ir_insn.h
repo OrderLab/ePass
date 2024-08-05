@@ -68,4 +68,9 @@ struct ir_insn *create_ret_insn(struct ir_insn *insn, struct ir_value val,
 struct ir_insn *create_ret_insn_bb(struct ir_basic_block *bb, struct ir_value val,
                                    enum insert_position pos);
 
+struct ir_insn *create_assign_insn(struct ir_insn *insn, struct ir_value val,
+                                   enum insert_position pos);
+
+struct ir_insn *create_assign_insn_bb(struct ir_basic_block *bb, struct ir_value val,
+                                      enum insert_position pos);
 #endif

@@ -125,7 +125,9 @@ enum ir_insn_type {
     IR_INSN_JLE,
     IR_INSN_JNE,
     // PHI
-    IR_INSN_PHI
+    IR_INSN_PHI,
+    // Code-gen instructions
+    IR_INSN_ASSIGN
 };
 
 /**
@@ -150,6 +152,8 @@ enum ir_insn_type {
         | JLE <value>, <value>, <bb_next>, <bb>
         | JNE <value>, <value>, <bb_next>, <bb>
         | PHI <phi_value>
+        (For code gen usage)
+        | ASSIGN <value>
     
     Note. <bb_next> must be the next basic block.
  */

@@ -12,6 +12,8 @@ struct ir_bb_cg_extra {
     struct array def;
 };
 
+void code_gen(struct ir_function *fun);
+
 // For debugging
 void liveness_analysis(struct ir_function *fun);
 
