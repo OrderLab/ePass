@@ -880,6 +880,7 @@ void run(struct bpf_insn *insns, size_t len) {
     // print_ir_prog(&fun);
 
     code_gen(&fun);
+    printf("--------------------\n");
     print_ir_prog(&fun);
 
     // Free the memory
