@@ -11,16 +11,17 @@ void liveness_analysis(struct ir_function *fun);
 
 // Extra information needed for code gen
 struct ir_bb_cg_extra {
-    // SSA elimination
-    struct ir_insn *dst;
-
     // Liveness analysis
-
     struct array in;
     struct array out;
     struct array gen;
     struct array kill;
     struct array def;
+};
+
+struct ir_insn_cg_extra {
+    // Destination (Not in SSA form anymore)
+    struct ir_insn *dst;
 };
 
 void elim_ssa(struct ir_function *fun);

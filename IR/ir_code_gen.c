@@ -1,20 +1,32 @@
+#include "array.h"
+#include "bpf_ir.h"
 #include "code_gen.h"
+#include "list.h"
 #include "prog_check.h"
 
-void init_bb_info(struct ir_function *fun) {
+void init_cg(struct ir_function *fun) {
     struct ir_basic_block **pos;
     array_for(pos, fun->reachable_bbs) {
         struct ir_basic_block *bb    = *pos;
         struct ir_bb_cg_extra *bb_cg = __malloc(sizeof(struct ir_bb_cg_extra));
-        bb_cg->gen                   = INIT_ARRAY(struct ir_instr *);
-        bb_cg->kill                  = INIT_ARRAY(struct ir_instr *);
-        bb_cg->in                    = INIT_ARRAY(struct ir_instr *);
-        bb_cg->out                   = INIT_ARRAY(struct ir_instr *);
-        bb->user_data                = bb_cg;
+        bb_cg->gen                   = INIT_ARRAY(struct ir_insn *);
+        bb_cg->kill                  = INIT_ARRAY(struct ir_insn *);
+        bb_cg->in                    = INIT_ARRAY(struct ir_insn *);
+        bb_cg->out                   = INIT_ARRAY(struct ir_insn *);
+
+        bb->user_data = bb_cg;
+
+        struct ir_insn *insn;
+        list_for_each_entry(insn, &bb->ir_insn_head, list_ptr){
+            struct ir_insn_cg_extra *insn_cg = __malloc(sizeof(struct ir_insn_cg_extra));
+            // When init, the destination is itself
+            insn_cg->dst = insn;
+            insn->user_data = insn_cg;
+        }
     }
 }
 
-void free_bb_info(struct ir_function *fun) {
+void free_cg_res(struct ir_function *fun) {
     struct ir_basic_block **pos;
     array_for(pos, fun->reachable_bbs) {
         struct ir_basic_block *bb    = *pos;
@@ -25,17 +37,22 @@ void free_bb_info(struct ir_function *fun) {
         array_free(&bb_cg->out);
         __free(bb->user_data);
         bb->user_data = NULL;
+        struct ir_insn *insn;
+        list_for_each_entry(insn, &bb->ir_insn_head, list_ptr){
+            __free(insn->user_data);
+            insn->user_data = NULL;
+        }
     }
 }
 
-void code_gen(struct ir_function *fun){
+void code_gen(struct ir_function *fun) {
     // Init
-    init_bb_info(fun);
+    init_cg(fun);
     // Step 1: Check program
     prog_check(fun);
     // Step 2: Eliminate SSA
     elim_ssa(fun);
 
     // Free resource
-    free_bb_info(fun);
+    free_cg_res(fun);
 }
