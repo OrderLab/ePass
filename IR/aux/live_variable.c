@@ -9,33 +9,6 @@
 #include "ir_insn.h"
 #include "list.h"
 
-void init_bb_info(struct ir_function *fun) {
-    struct ir_basic_block **pos;
-    array_for(pos, fun->reachable_bbs) {
-        struct ir_basic_block *bb    = *pos;
-        struct ir_bb_la_extra *bb_cg = __malloc(sizeof(struct ir_bb_la_extra));
-        bb_cg->gen                   = INIT_ARRAY(struct ir_instr *);
-        bb_cg->kill                  = INIT_ARRAY(struct ir_instr *);
-        bb_cg->in                    = INIT_ARRAY(struct ir_instr *);
-        bb_cg->out                   = INIT_ARRAY(struct ir_instr *);
-        bb->user_data                = bb_cg;
-    }
-}
-
-void free_bb_info(struct ir_function *fun) {
-    struct ir_basic_block **pos;
-    array_for(pos, fun->reachable_bbs) {
-        struct ir_basic_block *bb    = *pos;
-        struct ir_bb_la_extra *bb_cg = bb->user_data;
-        array_free(&bb_cg->gen);
-        array_free(&bb_cg->kill);
-        array_free(&bb_cg->in);
-        array_free(&bb_cg->out);
-        __free(bb->user_data);
-        bb->user_data = NULL;
-    }
-}
-
 void array_erase_elem(struct array *arr, struct ir_insn *insn) {
     // Remove insn from arr
     for (size_t i = 0; i < arr->num_elem; ++i) {
@@ -52,7 +25,7 @@ void gen_kill(struct ir_function *fun) {
     // For each BB
     array_for(pos, fun->reachable_bbs) {
         struct ir_basic_block *bb    = *pos;
-        struct ir_bb_la_extra *bb_cg = bb->user_data;
+        struct ir_bb_cg_extra *bb_cg = bb->user_data;
         struct ir_insn        *pos2;
         // For each operation in reverse
         list_for_each_entry_reverse(pos2, &bb->ir_insn_head, list_ptr) {
@@ -126,12 +99,12 @@ void in_out(struct ir_function *fun) {
         struct ir_basic_block **pos;
         array_for(pos, fun->reachable_bbs) {
             struct ir_basic_block  *bb     = *pos;
-            struct ir_bb_la_extra  *bb_cg  = bb->user_data;
+            struct ir_bb_cg_extra  *bb_cg  = bb->user_data;
             struct array            old_in = bb_cg->in;
             struct ir_basic_block **pos2;
             array_clear(&bb_cg->out);
             array_for(pos2, bb->succs) {
-                struct ir_bb_la_extra *bb_cg2 = (*pos2)->user_data;
+                struct ir_bb_cg_extra *bb_cg2 = (*pos2)->user_data;
                 merge_array(&bb_cg->out, &bb_cg2->in);
             }
             struct array out_kill_delta = array_delta(&bb_cg->out, &bb_cg->kill);
@@ -149,7 +122,7 @@ void in_out(struct ir_function *fun) {
 }
 
 void print_bb_extra(struct ir_basic_block *bb) {
-    struct ir_bb_la_extra *bb_cg = bb->user_data;
+    struct ir_bb_cg_extra *bb_cg = bb->user_data;
     if (bb->user_data == NULL) {
         CRITICAL("NULL user data");
     }
@@ -178,10 +151,8 @@ void print_bb_extra(struct ir_basic_block *bb) {
 }
 
 void liveness_analysis(struct ir_function *fun) {
-    init_bb_info(fun);
     gen_kill(fun);
     // in_out(fun);
     printf("--------------\n");
     print_ir_prog_advanced(fun, print_bb_extra);
-    free_bb_info(fun);
 }
