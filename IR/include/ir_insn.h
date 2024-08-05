@@ -74,11 +74,9 @@ struct ir_insn *create_assign_insn(struct ir_insn *insn, struct ir_value val,
 struct ir_insn *create_assign_insn_bb(struct ir_basic_block *bb, struct ir_value val,
                                       enum insert_position pos);
 
-struct ir_insn *create_phi_insn(struct ir_insn *insn, struct ir_value val,
-                                enum insert_position pos);
+struct ir_insn *create_phi_insn(struct ir_insn *insn, enum insert_position pos);
 
-struct ir_insn *create_phi_insn_bb(struct ir_basic_block *bb, struct ir_value val,
-                                   enum insert_position pos);
+struct ir_insn *create_phi_insn_bb(struct ir_basic_block *bb, enum insert_position pos);
 
 void phi_add_operand(struct ir_insn *insn, struct ir_basic_block *bb, struct ir_value val);
 

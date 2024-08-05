@@ -316,16 +316,14 @@ struct ir_insn *create_phi_insn_base(struct ir_basic_block *bb) {
     return new_insn;
 }
 
-struct ir_insn *create_phi_insn(struct ir_insn *insn, struct ir_value val,
-                                enum insert_position pos) {
-    struct ir_insn *new_insn = create_assign_insn_base(insn->parent_bb, val);
+struct ir_insn *create_phi_insn(struct ir_insn *insn, enum insert_position pos) {
+    struct ir_insn *new_insn = create_phi_insn_base(insn->parent_bb);
     insert_at(new_insn, insn, pos);
     return new_insn;
 }
 
-struct ir_insn *create_phi_insn_bb(struct ir_basic_block *bb, struct ir_value val,
-                                   enum insert_position pos) {
-    struct ir_insn *new_insn = create_assign_insn_base(bb, val);
+struct ir_insn *create_phi_insn_bb(struct ir_basic_block *bb, enum insert_position pos) {
+    struct ir_insn *new_insn = create_phi_insn_base(bb);
     insert_at_bb(new_insn, bb, pos);
     return new_insn;
 }
