@@ -135,9 +135,7 @@ struct ir_insn *create_store_insn_base(struct ir_basic_block *bb, struct ir_insn
                                        struct ir_value val) {
     struct ir_insn *new_insn = create_insn_base(bb);
     new_insn->op             = IR_INSN_STORE;
-    struct ir_value nv;
-    nv.type             = IR_VALUE_INSN;
-    nv.data.insn_d      = insn;
+    struct ir_value nv = ir_value_insn(insn);
     new_insn->values[0] = nv;
     new_insn->values[1] = val;
     val_add_user(nv, new_insn);

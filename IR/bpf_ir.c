@@ -428,6 +428,10 @@ enum ir_vr_type to_ir_ld_u(__u8 size) {
     }
 }
 
+struct ir_value ir_value_insn(struct ir_insn *insn) {
+    return (struct ir_value){.type = IR_VALUE_INSN, .data.insn_d = insn};
+}
+
 // User uses val
 void add_user(struct ssa_transform_env *env, struct ir_insn *user, struct ir_value val) {
     if (val.type == IR_VALUE_INSN) {

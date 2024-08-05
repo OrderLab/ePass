@@ -26,18 +26,20 @@ void elim_ssa(struct ir_function *fun) {
     array_for(pos2, phi_insns) {
         struct ir_insn *insn = *pos2;
         // Create the moved PHI insn
-        struct ir_insn *new_phi = create_phi_insn(insn, INSERT_FRONT);
+        struct ir_insn   *new_phi = create_phi_insn(insn, INSERT_FRONT);
         struct phi_value *pos3;
         array_for(pos3, insn->phi) {
-            create_assign_insn_bb(pos3->bb, pos3->value, INSERT_BACK_BEFORE_JMP);
+            struct ir_insn *new_insn =
+                create_assign_insn_bb(pos3->bb, pos3->value, INSERT_BACK_BEFORE_JMP);
             // Remove use
             val_remove_user(pos3->value, insn);
+            phi_add_operand(new_phi, pos3->bb, ir_value_insn(new_insn));
         }
 
         array_free(&insn->phi);
         insn->op = IR_INSN_ASSIGN;
         struct ir_value val;
-        val.type = IR_VALUE_INSN;
+        val.type        = IR_VALUE_INSN;
         val.data.insn_d = new_phi;
         insn->values[0] = val;
     }

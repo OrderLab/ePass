@@ -69,6 +69,8 @@ struct ir_value {
     enum ir_value_type type;
 };
 
+struct ir_value ir_value_insn(struct ir_insn *);
+
 /**
     Value plus an offset
  */
@@ -154,7 +156,7 @@ enum ir_insn_type {
         | PHI <phi_value>
         (For code gen usage)
         | ASSIGN <value>
-    
+
     Note. <bb_next> must be the next basic block.
  */
 struct ir_insn {
@@ -174,7 +176,7 @@ struct ir_insn {
     // Array of phi_value
     struct array phi;
 
-    __s32             fid;
+    __s32 fid;
     // __u32             f_arg_num;
     enum ir_insn_type op;
 
@@ -321,6 +323,6 @@ void print_raw_ir_bb(struct ir_basic_block *bb);
 
 __u8 ir_value_equal(struct ir_value a, struct ir_value b);
 
-struct ir_basic_block* init_ir_bb_raw();
+struct ir_basic_block *init_ir_bb_raw();
 
 #endif
