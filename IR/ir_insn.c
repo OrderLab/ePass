@@ -20,12 +20,9 @@ void replace_all_usage(struct ir_insn *insn, struct ir_value rep) {
         struct ir_insn   *user     = *pos;
         struct array      operands = get_operands(user);
         struct ir_value **pos2;
-        printf("User!\n");
-        print_raw_ir_insn(user);
         array_for(pos2, operands) {
             if ((*pos2)->type == IR_VALUE_INSN && (*pos2)->data.insn_d == insn) {
                 // Match, replace
-                printf("Found match!\n");
                 **pos2 = rep;
             }
         }

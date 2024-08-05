@@ -41,6 +41,7 @@ void to_cssa(struct ir_function *fun) {
         insn->op            = IR_INSN_ASSIGN;
         struct ir_value val = ir_value_insn(new_phi);
         insn->values[0]     = val;
+        insn->value_num     = 1;
         val_add_user(val, insn);
     }
 
@@ -82,7 +83,7 @@ void remove_phi(struct ir_function *fun) {
         }
 
         replace_all_usage(insn, ir_value_insn(repr));
-        // erase_insn(insn);
+        erase_insn(insn);
     }
 
     array_free(&phi_insns);
