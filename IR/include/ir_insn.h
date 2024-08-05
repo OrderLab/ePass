@@ -6,6 +6,9 @@
 enum insert_position {
     INSERT_BACK,
     INSERT_FRONT,
+    // BB-specific
+    INSERT_BACK_BEFORE_JMP,
+    INSERT_FRONT_AFTER_PHI
 };
 
 // Return an array of struct ir_value*

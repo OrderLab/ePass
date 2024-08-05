@@ -19,4 +19,15 @@ void elim_ssa(struct ir_function *fun){
             }
         }
     }
+
+    struct ir_insn **pos2;
+    array_for(pos2, phi_insns){
+        struct ir_insn *insn = *pos2;
+        struct phi_value *pos3;
+        array_for(pos3,insn->phi){
+            
+        }
+    }
+
+    array_free(&phi_insns);
 }

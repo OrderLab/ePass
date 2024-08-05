@@ -3,6 +3,7 @@
 #include "array.h"
 #include "bpf_ir.h"
 #include "dbg.h"
+#include "ir_bb.h"
 #include "list.h"
 
 struct ir_insn *create_insn_base(struct ir_basic_block *bb) {
@@ -41,16 +42,49 @@ void erase_insn(struct ir_insn *insn) {
 void insert_at(struct ir_insn *new_insn, struct ir_insn *insn, enum insert_position pos) {
     if (pos == INSERT_BACK) {
         list_add(&new_insn->list_ptr, &insn->list_ptr);
-    } else {
+    } else if (pos == INSERT_FRONT) {
         list_add_tail(&new_insn->list_ptr, &insn->list_ptr);
+    } else {
+        CRITICAL("Insert position not available for insn");
     }
 }
 
 void insert_at_bb(struct ir_insn *new_insn, struct ir_basic_block *bb, enum insert_position pos) {
     if (pos == INSERT_BACK) {
         list_add_tail(&new_insn->list_ptr, &bb->ir_insn_head);
-    } else {
+    } else if (pos == INSERT_FRONT) {
         list_add(&new_insn->list_ptr, &bb->ir_insn_head);
+    } else if (pos == INSERT_BACK_BEFORE_JMP) {
+        // 1. If no JMP instruction, directly insert at the back
+        // 2. If there is a JMP at the end, insert before it
+        struct ir_insn *last_insn = get_last_insn(bb);
+        if (last_insn) {
+            if (is_jmp(last_insn)) {
+                // Insert before this insn
+                list_add_tail(&new_insn->list_ptr, &last_insn->list_ptr);
+            } else {
+                // Insert at the back
+                list_add_tail(&new_insn->list_ptr, &bb->ir_insn_head);
+            }
+        } else {
+            // Empty
+            list_add_tail(&new_insn->list_ptr, &bb->ir_insn_head);
+        }
+    } else if (pos == INSERT_FRONT_AFTER_PHI){
+        // Insert after all PHIs
+        struct ir_insn*insn =NULL;
+        list_for_each_entry(insn, &bb->ir_insn_head, list_ptr){
+            if (insn->op != IR_INSN_PHI) {
+                break;
+            }
+        }
+        if (insn) {
+            // Insert before insn
+            list_add_tail(&new_insn->list_ptr, &insn->list_ptr);
+        }else{
+            // No insn
+            list_add(&new_insn->list_ptr, &bb->ir_insn_head);
+        }
     }
 }
 
@@ -246,10 +280,9 @@ struct ir_insn *create_ret_insn_bb(struct ir_basic_block *bb, struct ir_value va
 }
 
 int is_jmp(struct ir_insn *insn) {
-    return insn->op >= IR_INSN_JA && insn->op <= IR_INSN_JNE;
+    return (insn->op >= IR_INSN_JA && insn->op <= IR_INSN_JNE) || insn->op == IR_INSN_RET;
 }
 
 int is_void(struct ir_insn *insn) {
-    return insn->op == IR_INSN_RET || is_jmp(insn) || insn->op == IR_INSN_STORERAW ||
-           insn->op == IR_INSN_STORE;
+    return is_jmp(insn) || insn->op == IR_INSN_STORERAW || insn->op == IR_INSN_STORE;
 }
