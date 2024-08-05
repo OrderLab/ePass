@@ -336,7 +336,7 @@ struct ir_value read_variable_recursive(struct ssa_transform_env *env, __u8 reg,
         // Incomplete CFG
         struct ir_insn *new_insn = create_insn_front(bb->ir_bb);
         new_insn->op             = IR_INSN_PHI;
-        new_insn->phi            = array_init(sizeof(struct phi_value));
+        new_insn->phi            = INIT_ARRAY(struct phi_value);
         bb->incompletePhis[reg]  = new_insn;
         val.type                 = IR_VALUE_INSN;
         val.data.insn_d          = new_insn;
@@ -345,7 +345,7 @@ struct ir_value read_variable_recursive(struct ssa_transform_env *env, __u8 reg,
     } else {
         struct ir_insn *new_insn = create_insn_front(bb->ir_bb);
         new_insn->op             = IR_INSN_PHI;
-        new_insn->phi            = array_init(sizeof(struct phi_value));
+        new_insn->phi            = INIT_ARRAY(struct phi_value);
         val.type                 = IR_VALUE_INSN;
         val.data.insn_d          = new_insn;
         write_variable(env, reg, bb, val);

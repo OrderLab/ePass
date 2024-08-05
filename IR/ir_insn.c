@@ -70,10 +70,10 @@ void insert_at_bb(struct ir_insn *new_insn, struct ir_basic_block *bb, enum inse
             // Empty
             list_add_tail(&new_insn->list_ptr, &bb->ir_insn_head);
         }
-    } else if (pos == INSERT_FRONT_AFTER_PHI){
+    } else if (pos == INSERT_FRONT_AFTER_PHI) {
         // Insert after all PHIs
-        struct ir_insn*insn =NULL;
-        list_for_each_entry(insn, &bb->ir_insn_head, list_ptr){
+        struct ir_insn *insn = NULL;
+        list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
             if (insn->op != IR_INSN_PHI) {
                 break;
             }
@@ -81,7 +81,7 @@ void insert_at_bb(struct ir_insn *new_insn, struct ir_basic_block *bb, enum inse
         if (insn) {
             // Insert before insn
             list_add_tail(&new_insn->list_ptr, &insn->list_ptr);
-        }else{
+        } else {
             // No insn
             list_add(&new_insn->list_ptr, &bb->ir_insn_head);
         }
@@ -287,7 +287,6 @@ int is_void(struct ir_insn *insn) {
     return is_jmp(insn) || insn->op == IR_INSN_STORERAW || insn->op == IR_INSN_STORE;
 }
 
-
 struct ir_insn *create_assign_insn_base(struct ir_basic_block *bb, struct ir_value val) {
     struct ir_insn *new_insn = create_insn_base(bb);
     new_insn->op             = IR_INSN_ASSIGN;
@@ -297,15 +296,45 @@ struct ir_insn *create_assign_insn_base(struct ir_basic_block *bb, struct ir_val
 }
 
 struct ir_insn *create_assign_insn(struct ir_insn *insn, struct ir_value val,
-                                enum insert_position pos) {
+                                   enum insert_position pos) {
     struct ir_insn *new_insn = create_assign_insn_base(insn->parent_bb, val);
     insert_at(new_insn, insn, pos);
     return new_insn;
 }
 
 struct ir_insn *create_assign_insn_bb(struct ir_basic_block *bb, struct ir_value val,
+                                      enum insert_position pos) {
+    struct ir_insn *new_insn = create_assign_insn_base(bb, val);
+    insert_at_bb(new_insn, bb, pos);
+    return new_insn;
+}
+
+struct ir_insn *create_phi_insn_base(struct ir_basic_block *bb) {
+    struct ir_insn *new_insn = create_insn_base(bb);
+    new_insn->op             = IR_INSN_PHI;
+    new_insn->phi            = INIT_ARRAY(struct phi_value);
+    return new_insn;
+}
+
+struct ir_insn *create_phi_insn(struct ir_insn *insn, struct ir_value val,
+                                enum insert_position pos) {
+    struct ir_insn *new_insn = create_assign_insn_base(insn->parent_bb, val);
+    insert_at(new_insn, insn, pos);
+    return new_insn;
+}
+
+struct ir_insn *create_phi_insn_bb(struct ir_basic_block *bb, struct ir_value val,
                                    enum insert_position pos) {
     struct ir_insn *new_insn = create_assign_insn_base(bb, val);
     insert_at_bb(new_insn, bb, pos);
     return new_insn;
+}
+
+void phi_add_operand(struct ir_insn *insn, struct ir_basic_block *bb, struct ir_value val) {
+    // Make sure that bb is a pred of insn parent BB
+    struct phi_value pv;
+    pv.value = val;
+    pv.bb    = bb;
+    array_push(&insn->phi, &pv);
+    val_add_user(val, insn);
 }
