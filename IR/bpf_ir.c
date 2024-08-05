@@ -382,7 +382,7 @@ struct ir_value read_variable(struct ssa_transform_env *env, __u8 reg,
 
 struct ir_insn *create_insn() {
     struct ir_insn *insn = __malloc(sizeof(struct ir_insn));
-    insn->users          = array_init(sizeof(struct ir_insn *));
+    insn->users          = INIT_ARRAY(struct ir_insn *);
     return insn;
 }
 

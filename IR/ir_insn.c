@@ -9,7 +9,27 @@
 struct ir_insn *create_insn_base(struct ir_basic_block *bb) {
     struct ir_insn *new_insn = __malloc(sizeof(struct ir_insn));
     new_insn->parent_bb      = bb;
+    new_insn->users          = INIT_ARRAY(struct ir_insn *);
+    new_insn->value_num      = 0;
     return new_insn;
+}
+
+void replace_all_usage(struct ir_insn *insn, struct ir_value rep) {
+    struct ir_insn **pos;
+    array_for(pos, insn->users) {
+        struct ir_insn   *user     = *pos;
+        struct array      operands = get_operands(user);
+        struct ir_value **pos2;
+        printf("User!\n");
+        print_raw_ir_insn(user);
+        array_for(pos2, operands) {
+            if ((*pos2)->type == IR_VALUE_INSN && (*pos2)->data.insn_d == insn) {
+                // Match, replace
+                printf("Found match!\n");
+                **pos2 = rep;
+            }
+        }
+    }
 }
 
 struct array get_operands(struct ir_insn *insn) {
@@ -109,7 +129,7 @@ struct ir_insn *create_alloc_insn_bb(struct ir_basic_block *bb, enum ir_vr_type 
     return new_insn;
 }
 
-void val_remove_user(struct ir_value val, struct ir_insn *user){
+void val_remove_user(struct ir_value val, struct ir_insn *user) {
     if (val.type != IR_VALUE_INSN) {
         return;
     }
@@ -135,9 +155,10 @@ struct ir_insn *create_store_insn_base(struct ir_basic_block *bb, struct ir_insn
                                        struct ir_value val) {
     struct ir_insn *new_insn = create_insn_base(bb);
     new_insn->op             = IR_INSN_STORE;
-    struct ir_value nv = ir_value_insn(insn);
-    new_insn->values[0] = nv;
-    new_insn->values[1] = val;
+    struct ir_value nv       = ir_value_insn(insn);
+    new_insn->values[0]      = nv;
+    new_insn->values[1]      = val;
+    new_insn->value_num      = 2;
     val_add_user(nv, new_insn);
     return new_insn;
 }
@@ -163,6 +184,7 @@ struct ir_insn *create_load_insn_base(struct ir_basic_block *bb, enum ir_vr_type
     new_insn->vr_type        = ty;
     new_insn->values[0]      = val;
     val_add_user(val, new_insn);
+    new_insn->value_num = 1;
     return new_insn;
 }
 
@@ -188,6 +210,7 @@ struct ir_insn *create_bin_insn_base(struct ir_basic_block *bb, struct ir_value 
     new_insn->values[1]      = val2;
     val_add_user(val1, new_insn);
     val_add_user(val2, new_insn);
+    new_insn->value_num = 2;
     return new_insn;
 }
 
@@ -249,6 +272,7 @@ struct ir_insn *create_jbin_insn_base(struct ir_basic_block *bb, struct ir_value
     val_add_user(val2, new_insn);
     array_push(&to_bb1->users, &new_insn);
     array_push(&to_bb2->users, &new_insn);
+    new_insn->value_num = 2;
     return new_insn;
 }
 
@@ -274,6 +298,7 @@ struct ir_insn *create_ret_insn_base(struct ir_basic_block *bb, struct ir_value 
     struct ir_insn *new_insn = create_insn_base(bb);
     new_insn->op             = IR_INSN_RET;
     new_insn->values[0]      = val;
+    new_insn->value_num      = 1;
     val_add_user(val, new_insn);
     return new_insn;
 }
@@ -304,6 +329,7 @@ struct ir_insn *create_assign_insn_base(struct ir_basic_block *bb, struct ir_val
     struct ir_insn *new_insn = create_insn_base(bb);
     new_insn->op             = IR_INSN_ASSIGN;
     new_insn->values[0]      = val;
+    new_insn->value_num      = 1;
     val_add_user(val, new_insn);
     return new_insn;
 }

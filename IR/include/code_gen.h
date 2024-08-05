@@ -24,7 +24,11 @@ struct ir_insn_cg_extra {
     struct ir_insn *dst;
 };
 
+struct ir_insn_cg_extra *insn_cg(struct ir_insn*insn);
+
 void to_cssa(struct ir_function *fun);
+
+void remove_phi(struct ir_function *fun);
 
 void print_ir_prog_cg(struct ir_function *fun);
 

@@ -17,10 +17,10 @@ void init_cg(struct ir_function *fun) {
         bb->user_data = bb_cg;
 
         struct ir_insn *insn;
-        list_for_each_entry(insn, &bb->ir_insn_head, list_ptr){
+        list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
             struct ir_insn_cg_extra *insn_cg = __malloc(sizeof(struct ir_insn_cg_extra));
             // When init, the destination is itself
-            insn_cg->dst = insn;
+            insn_cg->dst    = insn;
             insn->user_data = insn_cg;
         }
     }
@@ -38,11 +38,15 @@ void free_cg_res(struct ir_function *fun) {
         __free(bb->user_data);
         bb->user_data = NULL;
         struct ir_insn *insn;
-        list_for_each_entry(insn, &bb->ir_insn_head, list_ptr){
+        list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
             __free(insn->user_data);
             insn->user_data = NULL;
         }
     }
+}
+
+struct ir_insn_cg_extra *insn_cg(struct ir_insn *insn) {
+    return insn->user_data;
 }
 
 void code_gen(struct ir_function *fun) {
@@ -54,7 +58,11 @@ void code_gen(struct ir_function *fun) {
     to_cssa(fun);
 
     // Init CG, start real code generation
+    // No "users" available after this step
     init_cg(fun);
+    print_ir_prog_cg(fun);
+
+    remove_phi(fun);
 
     print_ir_prog_cg(fun);
 

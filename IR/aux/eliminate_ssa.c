@@ -1,6 +1,7 @@
 #include "code_gen.h"
 #include "array.h"
 #include "bpf_ir.h"
+#include "dbg.h"
 #include "ir_fun.h"
 #include "ir_insn.h"
 
@@ -37,15 +38,52 @@ void to_cssa(struct ir_function *fun) {
         }
 
         array_free(&insn->phi);
-        insn->op = IR_INSN_ASSIGN;
+        insn->op            = IR_INSN_ASSIGN;
         struct ir_value val = ir_value_insn(new_phi);
-        insn->values[0] = val;
+        insn->values[0]     = val;
+        val_add_user(val, insn);
     }
 
     array_free(&phi_insns);
 }
 
 // Remove PHI insn
-void remove_phi(struct ir_function *fun){
+void remove_phi(struct ir_function *fun) {
+    // dst information ready
+    struct array phi_insns = INIT_ARRAY(struct ir_insn *);
 
+    struct ir_basic_block **pos;
+    array_for(pos, fun->reachable_bbs) {
+        struct ir_basic_block *bb = *pos;
+        struct ir_insn        *insn;
+        list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
+            if (insn->op == IR_INSN_PHI) {
+                array_push(&phi_insns, &insn);
+            } else {
+                break;
+            }
+        }
+    }
+
+    struct ir_insn **pos2;
+    array_for(pos2, phi_insns) {
+        struct ir_insn   *insn = *pos2;
+        struct ir_insn   *repr = NULL;
+        struct phi_value *pos3;
+        array_for(pos3, insn->phi) {
+            if (!repr) {
+                repr = pos3->value.data.insn_d;
+            } else {
+                insn_cg(pos3->value.data.insn_d)->dst = repr;
+            }
+        }
+        if (!repr) {
+            CRITICAL("Empty Phi not removed!");
+        }
+
+        replace_all_usage(insn, ir_value_insn(repr));
+        // erase_insn(insn);
+    }
+
+    array_free(&phi_insns);
 }
