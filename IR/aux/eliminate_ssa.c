@@ -30,7 +30,16 @@ void elim_ssa(struct ir_function *fun) {
         struct phi_value *pos3;
         array_for(pos3, insn->phi) {
             create_assign_insn_bb(pos3->bb, pos3->value, INSERT_BACK_BEFORE_JMP);
+            // Remove use
+            val_remove_user(pos3->value, insn);
         }
+
+        array_free(&insn->phi);
+        insn->op = IR_INSN_ASSIGN;
+        struct ir_value val;
+        val.type = IR_VALUE_INSN;
+        val.data.insn_d = new_phi;
+        insn->values[0] = val;
     }
 
     array_free(&phi_insns);

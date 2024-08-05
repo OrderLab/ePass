@@ -80,4 +80,8 @@ struct ir_insn *create_phi_insn_bb(struct ir_basic_block *bb, enum insert_positi
 
 void phi_add_operand(struct ir_insn *insn, struct ir_basic_block *bb, struct ir_value val);
 
+void val_add_user(struct ir_value val, struct ir_insn *user);
+
+void val_remove_user(struct ir_value val, struct ir_insn *user);
+
 #endif

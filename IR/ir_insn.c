@@ -109,6 +109,21 @@ struct ir_insn *create_alloc_insn_bb(struct ir_basic_block *bb, enum ir_vr_type 
     return new_insn;
 }
 
+void val_remove_user(struct ir_value val, struct ir_insn *user){
+    if (val.type != IR_VALUE_INSN) {
+        return;
+    }
+    struct array *arr = &val.data.insn_d->users;
+    for (size_t i = 0; i < arr->num_elem; ++i) {
+        struct ir_insn *pos = ((struct ir_insn **)(arr->data))[i];
+        if (pos == user) {
+            array_erase(arr, i);
+            return;
+        }
+    }
+    printf("Warning: User not found in the users\n");
+}
+
 void val_add_user(struct ir_value val, struct ir_insn *user) {
     if (val.type != IR_VALUE_INSN) {
         return;
