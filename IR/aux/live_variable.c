@@ -8,6 +8,7 @@
 #include "ir_fun.h"
 #include "ir_insn.h"
 #include "list.h"
+#include "ir_helper.h"
 
 void array_erase_elem(struct array *arr, struct ir_insn *insn) {
     // Remove insn from arr

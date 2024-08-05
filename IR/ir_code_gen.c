@@ -46,13 +46,18 @@ void free_cg_res(struct ir_function *fun) {
 }
 
 void code_gen(struct ir_function *fun) {
-    // Init
-    init_cg(fun);
+    // Preparation
+
     // Step 1: Check program
     prog_check(fun);
     // Step 2: Eliminate SSA
-    elim_ssa(fun);
+    to_cssa(fun);
 
-    // Free resource
+    // Init CG, start real code generation
+    init_cg(fun);
+
+    print_ir_prog_cg(fun);
+
+    // Free CG resources
     free_cg_res(fun);
 }

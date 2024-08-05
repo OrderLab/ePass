@@ -20,6 +20,7 @@ add_executable(
     aux/prog_check.c
     aux/eliminate_ssa.c
     ir_code_gen.c
+    ir_helper_cg.c
 )
 
 add_executable(probe probe.c read.c array.c)

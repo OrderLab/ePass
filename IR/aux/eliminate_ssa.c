@@ -1,11 +1,12 @@
 #include "code_gen.h"
 #include "array.h"
 #include "bpf_ir.h"
+#include "ir_fun.h"
 #include "ir_insn.h"
 
-// Eliminate SSA Phi nodes
+// Convert from TSSA to CSSA
 // Using "Method I" in paper "Translating Out of Static Single Assignment Form"
-void elim_ssa(struct ir_function *fun) {
+void to_cssa(struct ir_function *fun) {
     struct array phi_insns = INIT_ARRAY(struct ir_insn *);
 
     struct ir_basic_block **pos;
@@ -37,11 +38,14 @@ void elim_ssa(struct ir_function *fun) {
 
         array_free(&insn->phi);
         insn->op = IR_INSN_ASSIGN;
-        struct ir_value val;
-        val.type        = IR_VALUE_INSN;
-        val.data.insn_d = new_phi;
+        struct ir_value val = ir_value_insn(new_phi);
         insn->values[0] = val;
     }
 
     array_free(&phi_insns);
+}
+
+// Remove PHI insn
+void remove_phi(struct ir_function *fun){
+
 }

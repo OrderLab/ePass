@@ -24,6 +24,8 @@ struct ir_insn_cg_extra {
     struct ir_insn *dst;
 };
 
-void elim_ssa(struct ir_function *fun);
+void to_cssa(struct ir_function *fun);
+
+void print_ir_prog_cg(struct ir_function *fun);
 
 #endif

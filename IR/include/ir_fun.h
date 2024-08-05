@@ -26,14 +26,4 @@ struct ir_function {
 
 struct ir_function gen_function(struct ssa_transform_env *env);
 
-void clean_env(struct ir_function *);
-
-void clean_env_all(struct ir_function *fun);
-
-void clean_id(struct ir_function *);
-
-void print_ir_prog(struct ir_function *);
-
-void print_ir_prog_advanced(struct ir_function *fun, void (*post_fun)(struct ir_basic_block *));
-
 #endif

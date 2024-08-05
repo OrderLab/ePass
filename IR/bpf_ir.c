@@ -5,8 +5,10 @@
 #include <stdlib.h>
 #include <stddef.h>
 #include "add_stack_offset.h"
+#include "ir_helper.h"
 #include "array.h"
 #include "code_gen.h"
+#include "ir_fun.h"
 #include "list.h"
 #include "dbg.h"
 #include "passes.h"
@@ -879,9 +881,8 @@ void run(struct bpf_insn *insns, size_t len) {
     // printf("--------------------\n");
     // print_ir_prog(&fun);
 
-    code_gen(&fun);
     printf("--------------------\n");
-    print_ir_prog(&fun);
+    code_gen(&fun);
 
     // Free the memory
     free_function(&fun);
