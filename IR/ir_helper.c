@@ -36,7 +36,7 @@ void clean_env(struct ir_function *fun) {
 }
 
 /// Reset instruction/BB ID
-void clean_id(struct ir_function *fun) {
+void clean_tag(struct ir_function *fun) {
     for (size_t i = 0; i < fun->all_bbs.num_elem; ++i) {
         struct ir_basic_block *ir_bb = ((struct ir_basic_block **)(fun->all_bbs.data))[i];
         ir_bb->_id                   = -1;
@@ -429,23 +429,23 @@ void assign_id(struct ir_basic_block *bb, size_t *cnt, size_t *bb_cnt) {
     }
 }
 
-void print_ir_prog(struct ir_function *fun) {
+void tag_ir(struct ir_function *fun){
     size_t cnt    = 0;
     size_t bb_cnt = 0;
     clean_env(fun);
     assign_id(fun->entry, &cnt, &bb_cnt);
     clean_env(fun);
+}
+
+void print_ir_prog(struct ir_function *fun) {
+    tag_ir(fun);
     print_ir_bb(fun->entry, NULL, 0);
-    clean_id(fun);
+    clean_tag(fun);
 }
 
 void print_ir_prog_advanced(struct ir_function *fun, void (*post_fun)(struct ir_basic_block *),
                             int                 code_gen) {
-    size_t cnt    = 0;
-    size_t bb_cnt = 0;
-    clean_env(fun);
-    assign_id(fun->entry, &cnt, &bb_cnt);
-    clean_env(fun);
+    tag_ir(fun);
     print_ir_bb(fun->entry, post_fun, code_gen);
-    clean_id(fun);
+    clean_tag(fun);
 }

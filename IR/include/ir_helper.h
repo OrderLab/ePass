@@ -7,13 +7,18 @@ void clean_env_all(struct ir_function *fun);
 
 void print_ir_prog(struct ir_function *);
 
-void print_ir_prog_advanced(struct ir_function *fun, void (*post_fun)(struct ir_basic_block *), int);
+void print_ir_prog_advanced(struct ir_function *fun, void (*post_fun)(struct ir_basic_block *),
+                            int);
 
 void clean_env(struct ir_function *);
 
 void clean_env_all(struct ir_function *fun);
 
-void clean_id(struct ir_function *);
+// Tag the instruction and BB
+void tag_ir(struct ir_function *fun);
+
+// Remove all tag information
+void clean_tag(struct ir_function *);
 
 void print_constant(struct ir_constant d);
 
