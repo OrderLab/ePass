@@ -20,6 +20,7 @@ add_executable(
     aux/prog_check.c
     aux/eliminate_ssa.c
     aux/conflict_analysis.c
+    aux/graph_coloring.c
     ir_code_gen.c
 )
 

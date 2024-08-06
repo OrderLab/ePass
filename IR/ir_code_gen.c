@@ -86,6 +86,11 @@ void code_gen(struct ir_function *fun) {
     conflict_analysis(fun);
     print_interference_graph(fun);
 
+    // Step 5: Graph coloring
+
+    graph_coloring(fun);
+    print_interference_graph(fun);
+
     // Free CG resources
     free_cg_res(fun);
 }
