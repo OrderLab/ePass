@@ -82,6 +82,10 @@ void code_gen(struct ir_function *fun) {
     // Step 3: Liveness Analysis
     liveness_analysis(fun);
 
+    // Step 4: Conflict Analysis
+    conflict_analysis(fun);
+    print_interference_graph(fun);
+
     // Free CG resources
     free_cg_res(fun);
 }

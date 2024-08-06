@@ -13,6 +13,9 @@ void build_conflict(struct ir_insn *v1, struct ir_insn *v2) {
     if (!is_final(v1) || !is_final(v2)) {
         CRITICAL("Can only build conflict on final values");
     }
+    if (v1 == v2) {
+        return;
+    }
     array_push_unique(&insn_cg(v1)->adj, &v2);
     array_push_unique(&insn_cg(v2)->adj, &v1);
 }
@@ -28,7 +31,7 @@ void print_interference_graph(struct ir_function *fun) {
             // Not final value, give up
             CRITICAL("Not Final Value!");
         }
-        printf("%zu: ", insn->_insn_id);
+        printf("%%%zu: ", insn->_insn_id);
         struct ir_insn **pos2;
         array_for(pos2, insn_cg(insn)->adj) {
             struct ir_insn *adj_insn = *pos2;
@@ -36,7 +39,7 @@ void print_interference_graph(struct ir_function *fun) {
                 // Not final value, give up
                 CRITICAL("Not Final Value!");
             }
-            printf("%zu, ", adj_insn->_insn_id);
+            printf("%%%zu, ", adj_insn->_insn_id);
         }
         printf("\n");
     }

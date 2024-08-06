@@ -38,4 +38,6 @@ void liveness_analysis(struct ir_function *fun);
 
 void conflict_analysis(struct ir_function *fun);
 
+void print_interference_graph(struct ir_function *fun);
+
 #endif
