@@ -15,4 +15,5 @@ void graph_coloring(struct ir_function *fun) {
     tag_ir(fun);
     struct array *all_var = &fun->cg_info.all_var;
     qsort(all_var->data, all_var->num_elem, all_var->elem_size, &compare_insn);
+    // all_var is now PEO
 }

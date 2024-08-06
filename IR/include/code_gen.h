@@ -22,6 +22,16 @@ struct ir_insn_cg_extra {
     // Adj list in interference graph
     // Array of struct ir_insn*
     struct array adj;
+
+    // When allocating register, whether dst will be spilled
+    // 0: Not spilled
+    // 1: Spilled on stack position 1
+    // etc.
+    size_t spilled;
+
+    // Valid if spilled == 0
+    // Valid number: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
+    __u8 alloc_reg;
 };
 
 struct ir_insn_cg_extra *insn_cg(struct ir_insn *insn);
