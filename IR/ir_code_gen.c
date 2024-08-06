@@ -3,6 +3,7 @@
 #include "code_gen.h"
 #include "list.h"
 #include "prog_check.h"
+#include "ir_helper.h"
 
 void init_cg(struct ir_function *fun) {
     struct ir_basic_block **pos;
@@ -49,6 +50,13 @@ struct ir_insn_cg_extra *insn_cg(struct ir_insn *insn) {
     return insn->user_data;
 }
 
+struct ir_insn *dst(struct ir_insn *insn) {
+    return insn_cg(insn)->dst;
+}
+void print_ir_prog_cg(struct ir_function *fun){
+    print_ir_prog_advanced(fun, NULL, 1);
+}
+
 void code_gen(struct ir_function *fun) {
     // Preparation
 
@@ -60,7 +68,7 @@ void code_gen(struct ir_function *fun) {
     // Init CG, start real code generation
     // No "users" available after this step
     init_cg(fun);
-    print_ir_prog_cg(fun);
+    // print_ir_prog_cg(fun);
 
     remove_phi(fun);
 

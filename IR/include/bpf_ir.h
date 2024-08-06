@@ -313,14 +313,6 @@ struct ir_insn *create_insn_front(struct ir_basic_block *bb);
 
 void add_user(struct ssa_transform_env *env, struct ir_insn *user, struct ir_value val);
 
-void print_ir_insn(struct ir_insn *);
-
-void print_ir_value(struct ir_value v);
-
-void print_raw_ir_insn(struct ir_insn *insn);
-
-void print_raw_ir_bb(struct ir_basic_block *bb);
-
 __u8 ir_value_equal(struct ir_value a, struct ir_value b);
 
 struct ir_basic_block *init_ir_bb_raw();
