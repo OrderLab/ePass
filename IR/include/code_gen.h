@@ -6,9 +6,6 @@
 
 void code_gen(struct ir_function *fun);
 
-// For debugging
-void liveness_analysis(struct ir_function *fun);
-
 // Extra information needed for code gen
 struct ir_bb_cg_extra {
     // Liveness analysis
@@ -36,6 +33,8 @@ void to_cssa(struct ir_function *fun);
 void remove_phi(struct ir_function *fun);
 
 void print_ir_prog_cg(struct ir_function *fun);
+
+void liveness_analysis(struct ir_function *fun);
 
 void conflict_analysis(struct ir_function *fun);
 

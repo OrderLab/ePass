@@ -19,6 +19,7 @@ add_executable(
     aux/live_variable.c
     aux/prog_check.c
     aux/eliminate_ssa.c
+    aux/conflict_analysis.c
     ir_code_gen.c
 )
 

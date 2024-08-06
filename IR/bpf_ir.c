@@ -806,11 +806,12 @@ void free_function(struct ir_function *fun) {
 
 struct ir_function gen_function(struct ssa_transform_env *env) {
     struct ir_function fun;
-    fun.arg_num       = 1;
-    fun.entry         = env->info.entry->ir_bb;
-    fun.sp_users      = env->sp_users;
-    fun.all_bbs       = array_init(sizeof(struct ir_basic_block *));
-    fun.reachable_bbs = array_init(sizeof(struct ir_basic_block *));
+    fun.arg_num         = 1;
+    fun.entry           = env->info.entry->ir_bb;
+    fun.sp_users        = env->sp_users;
+    fun.all_bbs         = INIT_ARRAY(struct ir_basic_block *);
+    fun.reachable_bbs   = INIT_ARRAY(struct ir_basic_block *);
+    fun.cg_info.all_var = INIT_ARRAY(struct ir_insn *);
     for (size_t i = 0; i < MAX_BPF_REG; ++i) {
         struct array *currentDef = &env->currentDef[i];
         array_free(currentDef);
