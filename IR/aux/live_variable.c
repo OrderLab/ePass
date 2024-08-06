@@ -30,16 +30,17 @@ void gen_kill(struct ir_function *fun) {
         struct ir_insn        *pos2;
         // For each operation in reverse
         list_for_each_entry_reverse(pos2, &bb->ir_insn_head, list_ptr) {
+            struct ir_insn *insn_dst = dst(pos2);
             if (!is_void(pos2)) {
-                array_erase_elem(&bb_cg->gen, pos2);
-                array_push_unique(&bb_cg->kill, &pos2);
+                array_erase_elem(&bb_cg->gen, insn_dst);
+                array_push_unique(&bb_cg->kill, &insn_dst);
             }
             struct array      value_uses = get_operands(pos2);
             struct ir_value **pos3;
             array_for(pos3, value_uses) {
                 struct ir_value *val = *pos3;
                 if (val->type == IR_VALUE_INSN) {
-                    struct ir_insn *insn = val->data.insn_d;
+                    struct ir_insn *insn = dst(val->data.insn_d);
                     array_push_unique(&bb_cg->gen, &insn);
                     array_erase_elem(&bb_cg->kill, insn);
                 }
