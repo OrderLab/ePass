@@ -154,7 +154,7 @@ void print_bb_extra(struct ir_basic_block *bb) {
 
 void liveness_analysis(struct ir_function *fun) {
     gen_kill(fun);
-    // in_out(fun);
+    in_out(fun);
     printf("--------------\n");
     print_ir_prog_advanced(fun, print_bb_extra, 1);
 }

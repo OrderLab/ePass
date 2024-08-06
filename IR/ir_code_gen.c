@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include "array.h"
 #include "bpf_ir.h"
 #include "code_gen.h"
@@ -54,6 +55,7 @@ struct ir_insn *dst(struct ir_insn *insn) {
     return insn_cg(insn)->dst;
 }
 void print_ir_prog_cg(struct ir_function *fun){
+    printf("-----------------\n");
     print_ir_prog_advanced(fun, NULL, 1);
 }
 
@@ -73,6 +75,9 @@ void code_gen(struct ir_function *fun) {
     remove_phi(fun);
 
     print_ir_prog_cg(fun);
+
+    // Step 3: Liveness Analysis
+    liveness_analysis(fun);
 
     // Free CG resources
     free_cg_res(fun);
