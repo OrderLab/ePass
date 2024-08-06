@@ -16,12 +16,15 @@ struct ir_bb_cg_extra {
     struct array out;
     struct array gen;
     struct array kill;
-    struct array def;
 };
 
 struct ir_insn_cg_extra {
     // Destination (Not in SSA form anymore)
     struct ir_insn *dst;
+
+    // Adj list in interference graph
+    // Array of struct ir_insn*
+    struct array adj;
 };
 
 struct ir_insn_cg_extra *insn_cg(struct ir_insn *insn);

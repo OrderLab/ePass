@@ -153,6 +153,7 @@ void print_bb_extra(struct ir_basic_block *bb) {
 }
 
 void liveness_analysis(struct ir_function *fun) {
+    // TODO: Encode Calling convention into GEN KILL
     gen_kill(fun);
     in_out(fun);
     printf("--------------\n");

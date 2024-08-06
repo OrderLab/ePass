@@ -3,6 +3,12 @@
 
 #include "bpf_ir.h"
 
+struct code_gen_info{
+    // All vertex in interference graph
+    // Array of struct ir_insn*
+    struct array all_var;
+};
+
 struct ir_function {
     size_t arg_num;
 
@@ -20,6 +26,8 @@ struct ir_function {
 
     // Array of struct ir_constraint. Value constraints.
     struct array value_constraints;
+
+    struct code_gen_info cg_info;
 };
 
 // Helper functions
