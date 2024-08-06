@@ -37,4 +37,6 @@ void remove_phi(struct ir_function *fun);
 
 void print_ir_prog_cg(struct ir_function *fun);
 
+void conflict_analysis(struct ir_function *fun);
+
 #endif
