@@ -23,7 +23,11 @@ void init_cg(struct ir_function *fun) {
         list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
             struct ir_insn_cg_extra *insn_cg = __malloc(sizeof(struct ir_insn_cg_extra));
             // When init, the destination is itself
-            insn_cg->dst       = insn;
+            if (insn->users.num_elem > 0) {
+                insn_cg->dst = insn;
+            } else {
+                insn_cg->dst = NULL;
+            }
             insn_cg->adj       = INIT_ARRAY(struct ir_insn *);
             insn_cg->allocated = 0;
             insn_cg->spilled   = 0;
@@ -74,14 +78,13 @@ void code_gen(struct ir_function *fun) {
     prog_check(fun);
     // Step 2: Eliminate SSA
     to_cssa(fun);
+    print_ir_prog_cg(fun);
 
     // Init CG, start real code generation
     // No "users" available after this step
     init_cg(fun);
 
     remove_phi(fun);
-
-    print_ir_prog_cg(fun);
 
     // Step 3: Liveness Analysis
     liveness_analysis(fun);

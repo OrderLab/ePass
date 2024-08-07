@@ -449,24 +449,32 @@ void print_ir_prog(struct ir_function *fun) {
 
 void print_ir_dst(struct ir_insn *insn) {
     insn = dst(insn);
-    if (insn->_insn_id == SIZE_MAX) {
-        printf("%p", insn);
-        return;
+    if (insn) {
+        if (insn->_insn_id == SIZE_MAX) {
+            printf("%p", insn);
+            return;
+        }
+        printf("%%%zu", insn->_insn_id);
+    } else {
+        printf("(NULL)");
     }
-    printf("%%%zu", insn->_insn_id);
 }
 
 void print_ir_alloc(struct ir_insn *insn) {
-    insn                           = dst(insn);
-    struct ir_insn_cg_extra *extra = insn_cg(insn);
-    if (extra->allocated) {
-        if (extra->spilled) {
-            printf("sp-%zu", extra->spilled * 8);
+    insn = dst(insn);
+    if (insn) {
+        struct ir_insn_cg_extra *extra = insn_cg(insn);
+        if (extra->allocated) {
+            if (extra->spilled) {
+                printf("sp-%zu", extra->spilled * 8);
+            } else {
+                printf("r%u", extra->alloc_reg);
+            }
         } else {
-            printf("r%u", extra->alloc_reg);
+            CRITICAL("Not allocated");
         }
     } else {
-        CRITICAL("Not allocated");
+        printf("(NULL)");
     }
 }
 
