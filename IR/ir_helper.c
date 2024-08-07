@@ -473,7 +473,7 @@ void print_ir_alloc(struct ir_insn *insn) {
         } else {
             CRITICAL("Not allocated");
         }
-    }else {
+    } else {
         printf("(NULL)");
     }
 }

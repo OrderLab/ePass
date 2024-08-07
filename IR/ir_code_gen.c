@@ -27,7 +27,6 @@ void init_cg(struct ir_function *fun) {
                 insn_cg->dst = insn;
             } else {
                 insn_cg->dst = NULL;
-            
             }
             insn_cg->adj       = INIT_ARRAY(struct ir_insn *);
             insn_cg->allocated = 0;
@@ -86,7 +85,6 @@ void code_gen(struct ir_function *fun) {
     init_cg(fun);
 
     remove_phi(fun);
-
 
     // Step 3: Liveness Analysis
     liveness_analysis(fun);
