@@ -8,7 +8,11 @@ void clean_env_all(struct ir_function *fun);
 void print_ir_prog(struct ir_function *);
 
 void print_ir_prog_advanced(struct ir_function *fun, void (*post_fun)(struct ir_basic_block *),
-                            int);
+                            void (*print_ir)(struct ir_insn *));
+
+void print_ir_dst(struct ir_insn *insn);
+
+void print_ir_alloc(struct ir_insn *insn);
 
 void clean_env(struct ir_function *);
 

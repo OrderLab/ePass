@@ -24,7 +24,6 @@ void print_interference_graph(struct ir_function *fun) {
     // Tag the IR to have the actual number to print
     tag_ir(fun);
     struct ir_insn **pos;
-    printf("Interference Graph:\n");
     array_for(pos, fun->cg_info.all_var) {
         struct ir_insn *insn = *pos;
         if (!is_final(insn)) {

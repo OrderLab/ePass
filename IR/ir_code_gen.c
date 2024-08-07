@@ -61,9 +61,10 @@ struct ir_insn_cg_extra *insn_cg(struct ir_insn *insn) {
 struct ir_insn *dst(struct ir_insn *insn) {
     return insn_cg(insn)->dst;
 }
+
 void print_ir_prog_cg(struct ir_function *fun) {
     printf("-----------------\n");
-    print_ir_prog_advanced(fun, NULL, 1);
+    print_ir_prog_advanced(fun, NULL, NULL);
 }
 
 void code_gen(struct ir_function *fun) {
@@ -77,7 +78,6 @@ void code_gen(struct ir_function *fun) {
     // Init CG, start real code generation
     // No "users" available after this step
     init_cg(fun);
-    // print_ir_prog_cg(fun);
 
     remove_phi(fun);
 
@@ -89,11 +89,14 @@ void code_gen(struct ir_function *fun) {
     // Step 4: Conflict Analysis
     conflict_analysis(fun);
     print_interference_graph(fun);
+    printf("-------------\n");
 
     // Step 5: Graph coloring
-
     graph_coloring(fun);
     print_interference_graph(fun);
+    print_ir_prog_advanced(fun, NULL, print_ir_alloc);
+
+    // Step 6: Direct Translation
 
     // Free CG resources
     free_cg_res(fun);
