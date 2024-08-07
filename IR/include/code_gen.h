@@ -23,6 +23,8 @@ struct ir_insn_cg_extra {
     // Array of struct ir_insn*
     struct array adj;
 
+    __u8 allocated;
+
     // When allocating register, whether dst will be spilled
     // 0: Not spilled
     // 1: Spilled on stack position 1

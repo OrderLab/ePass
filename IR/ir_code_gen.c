@@ -24,6 +24,9 @@ void init_cg(struct ir_function *fun) {
             // When init, the destination is itself
             insn_cg->dst    = insn;
             insn_cg->adj    = INIT_ARRAY(struct ir_insn *);
+            insn_cg->allocated = 0;
+            insn_cg->spilled = 0;
+            insn_cg->alloc_reg = 0;
             insn->user_data = insn_cg;
         }
     }
