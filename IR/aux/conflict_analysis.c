@@ -31,7 +31,18 @@ void print_interference_graph(struct ir_function *fun) {
             // Not final value, give up
             CRITICAL("Not Final Value!");
         }
-        printf("%%%zu: ", insn->_insn_id);
+        struct ir_insn_cg_extra *extra = insn_cg(insn);
+        if (extra->allocated) {
+            printf("%%%zu(", insn->_insn_id);
+            if (extra->spilled) {
+                printf("sp-%zu", extra->spilled * 8);
+            } else {
+                printf("r%u", extra->alloc_reg);
+            }
+            printf("): ");
+        } else {
+            printf("%%%zu: ", insn->_insn_id);
+        }
         struct ir_insn **pos2;
         array_for(pos2, insn_cg(insn)->adj) {
             struct ir_insn *adj_insn = *pos2;

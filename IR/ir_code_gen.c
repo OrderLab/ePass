@@ -2,6 +2,7 @@
 #include "array.h"
 #include "bpf_ir.h"
 #include "code_gen.h"
+#include "dbg.h"
 #include "list.h"
 #include "prog_check.h"
 #include "ir_helper.h"

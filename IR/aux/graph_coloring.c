@@ -4,6 +4,7 @@
 #include "array.h"
 #include "bpf_ir.h"
 #include "code_gen.h"
+#include "dbg.h"
 #include "ir_helper.h"
 
 int compare_insn(const void *a, const void *b) {
@@ -43,6 +44,7 @@ void graph_coloring(struct ir_function *fun) {
         for (__u8 i = 0; i < __MAX_BPF_REG; i++) {
             if (!used_reg[i]) {
                 extra->allocated = 1;
+                printf("Allocate r%u for %zu\n", i, insn->_insn_id);
                 extra->alloc_reg = i;
                 need_spill       = 0;
                 break;
