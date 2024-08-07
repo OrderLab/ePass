@@ -158,4 +158,5 @@ void liveness_analysis(struct ir_function *fun) {
     in_out(fun);
     printf("--------------\n");
     print_ir_prog_advanced(fun, print_bb_extra, print_ir_dst);
+    print_ir_prog_advanced(fun, NULL, print_ir_dst);
 }

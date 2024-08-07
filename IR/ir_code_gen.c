@@ -74,6 +74,7 @@ void code_gen(struct ir_function *fun) {
     prog_check(fun);
     // Step 2: Eliminate SSA
     to_cssa(fun);
+    print_ir_prog_cg(fun);
 
     // Init CG, start real code generation
     // No "users" available after this step
@@ -81,7 +82,6 @@ void code_gen(struct ir_function *fun) {
 
     remove_phi(fun);
 
-    print_ir_prog_cg(fun);
 
     // Step 3: Liveness Analysis
     liveness_analysis(fun);
