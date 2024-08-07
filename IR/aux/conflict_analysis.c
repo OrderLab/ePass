@@ -77,6 +77,9 @@ void conflict_analysis(struct ir_function *fun) {
             array_for(pos3, bb_cg->out) {
                 build_conflict(insn_dst, dst(*pos3));
             }
+            array_for(pos3, bb_cg->kill) {
+                build_conflict(insn_dst, dst(*pos3));
+            }
         }
     }
 }
