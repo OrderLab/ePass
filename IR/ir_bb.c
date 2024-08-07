@@ -12,12 +12,8 @@ size_t bb_len(struct ir_basic_block *bb) {
 }
 
 struct ir_basic_block *create_bb(struct ir_function *fun) {
-    struct ir_basic_block *new_bb = __malloc(sizeof(struct ir_basic_block));
-    INIT_LIST_HEAD(&new_bb->ir_insn_head);
+    struct ir_basic_block *new_bb = init_ir_bb_raw();
     array_push(&fun->all_bbs, &new_bb);
-    new_bb->user_data = NULL;
-    new_bb->preds     = array_init(sizeof(struct ir_insn *));
-    new_bb->succs     = array_init(sizeof(struct ir_insn *));
     return new_bb;
 }
 

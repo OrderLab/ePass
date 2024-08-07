@@ -56,7 +56,7 @@ enum ir_value_type {
 };
 
 /**
-    VALUE = CONSTANT | INSN | FUNCTIONARG | STACK_PTR
+    VALUE = CONSTANT | INSN | FUNCTIONARG
 
     "r1 = constant" pattern will use `CONSTANT` which will not be added to BB.
  */
@@ -68,6 +68,8 @@ struct ir_value {
     } data;
     enum ir_value_type type;
 };
+
+struct ir_value ir_value_insn(struct ir_insn *);
 
 /**
     Value plus an offset
@@ -125,13 +127,15 @@ enum ir_insn_type {
     IR_INSN_JLE,
     IR_INSN_JNE,
     // PHI
-    IR_INSN_PHI
+    IR_INSN_PHI,
+    // Code-gen instructions
+    IR_INSN_ASSIGN
 };
 
 /**
     INSN =
           ALLOC <ir_vr_type>
-        | STORE <value:ptr>, <value>
+        | STORE <ir_vr_type> <value:ptr>, <value>
         | LOAD <ir_vr_type> <value:ptr>
         | STORERAW <ir_vr_type> <ir_address_value>, <value>
         | LOADRAW <ir_vr_type> <ir_address_value>
@@ -140,7 +144,7 @@ enum ir_insn_type {
         | MUL <value>, <value>
         | LSH <value>, <value>
         | MOD <value>, <value>
-        | CALL <function id> <arg_num> <values...>
+        | CALL <function id> <values...>
         | RET <value>
         | JA <bb>
         | JEQ <value>, <value>, <bb_next>, <bb>
@@ -150,14 +154,16 @@ enum ir_insn_type {
         | JLE <value>, <value>, <bb_next>, <bb>
         | JNE <value>, <value>, <bb_next>, <bb>
         | PHI <phi_value>
-    
+        (For code gen usage)
+        | ASSIGN <value>
+
     Note. <bb_next> must be the next basic block.
  */
 struct ir_insn {
     struct ir_value values[MAX_FUNC_ARG];
     __u8            value_num;
 
-    // Used in ALLOC instructions
+    // Used in ALLOC and instructions
     enum ir_vr_type vr_type;
 
     // Used in RAW instructions
@@ -170,8 +176,8 @@ struct ir_insn {
     // Array of phi_value
     struct array phi;
 
-    __s32             fid;
-    __u32             f_arg_num;
+    __s32 fid;
+    // __u32             f_arg_num;
     enum ir_insn_type op;
 
     // Linked list
@@ -241,6 +247,9 @@ struct ir_basic_block {
     __u8   _visited;
     size_t _id;
     void  *user_data;
+
+    // Array of struct ir_insn *
+    struct array users;
 };
 
 /**
@@ -304,14 +313,8 @@ struct ir_insn *create_insn_front(struct ir_basic_block *bb);
 
 void add_user(struct ssa_transform_env *env, struct ir_insn *user, struct ir_value val);
 
-void print_ir_insn(struct ir_insn *);
-
-void print_ir_value(struct ir_value v);
-
-void print_raw_ir_insn(struct ir_insn *insn);
-
-void print_raw_ir_bb(struct ir_basic_block *bb);
-
 __u8 ir_value_equal(struct ir_value a, struct ir_value b);
+
+struct ir_basic_block *init_ir_bb_raw();
 
 #endif

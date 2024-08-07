@@ -10,11 +10,18 @@ add_executable(
     ir_helper.c
     ir_bb.c
     ir_insn.c
-    phi_pass.c
-    reachable_bb.c
-    add_counter_pass.c
-    add_stack_offset.c
-    add_constraint_pass.c
+    passes/phi_pass.c
+    passes/reachable_bb.c
+    passes/add_counter_pass.c
+    passes/add_constraint_pass.c
+    passes/cut_bb_pass.c
+    aux/add_stack_offset.c
+    aux/live_variable.c
+    aux/prog_check.c
+    aux/eliminate_ssa.c
+    aux/conflict_analysis.c
+    aux/graph_coloring.c
+    ir_code_gen.c
 )
 
 add_executable(probe probe.c read.c array.c)

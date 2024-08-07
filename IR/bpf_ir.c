@@ -5,10 +5,14 @@
 #include <stdlib.h>
 #include <stddef.h>
 #include "add_stack_offset.h"
+#include "ir_helper.h"
 #include "array.h"
+#include "code_gen.h"
+#include "ir_fun.h"
 #include "list.h"
 #include "dbg.h"
 #include "passes.h"
+#include "reachable_bb.h"
 #include "read.h"
 
 // TODO: Change this to real function
@@ -79,16 +83,23 @@ void init_entrance_info(struct array *bb_entrances, size_t entrance_pos) {
     array_push(bb_entrances, &new_bb);
 }
 
+struct ir_basic_block *init_ir_bb_raw() {
+    struct ir_basic_block *new_bb = __malloc(sizeof(struct ir_basic_block));
+    INIT_LIST_HEAD(&new_bb->ir_insn_head);
+    new_bb->user_data = NULL;
+    new_bb->preds     = INIT_ARRAY(struct ir_basic_block *);
+    new_bb->succs     = INIT_ARRAY(struct ir_basic_block *);
+    new_bb->users     = INIT_ARRAY(struct ir_insn *);
+    return new_bb;
+}
+
 void init_ir_bb(struct pre_ir_basic_block *bb) {
-    bb->ir_bb            = __malloc(sizeof(struct ir_basic_block));
+    bb->ir_bb            = init_ir_bb_raw();
     bb->ir_bb->_visited  = 0;
     bb->ir_bb->user_data = bb;
     for (__u8 i = 0; i < MAX_BPF_REG; ++i) {
         bb->incompletePhis[i] = NULL;
     }
-    INIT_LIST_HEAD(&bb->ir_bb->ir_insn_head);
-    bb->ir_bb->preds = array_init(sizeof(struct ir_basic_block *));
-    bb->ir_bb->succs = array_init(sizeof(struct ir_basic_block *));
 }
 
 struct bb_info gen_bb(struct bpf_insn *insns, size_t len) {
@@ -314,6 +325,7 @@ struct ir_insn *add_phi_operands(struct ssa_transform_env *env, __u8 reg, struct
         phi.bb    = pred;
         phi.value = read_variable(env, reg, (struct pre_ir_basic_block *)pred->user_data);
         add_user(env, insn, phi.value);
+        array_push(&pred->users, &insn);
         array_push(&insn->phi, &phi);
     }
     return insn;
@@ -326,7 +338,7 @@ struct ir_value read_variable_recursive(struct ssa_transform_env *env, __u8 reg,
         // Incomplete CFG
         struct ir_insn *new_insn = create_insn_front(bb->ir_bb);
         new_insn->op             = IR_INSN_PHI;
-        new_insn->phi            = array_init(sizeof(struct phi_value));
+        new_insn->phi            = INIT_ARRAY(struct phi_value);
         bb->incompletePhis[reg]  = new_insn;
         val.type                 = IR_VALUE_INSN;
         val.data.insn_d          = new_insn;
@@ -335,7 +347,7 @@ struct ir_value read_variable_recursive(struct ssa_transform_env *env, __u8 reg,
     } else {
         struct ir_insn *new_insn = create_insn_front(bb->ir_bb);
         new_insn->op             = IR_INSN_PHI;
-        new_insn->phi            = array_init(sizeof(struct phi_value));
+        new_insn->phi            = INIT_ARRAY(struct phi_value);
         val.type                 = IR_VALUE_INSN;
         val.data.insn_d          = new_insn;
         write_variable(env, reg, bb, val);
@@ -370,7 +382,7 @@ struct ir_value read_variable(struct ssa_transform_env *env, __u8 reg,
 
 struct ir_insn *create_insn() {
     struct ir_insn *insn = __malloc(sizeof(struct ir_insn));
-    insn->users          = array_init(sizeof(struct ir_insn *));
+    insn->users          = INIT_ARRAY(struct ir_insn *);
     return insn;
 }
 
@@ -416,6 +428,10 @@ enum ir_vr_type to_ir_ld_u(__u8 size) {
         default:
             CRITICAL("Error");
     }
+}
+
+struct ir_value ir_value_insn(struct ir_insn *insn) {
+    return (struct ir_value){.type = IR_VALUE_INSN, .data.insn_d = insn};
 }
 
 // User uses val
@@ -634,6 +650,7 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
                 new_insn->op             = IR_INSN_JA;
                 size_t pos               = insn.pos + insn.off + 1;
                 new_insn->bb1            = get_ir_bb_from_position(env, pos);
+                array_push(&new_insn->bb1->users, &new_insn);
             } else if (BPF_OP(code) == BPF_EXIT) {
                 // Exit
                 struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
@@ -652,6 +669,8 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
                 size_t pos    = insn.pos + insn.off + 1;
                 new_insn->bb1 = get_ir_bb_from_position(env, insn.pos + 1);
                 new_insn->bb2 = get_ir_bb_from_position(env, pos);
+                array_push(&new_insn->bb1->users, &new_insn);
+                array_push(&new_insn->bb2->users, &new_insn);
             } else if (BPF_OP(code) == BPF_JLT) {
                 // PC += offset if dst < src
                 struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
@@ -664,6 +683,8 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
                 size_t pos    = insn.pos + insn.off + 1;
                 new_insn->bb1 = get_ir_bb_from_position(env, insn.pos + 1);
                 new_insn->bb2 = get_ir_bb_from_position(env, pos);
+                array_push(&new_insn->bb1->users, &new_insn);
+                array_push(&new_insn->bb2->users, &new_insn);
             } else if (BPF_OP(code) == BPF_JLE) {
                 // PC += offset if dst <= src
                 struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
@@ -676,6 +697,8 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
                 size_t pos    = insn.pos + insn.off + 1;
                 new_insn->bb1 = get_ir_bb_from_position(env, insn.pos + 1);
                 new_insn->bb2 = get_ir_bb_from_position(env, pos);
+                array_push(&new_insn->bb1->users, &new_insn);
+                array_push(&new_insn->bb2->users, &new_insn);
             } else if (BPF_OP(code) == BPF_JGT) {
                 // PC += offset if dst > src
                 struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
@@ -688,6 +711,8 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
                 size_t pos    = insn.pos + insn.off + 1;
                 new_insn->bb1 = get_ir_bb_from_position(env, insn.pos + 1);
                 new_insn->bb2 = get_ir_bb_from_position(env, pos);
+                array_push(&new_insn->bb1->users, &new_insn);
+                array_push(&new_insn->bb2->users, &new_insn);
             } else if (BPF_OP(code) == BPF_JGE) {
                 // PC += offset if dst >= src
                 struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
@@ -700,6 +725,8 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
                 size_t pos    = insn.pos + insn.off + 1;
                 new_insn->bb1 = get_ir_bb_from_position(env, insn.pos + 1);
                 new_insn->bb2 = get_ir_bb_from_position(env, pos);
+                array_push(&new_insn->bb1->users, &new_insn);
+                array_push(&new_insn->bb2->users, &new_insn);
             } else if (BPF_OP(code) == BPF_JNE) {
                 // PC += offset if dst != src
                 struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
@@ -712,6 +739,8 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
                 size_t pos    = insn.pos + insn.off + 1;
                 new_insn->bb1 = get_ir_bb_from_position(env, insn.pos + 1);
                 new_insn->bb2 = get_ir_bb_from_position(env, pos);
+                array_push(&new_insn->bb1->users, &new_insn);
+                array_push(&new_insn->bb2->users, &new_insn);
             } else if (BPF_OP(code) == BPF_CALL) {
                 // imm is the function id
                 struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
@@ -719,18 +748,16 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
                 new_insn->fid            = insn.imm;
                 if (insn.imm < 0) {
                     printf("Not supported function call\n");
-                    new_insn->f_arg_num = 0;
                     new_insn->value_num = 0;
                 } else {
-                    new_insn->f_arg_num = helper_func_arg_num[insn.imm];
-                    if (new_insn->f_arg_num > MAX_FUNC_ARG) {
+                    new_insn->value_num = helper_func_arg_num[insn.imm];
+                    if (new_insn->value_num > MAX_FUNC_ARG) {
                         CRITICAL("Too many arguments");
                     }
-                    for (size_t j = 0; j < new_insn->f_arg_num; ++j) {
+                    for (size_t j = 0; j < new_insn->value_num; ++j) {
                         new_insn->values[j] = read_variable(env, BPF_REG_1 + j, bb);
                         add_user(env, new_insn, new_insn->values[j]);
                     }
-                    new_insn->value_num = new_insn->f_arg_num;
                 }
 
                 struct ir_value new_val;
@@ -762,6 +789,7 @@ void free_function(struct ir_function *fun) {
 
         array_free(&bb->preds);
         array_free(&bb->succs);
+        array_free(&bb->users);
         // Free the instructions
         struct ir_insn *pos, *n;
         list_for_each_entry_safe(pos, n, &bb->ir_insn_head, list_ptr) {
@@ -778,10 +806,12 @@ void free_function(struct ir_function *fun) {
 
 struct ir_function gen_function(struct ssa_transform_env *env) {
     struct ir_function fun;
-    fun.arg_num  = 1;
-    fun.entry    = env->info.entry->ir_bb;
-    fun.sp_users = env->sp_users;
-    fun.all_bbs  = array_init(sizeof(struct ir_basic_block *));
+    fun.arg_num         = 1;
+    fun.entry           = env->info.entry->ir_bb;
+    fun.sp_users        = env->sp_users;
+    fun.all_bbs         = INIT_ARRAY(struct ir_basic_block *);
+    fun.reachable_bbs   = INIT_ARRAY(struct ir_basic_block *);
+    fun.cg_info.all_var = INIT_ARRAY(struct ir_insn *);
     for (size_t i = 0; i < MAX_BPF_REG; ++i) {
         struct array *currentDef = &env->currentDef[i];
         array_free(currentDef);
@@ -819,8 +849,11 @@ __u8 ir_value_equal(struct ir_value a, struct ir_value b) {
 
 void run_passes(struct ir_function *fun) {
     for (size_t i = 0; i < sizeof(passes) / sizeof(passes[0]); ++i) {
-        clean_env(fun);
+        clean_env_all(fun);
+        gen_reachable_bbs(fun);
         passes[i](fun);
+        printf("--------------------\n");
+        print_ir_prog(fun);
     }
 }
 
@@ -841,13 +874,16 @@ void run(struct bpf_insn *insns, size_t len) {
     run_passes(&fun);
 
     // End IR manipulation
-    printf("--------------------\n");
-    print_ir_prog(&fun);
+    // printf("--------------------\n");
+    // print_ir_prog(&fun);
 
     // Test
-    add_stack_offset(&fun, -8);
+    // add_stack_offset(&fun, -8);
+    // printf("--------------------\n");
+    // print_ir_prog(&fun);
+
     printf("--------------------\n");
-    print_ir_prog(&fun);
+    code_gen(&fun);
 
     // Free the memory
     free_function(&fun);

@@ -16,6 +16,7 @@ void add_reach(struct ir_function *fun, struct ir_basic_block *bb) {
 }
 
 void gen_reachable_bbs(struct ir_function *fun) {
+    array_free(&fun->reachable_bbs);
     fun->reachable_bbs = array_init(sizeof(struct ir_basic_block *));
     add_reach(fun, fun->entry);
 }

@@ -13,7 +13,7 @@ void add_stack_offset(struct ir_function *fun, __s16 offset) {
             insn->addr_val.offset += offset;
             continue;
         }
-        struct array      value_uses = find_value_uses(insn);
+        struct array      value_uses = get_operands(insn);
         struct ir_value **pos2;
         array_for(pos2, value_uses) {
             struct ir_value *val = *pos2;

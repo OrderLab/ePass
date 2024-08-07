@@ -6,14 +6,26 @@
 enum insert_position {
     INSERT_BACK,
     INSERT_FRONT,
+    // BB-specific
+    INSERT_BACK_BEFORE_JMP,
+    INSERT_FRONT_AFTER_PHI
 };
 
 // Return an array of struct ir_value*
-struct array find_value_uses(struct ir_insn *insn);
+struct array get_operands(struct ir_insn *insn);
+
+void replace_all_usage(struct ir_insn *insn, struct ir_value rep);
 
 void erase_insn(struct ir_insn *insn);
 
+int is_void(struct ir_insn *insn);
+
+int is_jmp(struct ir_insn *insn);
+
 struct ir_insn *prev_insn(struct ir_insn *insn);
+
+struct ir_insn *create_alloc_insn(struct ir_insn *insn, enum ir_vr_type type,
+                                  enum insert_position pos);
 
 struct ir_insn *create_alloc_insn_bb(struct ir_basic_block *bb, enum ir_vr_type type,
                                      enum insert_position pos);
@@ -57,5 +69,21 @@ struct ir_insn *create_ret_insn(struct ir_insn *insn, struct ir_value val,
 
 struct ir_insn *create_ret_insn_bb(struct ir_basic_block *bb, struct ir_value val,
                                    enum insert_position pos);
+
+struct ir_insn *create_assign_insn(struct ir_insn *insn, struct ir_value val,
+                                   enum insert_position pos);
+
+struct ir_insn *create_assign_insn_bb(struct ir_basic_block *bb, struct ir_value val,
+                                      enum insert_position pos);
+
+struct ir_insn *create_phi_insn(struct ir_insn *insn, enum insert_position pos);
+
+struct ir_insn *create_phi_insn_bb(struct ir_basic_block *bb, enum insert_position pos);
+
+void phi_add_operand(struct ir_insn *insn, struct ir_basic_block *bb, struct ir_value val);
+
+void val_add_user(struct ir_value val, struct ir_insn *user);
+
+void val_remove_user(struct ir_value val, struct ir_insn *user);
 
 #endif
