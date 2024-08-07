@@ -22,12 +22,12 @@ void init_cg(struct ir_function *fun) {
         list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
             struct ir_insn_cg_extra *insn_cg = __malloc(sizeof(struct ir_insn_cg_extra));
             // When init, the destination is itself
-            insn_cg->dst    = insn;
-            insn_cg->adj    = INIT_ARRAY(struct ir_insn *);
+            insn_cg->dst       = insn;
+            insn_cg->adj       = INIT_ARRAY(struct ir_insn *);
             insn_cg->allocated = 0;
-            insn_cg->spilled = 0;
+            insn_cg->spilled   = 0;
             insn_cg->alloc_reg = 0;
-            insn->user_data = insn_cg;
+            insn->user_data    = insn_cg;
         }
     }
 }

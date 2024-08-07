@@ -74,10 +74,10 @@ void array_clear(struct array *arr) {
 
 struct array array_clone(struct array *arr) {
     struct array res;
-    res.num_elem     = arr->num_elem;
-    res.max_elem     = arr->max_elem;
-    res.elem_size    = arr->elem_size;
-    res.data         = __malloc(arr->max_elem * arr->elem_size);
+    res.num_elem  = arr->num_elem;
+    res.max_elem  = arr->max_elem;
+    res.elem_size = arr->elem_size;
+    res.data      = __malloc(arr->max_elem * arr->elem_size);
     memcpy(res.data, arr->data, arr->num_elem * arr->elem_size);
     return res;
 }

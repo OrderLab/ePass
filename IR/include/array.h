@@ -19,7 +19,7 @@ struct array array_null();
 void         array_erase(struct array *arr, size_t idx);
 void        *__malloc(size_t size);
 void         __free(void *ptr);
-void array_clear(struct array *arr);
+void         array_clear(struct array *arr);
 struct array array_clone(struct array *arr);
 
 #define array_for(pos, arr) \

@@ -429,7 +429,7 @@ void assign_id(struct ir_basic_block *bb, size_t *cnt, size_t *bb_cnt) {
     }
 }
 
-void tag_ir(struct ir_function *fun){
+void tag_ir(struct ir_function *fun) {
     size_t cnt    = 0;
     size_t bb_cnt = 0;
     clean_env(fun);
