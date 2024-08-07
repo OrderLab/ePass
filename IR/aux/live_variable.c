@@ -31,7 +31,7 @@ void gen_kill(struct ir_function *fun) {
         // For each operation in reverse
         list_for_each_entry_reverse(pos2, &bb->ir_insn_head, list_ptr) {
             struct ir_insn *insn_dst = dst(pos2);
-            if (!is_void(pos2)) {
+            if (!is_void(pos2) && insn_dst) {
                 array_erase_elem(&bb_cg->gen, insn_dst);
                 array_push_unique(&bb_cg->kill, &insn_dst);
             }

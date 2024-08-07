@@ -23,7 +23,12 @@ void init_cg(struct ir_function *fun) {
         list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
             struct ir_insn_cg_extra *insn_cg = __malloc(sizeof(struct ir_insn_cg_extra));
             // When init, the destination is itself
-            insn_cg->dst       = insn;
+            if (insn->users.num_elem > 0) {
+                insn_cg->dst = insn;
+            } else {
+                insn_cg->dst = NULL;
+            
+            }
             insn_cg->adj       = INIT_ARRAY(struct ir_insn *);
             insn_cg->allocated = 0;
             insn_cg->spilled   = 0;
