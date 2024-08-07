@@ -456,8 +456,8 @@ void print_ir_dst(struct ir_insn *insn) {
     printf("%%%zu", insn->_insn_id);
 }
 
-void print_ir_alloc(struct ir_insn *insn){
-    insn = dst(insn);
+void print_ir_alloc(struct ir_insn *insn) {
+    insn                           = dst(insn);
     struct ir_insn_cg_extra *extra = insn_cg(insn);
     if (extra->allocated) {
         if (extra->spilled) {

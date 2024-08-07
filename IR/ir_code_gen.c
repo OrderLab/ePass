@@ -96,6 +96,8 @@ void code_gen(struct ir_function *fun) {
     print_interference_graph(fun);
     print_ir_prog_advanced(fun, NULL, print_ir_alloc);
 
+    // Register allocation finished
+
     // Step 6: Direct Translation
 
     // Free CG resources
