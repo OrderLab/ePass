@@ -16,7 +16,7 @@
 #include "read.h"
 
 // TODO: Change this to real function
-static __u32 helper_func_arg_num[100] = {1, 1, 1, 1, 1, 1, 2, 1, 1};
+static __u32 helper_func_arg_num[100] = {1, 1, 1, 1, 1, 0, 2, 1, 1};
 
 int compare_num(const void *a, const void *b) {
     struct bb_entrance_info *as = (struct bb_entrance_info *)a;
