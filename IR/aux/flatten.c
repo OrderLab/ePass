@@ -1,4 +1,4 @@
-// Flatten the IR to the bpf-form bytecode
+// Flatten the IR to better work with RA
 
 #include "code_gen.h"
 
