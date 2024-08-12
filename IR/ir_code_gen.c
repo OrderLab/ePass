@@ -29,11 +29,12 @@ void init_cg(struct ir_function *fun) {
             // } else {
             //     extra->dst = NULL;
             // }
-            extra->adj       = INIT_ARRAY(struct ir_insn *);
-            extra->allocated = 0;
-            extra->spilled   = 0;
-            extra->alloc_reg = 0;
-            insn->user_data    = extra;
+            extra->adj            = INIT_ARRAY(struct ir_insn *);
+            extra->allocated      = 0;
+            extra->spilled        = 0;
+            extra->alloc_reg      = 0;
+            extra->translated_num = 0;
+            insn->user_data       = extra;
         }
     }
 }

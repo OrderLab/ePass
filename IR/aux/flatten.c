@@ -1,6 +1,7 @@
 // Flatten the IR to better work with RA
 
 #include "code_gen.h"
+#include "ir_insn.h"
 
 void flatten(struct ir_function *fun) {
     // fun is still in IR form
@@ -15,6 +16,9 @@ void flatten(struct ir_function *fun) {
                     // Call instructions, no destination if no users (but still execute)
                     extra->dst = NULL;
                 }
+            }
+            if (is_void(insn)) {
+                extra->dst = NULL;
             }
         }
     }
