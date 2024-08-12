@@ -23,6 +23,10 @@ struct ir_insn_cg_extra {
     // Array of struct ir_insn*
     struct array adj;
 
+    // Translated pre_ir_insn
+    struct pre_ir_insn translated[10];
+    __u8               translated_num;
+
     __u8 allocated;
 
     // When allocating register, whether dst will be spilled
@@ -53,5 +57,7 @@ void conflict_analysis(struct ir_function *fun);
 void print_interference_graph(struct ir_function *fun);
 
 void graph_coloring(struct ir_function *fun);
+
+void flatten(struct ir_function *fun);
 
 #endif

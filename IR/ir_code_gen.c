@@ -21,18 +21,19 @@ void init_cg(struct ir_function *fun) {
 
         struct ir_insn *insn;
         list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
-            struct ir_insn_cg_extra *insn_cg = __malloc(sizeof(struct ir_insn_cg_extra));
+            struct ir_insn_cg_extra *extra = __malloc(sizeof(struct ir_insn_cg_extra));
             // When init, the destination is itself
-            if (insn->users.num_elem > 0) {
-                insn_cg->dst = insn;
-            } else {
-                insn_cg->dst = NULL;
-            }
-            insn_cg->adj       = INIT_ARRAY(struct ir_insn *);
-            insn_cg->allocated = 0;
-            insn_cg->spilled   = 0;
-            insn_cg->alloc_reg = 0;
-            insn->user_data    = insn_cg;
+            extra->dst = insn;
+            // if (insn->users.num_elem > 0) {
+            //     extra->dst = insn;
+            // } else {
+            //     extra->dst = NULL;
+            // }
+            extra->adj       = INIT_ARRAY(struct ir_insn *);
+            extra->allocated = 0;
+            extra->spilled   = 0;
+            extra->alloc_reg = 0;
+            insn->user_data    = extra;
         }
     }
 }
@@ -83,6 +84,7 @@ void code_gen(struct ir_function *fun) {
     // Init CG, start real code generation
     // No "users" available after this step
     init_cg(fun);
+    flatten(fun);
 
     remove_phi(fun);
 
