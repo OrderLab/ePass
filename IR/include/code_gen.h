@@ -23,9 +23,8 @@ struct ir_insn_cg_extra {
     // Array of struct ir_insn*
     struct array adj;
 
-    // Translated pre_ir_insn
-    struct pre_ir_insn translated[10];
-    __u8               translated_num;
+    // Translated pre_ir_insn: array of struct pre_ir_insn
+    struct array translated;
 
     __u8 allocated;
 

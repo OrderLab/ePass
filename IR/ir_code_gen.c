@@ -29,12 +29,12 @@ void init_cg(struct ir_function *fun) {
             // } else {
             //     extra->dst = NULL;
             // }
-            extra->adj            = INIT_ARRAY(struct ir_insn *);
-            extra->allocated      = 0;
-            extra->spilled        = 0;
-            extra->alloc_reg      = 0;
-            extra->translated_num = 0;
-            insn->user_data       = extra;
+            extra->adj        = INIT_ARRAY(struct ir_insn *);
+            extra->allocated  = 0;
+            extra->spilled    = 0;
+            extra->alloc_reg  = 0;
+            extra->translated = INIT_ARRAY(struct pre_ir_insn);
+            insn->user_data   = extra;
         }
     }
 }
@@ -54,6 +54,7 @@ void free_cg_res(struct ir_function *fun) {
         list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
             struct ir_insn_cg_extra *insn_cg = insn->user_data;
             array_free(&insn_cg->adj);
+            array_free(&insn_cg->translated);
             __free(insn_cg);
             insn->user_data = NULL;
         }
