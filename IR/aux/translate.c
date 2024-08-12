@@ -5,12 +5,6 @@
 #define IU_REG0 BPF_REG_0
 #define IU_REG1 BPF_REG_1
 
-void save_to_reg(struct array *to_gen, __u8 reg, struct ir_value val) {
-    // Save the full value to a register
-}
-
-void save_to_stack(struct array *to_gen, size_t offset, struct ir_value val) {}
-
 void translate(struct ir_function *fun) {
     // fun is still in IR form
     struct ir_basic_block **pos;
