@@ -11,6 +11,10 @@ size_t bb_len(struct ir_basic_block *bb) {
     return len;
 }
 
+int bb_empty(struct ir_basic_block *bb) {
+    return list_empty(&bb->ir_insn_head);
+}
+
 struct ir_basic_block *create_bb(struct ir_function *fun) {
     struct ir_basic_block *new_bb = init_ir_bb_raw();
     array_push(&fun->all_bbs, &new_bb);
@@ -56,8 +60,15 @@ struct ir_basic_block *split_bb(struct ir_function *fun, struct ir_insn *insn) {
 }
 
 struct ir_insn *get_last_insn(struct ir_basic_block *bb) {
-    if (list_empty(&bb->ir_insn_head)) {
+    if (bb_empty(bb)) {
         return NULL;
     }
     return list_entry(bb->ir_insn_head.prev, struct ir_insn, list_ptr);
+}
+
+struct ir_insn *get_first_insn(struct ir_basic_block *bb) {
+    if (bb_empty(bb)) {
+        return NULL;
+    }
+    return list_entry(bb->ir_insn_head.next, struct ir_insn, list_ptr);
 }

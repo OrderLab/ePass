@@ -5,6 +5,7 @@
 #include "bpf_ir.h"
 #include "code_gen.h"
 #include "dbg.h"
+#include "ir_bb.h"
 #include "ir_fun.h"
 #include "ir_insn.h"
 #include "list.h"
@@ -25,15 +26,14 @@ void gen_kill(struct ir_function *fun) {
     struct ir_basic_block **pos;
     // For each BB
     array_for(pos, fun->reachable_bbs) {
-        struct ir_basic_block *bb    = *pos;
-        struct ir_bb_cg_extra *bb_cg = bb->user_data;
+        struct ir_basic_block *bb = *pos;
         struct ir_insn        *pos2;
-        // For each operation in reverse
-        list_for_each_entry_reverse(pos2, &bb->ir_insn_head, list_ptr) {
-            struct ir_insn *insn_dst = dst(pos2);
+        // For each operation
+        list_for_each_entry(pos2, &bb->ir_insn_head, list_ptr) {
+            struct ir_insn          *insn_dst = dst(pos2);
+            struct ir_insn_cg_extra *insn_cg  = pos2->user_data;
             if (!is_void(pos2) && insn_dst) {
-                array_erase_elem(&bb_cg->gen, insn_dst);
-                array_push_unique(&bb_cg->kill, &insn_dst);
+                array_push_unique(&insn_cg->kill, &insn_dst);
             }
             struct array      value_uses = get_operands(pos2);
             struct ir_value **pos3;
@@ -41,8 +41,8 @@ void gen_kill(struct ir_function *fun) {
                 struct ir_value *val = *pos3;
                 if (val->type == IR_VALUE_INSN) {
                     struct ir_insn *insn = dst(val->data.insn_d);
-                    array_push_unique(&bb_cg->gen, &insn);
-                    array_erase_elem(&bb_cg->kill, insn);
+                    array_push_unique(&insn_cg->gen, &insn);
+                    // array_erase_elem(&insn_cg->kill, insn);
                 }
             }
         }
@@ -100,52 +100,71 @@ void in_out(struct ir_function *fun) {
         change = 0;
         struct ir_basic_block **pos;
         array_for(pos, fun->reachable_bbs) {
-            struct ir_basic_block  *bb     = *pos;
-            struct ir_bb_cg_extra  *bb_cg  = bb->user_data;
-            struct array            old_in = bb_cg->in;
-            struct ir_basic_block **pos2;
-            array_clear(&bb_cg->out);
-            array_for(pos2, bb->succs) {
-                struct ir_bb_cg_extra *bb_cg2 = (*pos2)->user_data;
-                merge_array(&bb_cg->out, &bb_cg2->in);
+            struct ir_basic_block *bb = *pos;
+            struct ir_insn        *insn;
+
+            list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
+                struct ir_insn_cg_extra *insn_cg = insn->user_data;
+                struct array             old_in  = insn_cg->in;
+                array_clear(&insn_cg->out);
+
+                if (get_last_insn(bb) == insn) {
+                    // Last instruction
+                    struct ir_basic_block **pos2;
+                    array_for(pos2, bb->succs) {
+                        struct ir_basic_block *bb2 = *pos2;
+                        if (bb_empty(bb2)) {
+                            CRITICAL("Found empty BB");
+                        }
+                        struct ir_insn          *first    = get_first_insn(bb2);
+                        struct ir_insn_cg_extra *insn2_cg = first->user_data;
+                        merge_array(&insn_cg->out, &insn2_cg->in);
+                    }
+                } else {
+                    // Not last instruction
+                    struct ir_insn *next_insn =
+                        list_entry(insn->list_ptr.next, struct ir_insn, list_ptr);
+                    struct ir_insn_cg_extra *next_insn_cg = next_insn->user_data;
+                    merge_array(&insn_cg->out, &next_insn_cg->in);
+                }
+                struct array out_kill_delta = array_delta(&insn_cg->out, &insn_cg->kill);
+                insn_cg->in                 = array_clone(&insn_cg->gen);
+                merge_array(&insn_cg->in, &out_kill_delta);
+                // Check for change
+                if (!equal_set(&insn_cg->in, &old_in)) {
+                    change = 1;
+                }
+                // Collect grabage
+                array_free(&out_kill_delta);
+                array_free(&old_in);
             }
-            struct array out_kill_delta = array_delta(&bb_cg->out, &bb_cg->kill);
-            bb_cg->in                   = array_clone(&bb_cg->gen);
-            merge_array(&bb_cg->in, &out_kill_delta);
-            // Check for change
-            if (!equal_set(&bb_cg->in, &old_in)) {
-                change = 1;
-            }
-            // Collect grabage
-            array_free(&out_kill_delta);
-            array_free(&old_in);
         }
     }
 }
 
-void print_bb_extra(struct ir_basic_block *bb) {
-    struct ir_bb_cg_extra *bb_cg = bb->user_data;
-    if (bb->user_data == NULL) {
+void print_insn_extra(struct ir_insn *insn) {
+    struct ir_insn_cg_extra *insn_cg = insn->user_data;
+    if (insn_cg == NULL) {
         CRITICAL("NULL user data");
     }
     printf("--\nGen:");
     struct ir_insn **pos;
-    array_for(pos, bb_cg->gen) {
+    array_for(pos, insn_cg->gen) {
         struct ir_insn *insn = *pos;
         printf(" %%%zu", insn->_insn_id);
     }
     printf("\nKill:");
-    array_for(pos, bb_cg->kill) {
+    array_for(pos, insn_cg->kill) {
         struct ir_insn *insn = *pos;
         printf(" %%%zu", insn->_insn_id);
     }
     printf("\nIn:");
-    array_for(pos, bb_cg->in) {
+    array_for(pos, insn_cg->in) {
         struct ir_insn *insn = *pos;
         printf(" %%%zu", insn->_insn_id);
     }
     printf("\nOut:");
-    array_for(pos, bb_cg->out) {
+    array_for(pos, insn_cg->out) {
         struct ir_insn *insn = *pos;
         printf(" %%%zu", insn->_insn_id);
     }
@@ -157,6 +176,6 @@ void liveness_analysis(struct ir_function *fun) {
     gen_kill(fun);
     in_out(fun);
     printf("--------------\n");
-    print_ir_prog_advanced(fun, print_bb_extra, print_ir_dst);
-    print_ir_prog_advanced(fun, NULL, print_ir_dst);
+    print_ir_prog_advanced(fun, NULL, print_insn_extra, print_ir_dst);
+    print_ir_prog_advanced(fun, NULL, NULL, print_ir_dst);
 }

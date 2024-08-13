@@ -228,10 +228,18 @@ struct ir_insn *create_bin_insn_bb(struct ir_basic_block *bb, struct ir_value va
 
 struct ir_insn *prev_insn(struct ir_insn *insn) {
     struct list_head *prev = insn->list_ptr.prev;
-    if (list_empty(prev)) {
+    if (prev == &insn->parent_bb->ir_insn_head) {
         return NULL;
     }
     return list_entry(prev, struct ir_insn, list_ptr);
+}
+
+struct ir_insn *next_insn(struct ir_insn *insn) {
+    struct list_head *next = insn->list_ptr.next;
+    if (next == &insn->parent_bb->ir_insn_head) {
+        return NULL;
+    }
+    return list_entry(next, struct ir_insn, list_ptr);
 }
 
 struct ir_insn *create_ja_insn_base(struct ir_basic_block *bb, struct ir_basic_block *to_bb) {

@@ -366,8 +366,8 @@ void print_raw_ir_insn(struct ir_insn *insn) {
     print_raw_ir_insn_full(insn, 0);
 }
 
-void print_ir_bb(struct ir_basic_block *bb, void (*post_fun)(struct ir_basic_block *),
-                 void (*print_ir)(struct ir_insn *)) {
+void print_ir_bb(struct ir_basic_block *bb, void (*post_bb)(struct ir_basic_block *),
+                 void (*post_insn)(struct ir_insn *), void (*print_insn_name)(struct ir_insn *)) {
     if (bb->_visited) {
         return;
     }
@@ -380,23 +380,26 @@ void print_ir_bb(struct ir_basic_block *bb, void (*post_fun)(struct ir_basic_blo
             printf("  ");
         } else {
             printf("  ");
-            if (print_ir) {
-                print_ir(insn);
+            if (print_insn_name) {
+                print_insn_name(insn);
             } else {
                 printf("%%%zu", insn->_insn_id);
             }
             printf(" = ");
         }
 
-        print_ir_insn_full(insn, print_ir);
+        print_ir_insn_full(insn, print_insn_name);
         printf("\n");
+        if (post_insn) {
+            post_insn(insn);
+        }
     }
-    if (post_fun) {
-        post_fun(bb);
+    if (post_bb) {
+        post_bb(bb);
     }
     for (size_t i = 0; i < bb->succs.num_elem; ++i) {
         struct ir_basic_block *next = ((struct ir_basic_block **)(bb->succs.data))[i];
-        print_ir_bb(next, post_fun, print_ir);
+        print_ir_bb(next, post_bb, post_insn, print_insn_name);
     }
 }
 
@@ -443,7 +446,7 @@ void tag_ir(struct ir_function *fun) {
 
 void print_ir_prog(struct ir_function *fun) {
     tag_ir(fun);
-    print_ir_bb(fun->entry, NULL, 0);
+    print_ir_bb(fun->entry, NULL, NULL, NULL);
     clean_tag(fun);
 }
 
@@ -478,9 +481,10 @@ void print_ir_alloc(struct ir_insn *insn) {
     }
 }
 
-void print_ir_prog_advanced(struct ir_function *fun, void (*post_fun)(struct ir_basic_block *),
-                            void (*print_ir)(struct ir_insn *)) {
+void print_ir_prog_advanced(struct ir_function *fun, void (*post_bb)(struct ir_basic_block *),
+                            void (*post_insn)(struct ir_insn *),
+                            void (*print_insn_name)(struct ir_insn *)) {
     tag_ir(fun);
-    print_ir_bb(fun->entry, post_fun, print_ir);
+    print_ir_bb(fun->entry, post_bb, post_insn, print_insn_name);
     clean_tag(fun);
 }
