@@ -8,6 +8,27 @@
 #include "prog_check.h"
 #include "ir_helper.h"
 
+struct ir_insn_cg_extra *init_insn_cg(struct ir_insn *insn) {
+    struct ir_insn_cg_extra *extra = __malloc(sizeof(struct ir_insn_cg_extra));
+    // When init, the destination is itself
+    if (is_void(insn)) {
+        extra->dst = NULL;
+    } else {
+        extra->dst = insn;
+    }
+    extra->adj        = INIT_ARRAY(struct ir_insn *);
+    extra->allocated  = 0;
+    extra->spilled    = 0;
+    extra->alloc_reg  = 0;
+    extra->translated = INIT_ARRAY(struct pre_ir_insn);
+    extra->gen        = INIT_ARRAY(struct ir_insn *);
+    extra->kill       = INIT_ARRAY(struct ir_insn *);
+    extra->in         = INIT_ARRAY(struct ir_insn *);
+    extra->out        = INIT_ARRAY(struct ir_insn *);
+    insn->user_data   = extra;
+    return extra;
+}
+
 void init_cg(struct ir_function *fun) {
     struct ir_basic_block **pos;
     array_for(pos, fun->reachable_bbs) {
@@ -19,25 +40,27 @@ void init_cg(struct ir_function *fun) {
         struct ir_insn *insn;
         printf("BB\n");
         list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
-            struct ir_insn_cg_extra *extra = __malloc(sizeof(struct ir_insn_cg_extra));
-            // When init, the destination is itself
-            if (is_void(insn)) {
-                extra->dst = NULL;
-            } else {
-                extra->dst = insn;
-            }
-            extra->adj        = INIT_ARRAY(struct ir_insn *);
-            extra->allocated  = 0;
-            extra->spilled    = 0;
-            extra->alloc_reg  = 0;
-            extra->translated = INIT_ARRAY(struct pre_ir_insn);
-            extra->gen        = INIT_ARRAY(struct ir_insn *);
-            extra->kill       = INIT_ARRAY(struct ir_insn *);
-            extra->in         = INIT_ARRAY(struct ir_insn *);
-            extra->out        = INIT_ARRAY(struct ir_insn *);
-            insn->user_data   = extra;
+            init_insn_cg(insn);
         }
     }
+
+    for (__u8 i = 0; i < MAX_FUNC_ARG; ++i) {
+        struct ir_insn *insn          = &fun->cg_info.regs[i];
+        insn->op                      = IR_INSN_REG;
+        init_insn_cg(insn)->alloc_reg = i;
+    }
+}
+
+void free_insn_cg(struct ir_insn *insn) {
+    struct ir_insn_cg_extra *extra = insn_cg(insn);
+    array_free(&extra->adj);
+    array_free(&extra->translated);
+    array_free(&extra->gen);
+    array_free(&extra->kill);
+    array_free(&extra->in);
+    array_free(&extra->out);
+    __free(extra);
+    insn->user_data = NULL;
 }
 
 void free_cg_res(struct ir_function *fun) {
@@ -49,16 +72,13 @@ void free_cg_res(struct ir_function *fun) {
         bb->user_data = NULL;
         struct ir_insn *insn;
         list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
-            struct ir_insn_cg_extra *insn_cg = insn->user_data;
-            array_free(&insn_cg->adj);
-            array_free(&insn_cg->translated);
-            array_free(&insn_cg->gen);
-            array_free(&insn_cg->kill);
-            array_free(&insn_cg->in);
-            array_free(&insn_cg->out);
-            __free(insn_cg);
-            insn->user_data = NULL;
+            free_insn_cg(insn);
         }
+    }
+
+    for (__u8 i = 0; i < MAX_FUNC_ARG; ++i) {
+        struct ir_insn *insn = &fun->cg_info.regs[i];
+        free_insn_cg(insn);
     }
 }
 
