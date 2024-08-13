@@ -82,6 +82,8 @@ void remove_phi(struct ir_function *fun) {
             CRITICAL("Empty Phi not removed!");
         }
 
+        DBGASSERT(repr == dst(repr));
+
         replace_all_usage(insn, ir_value_insn(repr));
         erase_insn(insn);
     }

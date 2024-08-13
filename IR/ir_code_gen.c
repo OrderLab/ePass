@@ -17,6 +17,7 @@ void init_cg(struct ir_function *fun) {
         bb->user_data = bb_cg;
 
         struct ir_insn *insn;
+        printf("BB\n");
         list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
             struct ir_insn_cg_extra *extra = __malloc(sizeof(struct ir_insn_cg_extra));
             // When init, the destination is itself
@@ -35,17 +36,6 @@ void init_cg(struct ir_function *fun) {
             extra->in         = INIT_ARRAY(struct ir_insn *);
             extra->out        = INIT_ARRAY(struct ir_insn *);
             insn->user_data   = extra;
-
-            // Change all operands to dst(*)
-            struct array      value_uses = get_operands(insn);
-            struct ir_value **pos2;
-            array_for(pos2, value_uses) {
-                struct ir_value *val = *pos2;
-                if (val->type == IR_VALUE_INSN) {
-                    val->data.insn_d = dst(val->data.insn_d);
-                }
-            }
-            array_free(&value_uses);
         }
     }
 }
