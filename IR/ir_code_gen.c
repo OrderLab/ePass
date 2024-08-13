@@ -3,6 +3,7 @@
 #include "bpf_ir.h"
 #include "code_gen.h"
 #include "dbg.h"
+#include "ir_insn.h"
 #include "list.h"
 #include "prog_check.h"
 #include "ir_helper.h"
@@ -23,12 +24,11 @@ void init_cg(struct ir_function *fun) {
         list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
             struct ir_insn_cg_extra *extra = __malloc(sizeof(struct ir_insn_cg_extra));
             // When init, the destination is itself
-            extra->dst = insn;
-            // if (insn->users.num_elem > 0) {
-            //     extra->dst = insn;
-            // } else {
-            //     extra->dst = NULL;
-            // }
+            if (is_void(insn)) {
+                extra->dst = NULL;
+            } else {
+                extra->dst = insn;
+            }
             extra->adj        = INIT_ARRAY(struct ir_insn *);
             extra->allocated  = 0;
             extra->spilled    = 0;
@@ -85,7 +85,7 @@ void code_gen(struct ir_function *fun) {
 
     // Init CG, start real code generation
     init_cg(fun);
-    flatten(fun);
+    explicit_reg(fun);
 
     remove_phi(fun);
 
