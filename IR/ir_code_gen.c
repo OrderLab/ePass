@@ -84,7 +84,6 @@ void code_gen(struct ir_function *fun) {
     print_ir_prog_cg(fun);
 
     // Init CG, start real code generation
-    // No "users" available after this step
     init_cg(fun);
     flatten(fun);
 
