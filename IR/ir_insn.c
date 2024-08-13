@@ -6,6 +6,7 @@
 #include "dbg.h"
 #include "ir_bb.h"
 #include "list.h"
+#include "ir_helper.h"
 
 struct ir_insn *create_insn_base(struct ir_basic_block *bb) {
     struct ir_insn *new_insn = __malloc(sizeof(struct ir_insn));
@@ -35,22 +36,30 @@ void replace_operand(struct ir_insn *insn, struct ir_value v1, struct ir_value v
 
 void replace_all_usage(struct ir_insn *insn, struct ir_value rep) {
     struct ir_insn **pos;
-    struct array users = insn->users;
-    insn->users = INIT_ARRAY(struct ir_insn*);
+    struct array     users = insn->users;
+    insn->users            = INIT_ARRAY(struct ir_insn *);
     array_for(pos, users) {
         printf("Found user\n");
-        struct ir_insn   *user     = *pos;
-        struct array      operands = get_operands(user);
-        struct ir_value **pos2;
-        array_for(pos2, operands) {
-            if ((*pos2)->type == IR_VALUE_INSN && (*pos2)->data.insn_d == insn) {
-                // Match, replace
-        printf("Match~\n");
-                **pos2 = rep;
+        struct ir_insn *user = *pos;
+        print_raw_ir_insn(user);
+        for (__u8 j = 0; j < user->value_num; ++j) {
+            if (user->values[j].type == IR_VALUE_INSN && user->values[j].data.insn_d == insn) {
+                printf("Match~\n");
+                user->values[j] = rep;
                 val_add_user(rep, user);
             }
         }
-        array_free(&operands);
+        // struct array      operands = get_operands(user);
+        // struct ir_value **pos2;
+        // array_for(pos2, operands) {
+        //     if ((*pos2)->type == IR_VALUE_INSN && (*pos2)->data.insn_d == insn) {
+        //         // Match, replace
+        //         printf("Match~\n");
+        //         **pos2 = rep;
+        //         val_add_user(rep, user);
+        //     }
+        // }
+        // array_free(&operands);
     }
     array_free(&users);
 }
