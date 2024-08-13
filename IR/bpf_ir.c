@@ -802,6 +802,10 @@ void free_function(struct ir_function *fun) {
         }
         free(bb);
     }
+
+    for (__u8 i = 0; i < MAX_FUNC_ARG; ++i) {
+        __free(fun->cg_info.regs[i].user_data);
+    }
 }
 
 struct ir_function gen_function(struct ssa_transform_env *env) {
@@ -812,6 +816,14 @@ struct ir_function gen_function(struct ssa_transform_env *env) {
     fun.all_bbs         = INIT_ARRAY(struct ir_basic_block *);
     fun.reachable_bbs   = INIT_ARRAY(struct ir_basic_block *);
     fun.cg_info.all_var = INIT_ARRAY(struct ir_insn *);
+    for (__u8 i = 0; i < MAX_FUNC_ARG; ++i) {
+        fun.cg_info.regs[i].op         = IR_INSN_REG;
+        struct ir_insn_cg_extra *extra = __malloc(sizeof(struct ir_insn_cg_extra));
+        extra->spilled                 = 0;
+        extra->dst                     = &fun.cg_info.regs[i];
+        extra->alloc_reg               = i;
+        fun.cg_info.regs[i].user_data  = extra;
+    }
     for (size_t i = 0; i < MAX_BPF_REG; ++i) {
         struct array *currentDef = &env->currentDef[i];
         array_free(currentDef);

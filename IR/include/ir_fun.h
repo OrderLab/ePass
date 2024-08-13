@@ -7,6 +7,9 @@ struct code_gen_info {
     // All vertex in interference graph
     // Array of struct ir_insn*
     struct array all_var;
+
+    // BPF Register Virtual Instruction (used as dst)
+    struct ir_insn regs[__MAX_BPF_REG];
 };
 
 struct ir_function {

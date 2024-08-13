@@ -129,7 +129,8 @@ enum ir_insn_type {
     // PHI
     IR_INSN_PHI,
     // Code-gen instructions
-    IR_INSN_ASSIGN
+    IR_INSN_ASSIGN,
+    IR_INSN_REG,
 };
 
 /**
@@ -156,6 +157,7 @@ enum ir_insn_type {
         | PHI <phi_value>
         (For code gen usage)
         | ASSIGN <value>
+        | REG
 
     Note. <bb_next> must be the next basic block.
  */
@@ -189,10 +191,6 @@ struct ir_insn {
     // Array of struct ir_insn *
     // Users
     struct array users;
-
-    // Might be useful?
-    // Too difficult, need BTF
-    // enum ir_vr_type type;
 
     // Used when generating the real code
     size_t _insn_id;
