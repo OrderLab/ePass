@@ -114,6 +114,8 @@ void code_gen(struct ir_function *fun) {
     explicit_reg(fun);
     print_ir_prog_cg(fun);
 
+    // SSA Destruction
+
     // remove_phi(fun);
 
     // // Step 3: Liveness Analysis
