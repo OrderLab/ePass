@@ -89,6 +89,14 @@ void print_insn_ptr(struct ir_insn *insn, void (*print_ir)(struct ir_insn *)) {
     if (print_ir) {
         print_ir(insn);
     } else {
+        if (insn->op == IR_INSN_REG) {
+            printf("R%u", insn_cg(insn)->alloc_reg);
+            return;
+        }
+        if (insn->op == IR_INSN_FUNCTIONARG) {
+            printf("arg%u", insn->fid);
+            return;
+        }
         if (insn->_insn_id == SIZE_MAX) {
             printf("%p", insn);
             return;
@@ -115,9 +123,6 @@ void print_ir_value_full(struct ir_value v, void (*print_ir)(struct ir_insn *)) 
             break;
         case IR_VALUE_CONSTANT:
             print_constant(v.data.constant_d);
-            break;
-        case IR_VALUE_FUNCTIONARG:
-            printf("arg%d", v.data.arg_id);
             break;
         case IR_VALUE_UNDEF:
             printf("undef");

@@ -49,14 +49,13 @@ struct ir_constant {
 
 enum ir_value_type {
     IR_VALUE_CONSTANT,
-    IR_VALUE_FUNCTIONARG,
     IR_VALUE_INSN,
     IR_VALUE_STACK_PTR,
     IR_VALUE_UNDEF,
 };
 
 /**
-    VALUE = CONSTANT | INSN | FUNCTIONARG
+    VALUE = CONSTANT | INSN
 
     "r1 = constant" pattern will use `CONSTANT` which will not be added to BB.
  */
@@ -64,7 +63,6 @@ struct ir_value {
     union {
         struct ir_constant constant_d;
         struct ir_insn    *insn_d;
-        __u8               arg_id;
     } data;
     enum ir_value_type type;
 };
@@ -109,6 +107,7 @@ enum ir_insn_type {
     IR_INSN_LOAD,
     IR_INSN_STORERAW,
     IR_INSN_LOADRAW,
+    IR_INSN_FUNCTIONARG,  // The function argument store
     // ALU
     IR_INSN_ADD,
     IR_INSN_SUB,
@@ -140,6 +139,8 @@ enum ir_insn_type {
         | LOAD <ir_vr_type> <value:ptr>
         | STORERAW <ir_vr_type> <ir_address_value>, <value>
         | LOADRAW <ir_vr_type> <ir_address_value>
+        | FUNCTIONARG <fid>
+
         | ADD <value>, <value>
         | SUB <value>, <value>
         | MUL <value>, <value>
@@ -178,8 +179,7 @@ struct ir_insn {
     // Array of phi_value
     struct array phi;
 
-    __s32 fid;
-    // __u32             f_arg_num;
+    __s32             fid;
     enum ir_insn_type op;
 
     // Linked list
@@ -286,6 +286,8 @@ struct ssa_transform_env {
 
     // Stack pointer (r10) users
     struct array sp_users;
+    // Function argument
+    struct ir_insn *function_arg[MAX_FUNC_ARG];
 };
 
 // helper functions

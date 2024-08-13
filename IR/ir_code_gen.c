@@ -38,15 +38,18 @@ void init_cg(struct ir_function *fun) {
         bb->user_data = bb_cg;
 
         struct ir_insn *insn;
-        printf("BB\n");
         list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
             init_insn_cg(insn);
         }
     }
 
     for (__u8 i = 0; i < MAX_FUNC_ARG; ++i) {
-        struct ir_insn *insn          = &fun->cg_info.regs[i];
+        fun->cg_info.regs[i] = __malloc(sizeof(struct ir_insn));
+        struct ir_insn *insn          = fun->cg_info.regs[i];
         insn->op                      = IR_INSN_REG;
+        insn->parent_bb      = NULL;
+        insn->users          = INIT_ARRAY(struct ir_insn *);
+        insn->value_num      = 0;
         init_insn_cg(insn)->alloc_reg = i;
     }
 }
@@ -77,8 +80,10 @@ void free_cg_res(struct ir_function *fun) {
     }
 
     for (__u8 i = 0; i < MAX_FUNC_ARG; ++i) {
-        struct ir_insn *insn = &fun->cg_info.regs[i];
+        struct ir_insn *insn = fun->cg_info.regs[i];
+        array_free(&insn->users);
         free_insn_cg(insn);
+        __free(insn);
     }
 }
 
@@ -107,21 +112,22 @@ void code_gen(struct ir_function *fun) {
     // Init CG, start real code generation
     init_cg(fun);
     explicit_reg(fun);
+    print_ir_prog_cg(fun);
 
-    remove_phi(fun);
+    // remove_phi(fun);
 
-    // Step 3: Liveness Analysis
-    liveness_analysis(fun);
+    // // Step 3: Liveness Analysis
+    // liveness_analysis(fun);
 
-    // Step 4: Conflict Analysis
-    conflict_analysis(fun);
-    print_interference_graph(fun);
-    printf("-------------\n");
+    // // Step 4: Conflict Analysis
+    // conflict_analysis(fun);
+    // print_interference_graph(fun);
+    // printf("-------------\n");
 
-    // Step 5: Graph coloring
-    graph_coloring(fun);
-    print_interference_graph(fun);
-    print_ir_prog_advanced(fun, NULL, NULL, print_ir_alloc);
+    // // Step 5: Graph coloring
+    // graph_coloring(fun);
+    // print_interference_graph(fun);
+    // print_ir_prog_advanced(fun, NULL, NULL, print_ir_alloc);
 
     // Register allocation finished
 
