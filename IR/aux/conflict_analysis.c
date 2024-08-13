@@ -70,11 +70,13 @@ void conflict_analysis(struct ir_function *fun) {
             struct ir_insn **pos2;
             struct ir_insn_cg_extra *insn_cg = insn->user_data;
             array_for(pos2, insn_cg->kill) {
-                struct ir_insn *insn_dst = dst(*pos2);
+                struct ir_insn *insn_dst = *pos2;
+                DBGASSERT(insn_dst == dst(insn_dst));
                 array_push_unique(&fun->cg_info.all_var, &insn_dst);
                 struct ir_insn **pos3;
                 array_for(pos3, insn_cg->out) {
-                    build_conflict(insn_dst, dst(*pos3));
+                    DBGASSERT(*pos3 == dst(*pos3));
+                    build_conflict(insn_dst, *pos3);
                 }
             }
         }

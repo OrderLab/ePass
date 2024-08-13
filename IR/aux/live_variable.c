@@ -40,7 +40,8 @@ void gen_kill(struct ir_function *fun) {
             array_for(pos3, value_uses) {
                 struct ir_value *val = *pos3;
                 if (val->type == IR_VALUE_INSN) {
-                    struct ir_insn *insn = dst(val->data.insn_d);
+                    struct ir_insn *insn = val->data.insn_d;
+                    DBGASSERT(insn == dst(insn));
                     array_push_unique(&insn_cg->gen, &insn);
                     // array_erase_elem(&insn_cg->kill, insn);
                 }
