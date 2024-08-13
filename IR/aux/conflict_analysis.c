@@ -69,11 +69,6 @@ void conflict_analysis(struct ir_function *fun) {
         list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
             struct ir_insn **pos2;
             struct ir_insn_cg_extra *insn_cg = insn->user_data;
-            array_for(pos2, insn_cg->out) {
-                struct ir_insn *insn_dst = dst(*pos2);
-                // Add the variable to the "all variable set"
-                array_push_unique(&fun->cg_info.all_var, &insn_dst);
-            }
             array_for(pos2, insn_cg->kill) {
                 struct ir_insn *insn_dst = dst(*pos2);
                 array_push_unique(&fun->cg_info.all_var, &insn_dst);

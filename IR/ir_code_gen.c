@@ -93,14 +93,14 @@ void code_gen(struct ir_function *fun) {
     liveness_analysis(fun);
 
     // Step 4: Conflict Analysis
-    // conflict_analysis(fun);
-    // print_interference_graph(fun);
-    // printf("-------------\n");
+    conflict_analysis(fun);
+    print_interference_graph(fun);
+    printf("-------------\n");
 
-    // // Step 5: Graph coloring
-    // graph_coloring(fun);
-    // print_interference_graph(fun);
-    // print_ir_prog_advanced(fun, NULL, NULL, print_ir_alloc);
+    // Step 5: Graph coloring
+    graph_coloring(fun);
+    print_interference_graph(fun);
+    print_ir_prog_advanced(fun, NULL, NULL, print_ir_alloc);
 
     // Register allocation finished
 
