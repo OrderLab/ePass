@@ -45,6 +45,7 @@ void gen_kill(struct ir_function *fun) {
                     // array_erase_elem(&insn_cg->kill, insn);
                 }
             }
+            array_free(&value_uses);
         }
     }
 }

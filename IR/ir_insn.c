@@ -26,6 +26,7 @@ void replace_all_usage(struct ir_insn *insn, struct ir_value rep) {
                 **pos2 = rep;
             }
         }
+        array_free(&operands);
     }
 }
 

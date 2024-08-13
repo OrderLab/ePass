@@ -35,6 +35,17 @@ void init_cg(struct ir_function *fun) {
             extra->in         = INIT_ARRAY(struct ir_insn *);
             extra->out        = INIT_ARRAY(struct ir_insn *);
             insn->user_data   = extra;
+
+            // Change all operands to dst(*)
+            struct array      value_uses = get_operands(insn);
+            struct ir_value **pos2;
+            array_for(pos2, value_uses) {
+                struct ir_value *val = *pos2;
+                if (val->type == IR_VALUE_INSN) {
+                    val->data.insn_d = dst(val->data.insn_d);
+                }
+            }
+            array_free(&value_uses);
         }
     }
 }
