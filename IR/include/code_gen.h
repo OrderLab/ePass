@@ -43,6 +43,8 @@ struct ir_insn_cg_extra {
 
 struct ir_insn_cg_extra *insn_cg(struct ir_insn *insn);
 
+struct ir_insn_cg_extra *init_insn_cg(struct ir_insn *insn);
+
 struct ir_insn *dst(struct ir_insn *insn);
 
 void to_cssa(struct ir_function *fun);

@@ -11,6 +11,7 @@ int prog(void *ctx) {
     bpf_trace_printk(ctx, t);
     for (__u64 i = 0; i < t; ++i) {
         bpf_trace_printk("s", i);
+        bpf_trace_printk(ctx, 2);
     }
     return 0;
 }

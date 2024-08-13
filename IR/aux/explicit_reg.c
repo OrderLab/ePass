@@ -4,6 +4,7 @@
 // arg1 is r0 at the beginning of the function
 // We then add a new instruction to the beginning of the function.
 
+#include <stdio.h>
 #include "array.h"
 #include "bpf_ir.h"
 #include "code_gen.h"
@@ -14,8 +15,7 @@ void explicit_reg(struct ir_function *fun) {
     // fun is still in IR form
     struct ir_basic_block **pos;
     // Maximum number of functions: MAX_FUNC_ARG
-    __u8         function_arg[MAX_FUNC_ARG] = {0};
-    struct array call_insns       = INIT_ARRAY(struct ir_insn *);
+    struct array call_insns                 = INIT_ARRAY(struct ir_insn *);
     array_for(pos, fun->reachable_bbs) {
         struct ir_basic_block *bb = *pos;
         struct ir_insn        *insn;
@@ -33,4 +33,14 @@ void explicit_reg(struct ir_function *fun) {
             }
         }
     }
+    for (__u8 i = 0; i < MAX_FUNC_ARG; ++i) {
+        if (fun->function_arg[i]->users.num_elem > 0) {
+            // Insert ASSIGN arg[i] at the beginning of the function
+            struct ir_value val;
+            val.type = IR_VALUE_UNDEF;
+            struct ir_insn *new_insn = create_assign_insn_bb_cg(fun->entry, val, INSERT_FRONT_AFTER_PHI);
+            replace_all_usage(fun->function_arg[i], ir_value_insn(new_insn));
+        }
+    }
+    array_free(&call_insns);
 }

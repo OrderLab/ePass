@@ -88,4 +88,12 @@ void val_add_user(struct ir_value val, struct ir_insn *user);
 
 void val_remove_user(struct ir_value val, struct ir_insn *user);
 
+struct ir_insn *create_assign_insn_cg(struct ir_insn *insn, struct ir_value val,
+                                      enum insert_position pos);
+
+struct ir_insn *create_assign_insn_bb_cg(struct ir_basic_block *bb, struct ir_value val,
+                                         enum insert_position pos);
+
+void replace_operand(struct ir_insn *insn, struct ir_value v1, struct ir_value v2);
+
 #endif
