@@ -41,16 +41,24 @@ void print_interference_graph(struct ir_function *fun) {
             }
             printf("): ");
         } else {
-            printf("%%%zu: ", insn->_insn_id);
+            if (insn->op == IR_INSN_REG) {
+                printf("R%u: ", extra->alloc_reg);
+            } else {
+                printf("%%%zu: ", insn->_insn_id);
+            }
         }
         struct ir_insn **pos2;
         array_for(pos2, insn_cg(insn)->adj) {
             struct ir_insn *adj_insn = *pos2;
-            if (!is_final(insn)) {
+            if (!is_final(adj_insn)) {
                 // Not final value, give up
                 CRITICAL("Not Final Value!");
             }
-            printf("%%%zu, ", adj_insn->_insn_id);
+            if (adj_insn->op == IR_INSN_REG) {
+                printf("R%u, ", extra->alloc_reg);
+            } else {
+                printf("%%%zu, ", adj_insn->_insn_id);
+            }
         }
         printf("\n");
     }
