@@ -21,15 +21,7 @@ void explicit_reg(struct ir_function *fun) {
         struct ir_basic_block *bb = *pos;
         struct ir_insn        *insn;
         list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
-            // struct ir_insn_cg_extra *extra = insn_cg(insn);
             if (insn->op == IR_INSN_CALL) {
-                // Change the return value to NULL
-                // The result is in r0
-                // extra->dst = NULL;
-                // struct ir_value val;
-                // val.type        = IR_VALUE_INSN;
-                // val.data.insn_d = &fun->cg_info.regs[0];
-                // create_assign_insn(insn, val, INSERT_BACK);
                 array_push(&call_insns, &insn);
             }
         }
@@ -39,13 +31,12 @@ void explicit_reg(struct ir_function *fun) {
     array_for(pos2, call_insns) {
         struct ir_insn *insn = *pos2;
         for (__u8 i = 0; i < insn->value_num; ++i) {
-            struct ir_value val = insn->values[i];
-            struct ir_insn *new_insn =
-                create_assign_insn_cg(insn, val, INSERT_FRONT);
-                insn_cg(new_insn)->dst = fun->cg_info.regs[i + 1];
+            struct ir_value val      = insn->values[i];
+            struct ir_insn *new_insn = create_assign_insn_cg(insn, val, INSERT_FRONT);
+            insn_cg(new_insn)->dst   = fun->cg_info.regs[i + 1];
             val_remove_user(val, insn);
         }
-        insn->value_num = 0;
+        insn->value_num                = 0;  // Remove all operands
         struct ir_insn_cg_extra *extra = insn_cg(insn);
         extra->dst                     = NULL;
         if (insn->users.num_elem == 0) {

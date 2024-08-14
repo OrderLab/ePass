@@ -114,12 +114,13 @@ void code_gen(struct ir_function *fun) {
 
     // Init CG, start real code generation
     init_cg(fun);
-    explicit_reg(fun);
+    explicit_reg(fun);  // Still in SSA form, users are available
     print_ir_prog_cg(fun);
     printf("-----------------\n");
     print_ir_prog_advanced(fun, NULL, NULL, print_ir_dst);
 
     // SSA Destruction
+    // users not available from now on
 
     // remove_phi(fun);
 
