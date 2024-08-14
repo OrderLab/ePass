@@ -16,6 +16,8 @@ struct array get_operands(struct ir_insn *insn);
 
 void replace_all_usage(struct ir_insn *insn, struct ir_value rep);
 
+void replace_all_usage_except(struct ir_insn *insn, struct ir_value rep, struct ir_insn *except);
+
 void erase_insn(struct ir_insn *insn);
 
 int is_void(struct ir_insn *insn);
@@ -23,6 +25,8 @@ int is_void(struct ir_insn *insn);
 int is_jmp(struct ir_insn *insn);
 
 struct ir_insn *prev_insn(struct ir_insn *insn);
+
+struct ir_insn *next_insn(struct ir_insn *insn);
 
 struct ir_insn *create_alloc_insn(struct ir_insn *insn, enum ir_vr_type type,
                                   enum insert_position pos);
@@ -85,5 +89,13 @@ void phi_add_operand(struct ir_insn *insn, struct ir_basic_block *bb, struct ir_
 void val_add_user(struct ir_value val, struct ir_insn *user);
 
 void val_remove_user(struct ir_value val, struct ir_insn *user);
+
+struct ir_insn *create_assign_insn_cg(struct ir_insn *insn, struct ir_value val,
+                                      enum insert_position pos);
+
+struct ir_insn *create_assign_insn_bb_cg(struct ir_basic_block *bb, struct ir_value val,
+                                         enum insert_position pos);
+
+void replace_operand(struct ir_insn *insn, struct ir_value v1, struct ir_value v2);
 
 #endif

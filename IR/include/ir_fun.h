@@ -7,6 +7,9 @@ struct code_gen_info {
     // All vertex in interference graph
     // Array of struct ir_insn*
     struct array all_var;
+
+    // BPF Register Virtual Instruction (used as dst)
+    struct ir_insn *regs[MAX_BPF_REG];
 };
 
 struct ir_function {
@@ -23,6 +26,9 @@ struct ir_function {
 
     // Stack pointer (r10) users. Should be readonly. No more manual stack access should be allowed.
     struct array sp_users;
+
+    // Function argument
+    struct ir_insn *function_arg[MAX_FUNC_ARG];
 
     // Array of struct ir_constraint. Value constraints.
     struct array value_constraints;

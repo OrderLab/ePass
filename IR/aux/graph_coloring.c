@@ -1,7 +1,6 @@
 #include <linux/bpf.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
 #include "array.h"
 #include "bpf_ir.h"
 #include "code_gen.h"
@@ -28,8 +27,8 @@ void graph_coloring(struct ir_function *fun) {
         struct ir_insn_cg_extra *extra = insn_cg(insn);
         struct ir_insn         **pos2;
 
-        int          used_reg[__MAX_BPF_REG] = {0};
-        struct array used_spill              = INIT_ARRAY(size_t);
+        int          used_reg[MAX_BPF_REG] = {0};
+        struct array used_spill            = INIT_ARRAY(size_t);
         array_for(pos2, extra->adj) {
             struct ir_insn          *insn2  = *pos2;  // Adj instruction
             struct ir_insn_cg_extra *extra2 = insn_cg(insn2);
@@ -42,7 +41,7 @@ void graph_coloring(struct ir_function *fun) {
             }
         }
         __u8 need_spill = 1;
-        for (__u8 i = 0; i < __MAX_BPF_REG; i++) {
+        for (__u8 i = 0; i < MAX_BPF_REG; i++) {
             if (!used_reg[i]) {
                 extra->allocated = 1;
                 printf("Allocate r%u for %zu\n", i, insn->_insn_id);

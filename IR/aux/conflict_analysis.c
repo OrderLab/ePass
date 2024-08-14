@@ -4,6 +4,7 @@
 #include "code_gen.h"
 #include "dbg.h"
 #include "ir_helper.h"
+#include "list.h"
 
 int is_final(struct ir_insn *v1) {
     return v1 == dst(v1);
@@ -62,23 +63,21 @@ void conflict_analysis(struct ir_function *fun) {
     struct ir_basic_block **pos;
     // For each BB
     array_for(pos, fun->reachable_bbs) {
-        struct ir_basic_block *bb    = *pos;
-        struct ir_bb_cg_extra *bb_cg = bb->user_data;
-        struct ir_insn       **pos2;
-        array_for(pos2, bb_cg->out) {
-            struct ir_insn *insn_dst = dst(*pos2);
-            // Add the variable to the "all variable set"
-            array_push_unique(&fun->cg_info.all_var, &insn_dst);
-        }
-        array_for(pos2, bb_cg->kill) {
-            struct ir_insn *insn_dst = dst(*pos2);
-            array_push_unique(&fun->cg_info.all_var, &insn_dst);
-            struct ir_insn **pos3;
-            array_for(pos3, bb_cg->out) {
-                build_conflict(insn_dst, dst(*pos3));
-            }
-            array_for(pos3, bb_cg->kill) {
-                build_conflict(insn_dst, dst(*pos3));
+        struct ir_basic_block *bb = *pos;
+        struct ir_insn        *insn;
+        // For each operation
+        list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
+            struct ir_insn         **pos2;
+            struct ir_insn_cg_extra *insn_cg = insn->user_data;
+            array_for(pos2, insn_cg->kill) {
+                struct ir_insn *insn_dst = *pos2;
+                DBGASSERT(insn_dst == dst(insn_dst));
+                array_push_unique(&fun->cg_info.all_var, &insn_dst);
+                struct ir_insn **pos3;
+                array_for(pos3, insn_cg->out) {
+                    DBGASSERT(*pos3 == dst(*pos3));
+                    build_conflict(insn_dst, *pos3);
+                }
             }
         }
     }

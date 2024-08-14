@@ -18,4 +18,8 @@ struct ir_basic_block *split_bb(struct ir_function *fun, struct ir_insn *insn);
 
 struct ir_insn *get_last_insn(struct ir_basic_block *bb);
 
+struct ir_insn *get_first_insn(struct ir_basic_block *bb);
+
+int bb_empty(struct ir_basic_block *bb);
+
 #endif

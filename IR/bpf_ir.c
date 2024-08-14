@@ -12,6 +12,7 @@
 #include "list.h"
 #include "dbg.h"
 #include "passes.h"
+#include "prog_check.h"
 #include "reachable_bb.h"
 #include "read.h"
 
@@ -267,16 +268,24 @@ void print_pre_ir_cfg(struct pre_ir_basic_block *bb) {
 struct ssa_transform_env init_env(struct bb_info info) {
     struct ssa_transform_env env;
     for (size_t i = 0; i < MAX_BPF_REG; ++i) {
-        env.currentDef[i] = array_init(sizeof(struct bb_val));
+        env.currentDef[i] = INIT_ARRAY(struct bb_val);
     }
     env.info     = info;
-    env.sp_users = array_init(sizeof(struct ir_insn *));
+    env.sp_users = INIT_ARRAY(struct ir_insn *);
     // Initialize function argument
-    // TODO: more than one arg
-    struct ir_value val;
-    val.type        = IR_VALUE_FUNCTIONARG;
-    val.data.arg_id = 0;
-    write_variable(&env, BPF_REG_1, info.entry, val);
+    for (__u8 i = 0; i < MAX_FUNC_ARG; ++i) {
+        env.function_arg[i] = __malloc(sizeof(struct ir_insn));
+
+        env.function_arg[i]->users     = INIT_ARRAY(struct ir_insn *);
+        env.function_arg[i]->op        = IR_INSN_FUNCTIONARG;
+        env.function_arg[i]->fid       = i;
+        env.function_arg[i]->value_num = 0;
+        env.function_arg[i]->user_data = NULL;
+        struct ir_value val;
+        val.type        = IR_VALUE_INSN;
+        val.data.insn_d = env.function_arg[i];
+        write_variable(&env, BPF_REG_1 + i, info.entry, val);
+    }
     return env;
 }
 
@@ -802,13 +811,23 @@ void free_function(struct ir_function *fun) {
         }
         free(bb);
     }
+    for (__u8 i = 0; i < MAX_FUNC_ARG; ++i) {
+        array_free(&fun->function_arg[i]->users);
+        __free(fun->function_arg[i]);
+    }
+    array_free(&fun->all_bbs);
+    array_free(&fun->reachable_bbs);
+    array_free(&fun->cg_info.all_var);
 }
 
 struct ir_function gen_function(struct ssa_transform_env *env) {
     struct ir_function fun;
-    fun.arg_num         = 1;
-    fun.entry           = env->info.entry->ir_bb;
-    fun.sp_users        = env->sp_users;
+    fun.arg_num  = 1;
+    fun.entry    = env->info.entry->ir_bb;
+    fun.sp_users = env->sp_users;
+    for (__u8 i = 0; i < MAX_FUNC_ARG; ++i) {
+        fun.function_arg[i] = env->function_arg[i];
+    }
     fun.all_bbs         = INIT_ARRAY(struct ir_basic_block *);
     fun.reachable_bbs   = INIT_ARRAY(struct ir_basic_block *);
     fun.cg_info.all_var = INIT_ARRAY(struct ir_insn *);
@@ -835,9 +854,6 @@ __u8 ir_value_equal(struct ir_value a, struct ir_value b) {
     if (a.type == IR_VALUE_CONSTANT) {
         return a.data.constant_d.data.s32_d == b.data.constant_d.data.s32_d;
     }
-    if (a.type == IR_VALUE_FUNCTIONARG) {
-        return a.data.arg_id == b.data.arg_id;
-    }
     if (a.type == IR_VALUE_INSN) {
         return a.data.insn_d == b.data.insn_d;
     }
@@ -853,6 +869,8 @@ void run_passes(struct ir_function *fun) {
         gen_reachable_bbs(fun);
         passes[i](fun);
         printf("--------------------\n");
+        // Validate the IR
+        check_users(fun);
         print_ir_prog(fun);
     }
 }

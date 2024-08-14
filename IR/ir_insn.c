@@ -2,9 +2,11 @@
 #include <stdio.h>
 #include "array.h"
 #include "bpf_ir.h"
+#include "code_gen.h"
 #include "dbg.h"
 #include "ir_bb.h"
 #include "list.h"
+#include "ir_helper.h"
 
 struct ir_insn *create_insn_base(struct ir_basic_block *bb) {
     struct ir_insn *new_insn = __malloc(sizeof(struct ir_insn));
@@ -14,9 +16,29 @@ struct ir_insn *create_insn_base(struct ir_basic_block *bb) {
     return new_insn;
 }
 
+struct ir_insn *create_insn_base_cg(struct ir_basic_block *bb) {
+    struct ir_insn *new_insn = create_insn_base(bb);
+    init_insn_cg(new_insn);
+    insn_cg(new_insn)->dst = new_insn;
+    return new_insn;
+}
+
+void replace_operand(struct ir_insn *insn, struct ir_value v1, struct ir_value v2) {
+    // Replace v1 with v2 in insn
+    if (v1.type == IR_VALUE_INSN) {
+        // Remove user from v1
+        val_remove_user(v1, insn);
+    }
+    if (v2.type == IR_VALUE_INSN) {
+        val_add_user(v2, insn);
+    }
+}
+
 void replace_all_usage(struct ir_insn *insn, struct ir_value rep) {
     struct ir_insn **pos;
-    array_for(pos, insn->users) {
+    struct array     users = insn->users;
+    insn->users            = INIT_ARRAY(struct ir_insn *);
+    array_for(pos, users) {
         struct ir_insn   *user     = *pos;
         struct array      operands = get_operands(user);
         struct ir_value **pos2;
@@ -24,9 +46,36 @@ void replace_all_usage(struct ir_insn *insn, struct ir_value rep) {
             if ((*pos2)->type == IR_VALUE_INSN && (*pos2)->data.insn_d == insn) {
                 // Match, replace
                 **pos2 = rep;
+                val_add_user(rep, user);
             }
         }
+        array_free(&operands);
     }
+    array_free(&users);
+}
+
+void replace_all_usage_except(struct ir_insn *insn, struct ir_value rep, struct ir_insn *except) {
+    struct ir_insn **pos;
+    struct array     users = insn->users;
+    insn->users            = INIT_ARRAY(struct ir_insn *);
+    array_for(pos, users) {
+        struct ir_insn *user = *pos;
+        if (user == except) {
+            array_push(&insn->users, &user);
+            continue;
+        }
+        struct array      operands = get_operands(user);
+        struct ir_value **pos2;
+        array_for(pos2, operands) {
+            if ((*pos2)->type == IR_VALUE_INSN && (*pos2)->data.insn_d == insn) {
+                // Match, replace
+                **pos2 = rep;
+                val_add_user(rep, user);
+            }
+        }
+        array_free(&operands);
+    }
+    array_free(&users);
 }
 
 struct array get_operands(struct ir_insn *insn) {
@@ -52,6 +101,13 @@ __u8 is_last_insn(struct ir_insn *insn) {
 }
 
 void erase_insn(struct ir_insn *insn) {
+    // TODO: remove users
+    struct array      operands = get_operands(insn);
+    struct ir_value **pos2;
+    array_for(pos2, operands) {
+        val_remove_user((**pos2), insn);
+    }
+    array_free(&operands);
     list_del(&insn->list_ptr);
     __free(insn);
 }
@@ -228,10 +284,18 @@ struct ir_insn *create_bin_insn_bb(struct ir_basic_block *bb, struct ir_value va
 
 struct ir_insn *prev_insn(struct ir_insn *insn) {
     struct list_head *prev = insn->list_ptr.prev;
-    if (list_empty(prev)) {
+    if (prev == &insn->parent_bb->ir_insn_head) {
         return NULL;
     }
     return list_entry(prev, struct ir_insn, list_ptr);
+}
+
+struct ir_insn *next_insn(struct ir_insn *insn) {
+    struct list_head *next = insn->list_ptr.next;
+    if (next == &insn->parent_bb->ir_insn_head) {
+        return NULL;
+    }
+    return list_entry(next, struct ir_insn, list_ptr);
 }
 
 struct ir_insn *create_ja_insn_base(struct ir_basic_block *bb, struct ir_basic_block *to_bb) {
@@ -341,6 +405,29 @@ struct ir_insn *create_assign_insn(struct ir_insn *insn, struct ir_value val,
 struct ir_insn *create_assign_insn_bb(struct ir_basic_block *bb, struct ir_value val,
                                       enum insert_position pos) {
     struct ir_insn *new_insn = create_assign_insn_base(bb, val);
+    insert_at_bb(new_insn, bb, pos);
+    return new_insn;
+}
+
+struct ir_insn *create_assign_insn_base_cg(struct ir_basic_block *bb, struct ir_value val) {
+    struct ir_insn *new_insn = create_insn_base_cg(bb);
+    new_insn->op             = IR_INSN_ASSIGN;
+    new_insn->values[0]      = val;
+    new_insn->value_num      = 1;
+    val_add_user(val, new_insn);
+    return new_insn;
+}
+
+struct ir_insn *create_assign_insn_cg(struct ir_insn *insn, struct ir_value val,
+                                      enum insert_position pos) {
+    struct ir_insn *new_insn = create_assign_insn_base_cg(insn->parent_bb, val);
+    insert_at(new_insn, insn, pos);
+    return new_insn;
+}
+
+struct ir_insn *create_assign_insn_bb_cg(struct ir_basic_block *bb, struct ir_value val,
+                                         enum insert_position pos) {
+    struct ir_insn *new_insn = create_assign_insn_base_cg(bb, val);
     insert_at_bb(new_insn, bb, pos);
     return new_insn;
 }
