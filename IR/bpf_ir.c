@@ -12,6 +12,7 @@
 #include "list.h"
 #include "dbg.h"
 #include "passes.h"
+#include "prog_check.h"
 #include "reachable_bb.h"
 #include "read.h"
 
@@ -868,6 +869,8 @@ void run_passes(struct ir_function *fun) {
         gen_reachable_bbs(fun);
         passes[i](fun);
         printf("--------------------\n");
+        // Validate the IR
+        check_users(fun);
         print_ir_prog(fun);
     }
 }

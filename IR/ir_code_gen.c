@@ -106,7 +106,8 @@ void code_gen(struct ir_function *fun) {
     // Step 1: Check program
     prog_check(fun);
     // Step 2: Eliminate SSA
-    // to_cssa(fun);
+    to_cssa(fun);
+    check_users(fun);
     print_ir_prog_cg(fun);
 
     // Init CG, start real code generation

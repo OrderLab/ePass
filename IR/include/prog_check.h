@@ -5,4 +5,6 @@
 
 void prog_check(struct ir_function *fun);
 
+void check_users(struct ir_function *fun);
+
 #endif

@@ -35,14 +35,11 @@ void explicit_reg(struct ir_function *fun) {
         }
     }
     for (__u8 i = 0; i < MAX_FUNC_ARG; ++i) {
-        struct ir_insn **pos2;
-        array_for(pos2, fun->function_arg[i]->users){
-            print_raw_ir_insn(*pos2);
-        }
         if (fun->function_arg[i]->users.num_elem > 0) {
             // Insert ASSIGN arg[i] at the beginning of the function
             struct ir_value val;
-            val.type = IR_VALUE_UNDEF;
+            val.type = IR_VALUE_INSN;
+            val.data.insn_d = fun->cg_info.regs[i + 1];
             struct ir_insn *new_insn = create_assign_insn_bb_cg(fun->entry, val, INSERT_FRONT_AFTER_PHI);
             
             replace_all_usage(fun->function_arg[i], ir_value_insn(new_insn));
