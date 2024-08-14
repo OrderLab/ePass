@@ -1,27 +1,26 @@
 #include "bpf_ir.h"
 #include "code_gen.h"
 #include "dbg.h"
-enum val_type{
+enum val_type {
     REG,
     CONST,
     STACK
 };
 
-enum val_type vtype(struct ir_value val){
+enum val_type vtype(struct ir_value val) {
     if (val.type == IR_VALUE_INSN) {
-        struct ir_insn *insn = dst(val.data.insn_d);
-    struct ir_insn_cg_extra * extra = insn_cg(insn);
-    if(extra->spilled){
-        return STACK;
-    }else{
-        return REG;
-    }
-    }else{
-        
+        struct ir_insn          *insn  = dst(val.data.insn_d);
+        struct ir_insn_cg_extra *extra = insn_cg(insn);
+        if (extra->spilled) {
+            return STACK;
+        } else {
+            return REG;
+        }
+    } else {
     }
 }
 
-int check_need_spill(struct ir_function *fun){
+int check_need_spill(struct ir_function *fun) {
     // Check if all instruction values are OK for translating
     struct ir_basic_block **pos;
     array_for(pos, fun->reachable_bbs) {
@@ -48,7 +47,4 @@ int check_need_spill(struct ir_function *fun){
     return 0;
 }
 
-
-void spill(struct ir_function *fun){
-
-}
+void spill(struct ir_function *fun) {}

@@ -67,7 +67,7 @@ void conflict_analysis(struct ir_function *fun) {
         struct ir_insn        *insn;
         // For each operation
         list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
-            struct ir_insn **pos2;
+            struct ir_insn         **pos2;
             struct ir_insn_cg_extra *insn_cg = insn->user_data;
             array_for(pos2, insn_cg->kill) {
                 struct ir_insn *insn_dst = *pos2;

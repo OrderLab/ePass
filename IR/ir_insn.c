@@ -39,7 +39,7 @@ void replace_all_usage(struct ir_insn *insn, struct ir_value rep) {
     struct array     users = insn->users;
     insn->users            = INIT_ARRAY(struct ir_insn *);
     array_for(pos, users) {
-        struct ir_insn *user = *pos;
+        struct ir_insn   *user     = *pos;
         struct array      operands = get_operands(user);
         struct ir_value **pos2;
         array_for(pos2, operands) {
