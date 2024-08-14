@@ -29,7 +29,33 @@ void check_insn_users_use_insn(struct ir_insn *insn) {
     }
 }
 
-// Check if the users are correct
+void check_insn_operand(struct ir_insn *insn) {
+    struct array      operands = get_operands(insn);
+    struct ir_value **val;
+    array_for(val, operands) {
+        struct ir_value *v = *val;
+        if (v->type == IR_VALUE_INSN) {
+            // Check if the operand actually is used by this instruction
+            struct ir_insn **pos2;
+            int              found = 0;
+            array_for(pos2, v->data.insn_d->users) {
+                struct ir_insn *user = *pos2;
+                if (user == insn) {
+                    // Found the user
+                    found = 1;
+                    break;
+                }
+            }
+            if (!found) {
+                // Error!
+                CRITICAL("Operand is not used by the instruction");
+            }
+        }
+    }
+    array_free(&operands);
+}
+
+// Check if the users are correct (only applicable to SSA IR form)
 void check_users(struct ir_function *fun) {
     // Check FunctionCallArgument Instructions
     for (__u8 i = 0; i < MAX_FUNC_ARG; ++i) {
@@ -44,29 +70,7 @@ void check_users(struct ir_function *fun) {
             // Check users of this instruction
             check_insn_users_use_insn(insn);
             // Check operands of this instruction
-            struct array      operands = get_operands(insn);
-            struct ir_value **val;
-            array_for(val, operands) {
-                struct ir_value *v = *val;
-                if (v->type == IR_VALUE_INSN) {
-                    // Check if the operand actually is used by this instruction
-                    struct ir_insn **pos2;
-                    int              found = 0;
-                    array_for(pos2, v->data.insn_d->users) {
-                        struct ir_insn *user = *pos2;
-                        if (user == insn) {
-                            // Found the user
-                            found = 1;
-                            break;
-                        }
-                    }
-                    if (!found) {
-                        // Error!
-                        CRITICAL("Operand is not used by the instruction");
-                    }
-                }
-            }
-            array_free(&operands);
+            check_insn_operand(insn);
         }
     }
 }
