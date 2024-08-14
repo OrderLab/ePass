@@ -14,6 +14,12 @@
 
 void explicit_reg(struct ir_function *fun) {
     // fun is still in IR form
+    // Before this step, users are correct
+    // In this step we change some dsts
+    // We need carefully handle the users
+    // dsts are NOT users
+    // Invariant: All operands are final values
+    // Final value: v == dst(v)
     struct ir_basic_block **pos;
     // Maximum number of functions: MAX_FUNC_ARG
     struct array call_insns = INIT_ARRAY(struct ir_insn *);
