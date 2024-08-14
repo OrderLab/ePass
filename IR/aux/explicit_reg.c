@@ -12,14 +12,6 @@
 #include "ir_insn.h"
 #include "ir_helper.h"
 
-void print_raw(struct ir_function *fun){
-
-    struct ir_basic_block **pos;
-    array_for(pos, fun->reachable_bbs) {
-        print_raw_ir_bb(*pos);
-    }
-}
-
 void explicit_reg(struct ir_function *fun) {
     // fun is still in IR form
     struct ir_basic_block **pos;
@@ -49,14 +41,13 @@ void explicit_reg(struct ir_function *fun) {
         }
         if (fun->function_arg[i]->users.num_elem > 0) {
             // Insert ASSIGN arg[i] at the beginning of the function
-            // struct ir_value val;
-            // val.type = IR_VALUE_UNDEF;
-            // struct ir_insn *new_insn = create_assign_insn_bb_cg(fun->entry, val, INSERT_FRONT_AFTER_PHI);
+            struct ir_value val;
+            val.type = IR_VALUE_UNDEF;
+            struct ir_insn *new_insn = create_assign_insn_bb_cg(fun->entry, val, INSERT_FRONT_AFTER_PHI);
             
-            // replace_all_usage(fun->function_arg[i], ir_value_insn(new_insn));
+            replace_all_usage(fun->function_arg[i], ir_value_insn(new_insn));
         }
     }
-    print_raw(fun);
     array_free(&call_insns);
 }
 

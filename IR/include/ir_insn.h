@@ -16,6 +16,8 @@ struct array get_operands(struct ir_insn *insn);
 
 void replace_all_usage(struct ir_insn *insn, struct ir_value rep);
 
+void replace_all_usage_except(struct ir_insn *insn, struct ir_value rep, struct ir_insn *except);
+
 void erase_insn(struct ir_insn *insn);
 
 int is_void(struct ir_insn *insn);

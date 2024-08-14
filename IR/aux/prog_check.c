@@ -4,6 +4,11 @@
 #include "dbg.h"
 #include "list.h"
 
+// Check if the users are correct
+void check_users(struct ir_function *fun){
+    // TODO
+}
+
 // Check if the PHI nodes are at the beginning of the BB
 void check_phi(struct ir_function *fun) {
     struct ir_basic_block **pos;

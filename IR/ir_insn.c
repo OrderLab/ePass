@@ -39,27 +39,41 @@ void replace_all_usage(struct ir_insn *insn, struct ir_value rep) {
     struct array     users = insn->users;
     insn->users            = INIT_ARRAY(struct ir_insn *);
     array_for(pos, users) {
-        printf("Found user\n");
         struct ir_insn *user = *pos;
-        print_raw_ir_insn(user);
-        for (__u8 j = 0; j < user->value_num; ++j) {
-            if (user->values[j].type == IR_VALUE_INSN && user->values[j].data.insn_d == insn) {
-                printf("Match~\n");
-                user->values[j] = rep;
+        struct array      operands = get_operands(user);
+        struct ir_value **pos2;
+        array_for(pos2, operands) {
+            if ((*pos2)->type == IR_VALUE_INSN && (*pos2)->data.insn_d == insn) {
+                // Match, replace
+                **pos2 = rep;
                 val_add_user(rep, user);
             }
         }
-        // struct array      operands = get_operands(user);
-        // struct ir_value **pos2;
-        // array_for(pos2, operands) {
-        //     if ((*pos2)->type == IR_VALUE_INSN && (*pos2)->data.insn_d == insn) {
-        //         // Match, replace
-        //         printf("Match~\n");
-        //         **pos2 = rep;
-        //         val_add_user(rep, user);
-        //     }
-        // }
-        // array_free(&operands);
+        array_free(&operands);
+    }
+    array_free(&users);
+}
+
+void replace_all_usage_except(struct ir_insn *insn, struct ir_value rep, struct ir_insn *except) {
+    struct ir_insn **pos;
+    struct array     users = insn->users;
+    insn->users            = INIT_ARRAY(struct ir_insn *);
+    array_for(pos, users) {
+        struct ir_insn *user = *pos;
+        if (user == except) {
+            array_push(&insn->users, &user);
+            continue;
+        }
+        struct array      operands = get_operands(user);
+        struct ir_value **pos2;
+        array_for(pos2, operands) {
+            if ((*pos2)->type == IR_VALUE_INSN && (*pos2)->data.insn_d == insn) {
+                // Match, replace
+                **pos2 = rep;
+                val_add_user(rep, user);
+            }
+        }
+        array_free(&operands);
     }
     array_free(&users);
 }
@@ -87,6 +101,13 @@ __u8 is_last_insn(struct ir_insn *insn) {
 }
 
 void erase_insn(struct ir_insn *insn) {
+    // TODO: remove users
+    struct array      operands = get_operands(insn);
+    struct ir_value **pos2;
+    array_for(pos2, operands) {
+        val_remove_user((**pos2), insn);
+    }
+    array_free(&operands);
     list_del(&insn->list_ptr);
     __free(insn);
 }

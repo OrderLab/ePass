@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include "array.h"
 #include "bpf_ir.h"
+#include "dbg.h"
 #include "ir_insn.h"
 #include "list.h"
 
@@ -54,6 +55,7 @@ void try_remove_trivial_phi(struct ir_insn *phi) {
 }
 
 void remove_trivial_phi(struct ir_function *fun) {
+    printf("PHI removal\n");
     for (size_t i = 0; i < fun->reachable_bbs.num_elem; ++i) {
         struct ir_basic_block *bb = ((struct ir_basic_block **)(fun->reachable_bbs.data))[i];
         struct ir_insn        *pos, *n;
