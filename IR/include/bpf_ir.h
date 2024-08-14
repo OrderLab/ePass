@@ -290,6 +290,11 @@ struct ssa_transform_env {
     struct ir_insn *function_arg[MAX_FUNC_ARG];
 };
 
+struct error {
+    __u8         is_kernel_err : 1;
+    unsigned int errorno       : 31;
+};
+
 // helper functions
 
 void write_variable(struct ssa_transform_env *env, __u8 reg, struct pre_ir_basic_block *bb,

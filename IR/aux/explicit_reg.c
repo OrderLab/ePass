@@ -16,7 +16,7 @@ void explicit_reg(struct ir_function *fun) {
     // fun is still in IR form
     struct ir_basic_block **pos;
     // Maximum number of functions: MAX_FUNC_ARG
-    struct array call_insns                 = INIT_ARRAY(struct ir_insn *);
+    struct array call_insns = INIT_ARRAY(struct ir_insn *);
     array_for(pos, fun->reachable_bbs) {
         struct ir_basic_block *bb = *pos;
         struct ir_insn        *insn;
@@ -34,17 +34,35 @@ void explicit_reg(struct ir_function *fun) {
             }
         }
     }
+    // Functions that are called
+    struct ir_insn **pos2;
+    array_for(pos2, call_insns) {
+        struct ir_insn *insn = *pos2;
+        for (__u8 i = 0; i < insn->value_num; ++i) {
+            struct ir_value val = insn->values[i];
+            struct ir_insn *new_insn =
+                create_assign_insn_cg(insn, val, INSERT_FRONT);
+                insn_cg(new_insn)->dst = fun->cg_info.regs[i + 1];
+            val_remove_user(val, insn);
+        }
+        insn->value_num = 0;
+        struct ir_insn_cg_extra *extra = insn_cg(insn);
+        extra->dst                     = NULL;
+        if (insn->users.num_elem == 0) {
+            continue;
+        }
+        struct ir_insn *new_insn =
+            create_assign_insn_cg(insn, ir_value_insn(fun->cg_info.regs[0]), INSERT_BACK);
+        replace_all_usage(insn, ir_value_insn(new_insn));
+    }
+    array_free(&call_insns);
+    // Arg
     for (__u8 i = 0; i < MAX_FUNC_ARG; ++i) {
         if (fun->function_arg[i]->users.num_elem > 0) {
             // Insert ASSIGN arg[i] at the beginning of the function
-            struct ir_value val;
-            val.type = IR_VALUE_INSN;
-            val.data.insn_d = fun->cg_info.regs[i + 1];
-            struct ir_insn *new_insn = create_assign_insn_bb_cg(fun->entry, val, INSERT_FRONT_AFTER_PHI);
-            
+            struct ir_insn *new_insn = create_assign_insn_bb_cg(
+                fun->entry, ir_value_insn(fun->cg_info.regs[i + 1]), INSERT_FRONT_AFTER_PHI);
             replace_all_usage(fun->function_arg[i], ir_value_insn(new_insn));
         }
     }
-    array_free(&call_insns);
 }
-

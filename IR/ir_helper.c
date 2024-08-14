@@ -85,23 +85,27 @@ void print_constant(struct ir_constant d) {
     }
 }
 
+void print_insn_ptr_base(struct ir_insn *insn) {
+    if (insn->op == IR_INSN_REG) {
+        printf("R%u", insn_cg(insn)->alloc_reg);
+        return;
+    }
+    if (insn->op == IR_INSN_FUNCTIONARG) {
+        printf("arg%u", insn->fid);
+        return;
+    }
+    if (insn->_insn_id == SIZE_MAX) {
+        printf("%p", insn);
+        return;
+    }
+    printf("%%%zu", insn->_insn_id);
+}
+
 void print_insn_ptr(struct ir_insn *insn, void (*print_ir)(struct ir_insn *)) {
     if (print_ir) {
         print_ir(insn);
     } else {
-        if (insn->op == IR_INSN_REG) {
-            printf("R%u", insn_cg(insn)->alloc_reg);
-            return;
-        }
-        if (insn->op == IR_INSN_FUNCTIONARG) {
-            printf("arg%u", insn->fid);
-            return;
-        }
-        if (insn->_insn_id == SIZE_MAX) {
-            printf("%p", insn);
-            return;
-        }
-        printf("%%%zu", insn->_insn_id);
+        print_insn_ptr_base(insn);
     }
 }
 
@@ -458,11 +462,7 @@ void print_ir_prog(struct ir_function *fun) {
 void print_ir_dst(struct ir_insn *insn) {
     insn = dst(insn);
     if (insn) {
-        if (insn->_insn_id == SIZE_MAX) {
-            printf("%p", insn);
-            return;
-        }
-        printf("%%%zu", insn->_insn_id);
+        print_insn_ptr_base(insn);
     } else {
         printf("(NULL)");
     }

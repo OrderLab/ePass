@@ -44,13 +44,15 @@ void init_cg(struct ir_function *fun) {
     }
 
     for (__u8 i = 0; i < MAX_FUNC_ARG; ++i) {
-        fun->cg_info.regs[i] = __malloc(sizeof(struct ir_insn));
-        struct ir_insn *insn          = fun->cg_info.regs[i];
-        insn->op                      = IR_INSN_REG;
-        insn->parent_bb      = NULL;
-        insn->users          = INIT_ARRAY(struct ir_insn *);
-        insn->value_num      = 0;
-        init_insn_cg(insn)->alloc_reg = i;
+        fun->cg_info.regs[i]           = __malloc(sizeof(struct ir_insn));
+        struct ir_insn *insn           = fun->cg_info.regs[i];
+        insn->op                       = IR_INSN_REG;
+        insn->parent_bb                = NULL;
+        insn->users                    = INIT_ARRAY(struct ir_insn *);
+        insn->value_num                = 0;
+        struct ir_insn_cg_extra *extra = init_insn_cg(insn);
+        extra->alloc_reg               = i;
+        extra->dst                     = insn;
     }
 }
 
@@ -114,6 +116,8 @@ void code_gen(struct ir_function *fun) {
     init_cg(fun);
     explicit_reg(fun);
     print_ir_prog_cg(fun);
+    printf("-----------------\n");
+    print_ir_prog_advanced(fun, NULL, NULL, print_ir_dst);
 
     // SSA Destruction
 

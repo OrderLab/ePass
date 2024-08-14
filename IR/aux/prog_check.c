@@ -5,38 +5,46 @@
 #include "ir_insn.h"
 #include "list.h"
 
+void check_insn_users_use_insn(struct ir_insn *insn) {
+    struct ir_insn **pos;
+    array_for(pos, insn->users) {
+        struct ir_insn *user = *pos;
+        // Check if the user actually uses this instruction
+        struct array      operands = get_operands(user);
+        struct ir_value **val;
+        int               found = 0;
+        array_for(val, operands) {
+            struct ir_value *v = *val;
+            if (v->type == IR_VALUE_INSN && v->data.insn_d == insn) {
+                // Found the user
+                found = 1;
+                break;
+            }
+        }
+        array_free(&operands);
+        if (!found) {
+            // Error!
+            CRITICAL("User does not use the instruction");
+        }
+    }
+}
+
 // Check if the users are correct
-void check_users(struct ir_function *fun){
-    // TODO
+void check_users(struct ir_function *fun) {
+    // Check FunctionCallArgument Instructions
+    for (__u8 i = 0; i < MAX_FUNC_ARG; ++i) {
+        struct ir_insn *insn = fun->function_arg[i];
+        check_insn_users_use_insn(insn);
+    }
     struct ir_basic_block **pos;
     array_for(pos, fun->reachable_bbs) {
-        struct ir_basic_block *bb      = *pos;
+        struct ir_basic_block *bb = *pos;
         struct ir_insn        *insn;
         list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
             // Check users of this instruction
-            struct ir_insn **pos2;
-            array_for (pos2, insn->users) {
-                struct ir_insn *user = *pos2;
-                // Check if the user actually uses this instruction
-                struct array operands = get_operands(user);
-                struct ir_value **val;
-                int              found = 0;
-                array_for(val, operands) {
-                    struct ir_value *v = *val;
-                    if (v->type == IR_VALUE_INSN && v->data.insn_d == insn) {
-                        // Found the user
-                        found = 1;
-                        break;
-                    }
-                }
-                array_free(&operands);
-                if (!found) {
-                    // Error!
-                    CRITICAL("User does not use the instruction");
-                }
-            }
+            check_insn_users_use_insn(insn);
             // Check operands of this instruction
-            struct array operands = get_operands(insn);
+            struct array      operands = get_operands(insn);
             struct ir_value **val;
             array_for(val, operands) {
                 struct ir_value *v = *val;
@@ -62,6 +70,8 @@ void check_users(struct ir_function *fun){
         }
     }
 }
+
+void check_jumping(struct ir_function *fun) {}
 
 // Check if the PHI nodes are at the beginning of the BB
 void check_phi(struct ir_function *fun) {
