@@ -1,11 +1,6 @@
 #include "bpf_ir.h"
 #include "code_gen.h"
 #include "dbg.h"
-enum val_type {
-    REG,
-    CONST,
-    STACK
-};
 
 enum val_type vtype(struct ir_value val) {
     if (val.type == IR_VALUE_INSN) {
@@ -16,7 +11,12 @@ enum val_type vtype(struct ir_value val) {
         } else {
             return REG;
         }
+    } else if (val.type == IR_VALUE_CONSTANT) {
+        return CONST;
+    } else if (val.type == IR_VALUE_STACK_PTR) {
+        return STACK;
     } else {
+        CRITICAL("No such value type for dst");
     }
 }
 
@@ -46,5 +46,3 @@ int check_need_spill(struct ir_function *fun) {
     }
     return 0;
 }
-
-void spill(struct ir_function *fun) {}

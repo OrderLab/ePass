@@ -42,6 +42,12 @@ struct ir_insn_cg_extra {
     // Valid number: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
     __u8 alloc_reg;
 };
+enum val_type {
+    REG,
+    CONST,
+    STACK
+};
+
 
 struct ir_insn_cg_extra *insn_cg(struct ir_insn *insn);
 
@@ -66,5 +72,7 @@ void graph_coloring(struct ir_function *fun);
 void explicit_reg(struct ir_function *fun);
 
 void coaleasing(struct ir_function *fun);
+
+enum val_type vtype(struct ir_value val);
 
 #endif

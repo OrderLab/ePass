@@ -44,7 +44,8 @@ void init_cg(struct ir_function *fun) {
     }
 
     for (__u8 i = 0; i < MAX_FUNC_ARG; ++i) {
-        fun->cg_info.regs[i]           = __malloc(sizeof(struct ir_insn));
+        fun->cg_info.regs[i] = __malloc(sizeof(struct ir_insn));
+        // Those should be read-only
         struct ir_insn *insn           = fun->cg_info.regs[i];
         insn->op                       = IR_INSN_REG;
         insn->parent_bb                = NULL;
@@ -54,8 +55,8 @@ void init_cg(struct ir_function *fun) {
         extra->alloc_reg               = i;
         extra->dst                     = insn;
         // Pre-colored registers are allocated
-        extra->allocated               = 1;
-        extra->spilled                 = 0;
+        extra->allocated = 1;
+        extra->spilled   = 0;
     }
 }
 
@@ -89,6 +90,36 @@ void free_cg_res(struct ir_function *fun) {
         array_free(&insn->users);
         free_insn_cg(insn);
         __free(insn);
+    }
+}
+
+void clean_insn_cg(struct ir_insn *insn) {
+    struct ir_insn_cg_extra *extra = insn_cg(insn);
+    array_clear(&extra->adj);
+    array_clear(&extra->translated);
+    array_clear(&extra->gen);
+    array_clear(&extra->kill);
+    array_clear(&extra->in);
+    array_clear(&extra->out);
+}
+
+void clean_cg(struct ir_function *fun) {
+    struct ir_basic_block **pos;
+    array_for(pos, fun->reachable_bbs) {
+        struct ir_basic_block *bb = *pos;
+        struct ir_insn        *insn;
+        list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
+            clean_insn_cg(insn);
+            struct ir_insn_cg_extra *extra = insn_cg(insn);
+            extra->allocated               = 0;
+            extra->spilled                 = 0;
+            extra->alloc_reg               = 0;
+        }
+    }
+
+    for (__u8 i = 0; i < MAX_FUNC_ARG; ++i) {
+        struct ir_insn *insn = fun->cg_info.regs[i];
+        clean_insn_cg(insn);
     }
 }
 
@@ -129,19 +160,29 @@ void code_gen(struct ir_function *fun) {
     printf("-----------------\nPhi removed:\n");
     print_ir_prog_advanced(fun, NULL, NULL, print_ir_dst);
 
-    // Step 3: Liveness Analysis
-    liveness_analysis(fun);
+    int need_spill = 1;
 
-    // Step 4: Conflict Analysis
-    conflict_analysis(fun);
-    print_interference_graph(fun);
-    printf("-------------\n");
+    while (need_spill) {
+        // Step 3: Liveness Analysis
+        liveness_analysis(fun);
 
-    // Step 5: Graph coloring
-    graph_coloring(fun);
-    coaleasing(fun);
-    print_interference_graph(fun);
-    print_ir_prog_advanced(fun, NULL, NULL, print_ir_alloc);
+        // Step 4: Conflict Analysis
+        conflict_analysis(fun);
+        print_interference_graph(fun);
+        printf("-------------\n");
+
+        // Step 5: Graph coloring
+        graph_coloring(fun);
+        coaleasing(fun);
+        print_interference_graph(fun);
+        print_ir_prog_advanced(fun, NULL, NULL, print_ir_alloc);
+
+        need_spill = check_need_spill();
+        if (need_spill) {
+            // Still need to spill
+            clean_cg(fun);
+        }
+    }
 
     // Register allocation finished
 
