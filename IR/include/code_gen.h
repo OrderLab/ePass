@@ -78,4 +78,6 @@ int check_need_spill(struct ir_function *fun);
 
 void translate(struct ir_function *fun);
 
+void spill_callee(struct ir_function *fun);
+
 #endif

@@ -161,6 +161,7 @@ enum ir_insn_type {
         | REG
 
     Note. <bb_next> must be the next basic block.
+    ASSIGN dst cannot be callee-saved registers
  */
 struct ir_insn {
     struct ir_value values[MAX_FUNC_ARG];

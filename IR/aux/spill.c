@@ -37,6 +37,11 @@ void load_stack_to_vr(struct ir_insn *insn, struct ir_value *val, enum ir_vr_typ
     val->data.insn_d = tmp;
 }
 
+void spill_callee(struct ir_function *fun){
+
+}
+
+
 int check_need_spill(struct ir_function *fun) {
     // Check if all instruction values are OK for translating
     int                     res = 0;
