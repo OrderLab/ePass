@@ -1,6 +1,6 @@
 #!/bin/bash
 
-files=$(find . -iname '*.h' -o -iname '*.c')
+files=$(find . -iname '*.h' -o -iname '*.c' -not -path "./build/*")
 
 for file in $files; do
     echo "Formatting $file"
