@@ -23,6 +23,7 @@ add_executable(
     aux/graph_coloring.c
     aux/explicit_reg.c
     aux/coaleasing.c
+    aux/spill.c
     ir_code_gen.c
 )
 

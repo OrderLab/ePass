@@ -177,7 +177,7 @@ void code_gen(struct ir_function *fun) {
         print_interference_graph(fun);
         print_ir_prog_advanced(fun, NULL, NULL, print_ir_alloc);
 
-        need_spill = check_need_spill();
+        need_spill = check_need_spill(fun);
         if (need_spill) {
             // Still need to spill
             clean_cg(fun);
