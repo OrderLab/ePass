@@ -32,7 +32,7 @@ void print_interference_graph(struct ir_function *fun) {
             CRITICAL("Not Final Value!");
         }
         struct ir_insn_cg_extra *extra = insn_cg(insn);
-        if (extra->allocated) {
+        if (extra->allocated && insn->op != IR_INSN_REG) {
             // Allocated VR
             printf("%%%zu(", insn->_insn_id);
             if (extra->spilled) {

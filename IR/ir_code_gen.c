@@ -53,8 +53,8 @@ void init_cg(struct ir_function *fun) {
         struct ir_insn_cg_extra *extra = init_insn_cg(insn);
         extra->alloc_reg               = i;
         extra->dst                     = insn;
-        // Pre-colored registers are NOT allocated
-        extra->allocated               = 0;
+        // Pre-colored registers are allocated
+        extra->allocated               = 1;
         extra->spilled                 = 0;
     }
 }

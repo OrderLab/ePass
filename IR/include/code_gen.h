@@ -29,7 +29,7 @@ struct ir_insn_cg_extra {
     struct array translated;
 
     // Whether the VR is allocated with a real register
-    // If it's a pre-colored register, it's not allocated
+    // If it's a pre-colored register, it's also 1
     __u8 allocated;
 
     // When allocating register, whether dst will be spilled
@@ -38,7 +38,7 @@ struct ir_insn_cg_extra {
     // etc.
     size_t spilled;
 
-    // Valid if spilled == 0
+    // Valid if spilled == 0 && allocated == 1
     // Valid number: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
     __u8 alloc_reg;
 };
