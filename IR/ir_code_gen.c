@@ -188,11 +188,12 @@ void code_gen(struct ir_function *fun) {
 
     // Spill callee saved registers
     spill_callee(fun);
+    print_ir_prog_advanced(fun, NULL, NULL, print_ir_alloc);
 
     // Register allocation finished
 
     // Step 6: Direct Translation
-    translate(fun);
+    // translate(fun);
 
     // Free CG resources
     free_cg_res(fun);

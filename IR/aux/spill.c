@@ -1,3 +1,4 @@
+#include <linux/bpf.h>
 #include "array.h"
 #include "bpf_ir.h"
 #include "code_gen.h"
@@ -38,13 +39,43 @@ void load_stack_to_vr(struct ir_insn *insn, struct ir_value *val, enum ir_vr_typ
     val->data.insn_d = tmp;
 }
 
+void add_stack_offset_vr(struct ir_function *fun, size_t num) {
+    struct ir_insn **pos;
+    array_for(pos, fun->cg_info.all_var) {
+        struct ir_insn_cg_extra *extra = insn_cg(*pos);
+        if (extra->spilled > 0) {
+            extra->spilled += num;
+        }
+    }
+}
+
 void spill_callee(struct ir_function *fun) {
     // Spill Callee save registers if used
     __u8 reg_used[MAX_BPF_REG] = {0};
-    
+
     struct ir_insn **pos;
-    array_for(pos, fun->cg_info.all_var){
-        
+    array_for(pos, fun->cg_info.all_var) {
+        struct ir_insn_cg_extra *extra = insn_cg(*pos);
+        reg_used[extra->alloc_reg]     = 1;
+    }
+    size_t off = 0;
+    for (__u8 i = BPF_REG_6; i < BPF_REG_10; ++i) {
+        if (reg_used[i]) {
+            off++;
+        }
+    }
+    add_stack_offset_vr(fun, off);
+    off = 0;
+    for (__u8 i = BPF_REG_6; i < BPF_REG_10; ++i) {
+        // All callee saved registers
+        if (reg_used[i]) {
+            off++;
+            // Spill at sp-off
+            struct ir_insn *st = create_assign_insn_bb_cg(fun->entry, ir_value_insn(fun->cg_info.regs[i]), INSERT_FRONT);
+            struct ir_insn_cg_extra *extra = insn_cg(st);
+            extra->allocated = 1;
+            extra->spilled = off;
+        }
     }
 }
 

@@ -24,6 +24,7 @@ add_executable(
     aux/explicit_reg.c
     aux/coaleasing.c
     aux/spill.c
+    aux/translate.c
     ir_code_gen.c
 )
 
