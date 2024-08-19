@@ -119,6 +119,7 @@ void clean_cg(struct ir_function *fun) {
         struct ir_insn *insn = fun->cg_info.regs[i];
         clean_insn_cg(insn);
     }
+    array_clear(&fun->cg_info.all_var);
 }
 
 struct ir_insn_cg_extra *insn_cg(struct ir_insn *insn) {

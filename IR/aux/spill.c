@@ -1,3 +1,4 @@
+#include "array.h"
 #include "bpf_ir.h"
 #include "code_gen.h"
 #include "dbg.h"
@@ -37,10 +38,15 @@ void load_stack_to_vr(struct ir_insn *insn, struct ir_value *val, enum ir_vr_typ
     val->data.insn_d = tmp;
 }
 
-void spill_callee(struct ir_function *fun){
-
+void spill_callee(struct ir_function *fun) {
+    // Spill Callee save registers if used
+    __u8 reg_used[MAX_BPF_REG] = {0};
+    
+    struct ir_insn **pos;
+    array_for(pos, fun->cg_info.all_var){
+        
+    }
 }
-
 
 int check_need_spill(struct ir_function *fun) {
     // Check if all instruction values are OK for translating
