@@ -103,4 +103,12 @@ struct ir_insn *create_assign_insn_bb_cg(struct ir_basic_block *bb, struct ir_va
 
 void replace_operand(struct ir_insn *insn, struct ir_value v1, struct ir_value v2);
 
+struct ir_insn *create_insn_base_cg(struct ir_basic_block *bb);
+
+struct ir_insn *create_insn_base(struct ir_basic_block *bb);
+
+void insert_at(struct ir_insn *new_insn, struct ir_insn *insn, enum insert_position pos);
+
+void insert_at_bb(struct ir_insn *new_insn, struct ir_basic_block *bb, enum insert_position pos);
+
 #endif

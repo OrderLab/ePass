@@ -29,6 +29,10 @@ void check_insn_users_use_insn(struct ir_insn *insn) {
     }
 }
 
+void check_insn(){
+    // Check store syntax
+}
+
 void check_insn_operand(struct ir_insn *insn) {
     struct array      operands = get_operands(insn);
     struct ir_value **val;

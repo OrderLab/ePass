@@ -107,7 +107,7 @@ enum ir_insn_type {
     IR_INSN_LOAD,
     IR_INSN_STORERAW,
     IR_INSN_LOADRAW,
-    IR_INSN_FUNCTIONARG,  // The function argument store
+    IR_INSN_FUNCTIONARG,  // The function argument store, not an actual instruction
     // ALU
     IR_INSN_ADD,
     IR_INSN_SUB,
