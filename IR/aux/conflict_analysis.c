@@ -1,3 +1,4 @@
+#include <linux/bpf.h>
 #include <stdio.h>
 #include "array.h"
 #include "bpf_ir.h"
@@ -63,6 +64,14 @@ void print_interference_graph(struct ir_function *fun) {
     }
 }
 
+void caller_constraint(struct ir_function *fun, struct ir_insn *insn) {
+    for (__u8 i = BPF_REG_0; i < BPF_REG_6; ++i) {
+        // R0-R5 are caller saved register
+                    DBGASSERT(fun->cg_info.regs[i] == dst(fun->cg_info.regs[i]));
+        build_conflict(fun->cg_info.regs[i], insn);
+    }
+}
+
 void conflict_analysis(struct ir_function *fun) {
     // Basic conflict:
     // For every x in KILL set, x is conflict with every element in OUT set.
@@ -74,8 +83,24 @@ void conflict_analysis(struct ir_function *fun) {
         struct ir_insn        *insn;
         // For each operation
         list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
-            struct ir_insn         **pos2;
             struct ir_insn_cg_extra *insn_cg = insn->user_data;
+            if (insn->op == IR_INSN_CALL) {
+                // Add caller saved register constraints
+                struct ir_insn **pos2;
+                array_for(pos2, insn_cg->in) {
+                    DBGASSERT(*pos2 == dst(*pos2));
+                    struct ir_insn **pos3;
+                    array_for(pos3, insn_cg->out) {
+                        DBGASSERT(*pos3 == dst(*pos3));
+                        if (*pos2 == *pos3) {
+                            // Live across CALL!
+                            printf("Found a VR live across CALL!\n");
+                            caller_constraint(fun, *pos2);
+                        }
+                    }
+                }
+            }
+            struct ir_insn **pos2;
             array_for(pos2, insn_cg->kill) {
                 struct ir_insn *insn_dst = *pos2;
                 DBGASSERT(insn_dst == dst(insn_dst));

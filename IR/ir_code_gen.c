@@ -1,3 +1,4 @@
+#include <linux/bpf.h>
 #include <stdio.h>
 #include "array.h"
 #include "bpf_ir.h"
@@ -42,7 +43,7 @@ void init_cg(struct ir_function *fun) {
         }
     }
 
-    for (__u8 i = 0; i < MAX_FUNC_ARG; ++i) {
+    for (__u8 i = 0; i < MAX_BPF_REG; ++i) {
         fun->cg_info.regs[i] = __malloc(sizeof(struct ir_insn));
         // Those should be read-only
         struct ir_insn *insn           = fun->cg_info.regs[i];
@@ -83,7 +84,7 @@ void free_cg_res(struct ir_function *fun) {
         }
     }
 
-    for (__u8 i = 0; i < MAX_FUNC_ARG; ++i) {
+    for (__u8 i = 0; i < MAX_BPF_REG; ++i) {
         struct ir_insn *insn = fun->cg_info.regs[i];
         array_free(&insn->users);
         free_insn_cg(insn);
@@ -114,7 +115,7 @@ void clean_cg(struct ir_function *fun) {
         }
     }
 
-    for (__u8 i = 0; i < MAX_FUNC_ARG; ++i) {
+    for (__u8 i = 0; i < MAX_BPF_REG; ++i) {
         struct ir_insn *insn = fun->cg_info.regs[i];
         clean_insn_cg(insn);
     }
