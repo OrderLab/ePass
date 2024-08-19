@@ -100,6 +100,11 @@ __u8 is_last_insn(struct ir_insn *insn) {
     return insn->parent_bb->ir_insn_head.prev == &insn->list_ptr;
 }
 
+void erase_insn_raw(struct ir_insn *insn) {
+    list_del(&insn->list_ptr);
+    __free(insn);
+}
+
 void erase_insn(struct ir_insn *insn) {
     // TODO: remove users
     struct array      operands = get_operands(insn);

@@ -22,6 +22,7 @@ add_executable(
     aux/conflict_analysis.c
     aux/graph_coloring.c
     aux/explicit_reg.c
+    aux/coaleasing.c
     ir_code_gen.c
 )
 

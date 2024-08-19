@@ -139,6 +139,7 @@ void code_gen(struct ir_function *fun) {
 
     // Step 5: Graph coloring
     graph_coloring(fun);
+    coaleasing(fun);
     print_interference_graph(fun);
     print_ir_prog_advanced(fun, NULL, NULL, print_ir_alloc);
 

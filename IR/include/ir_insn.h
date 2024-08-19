@@ -2,6 +2,7 @@
 #define __BPF_IR_INSN_H__
 
 #include "bpf_ir.h"
+#include "list.h"
 
 enum insert_position {
     INSERT_BACK,
@@ -19,6 +20,10 @@ void replace_all_usage(struct ir_insn *insn, struct ir_value rep);
 void replace_all_usage_except(struct ir_insn *insn, struct ir_value rep, struct ir_insn *except);
 
 void erase_insn(struct ir_insn *insn);
+
+// Erase an instruction without checking the users
+// Used in code gen
+void erase_insn_raw(struct ir_insn *insn);
 
 int is_void(struct ir_insn *insn);
 

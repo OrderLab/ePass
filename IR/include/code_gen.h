@@ -65,4 +65,6 @@ void graph_coloring(struct ir_function *fun);
 
 void explicit_reg(struct ir_function *fun);
 
+void coaleasing(struct ir_function *fun);
+
 #endif
