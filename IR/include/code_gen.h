@@ -28,6 +28,8 @@ struct ir_insn_cg_extra {
     // Translated pre_ir_insn: array of struct pre_ir_insn
     struct array translated;
 
+    // Whether the VR is allocated with a real register
+    // If it's a pre-colored register, it's not allocated
     __u8 allocated;
 
     // When allocating register, whether dst will be spilled

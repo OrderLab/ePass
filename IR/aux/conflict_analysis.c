@@ -33,19 +33,18 @@ void print_interference_graph(struct ir_function *fun) {
         }
         struct ir_insn_cg_extra *extra = insn_cg(insn);
         if (extra->allocated) {
+            // Allocated VR
             printf("%%%zu(", insn->_insn_id);
             if (extra->spilled) {
                 printf("sp-%zu", extra->spilled * 8);
             } else {
                 printf("r%u", extra->alloc_reg);
             }
-            printf("): ");
+            printf("):");
         } else {
-            if (insn->op == IR_INSN_REG) {
-                printf("R%u: ", extra->alloc_reg);
-            } else {
-                printf("%%%zu: ", insn->_insn_id);
-            }
+            // Pre-colored registers or unallocated VR
+            print_insn_ptr_base(insn);
+            printf(":");
         }
         struct ir_insn **pos2;
         array_for(pos2, insn_cg(insn)->adj) {
@@ -54,11 +53,8 @@ void print_interference_graph(struct ir_function *fun) {
                 // Not final value, give up
                 CRITICAL("Not Final Value!");
             }
-            if (adj_insn->op == IR_INSN_REG) {
-                printf("R%u, ", extra->alloc_reg);
-            } else {
-                printf("%%%zu, ", adj_insn->_insn_id);
-            }
+            printf(" ");
+            print_insn_ptr_base(adj_insn);
         }
         printf("\n");
     }
