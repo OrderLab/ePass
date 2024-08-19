@@ -266,7 +266,9 @@ void print_ir_insn_full(struct ir_insn *insn, void (*print_ir)(struct ir_insn *)
             break;
         case IR_INSN_RET:
             printf("ret ");
-            print_ir_value_full(insn->values[0], print_ir);
+            if (insn->value_num > 0) {
+                print_ir_value_full(insn->values[0], print_ir);
+            }
             break;
         case IR_INSN_JA:
             printf("ja ");

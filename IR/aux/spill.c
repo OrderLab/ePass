@@ -96,12 +96,8 @@ int check_need_spill(struct ir_function *fun) {
                 }
             } else if (insn->op == IR_INSN_RET) {
                 // ret const/reg
-                // TODO: do this in explicit_reg?
-                // Load the result to R0
-                if (vtype(*v0) == STACK) {
-                    load_stack_to_vr(insn, v0, IR_VR_TYPE_U64);
-                    res = 1;
-                }
+                // Done in explicit_reg pass
+                DBGASSERT(insn->value_num == 0);
             } else if (insn->op == IR_INSN_CALL) {
                 // call()
                 // Should have no arguments
