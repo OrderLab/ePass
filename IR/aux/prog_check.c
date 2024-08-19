@@ -29,7 +29,7 @@ void check_insn_users_use_insn(struct ir_insn *insn) {
     }
 }
 
-void check_insn(){
+void check_insn() {
     // Check store syntax
 }
 

@@ -16,15 +16,15 @@ struct ir_insn_cg_extra *init_insn_cg(struct ir_insn *insn) {
     } else {
         extra->dst = insn;
     }
-    extra->adj        = INIT_ARRAY(struct ir_insn *);
-    extra->allocated  = 0;
-    extra->spilled    = 0;
-    extra->alloc_reg  = 0;
-    extra->gen        = INIT_ARRAY(struct ir_insn *);
-    extra->kill       = INIT_ARRAY(struct ir_insn *);
-    extra->in         = INIT_ARRAY(struct ir_insn *);
-    extra->out        = INIT_ARRAY(struct ir_insn *);
-    insn->user_data   = extra;
+    extra->adj       = INIT_ARRAY(struct ir_insn *);
+    extra->allocated = 0;
+    extra->spilled   = 0;
+    extra->alloc_reg = 0;
+    extra->gen       = INIT_ARRAY(struct ir_insn *);
+    extra->kill      = INIT_ARRAY(struct ir_insn *);
+    extra->in        = INIT_ARRAY(struct ir_insn *);
+    extra->out       = INIT_ARRAY(struct ir_insn *);
+    insn->user_data  = extra;
     return extra;
 }
 
@@ -179,7 +179,7 @@ void code_gen(struct ir_function *fun) {
             // Still need to spill
             printf("Need to spill...\n");
             clean_cg(fun);
-        }else {
+        } else {
             printf("No need to spill! Done RA!\n");
         }
     }
