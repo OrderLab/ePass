@@ -11,6 +11,9 @@
         exit(1);                                             \
     }
 
-#define DBGASSERT(cond) if (!(cond)) { CRITICAL("Assertion failed"); }
+#define DBGASSERT(cond)               \
+    if (!(cond)) {                    \
+        CRITICAL("Assertion failed"); \
+    }
 
 #endif

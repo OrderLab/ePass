@@ -23,9 +23,9 @@ void graph_coloring(struct ir_function *fun) {
     struct ir_insn **pos;
     array_for(pos, (*all_var)) {
         // Allocate register for *pos
-        struct ir_insn          *insn  = *pos;
+        struct ir_insn *insn = *pos;
         if (insn->op == IR_INSN_REG) {
-            CRITICAL("Pre-colored register should not be in all_var");        
+            CRITICAL("Pre-colored register should not be in all_var");
         }
         struct ir_insn_cg_extra *extra = insn_cg(insn);
         struct ir_insn         **pos2;

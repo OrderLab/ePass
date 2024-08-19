@@ -48,7 +48,6 @@ enum val_type {
     STACK
 };
 
-
 struct ir_insn_cg_extra *insn_cg(struct ir_insn *insn);
 
 struct ir_insn_cg_extra *init_insn_cg(struct ir_insn *insn);
