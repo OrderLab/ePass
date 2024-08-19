@@ -180,13 +180,14 @@ void code_gen(struct ir_function *fun) {
             printf("Need to spill...\n");
             clean_cg(fun);
         } else {
-            printf("No need to spill! Done RA!\n");
+            printf("No need to spill...RA Done!\n");
         }
     }
 
     // Register allocation finished
 
     // Step 6: Direct Translation
+    translate(fun);
 
     // Free CG resources
     free_cg_res(fun);

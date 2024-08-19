@@ -76,4 +76,6 @@ enum val_type vtype(struct ir_value val);
 
 int check_need_spill(struct ir_function *fun);
 
+void translate(struct ir_function *fun);
+
 #endif
