@@ -66,6 +66,7 @@ int check_need_spill(struct ir_function *fun) {
                     enum ir_vr_type ty = v0->data.insn_d->vr_type;
 
                     load_stack_to_vr(insn, v1, ty);
+                    res = 1;
                 }
             } else if (insn->op == IR_INSN_LOAD) {
                 // OK
@@ -80,15 +81,18 @@ int check_need_spill(struct ir_function *fun) {
                 // There should be no stack
                 if (vtype(*v0) == STACK) {
                     load_stack_to_vr(insn, v0, IR_VR_TYPE_U64);
+                    res = 1;
                 }
                 if (vtype(*v1) == STACK) {
                     load_stack_to_vr(insn, v1, IR_VR_TYPE_U64);
+                    res = 1;
                 }
             } else if (insn->op == IR_INSN_ASSIGN) {
                 // dst = <val>
                 // MOV dst val
                 if (vtype_insn(insn) == STACK && vtype(*v0) == STACK) {
                     load_stack_to_vr(insn, v0, IR_VR_TYPE_U64);
+                    res = 1;
                 }
             } else if (insn->op == IR_INSN_RET) {
                 // ret const/reg
@@ -96,6 +100,7 @@ int check_need_spill(struct ir_function *fun) {
                 // Load the result to R0
                 if (vtype(*v0) == STACK) {
                     load_stack_to_vr(insn, v0, IR_VR_TYPE_U64);
+                    res = 1;
                 }
             } else if (insn->op == IR_INSN_CALL) {
                 // call()

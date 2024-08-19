@@ -2,9 +2,6 @@
 #include "code_gen.h"
 #include "dbg.h"
 
-#define IU_REG0 BPF_REG_0
-#define IU_REG1 BPF_REG_1
-
 void translate(struct ir_function *fun) {
     // fun is still in IR form
     struct ir_basic_block **pos;

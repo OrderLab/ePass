@@ -180,7 +180,10 @@ void code_gen(struct ir_function *fun) {
         need_spill = check_need_spill(fun);
         if (need_spill) {
             // Still need to spill
+            printf("Need to spill...\n");
             clean_cg(fun);
+        }else {
+            printf("No need to spill! Done RA!\n");
         }
     }
 
