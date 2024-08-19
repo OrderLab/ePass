@@ -24,6 +24,9 @@ void graph_coloring(struct ir_function *fun) {
     array_for(pos, (*all_var)) {
         // Allocate register for *pos
         struct ir_insn          *insn  = *pos;
+        if (insn->op == IR_INSN_REG) {
+            CRITICAL("Pre-colored register should not be in all_var");        
+        }
         struct ir_insn_cg_extra *extra = insn_cg(insn);
         struct ir_insn         **pos2;
 
@@ -44,7 +47,7 @@ void graph_coloring(struct ir_function *fun) {
         for (__u8 i = 0; i < MAX_BPF_REG; i++) {
             if (!used_reg[i]) {
                 extra->allocated = 1;
-                printf("Allocate r%u for %zu\n", i, insn->_insn_id);
+                printf("Allocate r%u for %%%zu\n", i, insn->_insn_id);
                 extra->alloc_reg = i;
                 need_spill       = 0;
                 break;

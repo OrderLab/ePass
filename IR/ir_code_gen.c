@@ -138,9 +138,9 @@ void code_gen(struct ir_function *fun) {
     printf("-------------\n");
 
     // Step 5: Graph coloring
-    // graph_coloring(fun);
-    // print_interference_graph(fun);
-    // print_ir_prog_advanced(fun, NULL, NULL, print_ir_alloc);
+    graph_coloring(fun);
+    print_interference_graph(fun);
+    print_ir_prog_advanced(fun, NULL, NULL, print_ir_alloc);
 
     // Register allocation finished
 

@@ -27,12 +27,15 @@ void print_interference_graph(struct ir_function *fun) {
     struct ir_insn **pos;
     array_for(pos, fun->cg_info.all_var) {
         struct ir_insn *insn = *pos;
+        if (insn->op == IR_INSN_REG) {
+            CRITICAL("Pre-colored register should not be in all_var");
+        }
         if (!is_final(insn)) {
             // Not final value, give up
             CRITICAL("Not Final Value!");
         }
         struct ir_insn_cg_extra *extra = insn_cg(insn);
-        if (extra->allocated && insn->op != IR_INSN_REG) {
+        if (extra->allocated) {
             // Allocated VR
             printf("%%%zu(", insn->_insn_id);
             if (extra->spilled) {
@@ -76,7 +79,9 @@ void conflict_analysis(struct ir_function *fun) {
             array_for(pos2, insn_cg->kill) {
                 struct ir_insn *insn_dst = *pos2;
                 DBGASSERT(insn_dst == dst(insn_dst));
-                array_push_unique(&fun->cg_info.all_var, &insn_dst);
+                if (insn_dst->op != IR_INSN_REG) {
+                    array_push_unique(&fun->cg_info.all_var, &insn_dst);
+                }
                 struct ir_insn **pos3;
                 array_for(pos3, insn_cg->out) {
                     DBGASSERT(*pos3 == dst(*pos3));
