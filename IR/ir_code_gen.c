@@ -20,7 +20,6 @@ struct ir_insn_cg_extra *init_insn_cg(struct ir_insn *insn) {
     extra->allocated  = 0;
     extra->spilled    = 0;
     extra->alloc_reg  = 0;
-    extra->translated = INIT_ARRAY(struct pre_ir_insn);
     extra->gen        = INIT_ARRAY(struct ir_insn *);
     extra->kill       = INIT_ARRAY(struct ir_insn *);
     extra->in         = INIT_ARRAY(struct ir_insn *);
@@ -63,7 +62,6 @@ void init_cg(struct ir_function *fun) {
 void free_insn_cg(struct ir_insn *insn) {
     struct ir_insn_cg_extra *extra = insn_cg(insn);
     array_free(&extra->adj);
-    array_free(&extra->translated);
     array_free(&extra->gen);
     array_free(&extra->kill);
     array_free(&extra->in);
@@ -96,7 +94,6 @@ void free_cg_res(struct ir_function *fun) {
 void clean_insn_cg(struct ir_insn *insn) {
     struct ir_insn_cg_extra *extra = insn_cg(insn);
     array_clear(&extra->adj);
-    array_clear(&extra->translated);
     array_clear(&extra->gen);
     array_clear(&extra->kill);
     array_clear(&extra->in);

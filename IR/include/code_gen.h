@@ -25,8 +25,8 @@ struct ir_insn_cg_extra {
     // Array of struct ir_insn*
     struct array adj;
 
-    // Translated pre_ir_insn: array of struct pre_ir_insn
-    struct array translated;
+    // Translated pre_ir_insn
+    struct pre_ir_insn translated;
 
     // Whether the VR is allocated with a real register
     // If it's a pre-colored register, it's also 1
