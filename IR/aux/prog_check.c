@@ -29,8 +29,8 @@ void check_insn_users_use_insn(struct ir_insn *insn) {
     }
 }
 
-void check_insn() {
-    // Check store syntax
+void check_insn(struct ir_function *fun) {
+    // Check syntax
 }
 
 void check_insn_operand(struct ir_insn *insn) {
