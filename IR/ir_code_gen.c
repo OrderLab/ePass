@@ -193,7 +193,7 @@ void code_gen(struct ir_function *fun) {
     // Register allocation finished
 
     // Step 6: Direct Translation
-    // translate(fun);
+    translate(fun);
 
     // Free CG resources
     free_cg_res(fun);
