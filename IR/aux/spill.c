@@ -50,7 +50,7 @@ void add_stack_offset_vr(struct ir_function *fun, size_t num) {
 }
 
 void spill_callee(struct ir_function *fun) {
-    // Spill Callee save registers if used
+    // Spill Callee saved registers if used
     __u8 reg_used[MAX_BPF_REG] = {0};
 
     struct ir_insn **pos;

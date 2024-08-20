@@ -1,7 +1,7 @@
-#include "add_stack_offset.h"
 #include "array.h"
 #include "bpf_ir.h"
 #include "ir_insn.h"
+#include "passes.h"
 
 void add_stack_offset(struct ir_function *fun, __s16 offset) {
     struct array     users = fun->sp_users;

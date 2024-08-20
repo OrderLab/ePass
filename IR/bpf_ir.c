@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stddef.h>
-#include "add_stack_offset.h"
 #include "ir_helper.h"
 #include "array.h"
 #include "code_gen.h"
@@ -13,7 +12,6 @@
 #include "dbg.h"
 #include "passes.h"
 #include "prog_check.h"
-#include "reachable_bb.h"
 #include "read.h"
 
 // TODO: Change this to real function
@@ -817,6 +815,7 @@ void free_function(struct ir_function *fun) {
     }
     array_free(&fun->all_bbs);
     array_free(&fun->reachable_bbs);
+    array_free(&fun->end_bbs);
     array_free(&fun->cg_info.all_var);
 }
 
@@ -830,6 +829,7 @@ struct ir_function gen_function(struct ssa_transform_env *env) {
     }
     fun.all_bbs         = INIT_ARRAY(struct ir_basic_block *);
     fun.reachable_bbs   = INIT_ARRAY(struct ir_basic_block *);
+    fun.end_bbs   = INIT_ARRAY(struct ir_basic_block *);
     fun.cg_info.all_var = INIT_ARRAY(struct ir_insn *);
     for (size_t i = 0; i < MAX_BPF_REG; ++i) {
         struct array *currentDef = &env->currentDef[i];

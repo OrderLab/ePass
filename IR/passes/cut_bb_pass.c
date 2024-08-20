@@ -1,7 +1,7 @@
-#include "cut_bb_pass.h"
 #include "array.h"
 #include "bpf_ir.h"
 #include "dbg.h"
+#include "passes.h"
 #include "list.h"
 
 void cut_bb(struct ir_function *fun) {

@@ -1,6 +1,6 @@
 
 #include "array.h"
-#include "reachable_bb.h"
+#include "passes.h"
 
 void add_reach(struct ir_function *fun, struct ir_basic_block *bb) {
     if (bb->_visited) {

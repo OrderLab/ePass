@@ -24,6 +24,9 @@ struct ir_function {
     // Store any information about the function
     struct array reachable_bbs;
 
+    // BBs who has no successors
+    struct array end_bbs;
+
     // Stack pointer (r10) users. Should be readonly. No more manual stack access should be allowed.
     struct array sp_users;
 
