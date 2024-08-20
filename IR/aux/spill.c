@@ -71,10 +71,11 @@ void spill_callee(struct ir_function *fun) {
         if (reg_used[i]) {
             off++;
             // Spill at sp-off
-            struct ir_insn *st = create_assign_insn_bb_cg(fun->entry, ir_value_insn(fun->cg_info.regs[i]), INSERT_FRONT);
+            struct ir_insn *st = create_assign_insn_bb_cg(
+                fun->entry, ir_value_insn(fun->cg_info.regs[i]), INSERT_FRONT);
             struct ir_insn_cg_extra *extra = insn_cg(st);
-            extra->allocated = 1;
-            extra->spilled = off;
+            extra->allocated               = 1;
+            extra->spilled                 = off;
         }
     }
 }

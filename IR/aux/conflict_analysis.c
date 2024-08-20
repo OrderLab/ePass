@@ -67,7 +67,7 @@ void print_interference_graph(struct ir_function *fun) {
 void caller_constraint(struct ir_function *fun, struct ir_insn *insn) {
     for (__u8 i = BPF_REG_0; i < BPF_REG_6; ++i) {
         // R0-R5 are caller saved register
-                    DBGASSERT(fun->cg_info.regs[i] == dst(fun->cg_info.regs[i]));
+        DBGASSERT(fun->cg_info.regs[i] == dst(fun->cg_info.regs[i]));
         build_conflict(fun->cg_info.regs[i], insn);
     }
 }
