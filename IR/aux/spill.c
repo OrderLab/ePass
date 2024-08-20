@@ -130,9 +130,9 @@ int check_need_spill(struct ir_function *fun) {
             struct ir_value         *v1        = &insn->values[1];
             enum val_type            t0        = vtype(*v0);
             enum val_type            t1        = vtype(*v1);
+            enum val_type            tdst        = vtype_insn(insn);
             struct ir_insn_cg_extra *extra     = insn_cg(insn);
             struct ir_insn          *dst_insn  = dst(insn);
-            struct ir_insn_cg_extra *dst_extra = insn_cg(dst_insn);
             if (insn->op == IR_INSN_ALLOC) {
                 // dst = alloc <size>
                 // Nothing to do
@@ -176,7 +176,7 @@ int check_need_spill(struct ir_function *fun) {
                     tmp->op           = IR_INSN_ASSIGN;
                     tmp->value_num    = 1;
                     tmp->values[0]    = ir_value_insn(fun->cg_info.regs[0]);
-                    insn_cg(tmp)->dst = dst_extra->dst;
+                    insn_cg(tmp)->dst = dst_insn;
                     res               = 1;
                 } else {
                     if (t0 == STACK) {
@@ -210,7 +210,7 @@ int check_need_spill(struct ir_function *fun) {
                 // reg = const
                 // reg = stack
                 // reg = reg
-                if (vtype_insn(insn) == STACK && t0 == STACK) {
+                if (tdst == STACK && t0 == STACK) {
                     load_stack_to_vr(insn, v0, IR_VR_TYPE_U64);
                     res = 1;
                 }
