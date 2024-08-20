@@ -81,7 +81,23 @@ void check_users(struct ir_function *fun) {
     }
 }
 
-void check_jumping(struct ir_function *fun) {}
+void check_jumping(struct ir_function *fun) {
+    // check if the jump statement is at the end of the BB
+    struct ir_basic_block **pos;
+    array_for(pos, fun->reachable_bbs) {
+        struct ir_basic_block *bb = *pos;
+        struct ir_insn        *insn;
+        list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
+            if (insn->op == IR_INSN_JMP) {
+                struct ir_insn *next_insn = list_next_entry(insn, list_ptr);
+                if (next_insn != NULL) {
+                    // Error
+                    CRITICAL("Jump statement not at the end of a BB");
+                }
+            }
+        }
+    }
+}
 
 // Check if the PHI nodes are at the beginning of the BB
 void check_phi(struct ir_function *fun) {
