@@ -12,7 +12,15 @@ struct pre_ir_insn load_reg_to_reg(__u8 dst, __u8 src) {
     return insn;
 }
 
-struct pre_ir_insn load_const_to_reg(__u8 dst, __u8 src) {
+struct pre_ir_insn load_const_to_reg(enum ir_constant_type ty, __u8 src) {
+    // MOV dst imm
+    struct pre_ir_insn insn;
+    // TODO
+    return insn;
+}
+
+
+struct pre_ir_insn load_addr_to_reg(__u8 dst, __u8 src) {
     // MOV dst src
     struct pre_ir_insn insn;
     insn.opcode  = BPF_MOV | BPF_X | BPF_ALU64;
