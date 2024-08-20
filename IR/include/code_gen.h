@@ -45,7 +45,7 @@ struct ir_insn_cg_extra {
 enum val_type {
     REG,
     CONST,
-    STACK
+    STACK,
 };
 
 struct ir_insn_cg_extra *insn_cg(struct ir_insn *insn);

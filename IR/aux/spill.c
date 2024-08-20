@@ -21,7 +21,7 @@ enum val_type vtype(struct ir_value val) {
     } else if (val.type == IR_VALUE_CONSTANT) {
         return CONST;
     } else if (val.type == IR_VALUE_STACK_PTR) {
-        return STACK;
+        return REG;
     } else {
         CRITICAL("No such value type for dst");
     }
@@ -76,6 +76,18 @@ void spill_callee(struct ir_function *fun) {
             struct ir_insn_cg_extra *extra = insn_cg(st);
             extra->allocated               = 1;
             extra->spilled                 = off;
+
+            struct ir_basic_block **pos2;
+            array_for(pos2, fun->end_bbs){
+                struct ir_basic_block *bb = *pos2;
+                struct ir_value val;
+                val.type = IR_VALUE_STACK_PTR;
+                val.data.
+                struct ir_insn *ld = create_assign_insn_bb_cg(
+                    bb, val, INSERT_BACK_BEFORE_JMP);
+                extra = insn_cg(ld);
+                extra->dst                 = fun->cg_info.regs[i];
+            }
         }
     }
 }
