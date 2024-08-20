@@ -8,6 +8,12 @@ To start with, a simple constaint would be "range constraint", meaning a registe
 
 One opinion, one benefit of designing the raw constraint from is that our runtime-check system will not depend heavily on the current linux verifier and will be portable to other verifiers.
 
+## Roadmap
+
+- [x] Register spilling
+- [x] Caller-saved/callee-saved register
+- [ ] Translation
+
 # TODO
 
 - More instructions

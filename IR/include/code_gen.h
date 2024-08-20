@@ -80,4 +80,8 @@ void translate(struct ir_function *fun);
 
 void spill_callee(struct ir_function *fun);
 
+enum val_type vtype_insn(struct ir_insn *insn);
+
+enum val_type vtype(struct ir_value val);
+
 #endif
