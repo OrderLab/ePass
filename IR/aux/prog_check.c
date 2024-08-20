@@ -31,6 +31,8 @@ void check_insn_users_use_insn(struct ir_insn *insn) {
 
 void check_insn(struct ir_function *fun) {
     // Check syntax
+    // - Store uses alloc
+    // - `ret` at the end of BB chains
 }
 
 void check_insn_operand(struct ir_insn *insn) {

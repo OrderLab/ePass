@@ -1,4 +1,5 @@
 #include <linux/bpf.h>
+#include <time.h>
 #include "array.h"
 #include "bpf_ir.h"
 #include "code_gen.h"
@@ -71,22 +72,36 @@ void spill_callee(struct ir_function *fun) {
         if (reg_used[i]) {
             off++;
             // Spill at sp-off
-            struct ir_insn *st = create_assign_insn_bb_cg(
-                fun->entry, ir_value_insn(fun->cg_info.regs[i]), INSERT_FRONT);
+            // struct ir_insn *st = create_assign_insn_bb_cg(
+            //     fun->entry, ir_value_insn(fun->cg_info.regs[i]), INSERT_FRONT);
+            struct ir_insn *st = create_insn_base_cg(fun->entry);
+            insert_at_bb(st, fun->entry, INSERT_FRONT);
+            st->op        = IR_INSN_STORERAW;
+            st->values[0] = ir_value_insn(fun->cg_info.regs[i]);
+            st->value_num = 1;
+            st->vr_type   = IR_VR_TYPE_U64;
+            struct ir_value val;
+            val.type                       = IR_VALUE_STACK_PTR;
+            st->addr_val.value             = val;
+            st->addr_val.offset            = -off * 8;
             struct ir_insn_cg_extra *extra = insn_cg(st);
-            extra->allocated               = 1;
-            extra->spilled                 = off;
+            extra->dst                     = NULL;
 
             struct ir_basic_block **pos2;
-            array_for(pos2, fun->end_bbs){
+            array_for(pos2, fun->end_bbs) {
                 struct ir_basic_block *bb = *pos2;
+                struct ir_insn        *ld = create_insn_base_cg(bb);
+                insert_at_bb(ld, bb, INSERT_BACK_BEFORE_JMP);
+                ld->op        = IR_INSN_LOADRAW;
+                ld->value_num = 0;
+                ld->vr_type   = IR_VR_TYPE_U64;
                 struct ir_value val;
-                val.type = IR_VALUE_STACK_PTR;
-                val.data.
-                struct ir_insn *ld = create_assign_insn_bb_cg(
-                    bb, val, INSERT_BACK_BEFORE_JMP);
-                extra = insn_cg(ld);
-                extra->dst                 = fun->cg_info.regs[i];
+                val.type            = IR_VALUE_STACK_PTR;
+                ld->addr_val.value  = val;
+                ld->addr_val.offset = -off * 8;
+
+                extra      = insn_cg(ld);
+                extra->dst = fun->cg_info.regs[i];
             }
         }
     }
