@@ -28,24 +28,16 @@ enum val_type vtype(struct ir_value val) {
     }
 }
 
-void load_stack_to_vr(struct ir_insn *insn, struct ir_value *val, enum ir_vr_type ty) {
-    struct ir_insn *tmp = create_insn_base_cg(insn->parent_bb);
-    insert_at(tmp, insn, INSERT_FRONT);
-    tmp->op        = IR_INSN_LOAD;
-    tmp->value_num = 1;
-    tmp->values[0] = *val;
-    tmp->vr_type   = ty;
+void load_stack_to_r0(struct ir_function *fun, struct ir_insn *insn, struct ir_value *val) {
+    struct ir_insn *tmp = create_assign_insn_cg(insn, *val, INSERT_FRONT);
+    insn_cg(tmp)->dst   = fun->cg_info.regs[0];
 
     val->type        = IR_VALUE_INSN;
-    val->data.insn_d = tmp;
+    val->data.insn_d = fun->cg_info.regs[0];
 }
 
 void load_const_to_vr(struct ir_insn *insn, struct ir_value *val) {
-    struct ir_insn *tmp = create_insn_base_cg(insn->parent_bb);
-    insert_at(tmp, insn, INSERT_FRONT);
-    tmp->op        = IR_INSN_ASSIGN;
-    tmp->value_num = 1;
-    tmp->values[0] = *val;
+    struct ir_insn *tmp = create_assign_insn_cg(insn, *val, INSERT_FRONT);
 
     val->type        = IR_VALUE_INSN;
     val->data.insn_d = tmp;
@@ -126,34 +118,27 @@ int check_need_spill(struct ir_function *fun) {
         struct ir_basic_block *bb = *pos;
         struct ir_insn        *insn;
         list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
-            struct ir_value         *v0        = &insn->values[0];
-            struct ir_value         *v1        = &insn->values[1];
-            enum val_type            t0        = vtype(*v0);
-            enum val_type            t1        = vtype(*v1);
-            enum val_type            tdst        = vtype_insn(insn);
-            struct ir_insn_cg_extra *extra     = insn_cg(insn);
-            struct ir_insn          *dst_insn  = dst(insn);
+            struct ir_value         *v0       = &insn->values[0];
+            struct ir_value         *v1       = &insn->values[1];
+            enum val_type            t0       = vtype(*v0);
+            enum val_type            t1       = vtype(*v1);
+            enum val_type            tdst     = vtype_insn(insn);
+            struct ir_insn_cg_extra *extra    = insn_cg(insn);
+            struct ir_insn          *dst_insn = dst(insn);
             if (insn->op == IR_INSN_ALLOC) {
                 // dst = alloc <size>
                 // Nothing to do
             } else if (insn->op == IR_INSN_STORE) {
                 // store v0(dst) v1
-                // v0: reg ==> v1: reg, const, stack
-                // v0: stack ==> v1: reg, const
-                if (t0 == STACK && t1 == STACK) {
-                    // Cannot directly copy stack value to stack
-                    // Example:
-                    // store s-8 s-16
-                    // -->
-                    // %tmp = load s-16
-                    // store s-8 %tmp
-
-                    // First get type of the dst
-                    enum ir_vr_type ty = v0->data.insn_d->vr_type;
-
-                    load_stack_to_vr(insn, v1, ty);
-                    res = 1;
-                }
+                // Eequivalent to `v0 = v1`
+                // TODO: sized store
+                // Currently all load & store are 8 bytes
+                insn->op = IR_INSN_ASSIGN;
+                DBGASSERT(v0->type == IR_VALUE_INSN);  // Should be guaranteed by prog_check
+                extra->dst      = v0->data.insn_d;
+                insn->value_num = 1;
+                *v0             = *v1;
+                res             = 1;
             } else if (insn->op == IR_INSN_LOAD) {
                 // OK
             } else if (insn->op == IR_INSN_LOADRAW) {
@@ -171,37 +156,40 @@ int check_need_spill(struct ir_function *fun) {
                     // R0 = add ? ?
                     // stack = R0
                     extra->dst          = fun->cg_info.regs[0];
-                    struct ir_insn *tmp = create_insn_base_cg(insn->parent_bb);
-                    insert_at(tmp, insn, INSERT_BACK);
-                    tmp->op           = IR_INSN_ASSIGN;
-                    tmp->value_num    = 1;
-                    tmp->values[0]    = ir_value_insn(fun->cg_info.regs[0]);
+                    struct ir_insn *tmp = create_assign_insn_cg(
+                        insn, ir_value_insn(fun->cg_info.regs[0]), INSERT_BACK);
                     insn_cg(tmp)->dst = dst_insn;
                     res               = 1;
                 } else {
-                    if (t0 == STACK) {
-                        load_stack_to_vr(insn, v0, IR_VR_TYPE_U64);
-                        res = 1;
-                    }
-                    if (t1 == STACK) {
-                        load_stack_to_vr(insn, v1, IR_VR_TYPE_U64);
-                        res = 1;
-                    }
-                    if (t0 == CONST && t1 == CONST) {
-                        // reg = add const const
+                    if ((t0 != REG && t1 == REG) || (t0 == CONST && t1 == STACK)) {
+                        // reg = add !reg reg
                         // ==>
-                        // reg = add VR const
-                        load_const_to_vr(insn, v0);
-                        res = 1;
-                    }
-                    if (t0 == CONST && t1 == REG) {
-                        // reg = add const reg
-                        // ==>
-                        // reg = add reg const
+                        // reg = add reg !reg
                         struct ir_value tmp = *v0;
                         *v0                 = *v1;
                         *v1                 = tmp;
-                        // No need to spill
+                        enum val_type ttmp  = t0;
+                        t0                  = t1;
+                        t1                  = ttmp;
+                        // No need to spill here
+                    }
+                    if (t0 == REG) {
+                        // reg = add reg reg ==> OK
+                        // reg = add reg const ==> OK
+
+                        // reg1 = add reg2 stack
+                        // ==>
+                        // If reg1 != reg2,
+                        //   reg1 = stack
+                        //   reg1 = add reg2 reg1
+                        // Else
+                        //   Choose reg3 != reg1,
+                        //   reg3 = stack
+                        //   reg1 = add reg1 reg3
+                    }else{
+                        // reg = add const const
+                        // reg = add stack stack
+                        // reg = add stack const
                     }
                 }
             } else if (insn->op == IR_INSN_ASSIGN) {
@@ -211,9 +199,10 @@ int check_need_spill(struct ir_function *fun) {
                 // reg = stack
                 // reg = reg
                 if (tdst == STACK && t0 == STACK) {
-                    load_stack_to_vr(insn, v0, IR_VR_TYPE_U64);
+                    load_stack_to_r0(fun, insn, v0);
                     res = 1;
                 }
+                // TODO: constant to stack: might need to first load to reg
             } else if (insn->op == IR_INSN_RET) {
                 // ret const/reg
                 // Done in explicit_reg pass
