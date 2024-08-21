@@ -12,13 +12,12 @@ void normalize(struct ir_function *fun) {
         struct ir_basic_block *bb = *pos;
         struct ir_insn        *insn;
         list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
-            struct ir_value         *v0       = &insn->values[0];
-            struct ir_value         *v1       = &insn->values[1];
-            enum val_type            t0       = insn->value_num >= 1 ? vtype(*v0) : UNDEF;
-            enum val_type            t1       = insn->value_num >= 2 ? vtype(*v1) : UNDEF;
-            enum val_type            tdst     = vtype_insn(insn);
-            struct ir_insn_cg_extra *extra    = insn_cg(insn);
-            struct ir_insn          *dst_insn = dst(insn);
+            struct ir_value *v0       = &insn->values[0];
+            struct ir_value *v1       = &insn->values[1];
+            enum val_type    t0       = insn->value_num >= 1 ? vtype(*v0) : UNDEF;
+            enum val_type    t1       = insn->value_num >= 2 ? vtype(*v1) : UNDEF;
+            enum val_type    tdst     = vtype_insn(insn);
+            struct ir_insn  *dst_insn = dst(insn);
             if (insn->op == IR_INSN_ALLOC) {
                 // Skip
             } else if (insn->op == IR_INSN_STORE) {
@@ -37,6 +36,10 @@ void normalize(struct ir_function *fun) {
                     // ==>
                     // reg1 = stack
                     // reg1 = add reg1 const
+                    struct ir_insn *new_insn = create_assign_insn_cg(insn, *v0, INSERT_FRONT);
+                    insn_cg(new_insn)->dst   = dst_insn;
+                    v0->type                 = IR_VALUE_INSN;
+                    v0->data.insn_d          = dst_insn;
                 } else if (t0 == REG && t1 == REG) {
                     // reg1 = add reg2 reg3
                     __u8 reg1 = insn_cg(dst_insn)->alloc_reg;
@@ -62,6 +65,14 @@ void normalize(struct ir_function *fun) {
                         }
                     }
                 } else if (t0 == REG && t1 == CONST) {
+                    // reg1 = add reg2 const
+                    // ==>
+                    // reg1 = reg2
+                    // reg1 = add reg1 const
+                    struct ir_insn *new_insn = create_assign_insn_cg(insn, *v0, INSERT_FRONT);
+                    insn_cg(new_insn)->dst   = dst_insn;
+                    v0->type                 = IR_VALUE_INSN;
+                    v0->data.insn_d          = dst_insn;
                 } else {
                     CRITICAL("Error");
                 }
