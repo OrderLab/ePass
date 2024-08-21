@@ -10,6 +10,10 @@ struct code_gen_info {
 
     // BPF Register Virtual Instruction (used as dst)
     struct ir_insn *regs[MAX_BPF_REG];
+
+    size_t callee_num;
+
+    __s16 stack_offset;
 };
 
 struct ir_function {

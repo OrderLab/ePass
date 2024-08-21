@@ -84,4 +84,8 @@ enum val_type vtype_insn(struct ir_insn *insn);
 
 enum val_type vtype(struct ir_value val);
 
+void calc_callee_num(struct ir_function *fun);
+
+void calc_stack_size(struct ir_function *fun);
+
 #endif
