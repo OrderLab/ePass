@@ -1,4 +1,5 @@
 #include <linux/bpf.h>
+#include <linux/bpf_common.h>
 #include "bpf_ir.h"
 #include "code_gen.h"
 #include "dbg.h"
@@ -65,6 +66,11 @@ struct pre_ir_insn load_addr_to_reg(__u8 dst, struct ir_address_value addr, enum
         insn.src_reg = insn_cg(addr.value.data.insn_d)->alloc_reg;
         insn.opcode  = BPF_LDX | size | BPF_MEM;
     } else if (addr.value.type == IR_VALUE_CONSTANT) {
+        // Must be U64
+        DBGASSERT(addr.value.data.constant_d.type == IR_CONSTANT_U64);
+        insn.it     = IMM64;
+        insn.imm64  = addr.value.data.constant_d.data.u64_d;
+        insn.opcode = BPF_IMM | size | BPF_LD;
     } else {
         CRITICAL("Error");
     }
