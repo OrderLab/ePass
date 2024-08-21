@@ -91,9 +91,8 @@ void check_jumping(struct ir_function *fun) {
         list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
             if (is_jmp(insn)) {
                 jmp_exists = 1;
-                struct ir_insn *next_insn = list_next_entry(insn, list_ptr);
-                if (next_insn != &bb->ir_insn_head) {
-                    // Can I use is_last_insn() to check if it's the last insn?
+                if (!is_last_insn(insn)) {
+                    // Not last instruction
                     // Error
                     CRITICAL("Jump statement not at the end of a BB");
                 } else {
