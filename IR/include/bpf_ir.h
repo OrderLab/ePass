@@ -69,6 +69,8 @@ struct ir_value {
 
 struct ir_value ir_value_insn(struct ir_insn *);
 
+struct ir_value ir_value_stack_ptr();
+
 /**
     Value plus an offset
  */

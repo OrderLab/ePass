@@ -26,6 +26,7 @@ add_executable(
     aux/spill.c
     aux/translate.c
     aux/stack_alloc.c
+    aux/normalize.c
     ir_code_gen.c
 )
 

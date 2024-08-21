@@ -1,5 +1,6 @@
 // Normalization
 
+#include "bpf_ir.h"
 #include "code_gen.h"
 #include "dbg.h"
 #include "ir_fun.h"
@@ -70,7 +71,22 @@ void normalize(struct ir_function *fun) {
                 // reg = const
                 // reg = stack
                 // reg = reg
-                CRITICAL("TODO");
+                if (tdst == STACK) {
+                    DBGASSERT(t0 != STACK);
+                    // Change to STORERAW
+                    insn->op              = IR_INSN_STORERAW;
+                    insn->addr_val.value  = ir_value_stack_ptr();
+                    insn->addr_val.offset = -insn_cg(dst_insn)->spilled * 8;
+                    insn->vr_type         = IR_VR_TYPE_U64;
+                } else {
+                    if (t0 == STACK) {
+                        // Change to LOADRAW
+                        insn->op              = IR_INSN_LOADRAW;
+                        insn->addr_val.value  = ir_value_stack_ptr();
+                        insn->addr_val.offset = -insn_cg(v0->data.insn_d)->spilled * 8;
+                        insn->vr_type         = IR_VR_TYPE_U64;
+                    }
+                }
             } else if (insn->op == IR_INSN_RET) {
                 // OK
             } else if (insn->op == IR_INSN_CALL) {

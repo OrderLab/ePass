@@ -211,6 +211,8 @@ void code_gen(struct ir_function *fun) {
     print_ir_prog_cg_alloc(fun);
 
     // Step 10: Normalize
+    normalize(fun);
+    print_ir_prog_cg_alloc(fun);
 
     // Step 11: Direct Translation
     // translate(fun);
