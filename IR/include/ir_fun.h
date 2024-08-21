@@ -14,6 +14,8 @@ struct code_gen_info {
     size_t callee_num;
 
     __s16 stack_offset;
+
+    struct bpf_insn *prog;
 };
 
 struct ir_function {
