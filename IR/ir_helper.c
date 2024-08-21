@@ -440,7 +440,7 @@ void tag_ir(struct ir_function *fun) {
     clean_env(fun);
 }
 
-void print_bb_succ(struct ir_basic_block *bb){
+void print_bb_succ(struct ir_basic_block *bb) {
     printf("succs: ");
     struct ir_basic_block **next;
     array_for(next, bb->succs) {
