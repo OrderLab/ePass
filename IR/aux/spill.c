@@ -1,13 +1,19 @@
 #include <linux/bpf.h>
+#include <stdio.h>
 #include <time.h>
 #include "array.h"
 #include "bpf_ir.h"
 #include "code_gen.h"
 #include "dbg.h"
 #include "ir_insn.h"
+#include "ir_helper.h"
 
 enum val_type vtype_insn(struct ir_insn *insn) {
-    insn                           = dst(insn);
+    insn = dst(insn);
+    if (insn == NULL) {
+        // Void
+        return UNDEF;
+    }
     struct ir_insn_cg_extra *extra = insn_cg(insn);
     if (extra->spilled) {
         return STACK;
@@ -121,8 +127,8 @@ int check_need_spill(struct ir_function *fun) {
         list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
             struct ir_value         *v0       = &insn->values[0];
             struct ir_value         *v1       = &insn->values[1];
-            enum val_type            t0       = vtype(*v0);
-            enum val_type            t1       = vtype(*v1);
+            enum val_type            t0       = insn->value_num >= 1 ? vtype(*v0) : UNDEF;
+            enum val_type            t1       = insn->value_num >= 2 ? vtype(*v1) : UNDEF;
             enum val_type            tdst     = vtype_insn(insn);
             struct ir_insn_cg_extra *extra    = insn_cg(insn);
             struct ir_insn          *dst_insn = dst(insn);
@@ -151,7 +157,7 @@ int check_need_spill(struct ir_function *fun) {
                 // reg = add reg reg
                 // reg = add reg const
                 // There should be NO stack
-                if (vtype_insn(insn) == STACK) {
+                if (tdst == STACK) {
                     // stack = add ? ?
                     // ==>
                     // R0 = add ? ?

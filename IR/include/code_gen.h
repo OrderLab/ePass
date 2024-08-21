@@ -43,6 +43,7 @@ struct ir_insn_cg_extra {
     __u8 alloc_reg;
 };
 enum val_type {
+    UNDEF,
     REG,
     CONST,
     STACK,
