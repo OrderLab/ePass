@@ -93,6 +93,7 @@ void check_jumping(struct ir_function *fun) {
                 jmp_exists = 1;
                 struct ir_insn *next_insn = list_next_entry(insn, list_ptr);
                 if (next_insn != &bb->ir_insn_head) {
+                    // Can I use is_last_insn() to check if it's the last insn?
                     // Error
                     CRITICAL("Jump statement not at the end of a BB");
                 } else {
@@ -142,30 +143,30 @@ void check_jumping(struct ir_function *fun) {
                             struct ir_basic_block *succ = bb->succs.data[0];
                             if (succ != insn->bb1) {
                                 // Error
-                                CRITICAL("ERR-Unconditional jump statement with a successor that is not the jump operand");
+                                CRITICAL("The jump operand is not the only successor of BB");
                             }
 
                             // check if the successor has the current BB as a predecessor
-                            // struct ir_basic_block **succ;
-                            // int found = 0;
-                            // array_for(succ, bb->succs) {
-                            //     struct ir_basic_block *succ_bb = *succ;
-                            //     struct ir_basic_block **pred;
-                            //     array_for(pred, succ_bb->preds) {
-                            //         struct ir_basic_block *pred_bb = *pred;
-                            //         if (pred_bb == bb) {
-                            //             found = 1;
-                            //             break;
-                            //         }
-                            //     }
-                            //     if (found) {
-                            //         break;
-                            //     }
-                            // }
-                            // if (!found) {
-                            //     // Error
-                            //     CRITICAL("Unconditional jump statement with a successor that does not have the current BB as a predecessor");
-                            // }
+                            struct ir_basic_block **succ;
+                            int found = 0;
+                            array_for(succ, bb->succs) {
+                                struct ir_basic_block *succ_bb = *succ;
+                                struct ir_basic_block **pred;
+                                array_for(pred, succ_bb->preds) {
+                                    struct ir_basic_block *pred_bb = *pred;
+                                    if (pred_bb == bb) {
+                                        found = 1;
+                                        break;
+                                    }
+                                }
+                                if (found) {
+                                    break;
+                                }
+                            }
+                            if (!found) {
+                                // Error
+                                CRITICAL("Unconditional jump statement with a successor that does not have the current BB as a predecessor");
+                            }
                         }
                     }
                 }
@@ -178,8 +179,7 @@ void check_jumping(struct ir_function *fun) {
                 CRITICAL("No jump statement in BB but more than one successor");
             }
         }
-    }
-    
+    } 
 }
 
 // Check if the PHI nodes are at the beginning of the BB
