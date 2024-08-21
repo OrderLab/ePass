@@ -11,7 +11,6 @@
 #include "list.h"
 #include "dbg.h"
 #include "passes.h"
-#include "prog_check.h"
 #include "read.h"
 
 // TODO: Change this to real function
@@ -874,9 +873,9 @@ void run_passes(struct ir_function *fun) {
         clean_env_all(fun);
         gen_reachable_bbs(fun);
         passes[i](fun);
-        printf("--------------------\n");
         // Validate the IR
-        check_users(fun);
+        prog_check(fun);
+        printf("--------------------\n");
         print_ir_prog(fun);
     }
 }
@@ -899,13 +898,8 @@ void run(struct bpf_insn *insns, size_t len) {
     run_passes(&fun);
 
     // End IR manipulation
-    // printf("--------------------\n");
-    // print_ir_prog(&fun);
-
-    // Test
-    // add_stack_offset(&fun, -8);
-    // printf("--------------------\n");
-    // print_ir_prog(&fun);
+    printf("--------------------\n");
+    print_ir_prog(&fun);
 
     printf("--------------------\n");
     code_gen(&fun);

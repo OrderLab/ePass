@@ -51,4 +51,6 @@ void free_function(struct ir_function *fun);
 
 void fix_bb_succ(struct ir_function *fun);
 
+void prog_check(struct ir_function *fun);
+
 #endif

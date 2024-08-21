@@ -7,7 +7,6 @@
 #include "ir_insn.h"
 #include "list.h"
 #include "passes.h"
-#include "prog_check.h"
 #include "ir_helper.h"
 
 struct ir_insn_cg_extra *init_insn_cg(struct ir_insn *insn) {
@@ -157,7 +156,7 @@ void code_gen(struct ir_function *fun) {
     prog_check(fun);
     // Step 2: Eliminate SSA
     to_cssa(fun);
-    check_users(fun);
+    prog_check(fun);
     print_ir_prog_pre_cg(fun);
 
     // Init CG, start real code generation
