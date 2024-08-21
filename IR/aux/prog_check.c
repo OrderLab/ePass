@@ -81,56 +81,73 @@ void check_users(struct ir_function *fun) {
     }
 }
 
+
 void check_jumping(struct ir_function *fun) {
     // check if the jump statement is at the end of the BB
     struct ir_basic_block **pos;
     array_for(pos, fun->reachable_bbs) {
         struct ir_basic_block *bb = *pos;
+        
+        // check if BB is a succ of its preds
+        struct ir_basic_block **pred;
+        array_for(pred, bb->preds) {
+            struct ir_basic_block *pred_bb = *pred;
+            struct ir_basic_block **succ;
+            int found = 0;
+            array_for(succ, pred_bb->succs) {
+                struct ir_basic_block *succ_bb = *succ;
+                if (succ_bb == bb) {
+                    found = 1;
+                    break;
+                }
+            }
+            if (!found) {
+                // Error
+                CRITICAL("BB not a succ of its preds");
+            }
+        }
+
         struct ir_insn        *insn;
         int jmp_exists = 0;
         list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
             if (is_jmp(insn)) {
                 jmp_exists = 1;
                 if (!is_last_insn(insn)) {
-                    // Not last instruction
                     // Error
                     CRITICAL("Jump statement not at the end of a BB");
                 } else {
+                    if (insn->op == IR_INSN_RET) {
+                        if (bb->succs.num_elem != 0) {
+                            // Error
+                            CRITICAL("successor exists even after return statement");
+                        }
+                    }
                     // for conditional jumps, both BB1 and BB2 should be successors
                     if (is_jmp_cond(insn)) {
                         // get the two basic blocks that the conditional jump statement jumps to
                         struct ir_basic_block *bb1 = insn->bb1;
                         struct ir_basic_block *bb2 = insn->bb2;
                         // check if the two basic blocks are successors of the current BB
-                        struct ir_basic_block **succ;
-                        int ok1 = 0;
-                        int ok2 = 0;
-                        array_for(succ, bb->succs) {
-                            struct ir_basic_block *succ_bb = *succ;
-                            if (succ_bb == bb1) {
-                                struct ir_basic_block *pred;
-                                array_for(pred, bb1->preds) {
-                                    struct ir_basic_block *pred_bb = *pred;
-                                    if (pred_bb == bb) {
-                                        ok1 = 1;
-                                        break;
-                                    }
-                                }
-                            }
-                            if (succ_bb == bb2) {
-                                struct ir_basic_block *pred;
-                                array_for(pred, bb2->preds) {
-                                    struct ir_basic_block *pred_bb = *pred;
-                                    if (pred_bb == bb) {
-                                        ok2 = 1;
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                        if (!ok1 || !ok2) {
+                        if (bb->succs.num_elem != 2 || bb->succs.data[0] != bb1 || bb->succs.data[1] != bb2) {
                             // Error
                             CRITICAL("Conditional jump statement with operands that are not successors of the current BB");
+                        } else {
+                            // check if the succs have the current BB as a predecessor
+                            struct ir_basic_block **pred;
+                            for (int i = 0; i <= 1; i++) {
+                                int found = 0;
+                                array_for(pred, bb->succs.data[i]->preds) {
+                                    struct ir_basic_block *pred_bb = *pred;
+                                    if (pred_bb == bb) {
+                                        found = 1;
+                                        break;
+                                    }
+                                }
+                                if (!found) {
+                                    // Error
+                                    CRITICAL("succs do not have bb as pred");
+                                }
+                            }
                         }
                     } else {
                         // for unconditional jumps, there should be only one successor
@@ -145,26 +162,19 @@ void check_jumping(struct ir_function *fun) {
                                 CRITICAL("The jump operand is not the only successor of BB");
                             }
 
-                            // check if the successor has the current BB as a predecessor
-                            struct ir_basic_block **succ;
+                            // check if the succ has the current BB as a predecessor
+                            struct ir_basic_block **pred;
                             int found = 0;
-                            array_for(succ, bb->succs) {
-                                struct ir_basic_block *succ_bb = *succ;
-                                struct ir_basic_block **pred;
-                                array_for(pred, succ_bb->preds) {
-                                    struct ir_basic_block *pred_bb = *pred;
-                                    if (pred_bb == bb) {
-                                        found = 1;
-                                        break;
-                                    }
-                                }
-                                if (found) {
+                            array_for(pred, bb->succs.data[0]->preds) {
+                                struct ir_basic_block *pred_bb = *pred;
+                                if (pred_bb == bb) {
+                                    found = 1;
                                     break;
                                 }
                             }
                             if (!found) {
                                 // Error
-                                CRITICAL("Unconditional jump statement with a successor that does not have the current BB as a predecessor");
+                                CRITICAL("succ does not have bb as pred");
                             }
                         }
                     }
