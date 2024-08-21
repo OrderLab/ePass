@@ -190,7 +190,7 @@ int check_need_spill(struct ir_function *fun) {
                             __u8 reg1 = insn_cg(dst_insn)->alloc_reg;
                             __u8 reg2 = insn_cg(v0->data.insn_d)->alloc_reg;
                             if (reg1 == reg2) {
-                                __u8 reg = reg1 == 0 ? 1 : 0;
+                                __u8            reg = reg1 == 0 ? 1 : 0;
                                 struct ir_insn *new_insn =
                                     create_assign_insn_cg(insn, *v1, INSERT_FRONT);
                                 insn_cg(new_insn)->dst = fun->cg_info.regs[reg];
@@ -206,9 +206,32 @@ int check_need_spill(struct ir_function *fun) {
                             res = 1;
                         }
                     } else {
-                        // reg = add const const
+                        // reg = add const const ==> OK
+                        // reg = add c1 c2
+                        // ==>
+                        // reg = c1
+                        // reg = add reg c2
+                        // OK
+
                         // reg = add stack stack
-                        // reg = add stack const
+                        if (t0 == STACK && t1 == STACK) {
+                            // reg1 = add stack1 stack2
+                            // ==>
+                            // Found reg2 != reg1
+                            // reg1 = stack1
+                            // reg1 = add reg1 stack2
+                            __u8            reg1 = insn_cg(dst_insn)->alloc_reg;
+                            struct ir_insn *new_insn =
+                                create_assign_insn_cg(insn, *v0, INSERT_FRONT);
+                            insn_cg(new_insn)->dst = fun->cg_info.regs[reg1];
+                            v0->type               = IR_VALUE_INSN;
+                            v0->data.insn_d        = fun->cg_info.regs[reg1];
+                            res                    = 1;
+                        }
+                        // reg = add stack const ==> OK
+                        // ==>
+                        // reg = stack
+                        // reg = add reg const
                     }
                 }
             } else if (insn->op == IR_INSN_ASSIGN) {
