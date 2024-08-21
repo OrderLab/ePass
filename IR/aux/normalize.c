@@ -24,7 +24,7 @@ void normalize(struct ir_function *fun) {
                 // Should be converted to ASSIGN
                 CRITICAL("Error");
             } else if (insn->op == IR_INSN_LOAD) {
-                // OK
+                CRITICAL("Error");
             } else if (insn->op == IR_INSN_LOADRAW) {
                 // OK
             } else if (insn->op == IR_INSN_STORERAW) {

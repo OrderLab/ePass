@@ -147,7 +147,14 @@ int check_need_spill(struct ir_function *fun) {
                 *v0             = *v1;
                 res             = 1;
             } else if (insn->op == IR_INSN_LOAD) {
-                // OK
+                // stack = load stack
+                // stack = load reg
+                // reg = load reg
+                // reg = load stack
+                // TODO: sized load
+                insn->op = IR_INSN_ASSIGN;
+                DBGASSERT(v0->type == IR_VALUE_INSN);  // Should be guaranteed by prog_check
+                res = 1;
             } else if (insn->op == IR_INSN_LOADRAW) {
                 // OK
             } else if (insn->op == IR_INSN_STORERAW) {
