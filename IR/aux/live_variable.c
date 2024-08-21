@@ -153,22 +153,26 @@ void print_insn_extra(struct ir_insn *insn) {
     struct ir_insn **pos;
     array_for(pos, insn_cg->gen) {
         struct ir_insn *insn = *pos;
-        printf(" %%%zu", insn->_insn_id);
+        printf(" ");
+        print_insn_ptr_base(insn);
     }
     printf("\nKill:");
     array_for(pos, insn_cg->kill) {
         struct ir_insn *insn = *pos;
-        printf(" %%%zu", insn->_insn_id);
+        printf(" ");
+        print_insn_ptr_base(insn);
     }
     printf("\nIn:");
     array_for(pos, insn_cg->in) {
         struct ir_insn *insn = *pos;
-        printf(" %%%zu", insn->_insn_id);
+        printf(" ");
+        print_insn_ptr_base(insn);
     }
     printf("\nOut:");
     array_for(pos, insn_cg->out) {
         struct ir_insn *insn = *pos;
-        printf(" %%%zu", insn->_insn_id);
+        printf(" ");
+        print_insn_ptr_base(insn);
     }
     printf("\n-------------\n");
 }

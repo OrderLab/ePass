@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stddef.h>
-#include "add_stack_offset.h"
 #include "ir_helper.h"
 #include "array.h"
 #include "code_gen.h"
@@ -13,7 +12,6 @@
 #include "dbg.h"
 #include "passes.h"
 #include "prog_check.h"
-#include "reachable_bb.h"
 #include "read.h"
 
 // TODO: Change this to real function
@@ -201,12 +199,14 @@ struct bb_info gen_bb(struct bpf_insn *insns, size_t len) {
             new_insn.src_reg = insn.src_reg;
             new_insn.dst_reg = insn.dst_reg;
             new_insn.imm     = insn.imm;
+            new_insn.it      = IMM;
             new_insn.imm64   = 0;
             new_insn.off     = insn.off;
             new_insn.pos     = pos;
             if (pos + 1 < real_bb->end_pos && insns[pos + 1].code == 0) {
                 __u64 imml     = (__u64)insn.imm & 0xFFFFFFFF;
                 new_insn.imm64 = ((__s64)(insns[pos + 1].imm) << 32) | imml;
+                new_insn.it    = IMM64;
                 pos++;
             }
             real_bb->pre_insns[bb_pos] = new_insn;
@@ -409,31 +409,31 @@ struct ir_insn *create_insn_front(struct ir_basic_block *bb) {
     return insn;
 }
 
-enum ir_vr_type to_ir_ld_s(__u8 size) {
+enum ir_vr_type to_ir_ld_u(__u8 size) {
     switch (size) {
         case BPF_W:
-            return IR_VR_TYPE_S32;
+            return IR_VR_TYPE_32;
         case BPF_H:
-            return IR_VR_TYPE_S16;
+            return IR_VR_TYPE_16;
         case BPF_B:
-            return IR_VR_TYPE_S8;
+            return IR_VR_TYPE_8;
         case BPF_DW:
-            return IR_VR_TYPE_S64;
+            return IR_VR_TYPE_64;
         default:
             CRITICAL("Error");
     }
 }
 
-enum ir_vr_type to_ir_ld_u(__u8 size) {
-    switch (size) {
-        case BPF_W:
-            return IR_VR_TYPE_U32;
-        case BPF_H:
-            return IR_VR_TYPE_U16;
-        case BPF_B:
-            return IR_VR_TYPE_U8;
-        case BPF_DW:
-            return IR_VR_TYPE_U64;
+int vr_type_to_size(enum ir_vr_type type) {
+    switch (type) {
+        case IR_VR_TYPE_32:
+            return BPF_W;
+        case IR_VR_TYPE_16:
+            return BPF_H;
+        case IR_VR_TYPE_8:
+            return BPF_B;
+        case IR_VR_TYPE_64:
+            return BPF_DW;
         default:
             CRITICAL("Error");
     }
@@ -441,6 +441,10 @@ enum ir_vr_type to_ir_ld_u(__u8 size) {
 
 struct ir_value ir_value_insn(struct ir_insn *insn) {
     return (struct ir_value){.type = IR_VALUE_INSN, .data.insn_d = insn};
+}
+
+struct ir_value ir_value_stack_ptr() {
+    return (struct ir_value){.type = IR_VALUE_STACK_PTR};
 }
 
 // User uses val
@@ -817,6 +821,7 @@ void free_function(struct ir_function *fun) {
     }
     array_free(&fun->all_bbs);
     array_free(&fun->reachable_bbs);
+    array_free(&fun->end_bbs);
     array_free(&fun->cg_info.all_var);
 }
 
@@ -830,6 +835,7 @@ struct ir_function gen_function(struct ssa_transform_env *env) {
     }
     fun.all_bbs         = INIT_ARRAY(struct ir_basic_block *);
     fun.reachable_bbs   = INIT_ARRAY(struct ir_basic_block *);
+    fun.end_bbs         = INIT_ARRAY(struct ir_basic_block *);
     fun.cg_info.all_var = INIT_ARRAY(struct ir_insn *);
     for (size_t i = 0; i < MAX_BPF_REG; ++i) {
         struct array *currentDef = &env->currentDef[i];
@@ -884,6 +890,7 @@ void run(struct bpf_insn *insns, size_t len) {
     init_ir_bbs(&env);
     transform_bb(&env, info.entry);
     struct ir_function fun = gen_function(&env);
+    fix_bb_succ(&fun);
     // Drop env
     print_ir_prog(&fun);
     printf("--------------------\n");

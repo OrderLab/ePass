@@ -15,13 +15,20 @@ add_executable(
     passes/add_counter_pass.c
     passes/add_constraint_pass.c
     passes/cut_bb_pass.c
-    aux/add_stack_offset.c
+    passes/end_bb.c
     aux/live_variable.c
     aux/prog_check.c
     aux/eliminate_ssa.c
     aux/conflict_analysis.c
     aux/graph_coloring.c
     aux/explicit_reg.c
+    aux/coaleasing.c
+    aux/spill.c
+    aux/translate.c
+    aux/stack_alloc.c
+    aux/normalize.c
+    aux/fix_bb_succ.c
+    aux/relocate.c
     ir_code_gen.c
 )
 

@@ -10,12 +10,16 @@ struct code_gen_info {
 
     // BPF Register Virtual Instruction (used as dst)
     struct ir_insn *regs[MAX_BPF_REG];
+
+    size_t callee_num;
+
+    __s16 stack_offset;
 };
 
 struct ir_function {
     size_t arg_num;
 
-    // Array of struct pre_ir_basic_block *, no entrance information anymore
+    // Array of struct ir_basic_block *
     struct array all_bbs;
 
     // The entry block
@@ -23,6 +27,9 @@ struct ir_function {
 
     // Store any information about the function
     struct array reachable_bbs;
+
+    // BBs who has no successors
+    struct array end_bbs;
 
     // Stack pointer (r10) users. Should be readonly. No more manual stack access should be allowed.
     struct array sp_users;
@@ -41,5 +48,7 @@ struct ir_function {
 struct ir_function gen_function(struct ssa_transform_env *env);
 
 void free_function(struct ir_function *fun);
+
+void fix_bb_succ(struct ir_function *fun);
 
 #endif

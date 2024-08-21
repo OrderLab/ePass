@@ -1,3 +1,4 @@
+#include <linux/bpf.h>
 #include <stdio.h>
 #include "array.h"
 #include "bpf_ir.h"
@@ -27,32 +28,47 @@ void print_interference_graph(struct ir_function *fun) {
     struct ir_insn **pos;
     array_for(pos, fun->cg_info.all_var) {
         struct ir_insn *insn = *pos;
+        if (insn->op == IR_INSN_REG) {
+            CRITICAL("Pre-colored register should not be in all_var");
+        }
         if (!is_final(insn)) {
             // Not final value, give up
             CRITICAL("Not Final Value!");
         }
         struct ir_insn_cg_extra *extra = insn_cg(insn);
         if (extra->allocated) {
+            // Allocated VR
             printf("%%%zu(", insn->_insn_id);
             if (extra->spilled) {
                 printf("sp-%zu", extra->spilled * 8);
             } else {
                 printf("r%u", extra->alloc_reg);
             }
-            printf("): ");
+            printf("):");
         } else {
-            printf("%%%zu: ", insn->_insn_id);
+            // Pre-colored registers or unallocated VR
+            print_insn_ptr_base(insn);
+            printf(":");
         }
         struct ir_insn **pos2;
         array_for(pos2, insn_cg(insn)->adj) {
             struct ir_insn *adj_insn = *pos2;
-            if (!is_final(insn)) {
+            if (!is_final(adj_insn)) {
                 // Not final value, give up
                 CRITICAL("Not Final Value!");
             }
-            printf("%%%zu, ", adj_insn->_insn_id);
+            printf(" ");
+            print_insn_ptr_base(adj_insn);
         }
         printf("\n");
+    }
+}
+
+void caller_constraint(struct ir_function *fun, struct ir_insn *insn) {
+    for (__u8 i = BPF_REG_0; i < BPF_REG_6; ++i) {
+        // R0-R5 are caller saved register
+        DBGASSERT(fun->cg_info.regs[i] == dst(fun->cg_info.regs[i]));
+        build_conflict(fun->cg_info.regs[i], insn);
     }
 }
 
@@ -67,12 +83,30 @@ void conflict_analysis(struct ir_function *fun) {
         struct ir_insn        *insn;
         // For each operation
         list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
-            struct ir_insn         **pos2;
             struct ir_insn_cg_extra *insn_cg = insn->user_data;
+            if (insn->op == IR_INSN_CALL) {
+                // Add caller saved register constraints
+                struct ir_insn **pos2;
+                array_for(pos2, insn_cg->in) {
+                    DBGASSERT(*pos2 == dst(*pos2));
+                    struct ir_insn **pos3;
+                    array_for(pos3, insn_cg->out) {
+                        DBGASSERT(*pos3 == dst(*pos3));
+                        if (*pos2 == *pos3) {
+                            // Live across CALL!
+                            printf("Found a VR live across CALL!\n");
+                            caller_constraint(fun, *pos2);
+                        }
+                    }
+                }
+            }
+            struct ir_insn **pos2;
             array_for(pos2, insn_cg->kill) {
                 struct ir_insn *insn_dst = *pos2;
                 DBGASSERT(insn_dst == dst(insn_dst));
-                array_push_unique(&fun->cg_info.all_var, &insn_dst);
+                if (insn_dst->op != IR_INSN_REG) {
+                    array_push_unique(&fun->cg_info.all_var, &insn_dst);
+                }
                 struct ir_insn **pos3;
                 array_for(pos3, insn_cg->out) {
                     DBGASSERT(*pos3 == dst(*pos3));
