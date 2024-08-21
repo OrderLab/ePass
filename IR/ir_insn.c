@@ -387,6 +387,10 @@ int is_jmp(struct ir_insn *insn) {
     return (insn->op >= IR_INSN_JA && insn->op <= IR_INSN_JNE) || insn->op == IR_INSN_RET;
 }
 
+int is_jmp_cond(struct ir_insn *insn) {
+    return (insn->op >= IR_INSN_JEQ && insn->op <= IR_INSN_JNE);
+}
+
 int is_void(struct ir_insn *insn) {
     return is_jmp(insn) || insn->op == IR_INSN_STORERAW || insn->op == IR_INSN_STORE;
 }
