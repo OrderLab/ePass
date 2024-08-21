@@ -890,6 +890,7 @@ void run(struct bpf_insn *insns, size_t len) {
     init_ir_bbs(&env);
     transform_bb(&env, info.entry);
     struct ir_function fun = gen_function(&env);
+    fix_bb_succ(&fun);
     // Drop env
     print_ir_prog(&fun);
     printf("--------------------\n");

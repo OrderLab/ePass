@@ -86,3 +86,10 @@ void array_free(struct array *arr) {
     __free(arr->data);
     *arr = array_null();
 }
+
+void *array_get_void(struct array *arr, size_t idx) {
+    if (idx >= arr->num_elem) {
+        return NULL;
+    }
+    return (char *)(arr->data) + arr->elem_size * idx;
+}

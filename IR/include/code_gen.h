@@ -1,6 +1,7 @@
 #ifndef __BPF_IR_CODE_GEN_H__
 #define __BPF_IR_CODE_GEN_H__
 
+#include <stdio.h>
 #include "bpf_ir.h"
 #include "ir_fun.h"
 
@@ -8,7 +9,7 @@ void code_gen(struct ir_function *fun);
 
 // Extra information needed for code gen
 struct ir_bb_cg_extra {
-    // Liveness analysis
+    size_t insn_cnt;
 };
 
 struct ir_insn_cg_extra {

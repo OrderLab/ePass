@@ -19,7 +19,7 @@ struct code_gen_info {
 struct ir_function {
     size_t arg_num;
 
-    // Array of struct pre_ir_basic_block *, no entrance information anymore
+    // Array of struct ir_basic_block *
     struct array all_bbs;
 
     // The entry block
@@ -48,5 +48,7 @@ struct ir_function {
 struct ir_function gen_function(struct ssa_transform_env *env);
 
 void free_function(struct ir_function *fun);
+
+void fix_bb_succ(struct ir_function *fun);
 
 #endif
