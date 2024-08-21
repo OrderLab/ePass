@@ -49,16 +49,21 @@ struct pre_ir_insn load_const_to_reg(__u8 dst, struct ir_constant c) {
     return insn;
 }
 
-struct pre_ir_insn load_addr_to_reg(__u8 dst, struct ir_address_value addr) {
+struct pre_ir_insn load_addr_to_reg(__u8 dst, struct ir_address_value addr, enum ir_vr_type type) {
     // MOV dst src
     struct pre_ir_insn insn;
     insn.dst_reg = dst;
-    insn.off = addr.offset;
+    insn.off     = addr.offset;
+    int size     = vr_type_to_size(type);
     if (addr.value.type == IR_VALUE_STACK_PTR) {
+        insn.src_reg = BPF_REG_10;
+        insn.opcode  = BPF_LDX | size | BPF_MEM;
     } else if (addr.value.type == IR_VALUE_INSN) {
         // Must be REG
         DBGASSERT(vtype(addr.value) == REG);
         // Load reg (addr) to reg
+        insn.src_reg = insn_cg(addr.value.data.insn_d)->alloc_reg;
+        insn.opcode  = BPF_LDX | size | BPF_MEM;
     } else if (addr.value.type == IR_VALUE_CONSTANT) {
     } else {
         CRITICAL("Error");

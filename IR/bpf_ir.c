@@ -424,6 +424,21 @@ enum ir_vr_type to_ir_ld_u(__u8 size) {
     }
 }
 
+int vr_type_to_size(enum ir_vr_type type) {
+    switch (type) {
+        case IR_VR_TYPE_32:
+            return BPF_W;
+        case IR_VR_TYPE_16:
+            return BPF_H;
+        case IR_VR_TYPE_8:
+            return BPF_B;
+        case IR_VR_TYPE_64:
+            return BPF_DW;
+        default:
+            CRITICAL("Error");
+    }
+}
+
 struct ir_value ir_value_insn(struct ir_insn *insn) {
     return (struct ir_value){.type = IR_VALUE_INSN, .data.insn_d = insn};
 }

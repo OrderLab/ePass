@@ -327,4 +327,6 @@ __u8 ir_value_equal(struct ir_value a, struct ir_value b);
 
 struct ir_basic_block *init_ir_bb_raw();
 
+int vr_type_to_size(enum ir_vr_type type);
+
 #endif
