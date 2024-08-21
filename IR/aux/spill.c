@@ -156,7 +156,18 @@ int check_need_spill(struct ir_function *fun) {
                 DBGASSERT(v0->type == IR_VALUE_INSN);  // Should be guaranteed by prog_check
                 res = 1;
             } else if (insn->op == IR_INSN_LOADRAW) {
-                // OK
+                // reg = loadraw addr ==> OK
+                // stack = loadraw addr
+                // ==>
+                // R0 = loadraw addr
+                // stack = R0
+                if (tdst == STACK) {
+                    extra->dst          = fun->cg_info.regs[0];
+                    struct ir_insn *tmp = create_assign_insn_cg(
+                        insn, ir_value_insn(fun->cg_info.regs[0]), INSERT_BACK);
+                    insn_cg(tmp)->dst = dst_insn;
+                    res               = 1;
+                }
             } else if (insn->op == IR_INSN_STORERAW) {
                 // Built-in store instruction, OK
             } else if (insn->op >= IR_INSN_ADD && insn->op < IR_INSN_CALL) {
