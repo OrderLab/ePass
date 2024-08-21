@@ -199,12 +199,14 @@ struct bb_info gen_bb(struct bpf_insn *insns, size_t len) {
             new_insn.src_reg = insn.src_reg;
             new_insn.dst_reg = insn.dst_reg;
             new_insn.imm     = insn.imm;
+            new_insn.it      = IMM;
             new_insn.imm64   = 0;
             new_insn.off     = insn.off;
             new_insn.pos     = pos;
             if (pos + 1 < real_bb->end_pos && insns[pos + 1].code == 0) {
                 __u64 imml     = (__u64)insn.imm & 0xFFFFFFFF;
                 new_insn.imm64 = ((__s64)(insns[pos + 1].imm) << 32) | imml;
+                new_insn.it    = IMM64;
                 pos++;
             }
             real_bb->pre_insns[bb_pos] = new_insn;

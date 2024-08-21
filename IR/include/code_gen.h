@@ -26,7 +26,10 @@ struct ir_insn_cg_extra {
     struct array adj;
 
     // Translated pre_ir_insn
-    struct pre_ir_insn translated;
+    struct pre_ir_insn translated[2];
+
+    // Translated number
+    __u8 translated_num;
 
     // Whether the VR is allocated with a real register
     // If it's a pre-colored register, it's also 1
@@ -42,6 +45,7 @@ struct ir_insn_cg_extra {
     // Valid number: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
     __u8 alloc_reg;
 };
+
 enum val_type {
     UNDEF,
     REG,

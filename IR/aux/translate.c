@@ -12,9 +12,13 @@ struct pre_ir_insn load_reg_to_reg(__u8 dst, __u8 src) {
     return insn;
 }
 
-struct pre_ir_insn load_const_to_reg(enum ir_constant_type ty, __u8 src) {
+struct pre_ir_insn load_const_to_reg(__u8 dst, struct ir_constant c) {
     // MOV dst imm
     struct pre_ir_insn insn;
+    insn.dst_reg = dst;
+    if (c.type == IR_CONSTANT_U64) {
+        insn
+    }
     // TODO
     return insn;
 }

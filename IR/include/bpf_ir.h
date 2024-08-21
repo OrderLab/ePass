@@ -8,6 +8,11 @@
 
 #define MAX_FUNC_ARG 5
 
+enum imm_type {
+    IMM,
+    IMM64
+};
+
 /**
     Pre-IR instructions, similar to `bpf_insn`
  */
@@ -17,8 +22,10 @@ struct pre_ir_insn {
     __u8  dst_reg;
     __u8  src_reg;
     __s16 off;
-    __s32 imm;
-    __s64 imm64;  // signed immediate constant for 64-bit immediate
+
+    enum imm_type it;
+    __s32         imm;
+    __s64         imm64;  // Immediate constant for 64-bit immediate
 
     size_t pos;  // Original position
 };
