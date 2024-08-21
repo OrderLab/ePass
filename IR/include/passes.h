@@ -7,9 +7,6 @@ void remove_trivial_phi(struct ir_function *fun);
 
 void cut_bb(struct ir_function *fun);
 
-// Add stack offset to all stack access
-void add_stack_offset(struct ir_function *fun, __s16 offset);
-
 void add_counter(struct ir_function *fun);
 
 void add_constraint(struct ir_function *fun);

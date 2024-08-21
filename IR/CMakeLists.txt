@@ -16,7 +16,6 @@ add_executable(
     passes/add_constraint_pass.c
     passes/cut_bb_pass.c
     passes/end_bb.c
-    aux/add_stack_offset.c
     aux/live_variable.c
     aux/prog_check.c
     aux/eliminate_ssa.c
@@ -26,6 +25,7 @@ add_executable(
     aux/coaleasing.c
     aux/spill.c
     aux/translate.c
+    aux/stack_alloc.c
     ir_code_gen.c
 )
 

@@ -89,4 +89,6 @@ void calc_callee_num(struct ir_function *fun);
 
 void calc_stack_size(struct ir_function *fun);
 
+// Add stack offset to all stack access
+void add_stack_offset(struct ir_function *fun, __s16 offset);
 #endif

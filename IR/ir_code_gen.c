@@ -199,16 +199,16 @@ void code_gen(struct ir_function *fun) {
     print_ir_prog_cg_alloc(fun);
 
     // Step 7: Calculate stack size
-    // calc_callee_num(fun);
-    // calc_stack_size(fun);
+    calc_callee_num(fun);
+    calc_stack_size(fun);
 
     // Step 8: Shift raw stack operations
-    // add_stack_offset(fun, fun->cg_info.stack_offset);
-    // print_ir_prog_cg_alloc(fun);
+    add_stack_offset(fun, fun->cg_info.stack_offset);
+    print_ir_prog_cg_alloc(fun);
 
     // Step 9: Spill callee saved registers
-    // spill_callee(fun);
-    // print_ir_prog_cg_alloc(fun);
+    spill_callee(fun);
+    print_ir_prog_cg_alloc(fun);
 
     // Step 10: Normalize
 
