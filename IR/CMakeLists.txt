@@ -28,6 +28,7 @@ add_executable(
     aux/stack_alloc.c
     aux/normalize.c
     aux/fix_bb_succ.c
+    aux/relocate.c
     ir_code_gen.c
 )
 

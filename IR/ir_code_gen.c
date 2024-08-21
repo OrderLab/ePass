@@ -146,6 +146,10 @@ void print_ir_prog_cg_alloc(struct ir_function *fun) {
     print_ir_prog_advanced(fun, NULL, NULL, print_ir_alloc);
 }
 
+void synthesize(struct ir_function *fun) {
+    // The last step, synthesizes the program
+}
+
 void code_gen(struct ir_function *fun) {
     // Preparation
 
@@ -216,6 +220,10 @@ void code_gen(struct ir_function *fun) {
 
     // Step 11: Direct Translation
     // translate(fun);
+
+    relocate(fun);
+
+    synthesize(fun);
 
     // Free CG resources
     free_cg_res(fun);

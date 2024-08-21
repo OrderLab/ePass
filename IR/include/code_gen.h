@@ -99,4 +99,6 @@ void add_stack_offset(struct ir_function *fun, __s16 offset);
 
 void normalize(struct ir_function *fun);
 
+void relocate(struct ir_function *fun);
+
 #endif

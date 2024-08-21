@@ -1,13 +1,9 @@
-
-#include <stdio.h>
 #include "array.h"
 #include "dbg.h"
 #include "passes.h"
 
 void add_reach(struct ir_function *fun, struct ir_basic_block *bb) {
-    printf("Visiting a BB..\n");
     if (bb->_visited) {
-        printf("Visited\n");
         return;
     }
     bb->_visited = 1;
@@ -17,7 +13,6 @@ void add_reach(struct ir_function *fun, struct ir_basic_block *bb) {
     __u8                    i = 0;
     array_for(succ, bb->succs) {
         if (i == 0) {
-            printf("First succ\n");
             i = 1;
             // Check if visited
             if ((*succ)->_visited) {
