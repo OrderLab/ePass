@@ -17,9 +17,35 @@ struct pre_ir_insn load_const_to_reg(__u8 dst, struct ir_constant c) {
     struct pre_ir_insn insn;
     insn.dst_reg = dst;
     if (c.type == IR_CONSTANT_U64) {
-        insn
+        insn.it     = IMM64;
+        insn.imm64  = c.data.u64_d;
+        insn.opcode = BPF_MOV | BPF_K | BPF_ALU64;
     }
-    // TODO
+    if (c.type == IR_CONSTANT_S64) {
+        insn.it     = IMM64;
+        insn.imm64  = c.data.s64_d;
+        insn.opcode = BPF_MOV | BPF_K | BPF_ALU64;
+    }
+    if (c.type == IR_CONSTANT_U32) {
+        insn.it     = IMM;
+        insn.imm    = c.data.u32_d;
+        insn.opcode = BPF_MOV | BPF_K | BPF_ALU;
+    }
+    if (c.type == IR_CONSTANT_S32) {
+        insn.it     = IMM;
+        insn.imm    = c.data.s32_d;
+        insn.opcode = BPF_MOV | BPF_K | BPF_ALU;
+    }
+    if (c.type == IR_CONSTANT_U16) {
+        insn.it     = IMM;
+        insn.imm    = c.data.u16_d;
+        insn.opcode = BPF_MOV | BPF_K | BPF_ALU;
+    }
+    if (c.type == IR_CONSTANT_S16) {
+        insn.it     = IMM;
+        insn.imm    = c.data.s16_d;
+        insn.opcode = BPF_MOV | BPF_K | BPF_ALU;
+    }
     return insn;
 }
 
