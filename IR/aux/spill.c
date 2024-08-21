@@ -186,7 +186,26 @@ int check_need_spill(struct ir_function *fun) {
                         //   Choose reg3 != reg1,
                         //   reg3 = stack
                         //   reg1 = add reg1 reg3
-                    }else{
+                        if (t1 == STACK) {
+                            __u8 reg1 = insn_cg(dst_insn)->alloc_reg;
+                            __u8 reg2 = insn_cg(v0->data.insn_d)->alloc_reg;
+                            if (reg1 == reg2) {
+                                __u8 reg = reg1 == 0 ? 1 : 0;
+                                struct ir_insn *new_insn =
+                                    create_assign_insn_cg(insn, *v1, INSERT_FRONT);
+                                insn_cg(new_insn)->dst = fun->cg_info.regs[reg];
+                                v1->type               = IR_VALUE_INSN;
+                                v1->data.insn_d        = fun->cg_info.regs[reg];
+                            } else {
+                                struct ir_insn *new_insn =
+                                    create_assign_insn_cg(insn, *v1, INSERT_FRONT);
+                                insn_cg(new_insn)->dst = fun->cg_info.regs[reg1];
+                                v1->type               = IR_VALUE_INSN;
+                                v1->data.insn_d        = fun->cg_info.regs[reg1];
+                            }
+                            res = 1;
+                        }
+                    } else {
                         // reg = add const const
                         // reg = add stack stack
                         // reg = add stack const
