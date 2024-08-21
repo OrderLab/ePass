@@ -153,32 +153,17 @@ void print_address_value(struct ir_address_value v) {
 
 void print_vr_type(enum ir_vr_type t) {
     switch (t) {
-        case IR_VR_TYPE_U8:
+        case IR_VR_TYPE_8:
             printf("u8");
             break;
-        case IR_VR_TYPE_U64:
+        case IR_VR_TYPE_64:
             printf("u64");
             break;
-        case IR_VR_TYPE_U16:
+        case IR_VR_TYPE_16:
             printf("u16");
             break;
-        case IR_VR_TYPE_U32:
+        case IR_VR_TYPE_32:
             printf("u32");
-            break;
-        case IR_VR_TYPE_S8:
-            printf("s8");
-            break;
-        case IR_VR_TYPE_S16:
-            printf("s16");
-            break;
-        case IR_VR_TYPE_S32:
-            printf("s32");
-            break;
-        case IR_VR_TYPE_S64:
-            printf("s64");
-            break;
-        case IR_VR_TYPE_PTR:
-            printf("ptr");
             break;
         default:
             CRITICAL("Unknown VR type");

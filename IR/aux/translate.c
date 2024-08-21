@@ -49,12 +49,20 @@ struct pre_ir_insn load_const_to_reg(__u8 dst, struct ir_constant c) {
     return insn;
 }
 
-struct pre_ir_insn load_addr_to_reg(__u8 dst, __u8 src) {
+struct pre_ir_insn load_addr_to_reg(__u8 dst, struct ir_address_value addr) {
     // MOV dst src
     struct pre_ir_insn insn;
-    insn.opcode  = BPF_MOV | BPF_X | BPF_ALU64;
     insn.dst_reg = dst;
-    insn.src_reg = src;
+    insn.off = addr.offset;
+    if (addr.value.type == IR_VALUE_STACK_PTR) {
+    } else if (addr.value.type == IR_VALUE_INSN) {
+        // Must be REG
+        DBGASSERT(vtype(addr.value) == REG);
+        // Load reg (addr) to reg
+    } else if (addr.value.type == IR_VALUE_CONSTANT) {
+    } else {
+        CRITICAL("Error");
+    }
     return insn;
 }
 
@@ -79,7 +87,7 @@ void translate(struct ir_function *fun) {
             } else if (insn->op == IR_INSN_LOAD) {
                 CRITICAL("Error");
             } else if (insn->op == IR_INSN_LOADRAW) {
-                // OK
+                DBGASSERT(tdst == REG);
             } else if (insn->op == IR_INSN_STORERAW) {
             } else if (insn->op >= IR_INSN_ADD && insn->op < IR_INSN_CALL) {
             } else if (insn->op == IR_INSN_ASSIGN) {

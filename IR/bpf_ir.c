@@ -409,31 +409,16 @@ struct ir_insn *create_insn_front(struct ir_basic_block *bb) {
     return insn;
 }
 
-enum ir_vr_type to_ir_ld_s(__u8 size) {
-    switch (size) {
-        case BPF_W:
-            return IR_VR_TYPE_S32;
-        case BPF_H:
-            return IR_VR_TYPE_S16;
-        case BPF_B:
-            return IR_VR_TYPE_S8;
-        case BPF_DW:
-            return IR_VR_TYPE_S64;
-        default:
-            CRITICAL("Error");
-    }
-}
-
 enum ir_vr_type to_ir_ld_u(__u8 size) {
     switch (size) {
         case BPF_W:
-            return IR_VR_TYPE_U32;
+            return IR_VR_TYPE_32;
         case BPF_H:
-            return IR_VR_TYPE_U16;
+            return IR_VR_TYPE_16;
         case BPF_B:
-            return IR_VR_TYPE_U8;
+            return IR_VR_TYPE_8;
         case BPF_DW:
-            return IR_VR_TYPE_U64;
+            return IR_VR_TYPE_64;
         default:
             CRITICAL("Error");
     }

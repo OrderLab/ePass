@@ -89,7 +89,7 @@ void spill_callee(struct ir_function *fun) {
             st->op        = IR_INSN_STORERAW;
             st->values[0] = ir_value_insn(fun->cg_info.regs[i]);
             st->value_num = 1;
-            st->vr_type   = IR_VR_TYPE_U64;
+            st->vr_type   = IR_VR_TYPE_64;
             struct ir_value val;
             val.type                       = IR_VALUE_STACK_PTR;
             st->addr_val.value             = val;
@@ -104,7 +104,7 @@ void spill_callee(struct ir_function *fun) {
                 insert_at_bb(ld, bb, INSERT_BACK_BEFORE_JMP);
                 ld->op        = IR_INSN_LOADRAW;
                 ld->value_num = 0;
-                ld->vr_type   = IR_VR_TYPE_U64;
+                ld->vr_type   = IR_VR_TYPE_64;
                 struct ir_value val;
                 val.type            = IR_VALUE_STACK_PTR;
                 ld->addr_val.value  = val;

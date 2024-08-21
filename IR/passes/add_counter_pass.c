@@ -4,7 +4,7 @@
 
 void add_counter(struct ir_function *fun) {
     struct ir_basic_block *entry      = fun->entry;
-    struct ir_insn        *alloc_insn = create_alloc_insn_bb(entry, IR_VR_TYPE_U64, INSERT_FRONT);
+    struct ir_insn        *alloc_insn = create_alloc_insn_bb(entry, IR_VR_TYPE_64, INSERT_FRONT);
     struct ir_value        val;
     val.type                       = IR_VALUE_CONSTANT;
     val.data.constant_d.type       = IR_CONSTANT_U64;
@@ -26,7 +26,7 @@ void add_counter(struct ir_function *fun) {
         }
         val.type                  = IR_VALUE_INSN;
         val.data.insn_d           = alloc_insn;
-        struct ir_insn *load_insn = create_load_insn(last, IR_VR_TYPE_U64, val, INSERT_FRONT);
+        struct ir_insn *load_insn = create_load_insn(last, IR_VR_TYPE_64, val, INSERT_FRONT);
         struct ir_value val1;
         val1.type                       = IR_VALUE_CONSTANT;
         val1.data.constant_d.type       = IR_CONSTANT_U64;
