@@ -452,7 +452,7 @@ void print_bb_succ(struct ir_basic_block *bb) {
 
 void print_ir_prog(struct ir_function *fun) {
     tag_ir(fun);
-    print_ir_bb(fun->entry, print_bb_succ, NULL, NULL);
+    print_ir_bb(fun->entry, NULL, NULL, NULL);
     clean_tag(fun);
 }
 
