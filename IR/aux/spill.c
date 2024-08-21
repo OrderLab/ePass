@@ -68,6 +68,7 @@ void spill_callee(struct ir_function *fun) {
             off++;
         }
     }
+    DBGASSERT(off == fun->cg_info.callee_num);
     add_stack_offset_vr(fun, off);
     off = 0;
     for (__u8 i = BPF_REG_6; i < BPF_REG_10; ++i) {

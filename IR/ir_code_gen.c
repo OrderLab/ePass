@@ -204,9 +204,10 @@ void code_gen(struct ir_function *fun) {
 
     // Step 8: Shift raw stack operations
     add_stack_offset(fun, fun->cg_info.stack_offset);
+    print_ir_prog_cg_alloc(fun);
 
     // Step 9: Spill callee saved registers
-    // spill_callee(fun);
+    spill_callee(fun);
     print_ir_prog_cg_alloc(fun);
 
     // Step 10: Normalize
