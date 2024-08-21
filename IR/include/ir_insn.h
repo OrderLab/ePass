@@ -21,6 +21,8 @@ void replace_all_usage_except(struct ir_insn *insn, struct ir_value rep, struct 
 
 void erase_insn(struct ir_insn *insn);
 
+__u8 is_last_insn(struct ir_insn *insn);
+
 // Erase an instruction without checking the users
 // Used in code gen
 void erase_insn_raw(struct ir_insn *insn);
