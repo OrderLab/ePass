@@ -41,16 +41,34 @@ void check_insn(struct ir_function *fun) {
         struct ir_basic_block *bb = *pos;
         struct ir_insn        *insn;
         list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
-            if (insn->op == IR_INSN_LOADRAW) {
+            if (insn->op == IR_INSN_LOADRAW || insn->op == IR_INSN_ALLOC ||
+                insn->op == IR_INSN_JA || insn->op == IR_INSN_PHI) {
                 if (!(insn->value_num == 0)) {
                     print_ir_insn_err(insn, NULL);
-                    CRITICAL("Loadraw instruction has wrong number of values");
+                    CRITICAL("Instruction should have no value");
                 }
             }
-            if (insn->op == IR_INSN_STORERAW) {
+            if (insn->op == IR_INSN_STORERAW || insn->op == IR_INSN_LOAD ||
+                insn->op == IR_INSN_RET) {
                 if (!(insn->value_num == 1)) {
                     print_ir_insn_err(insn, NULL);
-                    CRITICAL("Storeraw instruction has wrong number of values");
+                    CRITICAL("Instruction should have 1 values");
+                }
+            }
+
+            if (insn->op == IR_INSN_STORE || (insn->op >= IR_INSN_ADD && insn->op < IR_INSN_CALL) ||
+                (insn->op >= IR_INSN_JEQ && insn->op < IR_INSN_PHI)) {
+                if (!(insn->value_num == 2)) {
+                    print_ir_insn_err(insn, NULL);
+                    CRITICAL("Instruction should have 2 values");
+                }
+            }
+
+            if (insn->op == IR_INSN_STORE || insn->op == IR_INSN_LOAD) {
+                if (!(insn->values[0].type == IR_VALUE_INSN &&
+                      insn->values[0].data.insn_d->op == IR_INSN_ALLOC)) {
+                    print_ir_insn_err(insn, NULL);
+                    CRITICAL("Value[0] should be an alloc instruction");
                 }
             }
         }
