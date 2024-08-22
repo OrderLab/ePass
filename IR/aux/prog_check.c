@@ -94,8 +94,9 @@ void check_insn_operand(struct ir_insn *insn) {
             }
             if (!found) {
                 // Error!
-                print_ir_insn_err(insn, NULL);
-                CRITICAL("Operand is not used by the instruction");
+                print_ir_insn_err(v->data.insn_d, "Operand defined here");
+                print_ir_insn_err(insn, "Instruction that uses the operand");
+                CRITICAL("Instruction not found in the operand's users");
             }
         }
     }
