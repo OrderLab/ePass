@@ -490,3 +490,43 @@ void print_ir_prog_advanced(struct ir_function *fun, void (*post_bb)(struct ir_b
     print_ir_bb(fun->entry, post_bb, post_insn, print_insn_name);
     clean_tag(fun);
 }
+
+void print_ir_err(struct ir_function *fun, struct ir_insn *insn) {
+    printf("--- Current IR ---\n");
+    print_ir_prog(fun);
+    printf("--- Current IR ---\n");
+    tag_ir(fun);
+    printf("In BB %zu,\n", insn->parent_bb->_id);
+    struct ir_insn *prev = prev_insn(insn);
+    struct ir_insn *next = next_insn(insn);
+    if (prev) {
+        printf("  ");
+        if (!is_void(prev)) {
+            printf("%%%zu", prev->_insn_id);
+            printf(" = ");
+        }
+        print_ir_insn(prev);
+        printf("\n");
+    } else {
+        printf("  (No instruction)\n");
+    }
+    printf("  ");
+    if (!is_void(insn)) {
+        printf("%%%zu", insn->_insn_id);
+        printf(" = ");
+    }
+    print_ir_insn(insn);
+    printf("         <--- Error!\n");
+    if (next) {
+        printf("  ");
+        if (!is_void(next)) {
+            printf("%%%zu", next->_insn_id);
+            printf(" = ");
+        }
+        print_ir_insn(next);
+        printf("\n");
+    } else {
+        printf("  (No instruction)\n");
+    }
+    clean_tag(fun);
+}

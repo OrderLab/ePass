@@ -5,7 +5,7 @@
 #include "ir_helper.h"
 #include "list.h"
 
-void check_insn_users_use_insn(struct ir_insn *insn) {
+void check_insn_users_use_insn(struct ir_function *fun, struct ir_insn *insn) {
     struct ir_insn **pos;
     array_for(pos, insn->users) {
         struct ir_insn *user = *pos;
@@ -35,7 +35,7 @@ void check_insn(struct ir_function *fun) {
     // - Load uses alloc
 }
 
-void check_insn_operand(struct ir_insn *insn) {
+void check_insn_operand(struct ir_function *fun, struct ir_insn *insn) {
     struct array      operands = get_operands(insn);
     struct ir_value **val;
     array_for(val, operands) {
@@ -54,6 +54,7 @@ void check_insn_operand(struct ir_insn *insn) {
             }
             if (!found) {
                 // Error!
+                print_ir_err(fun, insn);
                 CRITICAL("Operand is not used by the instruction");
             }
         }
@@ -66,7 +67,7 @@ void check_users(struct ir_function *fun) {
     // Check FunctionCallArgument Instructions
     for (__u8 i = 0; i < MAX_FUNC_ARG; ++i) {
         struct ir_insn *insn = fun->function_arg[i];
-        check_insn_users_use_insn(insn);
+        check_insn_users_use_insn(fun, insn);
     }
     struct ir_basic_block **pos;
     array_for(pos, fun->reachable_bbs) {
@@ -74,9 +75,9 @@ void check_users(struct ir_function *fun) {
         struct ir_insn        *insn;
         list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
             // Check users of this instruction
-            check_insn_users_use_insn(insn);
+            check_insn_users_use_insn(fun, insn);
             // Check operands of this instruction
-            check_insn_operand(insn);
+            check_insn_operand(fun, insn);
         }
     }
 }
@@ -138,6 +139,7 @@ void check_jumping(struct ir_function *fun) {
                             // Error
                             CRITICAL("successor exists even after return statement");
                         }
+                        continue;
                     }
                     // For conditional jumps, both BB1 and BB2 should be successors
                     if (is_jmp_cond(insn)) {
@@ -159,6 +161,7 @@ void check_jumping(struct ir_function *fun) {
                         // For unconditional jumps, there should be only one successor
                         if (bb->succs.num_elem != 1) {
                             // Error
+                            print_ir_err(fun, insn);
                             CRITICAL("Unconditional jump statement with more than one successor");
                         }
                         // Check if the jump operand is the only successor of BB

@@ -57,10 +57,6 @@ void fix_bb_succ(struct ir_function *fun);
 
 void prog_check(struct ir_function *fun);
 
-void check_insn_operand(struct ir_insn *insn);
-
-void check_insn_users_use_insn(struct ir_insn *insn);
-
 void check_users(struct ir_function *fun);
 
 #endif

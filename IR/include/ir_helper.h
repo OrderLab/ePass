@@ -44,4 +44,6 @@ void print_raw_ir_bb(struct ir_basic_block *bb);
 
 void print_insn_ptr_base(struct ir_insn *insn);
 
+void print_ir_err(struct ir_function *fun, struct ir_insn *insn);
+
 #endif
