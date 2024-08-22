@@ -15,6 +15,9 @@ struct code_gen_info {
 
     __s16 stack_offset;
 
+    // Number of instructions
+    size_t prog_size;
+
     struct bpf_insn *prog;
 };
 
