@@ -81,7 +81,104 @@ void check_users(struct ir_function *fun) {
     }
 }
 
-void check_jumping(struct ir_function *fun) {}
+void check_jumping(struct ir_function *fun) {
+    // Check if the jump instruction is at the end of the BB
+    struct ir_basic_block **pos;
+    array_for(pos, fun->reachable_bbs) {
+        struct ir_basic_block *bb = *pos;
+
+        // check if BB is a succ of its preds
+        struct ir_basic_block **pred;
+        array_for(pred, bb->preds) {
+            struct ir_basic_block  *pred_bb = *pred;
+            struct ir_basic_block **succ;
+            int                     found = 0;
+            array_for(succ, pred_bb->succs) {
+                struct ir_basic_block *succ_bb = *succ;
+                if (succ_bb == bb) {
+                    found = 1;
+                    break;
+                }
+            }
+            if (!found) {
+                // Error
+                CRITICAL("BB not a succ of its pred");
+            }
+        }
+
+        struct ir_basic_block **succ;
+        array_for(succ, bb->succs) {
+            struct ir_basic_block  *succ_bb = *succ;
+            struct ir_basic_block **p;
+            int                     found = 0;
+            array_for(p, succ_bb->preds) {
+                struct ir_basic_block *sp = *p;
+                if (sp == bb) {
+                    found = 1;
+                    break;
+                }
+            }
+            if (!found) {
+                // Error
+                CRITICAL("BB not a pred of its succ");
+            }
+        }
+
+        struct ir_insn *insn;
+        int             jmp_exists = 0;
+        list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
+            if (is_jmp(insn)) {
+                jmp_exists = 1;
+                if (!is_last_insn(insn)) {
+                    // Error
+                    CRITICAL("Jump statement not at the end of a BB");
+                } else {
+                    if (insn->op == IR_INSN_RET) {
+                        if (bb->succs.num_elem != 0) {
+                            // Error
+                            CRITICAL("successor exists even after return statement");
+                        }
+                    }
+                    // For conditional jumps, both BB1 and BB2 should be successors
+                    if (is_jmp_cond(insn)) {
+                        // Get the two basic blocks that the conditional jump statement jumps to
+                        struct ir_basic_block *bb1 = insn->bb1;
+                        struct ir_basic_block *bb2 = insn->bb2;
+                        // Check if the two basic blocks are successors of the current BB
+                        if (bb->succs.num_elem != 2) {
+                            CRITICAL("BB succs error");
+                        }
+                        if (bb->succs.data[0] != bb1 || bb->succs.data[1] != bb2) {
+                            // Error
+                            CRITICAL(
+                                "Conditional jump statement with operands that are not successors "
+                                "of the current BB");
+                        }
+                    } else {
+                        // For unconditional jumps, there should be only one successor
+                        if (bb->succs.num_elem != 1) {
+                            // Error
+                            CRITICAL("Unconditional jump statement with more than one successor");
+                        }
+                        // Check if the jump operand is the only successor of BB
+                        struct ir_basic_block *succ = bb->succs.data[0];
+                        if (succ != insn->bb1) {
+                            // Error
+                            CRITICAL("The jump operand is not the only successor of BB");
+                        }
+                    }
+                }
+            }
+        }
+        // If there is no jump instruction (means no ret), there should be one successor
+        if (!jmp_exists) {
+            if (bb->succs.num_elem != 1) {
+                // Error
+                CRITICAL("Succ num error");
+            }
+        }
+    }
+}
 
 // Check if the PHI nodes are at the beginning of the BB
 void check_phi(struct ir_function *fun) {

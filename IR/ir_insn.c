@@ -96,7 +96,7 @@ struct array get_operands(struct ir_insn *insn) {
     return uses;
 }
 
-__u8 is_last_insn(struct ir_insn *insn) {
+int is_last_insn(struct ir_insn *insn) {
     return insn->parent_bb->ir_insn_head.prev == &insn->list_ptr;
 }
 
@@ -386,6 +386,10 @@ struct ir_insn *create_ret_insn_bb(struct ir_basic_block *bb, struct ir_value va
 
 int is_jmp(struct ir_insn *insn) {
     return (insn->op >= IR_INSN_JA && insn->op <= IR_INSN_JNE) || insn->op == IR_INSN_RET;
+}
+
+int is_jmp_cond(struct ir_insn *insn) {
+    return (insn->op >= IR_INSN_JEQ && insn->op < IR_INSN_PHI);
 }
 
 int is_void(struct ir_insn *insn) {
