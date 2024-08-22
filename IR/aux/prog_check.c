@@ -32,7 +32,7 @@ void check_insn_users_use_insn(struct ir_insn *insn) {
 void check_insn(struct ir_function *fun) {
     // Check syntax
     // - Store uses alloc
-    // - `ret` at the end of BB chains
+    // - Load uses alloc
 }
 
 void check_insn_operand(struct ir_insn *insn) {
@@ -148,7 +148,8 @@ void check_jumping(struct ir_function *fun) {
                         if (bb->succs.num_elem != 2) {
                             CRITICAL("BB succs error");
                         }
-                        if (bb->succs.data[0] != bb1 || bb->succs.data[1] != bb2) {
+                        if (*array_get(&bb->succs, 0, struct ir_basic_block *) != bb1 ||
+                            *array_get(&bb->succs, 1, struct ir_basic_block *) != bb2) {
                             // Error
                             CRITICAL(
                                 "Conditional jump statement with operands that are not successors "
@@ -161,8 +162,7 @@ void check_jumping(struct ir_function *fun) {
                             CRITICAL("Unconditional jump statement with more than one successor");
                         }
                         // Check if the jump operand is the only successor of BB
-                        struct ir_basic_block *succ = bb->succs.data[0];
-                        if (succ != insn->bb1) {
+                        if (*array_get(&bb->succs, 0, struct ir_basic_block *) != insn->bb1) {
                             // Error
                             CRITICAL("The jump operand is not the only successor of BB");
                         }
@@ -204,4 +204,5 @@ void check_phi(struct ir_function *fun) {
 void prog_check(struct ir_function *fun) {
     check_phi(fun);
     check_users(fun);
+    check_jumping(fun);
 }
