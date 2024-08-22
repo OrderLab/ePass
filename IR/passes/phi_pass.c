@@ -39,10 +39,11 @@ void try_remove_trivial_phi(struct ir_insn *phi) {
 
 void remove_trivial_phi(struct ir_function *fun) {
     printf("PHI removal\n");
-    for (size_t i = 0; i < fun->reachable_bbs.num_elem; ++i) {
-        struct ir_basic_block *bb = ((struct ir_basic_block **)(fun->reachable_bbs.data))[i];
-        struct ir_insn        *pos, *n;
-        list_for_each_entry_safe(pos, n, &bb->ir_insn_head, list_ptr) {
+    struct ir_basic_block **bpos;
+    array_for(bpos, fun->reachable_bbs) {
+        struct ir_basic_block *bb = *bpos;
+        struct ir_insn        *pos, *tmp;
+        list_for_each_entry_safe(pos, tmp, &bb->ir_insn_head, list_ptr) {
             try_remove_trivial_phi(pos);
         }
     }
