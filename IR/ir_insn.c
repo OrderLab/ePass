@@ -96,7 +96,7 @@ struct array get_operands(struct ir_insn *insn) {
     return uses;
 }
 
-__u8 is_last_insn(struct ir_insn *insn) {
+int is_last_insn(struct ir_insn *insn) {
     return insn->parent_bb->ir_insn_head.prev == &insn->list_ptr;
 }
 
