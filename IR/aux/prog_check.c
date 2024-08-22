@@ -24,6 +24,7 @@ void check_insn_users_use_insn(struct ir_function *fun, struct ir_insn *insn) {
         array_free(&operands);
         if (!found) {
             // Error!
+            print_ir_insn_err(fun, insn);
             CRITICAL("User does not use the instruction");
         }
     }
@@ -54,7 +55,7 @@ void check_insn_operand(struct ir_function *fun, struct ir_insn *insn) {
             }
             if (!found) {
                 // Error!
-                print_ir_err(fun, insn);
+                print_ir_insn_err(fun, insn);
                 CRITICAL("Operand is not used by the instruction");
             }
         }
@@ -103,6 +104,7 @@ void check_jumping(struct ir_function *fun) {
             }
             if (!found) {
                 // Error
+                print_ir_bb_err(fun, bb);
                 CRITICAL("BB not a succ of its pred");
             }
         }
@@ -121,6 +123,7 @@ void check_jumping(struct ir_function *fun) {
             }
             if (!found) {
                 // Error
+                print_ir_bb_err(fun, bb);
                 CRITICAL("BB not a pred of its succ");
             }
         }
@@ -132,11 +135,13 @@ void check_jumping(struct ir_function *fun) {
                 jmp_exists = 1;
                 if (!is_last_insn(insn)) {
                     // Error
+                    print_ir_insn_err(fun, insn);
                     CRITICAL("Jump statement not at the end of a BB");
                 } else {
                     if (insn->op == IR_INSN_RET) {
                         if (bb->succs.num_elem != 0) {
                             // Error
+                            print_ir_insn_err(fun, insn);
                             CRITICAL("successor exists even after return statement");
                         }
                         continue;
@@ -161,12 +166,13 @@ void check_jumping(struct ir_function *fun) {
                         // For unconditional jumps, there should be only one successor
                         if (bb->succs.num_elem != 1) {
                             // Error
-                            print_ir_err(fun, insn);
+                            print_ir_insn_err(fun, insn);
                             CRITICAL("Unconditional jump statement with more than one successor");
                         }
                         // Check if the jump operand is the only successor of BB
                         if (*array_get(&bb->succs, 0, struct ir_basic_block *) != insn->bb1) {
                             // Error
+                            print_ir_insn_err(fun, insn);
                             CRITICAL("The jump operand is not the only successor of BB");
                         }
                     }
@@ -177,6 +183,7 @@ void check_jumping(struct ir_function *fun) {
         if (!jmp_exists) {
             if (bb->succs.num_elem != 1) {
                 // Error
+                print_ir_bb_err(fun, bb);
                 CRITICAL("Succ num error");
             }
         }
@@ -194,6 +201,7 @@ void check_phi(struct ir_function *fun) {
             if (insn->op == IR_INSN_PHI) {
                 if (!all_phi) {
                     // Error!
+                    print_ir_insn_err(fun, insn);
                     CRITICAL("Phi node not at the beginning of a BB");
                 }
             } else {

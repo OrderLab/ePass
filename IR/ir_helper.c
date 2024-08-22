@@ -491,7 +491,7 @@ void print_ir_prog_advanced(struct ir_function *fun, void (*post_bb)(struct ir_b
     clean_tag(fun);
 }
 
-void print_ir_err(struct ir_function *fun, struct ir_insn *insn) {
+void print_ir_insn_err(struct ir_function *fun, struct ir_insn *insn) {
     printf("--- Current IR ---\n");
     print_ir_prog(fun);
     printf("--- Current IR ---\n");
@@ -528,5 +528,14 @@ void print_ir_err(struct ir_function *fun, struct ir_insn *insn) {
     } else {
         printf("  (No instruction)\n");
     }
+    clean_tag(fun);
+}
+
+void print_ir_bb_err(struct ir_function *fun, struct ir_basic_block *bb) {
+    printf("--- Current IR ---\n");
+    print_ir_prog(fun);
+    printf("--- Current IR ---\n");
+    tag_ir(fun);
+    printf("BB %zu encountered an error:\n", bb->_id);
     clean_tag(fun);
 }
