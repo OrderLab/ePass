@@ -93,6 +93,10 @@ struct array get_operands(struct ir_insn *insn) {
             array_push(&uses, &pos);
         }
     }
+    if (insn->op == IR_INSN_LOADRAW || insn->op == IR_INSN_STORERAW) {
+        pos = &insn->addr_val.value;
+        array_push(&uses, &pos);
+    }
     return uses;
 }
 

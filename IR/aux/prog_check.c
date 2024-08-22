@@ -5,7 +5,7 @@
 #include "ir_helper.h"
 #include "list.h"
 
-void check_insn_users_use_insn(struct ir_function *fun, struct ir_insn *insn) {
+void check_insn_users_use_insn(struct ir_insn *insn) {
     struct ir_insn **pos;
     array_for(pos, insn->users) {
         struct ir_insn *user = *pos;
@@ -24,7 +24,8 @@ void check_insn_users_use_insn(struct ir_function *fun, struct ir_insn *insn) {
         array_free(&operands);
         if (!found) {
             // Error!
-            print_ir_insn_err(fun, insn);
+            print_ir_insn_err(insn, "The instruction");
+            print_ir_insn_err(user, "The user of that instruction");
             CRITICAL("User does not use the instruction");
         }
     }
@@ -32,11 +33,31 @@ void check_insn_users_use_insn(struct ir_function *fun, struct ir_insn *insn) {
 
 void check_insn(struct ir_function *fun) {
     // Check syntax
+    // Check value num
     // - Store uses alloc
     // - Load uses alloc
+    struct ir_basic_block **pos;
+    array_for(pos, fun->reachable_bbs) {
+        struct ir_basic_block *bb = *pos;
+        struct ir_insn        *insn;
+        list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
+            if (insn->op == IR_INSN_LOADRAW) {
+                if (!(insn->value_num == 0)) {
+                    print_ir_insn_err(insn, NULL);
+                    CRITICAL("Loadraw instruction has wrong number of values");
+                }
+            }
+            if (insn->op == IR_INSN_STORERAW) {
+                if (!(insn->value_num == 1)) {
+                    print_ir_insn_err(insn, NULL);
+                    CRITICAL("Storeraw instruction has wrong number of values");
+                }
+            }
+        }
+    }
 }
 
-void check_insn_operand(struct ir_function *fun, struct ir_insn *insn) {
+void check_insn_operand(struct ir_insn *insn) {
     struct array      operands = get_operands(insn);
     struct ir_value **val;
     array_for(val, operands) {
@@ -55,7 +76,7 @@ void check_insn_operand(struct ir_function *fun, struct ir_insn *insn) {
             }
             if (!found) {
                 // Error!
-                print_ir_insn_err(fun, insn);
+                print_ir_insn_err(insn, NULL);
                 CRITICAL("Operand is not used by the instruction");
             }
         }
@@ -68,7 +89,7 @@ void check_users(struct ir_function *fun) {
     // Check FunctionCallArgument Instructions
     for (__u8 i = 0; i < MAX_FUNC_ARG; ++i) {
         struct ir_insn *insn = fun->function_arg[i];
-        check_insn_users_use_insn(fun, insn);
+        check_insn_users_use_insn(insn);
     }
     struct ir_basic_block **pos;
     array_for(pos, fun->reachable_bbs) {
@@ -76,9 +97,9 @@ void check_users(struct ir_function *fun) {
         struct ir_insn        *insn;
         list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
             // Check users of this instruction
-            check_insn_users_use_insn(fun, insn);
+            check_insn_users_use_insn(insn);
             // Check operands of this instruction
-            check_insn_operand(fun, insn);
+            check_insn_operand(insn);
         }
     }
 }
@@ -104,7 +125,7 @@ void check_jumping(struct ir_function *fun) {
             }
             if (!found) {
                 // Error
-                print_ir_bb_err(fun, bb);
+                print_ir_bb_err(bb);
                 CRITICAL("BB not a succ of its pred");
             }
         }
@@ -123,7 +144,7 @@ void check_jumping(struct ir_function *fun) {
             }
             if (!found) {
                 // Error
-                print_ir_bb_err(fun, bb);
+                print_ir_bb_err(bb);
                 CRITICAL("BB not a pred of its succ");
             }
         }
@@ -135,13 +156,15 @@ void check_jumping(struct ir_function *fun) {
                 jmp_exists = 1;
                 if (!is_last_insn(insn)) {
                     // Error
-                    print_ir_insn_err(fun, insn);
+
+                    print_ir_insn_err(insn, NULL);
                     CRITICAL("Jump statement not at the end of a BB");
                 } else {
                     if (insn->op == IR_INSN_RET) {
                         if (bb->succs.num_elem != 0) {
                             // Error
-                            print_ir_insn_err(fun, insn);
+
+                            print_ir_insn_err(insn, NULL);
                             CRITICAL("successor exists even after return statement");
                         }
                         continue;
@@ -166,13 +189,15 @@ void check_jumping(struct ir_function *fun) {
                         // For unconditional jumps, there should be only one successor
                         if (bb->succs.num_elem != 1) {
                             // Error
-                            print_ir_insn_err(fun, insn);
+
+                            print_ir_insn_err(insn, NULL);
                             CRITICAL("Unconditional jump statement with more than one successor");
                         }
                         // Check if the jump operand is the only successor of BB
                         if (*array_get(&bb->succs, 0, struct ir_basic_block *) != insn->bb1) {
                             // Error
-                            print_ir_insn_err(fun, insn);
+
+                            print_ir_insn_err(insn, NULL);
                             CRITICAL("The jump operand is not the only successor of BB");
                         }
                     }
@@ -183,7 +208,7 @@ void check_jumping(struct ir_function *fun) {
         if (!jmp_exists) {
             if (bb->succs.num_elem != 1) {
                 // Error
-                print_ir_bb_err(fun, bb);
+                print_ir_bb_err(bb);
                 CRITICAL("Succ num error");
             }
         }
@@ -201,7 +226,7 @@ void check_phi(struct ir_function *fun) {
             if (insn->op == IR_INSN_PHI) {
                 if (!all_phi) {
                     // Error!
-                    print_ir_insn_err(fun, insn);
+                    print_ir_insn_err(insn, NULL);
                     CRITICAL("Phi node not at the beginning of a BB");
                 }
             } else {
@@ -213,6 +238,9 @@ void check_phi(struct ir_function *fun) {
 
 // Check that the program is valid and able to be compiled
 void prog_check(struct ir_function *fun) {
+    print_ir_err_init(fun);
+
+    check_insn(fun);
     check_phi(fun);
     check_users(fun);
     check_jumping(fun);
