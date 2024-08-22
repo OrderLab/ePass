@@ -1,8 +1,8 @@
-#include "prog_check.h"
 #include "array.h"
 #include "bpf_ir.h"
 #include "dbg.h"
 #include "ir_insn.h"
+#include "ir_helper.h"
 #include "list.h"
 
 void check_insn_users_use_insn(struct ir_insn *insn) {
@@ -203,4 +203,5 @@ void check_phi(struct ir_function *fun) {
 // Check that the program is valid and able to be compiled
 void prog_check(struct ir_function *fun) {
     check_phi(fun);
+    check_users(fun);
 }

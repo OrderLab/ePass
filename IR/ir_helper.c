@@ -153,32 +153,17 @@ void print_address_value(struct ir_address_value v) {
 
 void print_vr_type(enum ir_vr_type t) {
     switch (t) {
-        case IR_VR_TYPE_U8:
+        case IR_VR_TYPE_8:
             printf("u8");
             break;
-        case IR_VR_TYPE_U64:
+        case IR_VR_TYPE_64:
             printf("u64");
             break;
-        case IR_VR_TYPE_U16:
+        case IR_VR_TYPE_16:
             printf("u16");
             break;
-        case IR_VR_TYPE_U32:
+        case IR_VR_TYPE_32:
             printf("u32");
-            break;
-        case IR_VR_TYPE_S8:
-            printf("s8");
-            break;
-        case IR_VR_TYPE_S16:
-            printf("s16");
-            break;
-        case IR_VR_TYPE_S32:
-            printf("s32");
-            break;
-        case IR_VR_TYPE_S64:
-            printf("s64");
-            break;
-        case IR_VR_TYPE_PTR:
-            printf("ptr");
             break;
         default:
             CRITICAL("Unknown VR type");
@@ -453,6 +438,16 @@ void tag_ir(struct ir_function *fun) {
     clean_env(fun);
     assign_id(fun->entry, &cnt, &bb_cnt);
     clean_env(fun);
+}
+
+void print_bb_succ(struct ir_basic_block *bb) {
+    printf("succs: ");
+    struct ir_basic_block **next;
+    array_for(next, bb->succs) {
+        print_bb_ptr(*next);
+        printf(" ");
+    }
+    printf("\n\n");
 }
 
 void print_ir_prog(struct ir_function *fun) {

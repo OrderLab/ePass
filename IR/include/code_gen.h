@@ -1,6 +1,7 @@
 #ifndef __BPF_IR_CODE_GEN_H__
 #define __BPF_IR_CODE_GEN_H__
 
+#include <stdio.h>
 #include "bpf_ir.h"
 #include "ir_fun.h"
 
@@ -8,7 +9,7 @@ void code_gen(struct ir_function *fun);
 
 // Extra information needed for code gen
 struct ir_bb_cg_extra {
-    // Liveness analysis
+    size_t insn_cnt;
 };
 
 struct ir_insn_cg_extra {
@@ -26,7 +27,10 @@ struct ir_insn_cg_extra {
     struct array adj;
 
     // Translated pre_ir_insn
-    struct pre_ir_insn translated;
+    struct pre_ir_insn translated[2];
+
+    // Translated number
+    __u8 translated_num;
 
     // Whether the VR is allocated with a real register
     // If it's a pre-colored register, it's also 1
@@ -42,7 +46,9 @@ struct ir_insn_cg_extra {
     // Valid number: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
     __u8 alloc_reg;
 };
+
 enum val_type {
+    UNDEF,
     REG,
     CONST,
     STACK,
@@ -79,5 +85,20 @@ int check_need_spill(struct ir_function *fun);
 void translate(struct ir_function *fun);
 
 void spill_callee(struct ir_function *fun);
+
+enum val_type vtype_insn(struct ir_insn *insn);
+
+enum val_type vtype(struct ir_value val);
+
+void calc_callee_num(struct ir_function *fun);
+
+void calc_stack_size(struct ir_function *fun);
+
+// Add stack offset to all stack access
+void add_stack_offset(struct ir_function *fun, __s16 offset);
+
+void normalize(struct ir_function *fun);
+
+void relocate(struct ir_function *fun);
 
 #endif

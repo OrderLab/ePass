@@ -218,6 +218,7 @@ struct ir_insn *create_store_insn_base(struct ir_basic_block *bb, struct ir_insn
     new_insn->values[1]      = val;
     new_insn->value_num      = 2;
     val_add_user(nv, new_insn);
+    val_add_user(val, new_insn);
     return new_insn;
 }
 

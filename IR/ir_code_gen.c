@@ -6,7 +6,7 @@
 #include "dbg.h"
 #include "ir_insn.h"
 #include "list.h"
-#include "prog_check.h"
+#include "passes.h"
 #include "ir_helper.h"
 
 struct ir_insn_cg_extra *init_insn_cg(struct ir_insn *insn) {
@@ -130,9 +130,23 @@ struct ir_insn *dst(struct ir_insn *insn) {
     return insn_cg(insn)->dst;
 }
 
-void print_ir_prog_cg(struct ir_function *fun) {
+void print_ir_prog_pre_cg(struct ir_function *fun) {
     printf("-----------------\n");
     print_ir_prog_advanced(fun, NULL, NULL, NULL);
+}
+
+void print_ir_prog_cg_dst(struct ir_function *fun) {
+    printf("-----------------\n");
+    print_ir_prog_advanced(fun, NULL, NULL, print_ir_dst);
+}
+
+void print_ir_prog_cg_alloc(struct ir_function *fun) {
+    printf("-----------------\n");
+    print_ir_prog_advanced(fun, NULL, NULL, print_ir_alloc);
+}
+
+void synthesize(struct ir_function *fun) {
+    // The last step, synthesizes the program
 }
 
 void code_gen(struct ir_function *fun) {
@@ -142,22 +156,20 @@ void code_gen(struct ir_function *fun) {
     prog_check(fun);
     // Step 2: Eliminate SSA
     to_cssa(fun);
-    check_users(fun);
-    print_ir_prog_cg(fun);
+    prog_check(fun);
+    print_ir_prog_pre_cg(fun);
 
     // Init CG, start real code generation
     init_cg(fun);
     explicit_reg(fun);  // Still in SSA form, users are available
-    print_ir_prog_cg(fun);
-    printf("-----------------\n");
-    print_ir_prog_advanced(fun, NULL, NULL, print_ir_dst);
+    print_ir_prog_pre_cg(fun);
+    print_ir_prog_cg_dst(fun);
 
     // SSA Destruction
     // users not available from now on
 
     remove_phi(fun);
-    printf("-----------------\nPhi removed:\n");
-    print_ir_prog_advanced(fun, NULL, NULL, print_ir_dst);
+    print_ir_prog_cg_dst(fun);
 
     int need_spill = 1;
 
@@ -174,26 +186,43 @@ void code_gen(struct ir_function *fun) {
         graph_coloring(fun);
         coaleasing(fun);
         print_interference_graph(fun);
-        print_ir_prog_advanced(fun, NULL, NULL, print_ir_alloc);
+        print_ir_prog_cg_alloc(fun);
 
+        // Step 6: Check if need to spill and spill
         need_spill = check_need_spill(fun);
         if (need_spill) {
             // Still need to spill
             printf("Need to spill...\n");
             clean_cg(fun);
-        } else {
-            printf("No need to spill...RA Done!\n");
         }
     }
 
-    // Spill callee saved registers
+    // Register allocation finished (All registers are fixed)
+    printf("Register allocation finished\n");
+    print_ir_prog_cg_alloc(fun);
+
+    // Step 7: Calculate stack size
+    calc_callee_num(fun);
+    calc_stack_size(fun);
+
+    // Step 8: Shift raw stack operations
+    add_stack_offset(fun, fun->cg_info.stack_offset);
+    print_ir_prog_cg_alloc(fun);
+
+    // Step 9: Spill callee saved registers
     spill_callee(fun);
-    print_ir_prog_advanced(fun, NULL, NULL, print_ir_alloc);
+    print_ir_prog_cg_alloc(fun);
 
-    // Register allocation finished
+    // Step 10: Normalize
+    normalize(fun);
+    print_ir_prog_cg_alloc(fun);
 
-    // Step 6: Direct Translation
+    // Step 11: Direct Translation
     // translate(fun);
+
+    relocate(fun);
+
+    synthesize(fun);
 
     // Free CG resources
     free_cg_res(fun);

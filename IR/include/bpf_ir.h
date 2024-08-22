@@ -8,6 +8,11 @@
 
 #define MAX_FUNC_ARG 5
 
+enum imm_type {
+    IMM,
+    IMM64
+};
+
 /**
     Pre-IR instructions, similar to `bpf_insn`
  */
@@ -17,8 +22,10 @@ struct pre_ir_insn {
     __u8  dst_reg;
     __u8  src_reg;
     __s16 off;
-    __s32 imm;
-    __s64 imm64;  // signed immediate constant for 64-bit immediate
+
+    enum imm_type it;
+    __s32         imm;
+    __s64         imm64;  // Immediate constant for 64-bit immediate
 
     size_t pos;  // Original position
 };
@@ -69,6 +76,8 @@ struct ir_value {
 
 struct ir_value ir_value_insn(struct ir_insn *);
 
+struct ir_value ir_value_stack_ptr();
+
 /**
     Value plus an offset
  */
@@ -90,15 +99,10 @@ struct phi_value {
     Virtual Register Type
  */
 enum ir_vr_type {
-    IR_VR_TYPE_U8,
-    IR_VR_TYPE_U16,
-    IR_VR_TYPE_U32,
-    IR_VR_TYPE_U64,
-    IR_VR_TYPE_S8,
-    IR_VR_TYPE_S16,
-    IR_VR_TYPE_S32,
-    IR_VR_TYPE_S64,
-    IR_VR_TYPE_PTR,
+    IR_VR_TYPE_8,
+    IR_VR_TYPE_16,
+    IR_VR_TYPE_32,
+    IR_VR_TYPE_64,
 };
 
 enum ir_insn_type {
@@ -322,5 +326,7 @@ void add_user(struct ssa_transform_env *env, struct ir_insn *user, struct ir_val
 __u8 ir_value_equal(struct ir_value a, struct ir_value b);
 
 struct ir_basic_block *init_ir_bb_raw();
+
+int vr_type_to_size(enum ir_vr_type type);
 
 #endif

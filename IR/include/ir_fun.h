@@ -10,12 +10,18 @@ struct code_gen_info {
 
     // BPF Register Virtual Instruction (used as dst)
     struct ir_insn *regs[MAX_BPF_REG];
+
+    size_t callee_num;
+
+    __s16 stack_offset;
+
+    struct bpf_insn *prog;
 };
 
 struct ir_function {
     size_t arg_num;
 
-    // Array of struct pre_ir_basic_block *, no entrance information anymore
+    // Array of struct ir_basic_block *
     struct array all_bbs;
 
     // The entry block
@@ -44,5 +50,17 @@ struct ir_function {
 struct ir_function gen_function(struct ssa_transform_env *env);
 
 void free_function(struct ir_function *fun);
+
+void fix_bb_succ(struct ir_function *fun);
+
+// IR checks
+
+void prog_check(struct ir_function *fun);
+
+void check_insn_operand(struct ir_insn *insn);
+
+void check_insn_users_use_insn(struct ir_insn *insn);
+
+void check_users(struct ir_function *fun);
 
 #endif
