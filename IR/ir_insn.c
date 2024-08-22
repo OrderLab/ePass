@@ -388,7 +388,7 @@ int is_jmp(struct ir_insn *insn) {
 }
 
 int is_jmp_cond(struct ir_insn *insn) {
-    return (insn->op >= IR_INSN_JEQ && insn->op <= IR_INSN_JNE);
+    return (insn->op >= IR_INSN_JEQ && insn->op < IR_INSN_PHI);
 }
 
 int is_void(struct ir_insn *insn) {
