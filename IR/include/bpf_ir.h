@@ -72,6 +72,7 @@ struct phi_value {
 };
 
 enum ir_alu_type {
+    IR_ALU_UNKNOWN,  // To prevent from not manually setting this type
     IR_ALU_32,
     IR_ALU_64,
 };

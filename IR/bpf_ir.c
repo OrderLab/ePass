@@ -571,8 +571,7 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb) 
         struct pre_ir_insn insn = bb->pre_insns[i];
         __u8               code = insn.opcode;
         if (BPF_CLASS(code) == BPF_ALU || BPF_CLASS(code) == BPF_ALU64) {
-            // 32-bit ALU class
-            // TODO: 64-bit ALU class
+            // ALU class
             enum ir_alu_type alu_ty;
             if (BPF_CLASS(code) == BPF_ALU) {
                 alu_ty = IR_ALU_32;

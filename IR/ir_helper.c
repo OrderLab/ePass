@@ -48,43 +48,6 @@ void clean_tag(struct ir_function *fun) {
     }
 }
 
-void print_constant(struct ir_constant d) {
-    switch (d.type) {
-        case IR_CONSTANT_S32:
-            if (d.data.s32_d < 0) {
-                printf("-0x%x", -d.data.s32_d);
-            } else {
-                printf("0x%x", d.data.s32_d);
-            }
-            break;
-        case IR_CONSTANT_U32:
-            printf("0x%x", d.data.u32_d);
-            break;
-        case IR_CONSTANT_U64:
-            printf("0x%llx", d.data.u64_d);
-            break;
-        case IR_CONSTANT_S64:
-            if (d.data.s64_d < 0) {
-                printf("-0x%llx", -d.data.s64_d);
-            } else {
-                printf("0x%llx", d.data.s64_d);
-            }
-            break;
-        case IR_CONSTANT_S16:
-            if (d.data.s16_d < 0) {
-                printf("-0x%x", -d.data.s16_d);
-            } else {
-                printf("0x%x", d.data.s16_d);
-            }
-            break;
-        case IR_CONSTANT_U16:
-            printf("0x%x", d.data.u16_d);
-            break;
-        default:
-            CRITICAL("Unknown constant type");
-    }
-}
-
 void print_insn_ptr_base(struct ir_insn *insn) {
     if (insn->op == IR_INSN_REG) {
         printf("R%u", insn_cg(insn)->alloc_reg);
@@ -126,7 +89,7 @@ void print_ir_value_full(struct ir_value v, void (*print_ir)(struct ir_insn *)) 
             printf("SP");
             break;
         case IR_VALUE_CONSTANT:
-            print_constant(v.data.constant_d);
+            printf("0x%llx", v.data.constant_d);
             break;
         case IR_VALUE_UNDEF:
             printf("undef");
