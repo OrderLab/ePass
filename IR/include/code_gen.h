@@ -9,9 +9,6 @@ void code_gen(struct ir_function *fun);
 
 // Extra information needed for code gen
 struct ir_bb_cg_extra {
-    // Instruction count
-    size_t insn_cnt;
-
     // Position of the first instruction
     size_t pos;
 };
@@ -32,9 +29,6 @@ struct ir_insn_cg_extra {
 
     // Translated pre_ir_insn
     struct pre_ir_insn translated[2];
-
-    // Position in the BB
-    size_t pos[2];
 
     // Translated number
     __u8 translated_num;

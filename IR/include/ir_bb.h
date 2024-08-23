@@ -7,6 +7,8 @@
 /// Get the number of instructions in a basic block
 size_t bb_len(struct ir_basic_block *);
 
+struct ir_bb_cg_extra *bb_cg(struct ir_basic_block *bb);
+
 struct ir_basic_block *create_bb(struct ir_function *fun);
 
 void connect_bb(struct ir_basic_block *from, struct ir_basic_block *to);

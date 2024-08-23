@@ -1,6 +1,7 @@
 #include "ir_bb.h"
 #include "array.h"
 #include "bpf_ir.h"
+#include "code_gen.h"
 
 size_t bb_len(struct ir_basic_block *bb) {
     size_t            len = 0;
@@ -71,4 +72,8 @@ struct ir_insn *get_first_insn(struct ir_basic_block *bb) {
         return NULL;
     }
     return list_entry(bb->ir_insn_head.next, struct ir_insn, list_ptr);
+}
+
+struct ir_bb_cg_extra *bb_cg(struct ir_basic_block *bb) {
+    return bb->user_data;
 }
