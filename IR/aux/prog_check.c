@@ -189,7 +189,7 @@ void check_jumping(struct ir_function *fun) {
                         continue;
                     }
                     // For conditional jumps, both BB1 and BB2 should be successors
-                    if (is_jmp_cond(insn)) {
+                    if (is_cond_jmp(insn)) {
                         // Get the two basic blocks that the conditional jump statement jumps to
                         struct ir_basic_block *bb1 = insn->bb1;
                         struct ir_basic_block *bb2 = insn->bb2;

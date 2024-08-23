@@ -388,11 +388,12 @@ struct ir_insn *create_ret_insn_bb(struct ir_basic_block *bb, struct ir_value va
     return new_insn;
 }
 
+// Note. This includes ret instruction
 int is_jmp(struct ir_insn *insn) {
     return (insn->op >= IR_INSN_JA && insn->op <= IR_INSN_JNE) || insn->op == IR_INSN_RET;
 }
 
-int is_jmp_cond(struct ir_insn *insn) {
+int is_cond_jmp(struct ir_insn *insn) {
     return (insn->op >= IR_INSN_JEQ && insn->op < IR_INSN_PHI);
 }
 
