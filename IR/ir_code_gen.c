@@ -6,7 +6,6 @@
 #include "dbg.h"
 #include "ir_insn.h"
 #include "list.h"
-#include "passes.h"
 #include "ir_helper.h"
 
 struct ir_insn_cg_extra *init_insn_cg(struct ir_insn *insn) {
@@ -17,15 +16,16 @@ struct ir_insn_cg_extra *init_insn_cg(struct ir_insn *insn) {
     } else {
         extra->dst = insn;
     }
-    extra->adj       = INIT_ARRAY(struct ir_insn *);
-    extra->allocated = 0;
-    extra->spilled   = 0;
-    extra->alloc_reg = 0;
-    extra->gen       = INIT_ARRAY(struct ir_insn *);
-    extra->kill      = INIT_ARRAY(struct ir_insn *);
-    extra->in        = INIT_ARRAY(struct ir_insn *);
-    extra->out       = INIT_ARRAY(struct ir_insn *);
-    insn->user_data  = extra;
+    extra->adj            = INIT_ARRAY(struct ir_insn *);
+    extra->allocated      = 0;
+    extra->spilled        = 0;
+    extra->alloc_reg      = 0;
+    extra->gen            = INIT_ARRAY(struct ir_insn *);
+    extra->kill           = INIT_ARRAY(struct ir_insn *);
+    extra->in             = INIT_ARRAY(struct ir_insn *);
+    extra->out            = INIT_ARRAY(struct ir_insn *);
+    extra->translated_num = 0;
+    insn->user_data       = extra;
     return extra;
 }
 
@@ -147,6 +147,31 @@ void print_ir_prog_cg_alloc(struct ir_function *fun) {
 
 void synthesize(struct ir_function *fun) {
     // The last step, synthesizes the program
+    fun->cg_info.prog = __malloc(fun->cg_info.prog_size * sizeof(struct bpf_insn));
+    struct ir_basic_block **pos;
+    array_for(pos, fun->reachable_bbs) {
+        struct ir_basic_block *bb = *pos;
+        struct ir_insn        *insn;
+        list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
+            struct ir_insn_cg_extra *extra = insn_cg(insn);
+            for (__u8 i = 0; i < extra->translated_num; ++i) {
+                struct pre_ir_insn translated_insn = extra->translated[i];
+                struct bpf_insn   *real_insn       = &fun->cg_info.prog[translated_insn.pos];
+                real_insn->code                    = translated_insn.opcode;
+                real_insn->dst_reg                 = translated_insn.dst_reg;
+                real_insn->src_reg                 = translated_insn.src_reg;
+                real_insn->off                     = translated_insn.off;
+                if (translated_insn.it == IMM) {
+                    real_insn->imm = translated_insn.imm;
+                } else {
+                    // Wide instruction
+                    struct bpf_insn *real_insn2 = &fun->cg_info.prog[translated_insn.pos + 1];
+                    real_insn->imm              = translated_insn.imm64 & 0xffffffff;
+                    real_insn2->imm             = translated_insn.imm64 >> 32;
+                }
+            }
+        }
+    }
 }
 
 void code_gen(struct ir_function *fun) {

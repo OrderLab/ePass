@@ -822,6 +822,7 @@ void free_function(struct ir_function *fun) {
     array_free(&fun->reachable_bbs);
     array_free(&fun->end_bbs);
     array_free(&fun->cg_info.all_var);
+    __free(fun->cg_info.prog);
 }
 
 struct ir_function gen_function(struct ssa_transform_env *env) {
@@ -903,6 +904,8 @@ void run(struct bpf_insn *insns, size_t len) {
 
     printf("--------------------\n");
     code_gen(&fun);
+
+    // Got the bpf bytecode
 
     // Free the memory
     free_function(&fun);
