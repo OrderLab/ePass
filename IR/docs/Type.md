@@ -18,3 +18,15 @@ All ALU instructions have 2 mode: 32 bits/64 bits.
 a = add x y
 b = add64 x y
 ```
+
+It's difficult to say what is correct, we could let users specify the type when doing ALU opetations.
+
+## Constant Type
+
+Three types are enough:
+
+```
+u32
+s32
+64
+```
