@@ -243,11 +243,13 @@ void code_gen(struct ir_function *fun) {
     print_ir_prog_cg_alloc(fun);
 
     // Step 11: Direct Translation
-    // translate(fun);
+    translate(fun);
 
-    relocate(fun);
+    // Step 12: Relocation
+    // relocate(fun);
 
-    synthesize(fun);
+    // Step 13: Synthesize
+    // synthesize(fun);
 
     // Free CG resources
     free_cg_res(fun);

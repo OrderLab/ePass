@@ -822,7 +822,9 @@ void free_function(struct ir_function *fun) {
     array_free(&fun->reachable_bbs);
     array_free(&fun->end_bbs);
     array_free(&fun->cg_info.all_var);
-    __free(fun->cg_info.prog);
+    if (fun->cg_info.prog) {
+        __free(fun->cg_info.prog);
+    }
 }
 
 struct ir_function gen_function(struct ssa_transform_env *env) {
