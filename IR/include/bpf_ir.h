@@ -30,30 +30,6 @@ struct pre_ir_insn {
     size_t pos;  // Original position
 };
 
-enum ir_constant_type {
-    IR_CONSTANT_U16,
-    IR_CONSTANT_S16,
-    IR_CONSTANT_U32,
-    IR_CONSTANT_S32,
-    IR_CONSTANT_U64,
-    IR_CONSTANT_S64,
-};
-
-/**
-    IR Constants
- */
-struct ir_constant {
-    union {
-        __u16 u16_d;
-        __s16 s16_d;
-        __u32 u32_d;
-        __s32 s32_d;
-        __u64 u64_d;
-        __s64 s64_d;
-    } data;
-    enum ir_constant_type type;
-};
-
 enum ir_value_type {
     IR_VALUE_CONSTANT,
     IR_VALUE_INSN,
@@ -68,8 +44,8 @@ enum ir_value_type {
  */
 struct ir_value {
     union {
-        struct ir_constant constant_d;
-        struct ir_insn    *insn_d;
+        __s64           constant_d;
+        struct ir_insn *insn_d;
     } data;
     enum ir_value_type type;
 };
