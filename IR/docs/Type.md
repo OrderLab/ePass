@@ -23,10 +23,6 @@ It's difficult to say what is correct, we could let users specify the type when 
 
 ## Constant Type
 
-Three types are enough:
+There is only one type: `64`.
 
-```
-u32
-s32
-64
-```
+All other size could be encoded into this `64` data.

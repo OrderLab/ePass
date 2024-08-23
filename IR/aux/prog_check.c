@@ -71,6 +71,7 @@ void check_insn(struct ir_function *fun) {
                     CRITICAL("Value[0] should be an alloc instruction");
                 }
             }
+            // Check: users of alloc instructions must be STORE/LOAD
         }
     }
 }

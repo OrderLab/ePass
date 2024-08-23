@@ -95,6 +95,11 @@ struct phi_value {
     struct ir_basic_block *bb;
 };
 
+enum ir_alu_type {
+    IR_ALU_32,
+    IR_ALU_64,
+};
+
 /**
     Virtual Register Type
  */
@@ -111,7 +116,6 @@ enum ir_insn_type {
     IR_INSN_LOAD,
     IR_INSN_STORERAW,
     IR_INSN_LOADRAW,
-    IR_INSN_FUNCTIONARG,  // The function argument store, not an actual instruction
     // ALU
     IR_INSN_ADD,
     IR_INSN_SUB,
@@ -134,16 +138,17 @@ enum ir_insn_type {
     // Code-gen instructions
     IR_INSN_ASSIGN,
     IR_INSN_REG,
+    // Special instructions
+    IR_INSN_FUNCTIONARG,  // The function argument store, not an actual instruction
 };
 
 /**
     INSN =
           ALLOC <ir_vr_type>
-        | STORE <ir_vr_type> <value:ptr>, <value>
-        | LOAD <ir_vr_type> <value:ptr>
+        | STORE <value:ptr>, <value>
+        | LOAD <value:ptr>
         | STORERAW <ir_vr_type> <ir_address_value>, <value>
         | LOADRAW <ir_vr_type> <ir_address_value>
-        | FUNCTIONARG <fid>
 
         | ADD <value>, <value>
         | SUB <value>, <value>
@@ -163,6 +168,8 @@ enum ir_insn_type {
         (For code gen usage)
         | ASSIGN <value>
         | REG
+        (For special usage)
+        | FUNCTIONARG <fid>
 
     Note. <bb_next> must be the next basic block.
     ASSIGN dst cannot be callee-saved registers
@@ -176,6 +183,9 @@ struct ir_insn {
 
     // Used in RAW instructions
     struct ir_address_value addr_val;
+
+    // ALU Type
+    enum ir_alu_type alu;
 
     // Used in JMP instructions
     struct ir_basic_block *bb1;
