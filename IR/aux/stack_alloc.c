@@ -51,7 +51,7 @@ void add_stack_offset(struct ir_function *fun, __s16 offset) {
         struct ir_insn *insn = *pos;
 
         if (insn->op == IR_INSN_LOADRAW || insn->op == IR_INSN_STORERAW) {
-            insn->addr_val.offset += offset;
+            // insn->addr_val.offset += offset;
             continue;
         }
         struct array      value_uses = get_operands(insn);
