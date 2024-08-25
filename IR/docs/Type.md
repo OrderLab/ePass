@@ -26,3 +26,13 @@ It's difficult to say what is correct, we could let users specify the type when 
 There is only one type: `64`.
 
 All other size could be encoded into this `64` data.
+
+## Load/Store/Alloc
+
+`Store` & `Load` use the size defined in alloc.
+
+## Loadraw/Storeraw
+
+`Loadraw` provides the address and size directly.
+
+`Storeraw` provides the size and address, along with a value.
