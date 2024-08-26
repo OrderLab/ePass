@@ -240,8 +240,7 @@ struct ir_insn *create_store_insn_bb(struct ir_basic_block *bb, struct ir_insn *
     return new_insn;
 }
 
-struct ir_insn *create_load_insn_base(struct ir_basic_block *bb,
-                                      struct ir_value val) {
+struct ir_insn *create_load_insn_base(struct ir_basic_block *bb, struct ir_value val) {
     struct ir_insn *new_insn = create_insn_base(bb);
     new_insn->op             = IR_INSN_LOAD;
     new_insn->values[0]      = val;
@@ -257,8 +256,8 @@ struct ir_insn *create_load_insn(struct ir_insn *insn, struct ir_value val,
     return new_insn;
 }
 
-struct ir_insn *create_load_insn_bb(struct ir_basic_block *bb,
-                                    struct ir_value val, enum insert_position pos) {
+struct ir_insn *create_load_insn_bb(struct ir_basic_block *bb, struct ir_value val,
+                                    enum insert_position pos) {
     struct ir_insn *new_insn = create_load_insn_base(bb, val);
     insert_at_bb(new_insn, bb, pos);
     return new_insn;
