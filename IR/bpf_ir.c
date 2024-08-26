@@ -818,7 +818,7 @@ __u8 ir_value_equal(struct ir_value a, struct ir_value b) {
         return 0;
     }
     if (a.type == IR_VALUE_CONSTANT) {
-        return a.data.constant_d.data.s32_d == b.data.constant_d.data.s32_d;
+        return a.data.constant_d == b.data.constant_d;
     }
     if (a.type == IR_VALUE_INSN) {
         return a.data.insn_d == b.data.insn_d;
