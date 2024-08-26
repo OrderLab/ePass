@@ -17,4 +17,10 @@ struct error_code {
     int code : 30;
 };
 
+struct error_code kernel_error(int x);
+
+struct error_code ir_ok();
+
+struct error_code ir_error(enum ir_error x);
+
 #endif
