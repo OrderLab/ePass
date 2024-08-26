@@ -72,6 +72,13 @@ void check_insn(struct ir_function *fun) {
                 }
             }
             // Check: users of alloc instructions must be STORE/LOAD
+            if (insn->op >= IR_INSN_ADD && insn->op < IR_INSN_CALL) {
+                // Binary ALU
+                if (!(insn->alu == IR_ALU_64 || insn->alu == IR_ALU_32)) {
+                    print_ir_insn_err(insn, NULL);
+                    CRITICAL("Binary ALU type error!");
+                }
+            }
         }
     }
 }

@@ -138,10 +138,10 @@ int check_need_spill(struct ir_function *fun) {
             } else if (insn->op == IR_INSN_STORE) {
                 // store v0(dst) v1
                 // Eequivalent to `v0 = v1`
-                // TODO: sized store
-                // Currently all load & store are 8 bytes
                 insn->op = IR_INSN_ASSIGN;
                 DBGASSERT(v0->type == IR_VALUE_INSN);  // Should be guaranteed by prog_check
+                DBGASSERT(v0->data.insn_d->op == IR_INSN_ALLOC);
+                insn->vr_type   = v0->data.insn_d->vr_type;
                 extra->dst      = v0->data.insn_d;
                 insn->value_num = 1;
                 *v0             = *v1;
@@ -151,25 +151,56 @@ int check_need_spill(struct ir_function *fun) {
                 // stack = load reg
                 // reg = load reg
                 // reg = load stack
-                // TODO: sized load
                 insn->op = IR_INSN_ASSIGN;
                 DBGASSERT(v0->type == IR_VALUE_INSN);  // Should be guaranteed by prog_check
-                res = 1;
+                DBGASSERT(v0->data.insn_d->op == IR_INSN_ALLOC);
+                insn->vr_type = v0->data.insn_d->vr_type;
+                res           = 1;
             } else if (insn->op == IR_INSN_LOADRAW) {
-                // reg = loadraw addr ==> OK
+                // Load from memory
+                // reg = loadraw reg ==> OK
+                // reg = loadraw const ==> OK
+
                 // stack = loadraw addr
                 // ==>
                 // R0 = loadraw addr
+                // stack = R0
+
+                // stack = loadraw stack
+                // ==>
+                // R0 = stack
+                // R0 = loadraw R0
                 // stack = R0
                 if (tdst == STACK) {
                     extra->dst          = fun->cg_info.regs[0];
                     struct ir_insn *tmp = create_assign_insn_cg(
                         insn, ir_value_insn(fun->cg_info.regs[0]), INSERT_BACK);
                     insn_cg(tmp)->dst = dst_insn;
+                    tmp->vr_type      = insn->vr_type;
                     res               = 1;
                 }
+                if (vtype(insn->addr_val.value) == STACK) {
+                    load_stack_to_r0(fun, insn, &insn->addr_val.value);
+                    res = 1;
+                }
             } else if (insn->op == IR_INSN_STORERAW) {
-                // Built-in store instruction, OK
+                // Store some value to memory
+                // store ptr reg ==> OK
+                // store ptr stack
+
+                // store stackptr stack
+                // ==> TODO!
+                if (t0 == STACK && vtype(insn->addr_val.value) == STACK) {
+                    CRITICAL("TODO!");
+                }
+                if (t0 == STACK) {
+                    load_stack_to_r0(fun, insn, v0);
+                    res = 1;
+                }
+                if (vtype(insn->addr_val.value) == STACK) {
+                    load_stack_to_r0(fun, insn, &insn->addr_val.value);
+                    res = 1;
+                }
             } else if (insn->op >= IR_INSN_ADD && insn->op < IR_INSN_CALL) {
                 // Binary ALU
                 // reg = add reg reg
@@ -183,6 +214,10 @@ int check_need_spill(struct ir_function *fun) {
                     extra->dst          = fun->cg_info.regs[0];
                     struct ir_insn *tmp = create_assign_insn_cg(
                         insn, ir_value_insn(fun->cg_info.regs[0]), INSERT_BACK);
+                        if (insn->alu == IR_ALU_32) {
+                        
+                        }
+                    tmp->alu          = insn->alu;
                     insn_cg(tmp)->dst = dst_insn;
                     res               = 1;
                 } else {
@@ -260,10 +295,10 @@ int check_need_spill(struct ir_function *fun) {
                     }
                 }
             } else if (insn->op == IR_INSN_ASSIGN) {
-                // stack = reg
-                // stack = const
-                // reg = const
-                // reg = stack
+                // stack = reg (sized)
+                // stack = const (sized)
+                // reg = const (alu)
+                // reg = stack (sized)
                 // reg = reg
                 if (tdst == STACK && t0 == STACK) {
                     load_stack_to_r0(fun, insn, v0);
