@@ -179,6 +179,11 @@ void code_gen(struct ir_function *fun) {
 
     // Step 1: Check program
     prog_check(fun);
+
+    add_stack_offset_pre_cg(fun);
+
+    prog_check(fun);
+
     // Step 2: Eliminate SSA
     to_cssa(fun);
     prog_check(fun);

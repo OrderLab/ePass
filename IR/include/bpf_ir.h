@@ -32,6 +32,8 @@ struct pre_ir_insn {
 
 enum ir_value_type {
     IR_VALUE_CONSTANT,
+    IR_VALUE_CONSTANT_RAWOFF,  // A constant value in raw operations to be added during code
+                               // generation
     IR_VALUE_INSN,
     IR_VALUE_STACK_PTR,
     IR_VALUE_UNDEF,

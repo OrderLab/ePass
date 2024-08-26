@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include "code_gen.h"
+#include "dbg.h"
 #include "ir_fun.h"
 #include "array.h"
 #include "bpf_ir.h"
@@ -44,13 +45,15 @@ void calc_stack_size(struct ir_function *fun) {
     printf("Stack size: %d\n", fun->cg_info.stack_offset);
 }
 
-void add_stack_offset(struct ir_function *fun, __s16 offset) {
+void add_stack_offset_pre_cg(struct ir_function *fun) {
+    // Pre CG
     struct array     users = fun->sp_users;
     struct ir_insn **pos;
     array_for(pos, users) {
         struct ir_insn *insn = *pos;
 
         if (insn->op == IR_INSN_LOADRAW || insn->op == IR_INSN_STORERAW) {
+            // Also need to check if the value points to an INSN or a STACKPTR
             // insn->addr_val.offset += offset;
             continue;
         }
@@ -61,8 +64,7 @@ void add_stack_offset(struct ir_function *fun, __s16 offset) {
             if (val->type == IR_VALUE_STACK_PTR) {
                 // Stack pointer as value
                 struct ir_value new_val;
-                new_val.type            = IR_VALUE_CONSTANT;
-                new_val.data.constant_d = offset;
+                new_val.type = IR_VALUE_CONSTANT_RAWOFF;
                 struct ir_insn *new_insn =
                     create_bin_insn(insn, *val, new_val, IR_INSN_ADD, INSERT_FRONT);
                 new_val.type        = IR_VALUE_INSN;
@@ -72,5 +74,30 @@ void add_stack_offset(struct ir_function *fun, __s16 offset) {
         }
         array_free(&value_uses);
     }
-    array_free(&fun->sp_users);
+}
+
+void add_stack_offset(struct ir_function *fun, __s16 offset) {
+    struct array     users = fun->sp_users;
+    struct ir_insn **pos;
+    array_for(pos, users) {
+        struct ir_insn *insn = *pos;
+
+        if (insn->op == IR_INSN_LOADRAW || insn->op == IR_INSN_STORERAW) {
+            if (insn->addr_val.value.type == IR_VALUE_STACK_PTR) {
+                insn->addr_val.offset += offset;
+                continue;
+            }
+        }
+        struct array      value_uses = get_operands(insn);
+        struct ir_value **pos2;
+        array_for(pos2, value_uses) {
+            struct ir_value *val = *pos2;
+            DBGASSERT(val->type != IR_VALUE_STACK_PTR);
+            if (val->type == IR_VALUE_CONSTANT_RAWOFF) {
+                // Stack pointer as value
+                val->data.constant_d = offset;
+            }
+        }
+        array_free(&value_uses);
+    }
 }
