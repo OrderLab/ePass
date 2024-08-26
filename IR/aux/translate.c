@@ -71,6 +71,9 @@ void translate(struct ir_function *fun) {
                 CRITICAL("Error");
             } else if (insn->op == IR_INSN_LOADRAW) {
                 DBGASSERT(tdst == REG);
+                extra->translated_num = 0;
+                extra->translated[0] =
+                    load_addr_to_reg(insn_cg(dst_insn)->alloc_reg, insn->addr_val, insn->vr_type);
             } else if (insn->op == IR_INSN_STORERAW) {
             } else if (insn->op >= IR_INSN_ADD && insn->op < IR_INSN_CALL) {
             } else if (insn->op == IR_INSN_ASSIGN) {
