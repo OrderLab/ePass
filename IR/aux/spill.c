@@ -34,8 +34,10 @@ enum val_type vtype(struct ir_value val) {
     }
 }
 
-void load_stack_to_r0(struct ir_function *fun, struct ir_insn *insn, struct ir_value *val) {
+void load_stack_to_r0(struct ir_function *fun, struct ir_insn *insn, struct ir_value *val,
+                      enum ir_vr_type vtype) {
     struct ir_insn *tmp = create_assign_insn_cg(insn, *val, INSERT_FRONT);
+    tmp->vr_type        = vtype;
     insn_cg(tmp)->dst   = fun->cg_info.regs[0];
 
     val->type        = IR_VALUE_INSN;
@@ -117,6 +119,16 @@ void spill_callee(struct ir_function *fun) {
     }
 }
 
+enum ir_vr_type alu_to_vr_type(enum ir_alu_type ty) {
+    if (ty == IR_ALU_32) {
+        return IR_VR_TYPE_32;
+    } else if (ty == IR_ALU_64) {
+        return IR_VR_TYPE_64;
+    } else {
+        CRITICAL("Error");
+    }
+}
+
 int check_need_spill(struct ir_function *fun) {
     // Check if all instruction values are OK for translating
     int                     res = 0;
@@ -180,7 +192,8 @@ int check_need_spill(struct ir_function *fun) {
                     res               = 1;
                 }
                 if (vtype(insn->addr_val.value) == STACK) {
-                    load_stack_to_r0(fun, insn, &insn->addr_val.value);
+                    // Question: are all memory address 64 bits?
+                    load_stack_to_r0(fun, insn, &insn->addr_val.value, IR_VR_TYPE_64);
                     res = 1;
                 }
             } else if (insn->op == IR_INSN_STORERAW) {
@@ -198,7 +211,7 @@ int check_need_spill(struct ir_function *fun) {
                     res = 1;
                 }
                 if (vtype(insn->addr_val.value) == STACK) {
-                    load_stack_to_r0(fun, insn, &insn->addr_val.value);
+                    load_stack_to_r0(fun, insn, &insn->addr_val.value, IR_VR_TYPE_64);
                     res = 1;
                 }
             } else if (insn->op >= IR_INSN_ADD && insn->op < IR_INSN_CALL) {
@@ -214,10 +227,7 @@ int check_need_spill(struct ir_function *fun) {
                     extra->dst          = fun->cg_info.regs[0];
                     struct ir_insn *tmp = create_assign_insn_cg(
                         insn, ir_value_insn(fun->cg_info.regs[0]), INSERT_BACK);
-                        if (insn->alu == IR_ALU_32) {
-                        
-                        }
-                    tmp->alu          = insn->alu;
+                    tmp->vr_type      = alu_to_vr_type(insn->alu);
                     insn_cg(tmp)->dst = dst_insn;
                     res               = 1;
                 } else {
@@ -247,20 +257,18 @@ int check_need_spill(struct ir_function *fun) {
                         //   reg3 = stack
                         //   reg1 = add reg1 reg3
                         if (t1 == STACK) {
-                            __u8 reg1 = insn_cg(dst_insn)->alloc_reg;
-                            __u8 reg2 = insn_cg(v0->data.insn_d)->alloc_reg;
+                            __u8            reg1 = insn_cg(dst_insn)->alloc_reg;
+                            __u8            reg2 = insn_cg(v0->data.insn_d)->alloc_reg;
+                            struct ir_insn *new_insn =
+                                create_assign_insn_cg(insn, *v1, INSERT_FRONT);
+                            new_insn->vr_type = alu_to_vr_type(insn->alu);
+                            v1->type          = IR_VALUE_INSN;
                             if (reg1 == reg2) {
-                                __u8            reg = reg1 == 0 ? 1 : 0;
-                                struct ir_insn *new_insn =
-                                    create_assign_insn_cg(insn, *v1, INSERT_FRONT);
+                                __u8 reg               = reg1 == 0 ? 1 : 0;
                                 insn_cg(new_insn)->dst = fun->cg_info.regs[reg];
-                                v1->type               = IR_VALUE_INSN;
                                 v1->data.insn_d        = fun->cg_info.regs[reg];
                             } else {
-                                struct ir_insn *new_insn =
-                                    create_assign_insn_cg(insn, *v1, INSERT_FRONT);
                                 insn_cg(new_insn)->dst = fun->cg_info.regs[reg1];
-                                v1->type               = IR_VALUE_INSN;
                                 v1->data.insn_d        = fun->cg_info.regs[reg1];
                             }
                             res = 1;
@@ -283,6 +291,7 @@ int check_need_spill(struct ir_function *fun) {
                             __u8            reg1 = insn_cg(dst_insn)->alloc_reg;
                             struct ir_insn *new_insn =
                                 create_assign_insn_cg(insn, *v0, INSERT_FRONT);
+                            new_insn->vr_type      = alu_to_vr_type(insn->alu);
                             insn_cg(new_insn)->dst = fun->cg_info.regs[reg1];
                             v0->type               = IR_VALUE_INSN;
                             v0->data.insn_d        = fun->cg_info.regs[reg1];
@@ -301,8 +310,11 @@ int check_need_spill(struct ir_function *fun) {
                 // reg = stack (sized)
                 // reg = reg
                 if (tdst == STACK && t0 == STACK) {
-                    load_stack_to_r0(fun, insn, v0);
+                    // Both stack positions are managed by us
+                    load_stack_to_r0(fun, insn, v0, IR_VR_TYPE_64);
                     res = 1;
+                }else{
+                    CRITICAL("TODO!");
                 }
                 // TODO: constant to stack: might need to first load to reg
             } else if (insn->op == IR_INSN_RET) {
@@ -338,6 +350,7 @@ int check_need_spill(struct ir_function *fun) {
                         __u8            reg1     = insn_cg(v0->data.insn_d)->alloc_reg;
                         __u8            reg2     = reg1 == 0 ? 1 : 0;
                         struct ir_insn *new_insn = create_assign_insn_cg(insn, *v1, INSERT_FRONT);
+                        new_insn->vr_type        = alu_to_vr_type(insn->alu);
                         insn_cg(new_insn)->dst   = fun->cg_info.regs[reg2];
                         v1->type                 = IR_VALUE_INSN;
                         v1->data.insn_d          = fun->cg_info.regs[reg2];
@@ -350,18 +363,19 @@ int check_need_spill(struct ir_function *fun) {
                     // jeq %tmp const2
                     if (t0 == CONST && t1 == CONST) {
                         struct ir_insn *new_insn = create_assign_insn_cg(insn, *v0, INSERT_FRONT);
+                        new_insn->vr_type        = alu_to_vr_type(insn->alu);
                         v0->type                 = IR_VALUE_INSN;
                         v0->data.insn_d          = new_insn;
                         res                      = 1;
                     }
                     // jeq stack const
                     if (t0 == STACK && t1 == CONST) {
-                        load_stack_to_r0(fun, insn, v0);
+                        load_stack_to_r0(fun, insn, v0, alu_to_vr_type(insn->alu));
                         res = 1;
                     }
                     // jeq stack stack
                     if (t0 == STACK && t1 == STACK) {
-                        load_stack_to_r0(fun, insn, v0);
+                        load_stack_to_r0(fun, insn, v0, alu_to_vr_type(insn->alu));
                         res = 1;
                     }
                 }
