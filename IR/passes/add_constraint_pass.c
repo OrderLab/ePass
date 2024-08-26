@@ -15,9 +15,8 @@ void add_constraint(struct ir_function *fun) {
 
     struct ir_basic_block *err_bb = create_bb(fun);
     struct ir_value        val;
-    val.type                       = IR_VALUE_CONSTANT;
-    val.data.constant_d.type       = IR_CONSTANT_U64;
-    val.data.constant_d.data.u64_d = 1;
+    val.type            = IR_VALUE_CONSTANT;
+    val.data.constant_d = 1;
     create_ret_insn_bb(err_bb, val, INSERT_BACK);
 
     struct ir_constraint *pos;

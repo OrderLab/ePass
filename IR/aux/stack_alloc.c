@@ -61,9 +61,8 @@ void add_stack_offset(struct ir_function *fun, __s16 offset) {
             if (val->type == IR_VALUE_STACK_PTR) {
                 // Stack pointer as value
                 struct ir_value new_val;
-                new_val.type                       = IR_VALUE_CONSTANT;
-                new_val.data.constant_d.type       = IR_CONSTANT_S16;
-                new_val.data.constant_d.data.s16_d = offset;
+                new_val.type            = IR_VALUE_CONSTANT;
+                new_val.data.constant_d = offset;
                 struct ir_insn *new_insn =
                     create_bin_insn(insn, *val, new_val, IR_INSN_ADD, INSERT_FRONT);
                 new_val.type        = IR_VALUE_INSN;

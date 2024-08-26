@@ -24,8 +24,6 @@ void tag_ir(struct ir_function *fun);
 // Remove all tag information
 void clean_tag(struct ir_function *);
 
-void print_constant(struct ir_constant d);
-
 void print_address_value(struct ir_address_value v);
 
 void print_vr_type(enum ir_vr_type t);
