@@ -313,10 +313,18 @@ int check_need_spill(struct ir_function *fun) {
                     // Both stack positions are managed by us
                     load_stack_to_r0(fun, insn, v0, IR_VR_TYPE_64);
                     res = 1;
-                }else{
-                    CRITICAL("TODO!");
                 }
-                // TODO: constant to stack: might need to first load to reg
+                if (tdst == STACK && t0 == CONST) {
+                    if (insn->vr_type == IR_VR_TYPE_64) {
+                        // First load to R0
+                        struct ir_insn *new_insn = create_assign_insn_cg(insn, *v0, INSERT_FRONT);
+                        new_insn->vr_type        = insn->vr_type;
+                        insn_cg(new_insn)->dst   = fun->cg_info.regs[0];
+                        v0->type                 = IR_VALUE_INSN;
+                        v0->data.insn_d          = fun->cg_info.regs[0];
+                        res = 1;
+                    }
+                }
             } else if (insn->op == IR_INSN_RET) {
                 // ret const/reg
                 // Done in explicit_reg pass
