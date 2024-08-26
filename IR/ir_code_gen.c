@@ -177,9 +177,9 @@ void synthesize(struct ir_function *fun) {
 void code_gen(struct ir_function *fun) {
     // Preparation
 
-    // Step 1: Check program
     prog_check(fun);
 
+    // Step 1: Flag all raw stack access
     add_stack_offset_pre_cg(fun);
 
     prog_check(fun);
@@ -191,34 +191,35 @@ void code_gen(struct ir_function *fun) {
 
     // Init CG, start real code generation
     init_cg(fun);
+
+    // Step 3: Use explicit real registers
     explicit_reg(fun);  // Still in SSA form, users are available
     print_ir_prog_pre_cg(fun);
     print_ir_prog_cg_dst(fun);
 
-    // SSA Destruction
+    // Step 4: SSA Destruction
     // users not available from now on
-
     remove_phi(fun);
     print_ir_prog_cg_dst(fun);
 
     int need_spill = 1;
 
     while (need_spill) {
-        // Step 3: Liveness Analysis
+        // Step 5: Liveness Analysis
         liveness_analysis(fun);
 
-        // Step 4: Conflict Analysis
+        // Step 6: Conflict Analysis
         conflict_analysis(fun);
         print_interference_graph(fun);
         printf("-------------\n");
 
-        // Step 5: Graph coloring
+        // Step 7: Graph coloring
         graph_coloring(fun);
         coaleasing(fun);
         print_interference_graph(fun);
         print_ir_prog_cg_alloc(fun);
 
-        // Step 6: Check if need to spill and spill
+        // Step 8: Check if need to spill and spill
         need_spill = check_need_spill(fun);
         if (need_spill) {
             // Still need to spill
@@ -231,29 +232,29 @@ void code_gen(struct ir_function *fun) {
     printf("Register allocation finished\n");
     print_ir_prog_cg_alloc(fun);
 
-    // Step 7: Calculate stack size
+    // Step 9: Calculate stack size
     // calc_callee_num(fun);
     // calc_stack_size(fun);
 
-    // Step 8: Shift raw stack operations
+    // Step 10: Shift raw stack operations
     // add_stack_offset(fun, fun->cg_info.stack_offset);
     // print_ir_prog_cg_alloc(fun);
 
-    // Step 9: Spill callee saved registers
+    // Step 11: Spill callee saved registers
     // spill_callee(fun);
     // print_ir_prog_cg_alloc(fun);
 
-    // Step 10: Normalize
+    // Step 12: Normalize
     // normalize(fun);
     // print_ir_prog_cg_alloc(fun);
 
-    // Step 11: Direct Translation
+    // Step 13: Direct Translation
     // translate(fun);
 
-    // Step 12: Relocation
+    // Step 14: Relocation
     // relocate(fun);
 
-    // Step 13: Synthesize
+    // Step 15: Synthesize
     // synthesize(fun);
 
     // Free CG resources
