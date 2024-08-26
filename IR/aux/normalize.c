@@ -38,6 +38,7 @@ void normalize(struct ir_function *fun) {
                     // reg1 = add reg1 const
                     struct ir_insn *new_insn = create_assign_insn_cg(insn, *v0, INSERT_FRONT);
                     insn_cg(new_insn)->dst   = dst_insn;
+                    new_insn->vr_type        = alu_to_vr_type(insn->alu);
                     v0->type                 = IR_VALUE_INSN;
                     v0->data.insn_d          = dst_insn;
                 } else if (t0 == REG && t1 == REG) {
@@ -88,14 +89,12 @@ void normalize(struct ir_function *fun) {
                     insn->op              = IR_INSN_STORERAW;
                     insn->addr_val.value  = ir_value_stack_ptr();
                     insn->addr_val.offset = -insn_cg(dst_insn)->spilled * 8;
-                    insn->vr_type         = IR_VR_TYPE_64;
                 } else {
                     if (t0 == STACK) {
                         // Change to LOADRAW
                         insn->op              = IR_INSN_LOADRAW;
                         insn->addr_val.value  = ir_value_stack_ptr();
                         insn->addr_val.offset = -insn_cg(v0->data.insn_d)->spilled * 8;
-                        insn->vr_type         = IR_VR_TYPE_64;
                     }
                 }
             } else if (insn->op == IR_INSN_RET) {

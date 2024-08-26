@@ -322,7 +322,7 @@ int check_need_spill(struct ir_function *fun) {
                         insn_cg(new_insn)->dst   = fun->cg_info.regs[0];
                         v0->type                 = IR_VALUE_INSN;
                         v0->data.insn_d          = fun->cg_info.regs[0];
-                        res = 1;
+                        res                      = 1;
                     }
                 }
             } else if (insn->op == IR_INSN_RET) {

@@ -104,4 +104,6 @@ void normalize(struct ir_function *fun);
 
 void relocate(struct ir_function *fun);
 
+enum ir_vr_type alu_to_vr_type(enum ir_alu_type ty);
+
 #endif
