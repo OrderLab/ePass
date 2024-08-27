@@ -13,13 +13,19 @@ struct pre_ir_insn load_reg_to_reg(__u8 dst, __u8 src) {
     return insn;
 }
 
-struct pre_ir_insn load_const_to_reg(__u8 dst, __s64 data) {
+struct pre_ir_insn load_const_to_reg(__u8 dst, __s64 data, enum ir_alu_type type) {
     // MOV dst imm
     struct pre_ir_insn insn;
     insn.dst_reg = dst;
-    insn.it      = IMM64;
-    insn.imm64   = data;
-    insn.opcode  = BPF_MOV | BPF_K | BPF_ALU64;
+    if (type == IR_ALU_64) {
+        insn.it     = IMM64;
+        insn.imm64  = data;
+        insn.opcode = BPF_MOV | BPF_K | BPF_ALU64;
+    } else {
+        insn.it     = IMM;
+        insn.imm    = data;
+        insn.opcode = BPF_MOV | BPF_K | BPF_ALU;
+    }
     return insn;
 }
 
@@ -234,6 +240,17 @@ void translate(struct ir_function *fun) {
                     CRITICAL("Error");
                 }
             } else if (insn->op == IR_INSN_ASSIGN) {
+                // reg = const (alu)
+                // reg = reg
+                if (tdst == REG && t0 == CONST) {
+                    extra->translated[0] =
+                        load_const_to_reg(get_alloc_reg(dst_insn), v0.data.constant_d, insn->alu);
+                } else if (tdst == REG && t0 == REG) {
+                    extra->translated[0] =
+                        load_reg_to_reg(get_alloc_reg(dst_insn), get_alloc_reg(v0.data.insn_d));
+                } else {
+                    CRITICAL("Error");
+                }
             } else if (insn->op == IR_INSN_RET) {
                 extra->translated[0].opcode = BPF_EXIT | BPF_JMP;
             } else if (insn->op == IR_INSN_CALL) {
