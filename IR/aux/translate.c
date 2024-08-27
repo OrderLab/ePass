@@ -87,6 +87,27 @@ int alu_code(enum ir_insn_type insn) {
     }
 }
 
+int jmp_code(enum ir_insn_type insn) {
+    switch (insn) {
+        case IR_INSN_JA:
+            return BPF_JA;
+        case IR_INSN_JEQ:
+            return BPF_JEQ;
+        case IR_INSN_JNE:
+            return BPF_JNE;
+        case IR_INSN_JLT:
+            return BPF_JLT;
+        case IR_INSN_JLE:
+            return BPF_JLE;
+        case IR_INSN_JGT:
+            return BPF_JGT;
+        case IR_INSN_JGE:
+            return BPF_JGE;
+        default:
+            CRITICAL("Error");
+    }
+}
+
 struct pre_ir_insn alu_reg(__u8 dst, __u8 src, enum ir_alu_type type, int opcode) {
     struct pre_ir_insn insn;
     insn.dst_reg  = dst;
@@ -109,6 +130,31 @@ struct pre_ir_insn alu_imm(__u8 dst, __s64 src, enum ir_alu_type type, int opcod
         insn.imm = src;
     }
     insn.opcode = opcode | BPF_K | alu_class;
+    return insn;
+}
+
+struct pre_ir_insn cond_jmp_reg(__u8 dst, __u8 src, enum ir_alu_type type, int opcode) {
+    struct pre_ir_insn insn;
+    insn.dst_reg  = dst;
+    insn.src_reg  = src;
+    int alu_class = type == IR_ALU_64 ? BPF_JMP : BPF_JMP32;
+    insn.opcode   = opcode | alu_class | BPF_X;
+    return insn;
+}
+
+struct pre_ir_insn cond_jmp_imm(__u8 dst, __s64 src, enum ir_alu_type type, int opcode) {
+    struct pre_ir_insn insn;
+    insn.dst_reg  = dst;
+    insn.src_reg  = src;
+    int alu_class = type == IR_ALU_64 ? BPF_JMP : BPF_JMP32;
+    if (type == IR_ALU_64) {
+        insn.it    = IMM64;
+        insn.imm64 = src;
+    } else {
+        insn.it  = IMM;
+        insn.imm = src;
+    }
+    insn.opcode = opcode | alu_class | BPF_K;
     return insn;
 }
 
@@ -198,6 +244,18 @@ void translate(struct ir_function *fun) {
             } else if (insn->op == IR_INSN_JA) {
                 extra->translated[0].opcode = BPF_JMP | BPF_JA;
             } else if (insn->op >= IR_INSN_JEQ && insn->op < IR_INSN_PHI) {
+                DBGASSERT(t0 == REG);
+                if (t1 == REG) {
+                    extra->translated[0] =
+                        cond_jmp_reg(get_alloc_reg(v0.data.insn_d), get_alloc_reg(v1.data.insn_d),
+                                     insn->alu, jmp_code(insn->op));
+                } else if (t1 == CONST) {
+                    extra->translated[0] =
+                        cond_jmp_imm(get_alloc_reg(v0.data.insn_d), v1.data.constant_d, insn->alu,
+                                     jmp_code(insn->op));
+                } else {
+                    CRITICAL("Error");
+                }
             } else {
                 CRITICAL("No such instruction");
             }

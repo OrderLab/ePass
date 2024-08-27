@@ -388,7 +388,11 @@ int check_need_spill(struct ir_function *fun) {
                         load_stack_to_r0(fun, insn, v0, alu_to_vr_type(insn->alu));
                         res = 1;
                     }
-                    // jeq stack stack
+                    // jeq stack1 stack2
+                    // ==>
+                    // R0 = stack1
+                    // R1 = stack2
+                    // jeq R0 R1
                     if (t0 == STACK && t1 == STACK) {
                         load_stack_to_r0(fun, insn, v0, alu_to_vr_type(insn->alu));
                         res = 1;
