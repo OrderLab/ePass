@@ -92,6 +92,9 @@ void print_ir_value_full(struct ir_value v, void (*print_ir)(struct ir_insn *)) 
         case IR_VALUE_CONSTANT:
             printf("0x%llx", v.data.constant_d);
             break;
+        case IR_VALUE_CONSTANT_RAWOFF:
+            printf("(hole)");
+            break;
         case IR_VALUE_UNDEF:
             printf("undef");
             break;
