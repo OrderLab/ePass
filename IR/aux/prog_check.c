@@ -48,11 +48,12 @@ void check_insn(struct ir_function *fun) {
                     CRITICAL("Instruction should have no value");
                 }
             }
+
             if (insn->op == IR_INSN_STORERAW || insn->op == IR_INSN_LOAD ||
-                insn->op == IR_INSN_RET) {
+                insn->op == IR_INSN_RET || insn->op == IR_INSN_ASSIGN) {
                 if (!(insn->value_num == 1)) {
                     print_ir_insn_err(insn, NULL);
-                    CRITICAL("Instruction should have 1 values");
+                    CRITICAL("Instruction should have 1 value");
                 }
             }
 
@@ -71,7 +72,19 @@ void check_insn(struct ir_function *fun) {
                     CRITICAL("Value[0] should be an alloc instruction");
                 }
             }
+            
             // Check: users of alloc instructions must be STORE/LOAD
+            if (insn->op == IR_INSN_ALLOC) {
+                struct ir_insn **pos2;
+                array_for(pos2, insn->users) {
+                    struct ir_insn *user = *pos2;
+                    if (user->op != IR_INSN_STORE && user->op != IR_INSN_LOAD) {
+                        print_ir_insn_err(insn, NULL);
+                        CRITICAL("Users of alloc instructions must be STORE/LOAD");
+                    }
+                }
+            }
+
             if (insn->op >= IR_INSN_ADD && insn->op < IR_INSN_CALL) {
                 // Binary ALU
                 if (!(insn->alu == IR_ALU_64 || insn->alu == IR_ALU_32)) {
@@ -79,27 +92,20 @@ void check_insn(struct ir_function *fun) {
                     CRITICAL("Binary ALU type error!");
                 }
             }
-            // Check: JA should have no values and only one valid bb
+
+            // Check: JA should have only one valid bb
             if (insn->op == IR_INSN_JA) {
-                if (insn->value_num != 0) {
-                    print_ir_insn_err(insn, NULL);
-                    CRITICAL("JA instruction should have no values");
-                }
                 if (insn->bb1 == NULL) {
                     print_ir_insn_err(insn, NULL);
-                    CRITICAL("JA instruction should have a valid bb");
+                    CRITICAL("Unconditional jump instruction should have a valid bb");
                 }
                 if (insn->bb2 != NULL) {
                     print_ir_insn_err(insn, NULL);
-                    CRITICAL("JA instruction should have only one valid bb");
+                    CRITICAL("Unconditional jump instruction should have only one valid bb");
                 }
             }
-            // Check: JEQ, JGT, JGE, JLT, JLE, JNE should have 2 values and 2 valid bbs
+            // Check: JEQ, JGT, JGE, JLT, JLE, JNE should have 2 valid bbs
             if (insn->op >= IR_INSN_JEQ && insn->op <= IR_INSN_JNE) {
-                if (insn->value_num != 2) {
-                    print_ir_insn_err(insn, NULL);
-                    CRITICAL("Conditional jump instruction should have 2 values");
-                }
                 if (insn->bb1 == NULL || insn->bb2 == NULL) {
                     print_ir_insn_err(insn, NULL);
                     CRITICAL("Conditional jump instruction should have 2 valid bbs");
