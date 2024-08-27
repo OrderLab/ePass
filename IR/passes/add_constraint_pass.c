@@ -24,14 +24,17 @@ void add_constraint(struct ir_function *fun) {
         struct ir_constraint c = *pos;
         if (c.type == CONSTRAINT_TYPE_VALUE_EQUAL) {
             struct ir_basic_block *newbb = split_bb(fun, c.pos);
-            create_jbin_insn(c.pos, c.val, c.cval, newbb, err_bb, IR_INSN_JNE, INSERT_FRONT);
+            create_jbin_insn(c.pos, c.val, c.cval, newbb, err_bb, IR_INSN_JNE, IR_ALU_64,
+                             INSERT_FRONT);
             connect_bb(c.pos->parent_bb, err_bb);
         } else if (c.type == CONSTRAINT_TYPE_VALUE_RANGE) {
             struct ir_basic_block *newbb = split_bb(fun, c.pos);
-            create_jbin_insn(c.pos, c.val, c.start, newbb, err_bb, IR_INSN_JLT, INSERT_FRONT);
+            create_jbin_insn(c.pos, c.val, c.start, newbb, err_bb, IR_INSN_JLT, IR_ALU_64,
+                             INSERT_FRONT);
             connect_bb(c.pos->parent_bb, err_bb);
             struct ir_basic_block *newbb2 = split_bb(fun, c.pos);
-            create_jbin_insn(c.pos, c.val, c.end, newbb2, err_bb, IR_INSN_JGE, INSERT_FRONT);
+            create_jbin_insn(c.pos, c.val, c.end, newbb2, err_bb, IR_INSN_JGE, IR_ALU_64,
+                             INSERT_FRONT);
             connect_bb(c.pos->parent_bb, err_bb);
         } else {
             CRITICAL("Error");
