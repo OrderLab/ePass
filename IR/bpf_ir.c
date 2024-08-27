@@ -842,6 +842,22 @@ void run_passes(struct ir_function *fun) {
     }
 }
 
+void print_bpf_insn(struct bpf_insn insn) {
+    if (insn.off < 0) {
+        printf("%4x       %x       %x %8x -%8x\n", insn.code, insn.src_reg, insn.dst_reg, insn.imm, -insn.off);
+    } else {
+        printf("%4x       %x       %x %8x  %8x\n", insn.code, insn.src_reg, insn.dst_reg, insn.imm, insn.off);
+    }
+}
+
+void print_bpf_prog(struct bpf_insn *insns, size_t len) {
+    printf("code src_reg dst_reg      imm       off\n");
+    for (size_t i = 0; i < len; ++i) {
+        struct bpf_insn insn = insns[i];
+        print_bpf_insn(insn);
+    }
+}
+
 // Interface implementation
 
 void run(struct bpf_insn *insns, size_t len) {
@@ -867,6 +883,11 @@ void run(struct bpf_insn *insns, size_t len) {
     code_gen(&fun);
 
     // Got the bpf bytecode
+
+    printf("--------------------\nOriginal Program:\n");
+    print_bpf_prog(insns, len);
+    printf("--------------------\nRewritten Program:\n");
+    print_bpf_prog(fun.cg_info.prog, fun.cg_info.prog_size);
 
     // Free the memory
     free_function(&fun);
