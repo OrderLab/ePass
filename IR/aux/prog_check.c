@@ -94,6 +94,17 @@ void check_insn(struct ir_function *fun) {
                     CRITICAL("JA instruction should have only one valid bb");
                 }
             }
+            // Check: JEQ, JGT, JGE, JLT, JLE, JNE should have 2 values and 2 valid bbs
+            if (insn->op >= IR_INSN_JEQ && insn->op <= IR_INSN_JNE) {
+                if (insn->value_num != 2) {
+                    print_ir_insn_err(insn, NULL);
+                    CRITICAL("Conditional jump instruction should have 2 values");
+                }
+                if (insn->bb1 == NULL || insn->bb2 == NULL) {
+                    print_ir_insn_err(insn, NULL);
+                    CRITICAL("Conditional jump instruction should have 2 valid bbs");
+                }
+            }
         }
     }
 }
