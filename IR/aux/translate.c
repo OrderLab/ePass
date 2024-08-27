@@ -49,6 +49,31 @@ struct pre_ir_insn load_addr_to_reg(__u8 dst, struct ir_address_value addr, enum
     return insn;
 }
 
+struct pre_ir_insn store_reg_to_reg_mem(__u8 dst, __u8 src, __s16 offset, enum ir_vr_type type) {
+    struct pre_ir_insn insn;
+    int                size = vr_type_to_size(type);
+    insn.src_reg            = src;
+    insn.off                = offset;
+    insn.opcode             = BPF_STX | size | BPF_MEM;
+    insn.dst_reg            = dst;
+    return insn;
+}
+
+struct pre_ir_insn store_const_to_reg_mem(__u8 dst, __s64 val, __s16 offset, enum ir_vr_type type) {
+    struct pre_ir_insn insn;
+    int                size = vr_type_to_size(type);
+    insn.it                 = IMM;
+    insn.imm                = val;
+    insn.off                = offset;
+    insn.opcode             = BPF_ST | size | BPF_MEM;
+    insn.dst_reg            = dst;
+    return insn;
+}
+
+__u8 get_alloc_reg(struct ir_insn *insn) {
+    return insn_cg(insn)->alloc_reg;
+}
+
 void translate(struct ir_function *fun) {
     struct ir_basic_block **pos;
     array_for(pos, fun->reachable_bbs) {
@@ -73,8 +98,38 @@ void translate(struct ir_function *fun) {
             } else if (insn->op == IR_INSN_LOADRAW) {
                 DBGASSERT(tdst == REG);
                 extra->translated[0] =
-                    load_addr_to_reg(insn_cg(dst_insn)->alloc_reg, insn->addr_val, insn->vr_type);
+                    load_addr_to_reg(get_alloc_reg(dst_insn), insn->addr_val, insn->vr_type);
             } else if (insn->op == IR_INSN_STORERAW) {
+                // storeraw
+                if (insn->addr_val.value.type == IR_VALUE_STACK_PTR) {
+                    // Store value in the stack
+                    if (t0 == REG) {
+                        store_reg_to_reg_mem(BPF_REG_10, get_alloc_reg(v0.data.insn_d),
+                                             insn->addr_val.offset, insn->vr_type);
+                    } else if (t0 == CONST) {
+                        store_const_to_reg_mem(BPF_REG_10, v0.data.constant_d,
+                                               insn->addr_val.offset, insn->vr_type);
+                    } else {
+                        CRITICAL("Error");
+                    }
+                } else if (insn->addr_val.value.type == IR_VALUE_INSN) {
+                    // Store value in (address in the value)
+                    DBGASSERT(vtype(insn->addr_val.value) == REG);
+                    // Store value in the stack
+                    if (t0 == REG) {
+                        store_reg_to_reg_mem(get_alloc_reg(insn->addr_val.value.data.insn_d),
+                                             get_alloc_reg(v0.data.insn_d), insn->addr_val.offset,
+                                             insn->vr_type);
+                    } else if (t0 == CONST) {
+                        store_const_to_reg_mem(get_alloc_reg(insn->addr_val.value.data.insn_d),
+                                               v0.data.constant_d, insn->addr_val.offset,
+                                               insn->vr_type);
+                    } else {
+                        CRITICAL("Error");
+                    }
+                } else {
+                    CRITICAL("Error");
+                }
             } else if (insn->op >= IR_INSN_ADD && insn->op < IR_INSN_CALL) {
             } else if (insn->op == IR_INSN_ASSIGN) {
             } else if (insn->op == IR_INSN_RET) {

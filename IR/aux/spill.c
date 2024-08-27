@@ -206,9 +206,16 @@ int check_need_spill(struct ir_function *fun) {
                 if (t0 == STACK && vtype(insn->addr_val.value) == STACK) {
                     CRITICAL("TODO!");
                 }
+                if (t0 == CONST && insn->vr_type == IR_VR_TYPE_64) {
+                    CRITICAL("Not supported");
+                }
+                // Question: are all memory address 64 bits?
                 if (t0 == STACK) {
-                    load_stack_to_r0(fun, insn, v0);
+                    load_stack_to_r0(fun, insn, v0, IR_VR_TYPE_64);
                     res = 1;
+                }
+                if (vtype(insn->addr_val.value) == CONST) {
+                    CRITICAL("Not Supported");
                 }
                 if (vtype(insn->addr_val.value) == STACK) {
                     load_stack_to_r0(fun, insn, &insn->addr_val.value, IR_VR_TYPE_64);
