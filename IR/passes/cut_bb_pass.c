@@ -4,6 +4,7 @@
 #include "passes.h"
 #include "list.h"
 
+// Warning: Not usable now
 void cut_bb(struct ir_function *fun) {
     struct ir_basic_block **pos;
     array_for(pos, fun->reachable_bbs) {

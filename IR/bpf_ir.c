@@ -845,6 +845,7 @@ __u8 ir_value_equal(struct ir_value a, struct ir_value b) {
 
 void run_passes(struct ir_function *fun) {
     for (size_t i = 0; i < sizeof(passes) / sizeof(passes[0]); ++i) {
+        fix_bb_succ(fun);
         clean_env_all(fun);
         gen_reachable_bbs(fun);
         passes[i](fun);
@@ -882,7 +883,7 @@ void run(struct bpf_insn *insns, size_t len) {
     init_ir_bbs(&env);
     transform_bb(&env, info.entry);
     struct ir_function fun = gen_function(&env);
-    fix_bb_succ(&fun);
+
     // Drop env
     print_ir_prog(&fun);
     printf("--------------------\n");

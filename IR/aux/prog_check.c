@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include "array.h"
 #include "bpf_ir.h"
 #include "dbg.h"
@@ -162,6 +163,7 @@ void check_jumping(struct ir_function *fun) {
             if (!found) {
                 // Error
                 print_ir_bb_err(bb);
+                printf("Pred: %zu\n", pred_bb->_id);
                 CRITICAL("BB not a succ of its pred");
             }
         }
