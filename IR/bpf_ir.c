@@ -442,6 +442,14 @@ int vr_type_to_size(enum ir_vr_type type) {
     }
 }
 
+int valid_alu_type(enum ir_alu_type type) {
+    return type >= IR_ALU_32 && type <= IR_ALU_64;
+}
+
+int valid_vr_type(enum ir_vr_type type) {
+    return type >= IR_VR_TYPE_8 && type <= IR_VR_TYPE_64;
+}
+
 struct ir_value ir_value_insn(struct ir_insn *insn) {
     return (struct ir_value){.type = IR_VALUE_INSN, .data.insn_d = insn};
 }

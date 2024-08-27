@@ -79,6 +79,8 @@ enum ir_alu_type {
     IR_ALU_64,
 };
 
+int valid_alu_type(enum ir_alu_type type);
+
 /**
     Virtual Register Type
  */
@@ -89,6 +91,8 @@ enum ir_vr_type {
     IR_VR_TYPE_32,
     IR_VR_TYPE_64,
 };
+
+int valid_vr_type(enum ir_vr_type type);
 
 enum ir_insn_type {
     IR_INSN_ALLOC,

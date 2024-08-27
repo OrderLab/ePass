@@ -56,8 +56,7 @@ void check_insn(struct ir_function *fun) {
                 }
             }
 
-            if (insn->op == IR_INSN_STORE || (insn->op >= IR_INSN_ADD && insn->op < IR_INSN_CALL) ||
-                (insn->op >= IR_INSN_JEQ && insn->op < IR_INSN_PHI)) {
+            if (insn->op == IR_INSN_STORE || (is_alu(insn)) || (is_cond_jmp(insn))) {
                 if (!(insn->value_num == 2)) {
                     print_ir_insn_err(insn, NULL);
                     CRITICAL("Instruction should have 2 values");
@@ -71,12 +70,22 @@ void check_insn(struct ir_function *fun) {
                     CRITICAL("Value[0] should be an alloc instruction");
                 }
             }
-            // Check: users of alloc instructions must be STORE/LOAD
-            if (insn->op >= IR_INSN_ADD && insn->op < IR_INSN_CALL) {
+
+            // TODO: Check: users of alloc instructions must be STORE/LOAD
+
+            if (is_alu(insn) || is_cond_jmp(insn)) {
                 // Binary ALU
-                if (!(insn->alu == IR_ALU_64 || insn->alu == IR_ALU_32)) {
+                if (!valid_alu_type(insn->alu)) {
                     print_ir_insn_err(insn, NULL);
                     CRITICAL("Binary ALU type error!");
+                }
+            }
+
+            if (insn->op == IR_INSN_ALLOC || insn->op == IR_INSN_LOADRAW ||
+                insn->op == IR_INSN_STORERAW) {
+                if (!valid_vr_type(insn->vr_type)) {
+                    print_ir_insn_err(insn, NULL);
+                    CRITICAL("Invalid VR type");
                 }
             }
         }

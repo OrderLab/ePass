@@ -165,8 +165,6 @@ void print_ir_insn_full(struct ir_insn *insn, void (*print_ir)(struct ir_insn *)
             break;
         case IR_INSN_LOAD:
             printf("load ");
-            print_vr_type(insn->vr_type);
-            printf(", ");
             print_ir_value_full(insn->values[0], print_ir);
             break;
         case IR_INSN_LOADRAW:
