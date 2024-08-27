@@ -192,6 +192,9 @@ void code_gen(struct ir_function *fun) {
     // Init CG, start real code generation
     init_cg(fun);
 
+    // Debugging settings
+    fun->cg_info.spill_callee = 1;
+
     // Step 3: Use explicit real registers
     explicit_reg(fun);  // Still in SSA form, users are available
     print_ir_prog_pre_cg(fun);
@@ -233,20 +236,20 @@ void code_gen(struct ir_function *fun) {
     print_ir_prog_cg_alloc(fun);
 
     // Step 9: Calculate stack size
-    // calc_callee_num(fun);
-    // calc_stack_size(fun);
+    calc_callee_num(fun);
+    calc_stack_size(fun);
 
     // Step 10: Shift raw stack operations
-    // add_stack_offset(fun, fun->cg_info.stack_offset);
-    // print_ir_prog_cg_alloc(fun);
+    add_stack_offset(fun, fun->cg_info.stack_offset);
+    print_ir_prog_cg_alloc(fun);
 
     // Step 11: Spill callee saved registers
     // spill_callee(fun);
     // print_ir_prog_cg_alloc(fun);
 
     // Step 12: Normalize
-    // normalize(fun);
-    // print_ir_prog_cg_alloc(fun);
+    normalize(fun);
+    print_ir_prog_cg_alloc(fun);
 
     // Step 13: Direct Translation
     // translate(fun);

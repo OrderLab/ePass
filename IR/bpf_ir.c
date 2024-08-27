@@ -797,6 +797,7 @@ struct ir_function gen_function(struct ssa_transform_env *env) {
     fun.reachable_bbs   = INIT_ARRAY(struct ir_basic_block *);
     fun.end_bbs         = INIT_ARRAY(struct ir_basic_block *);
     fun.cg_info.all_var = INIT_ARRAY(struct ir_insn *);
+    fun.cg_info.prog    = NULL;
     for (size_t i = 0; i < MAX_BPF_REG; ++i) {
         struct array *currentDef = &env->currentDef[i];
         array_free(currentDef);

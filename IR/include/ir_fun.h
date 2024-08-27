@@ -19,6 +19,9 @@ struct code_gen_info {
     size_t prog_size;
 
     struct bpf_insn *prog;
+
+    // Whether to spill callee saved registers
+    __u8 spill_callee;
 };
 
 struct ir_function {

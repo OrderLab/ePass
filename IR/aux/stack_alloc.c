@@ -28,7 +28,9 @@ void calc_callee_num(struct ir_function *fun) {
 void calc_stack_size(struct ir_function *fun) {
     // Check callee
     size_t off = 0;
-    off += fun->cg_info.callee_num * 8;
+    if (fun->cg_info.spill_callee) {
+        off += fun->cg_info.callee_num * 8;
+    }
     // Check all VR
     size_t           max = 0;
     struct ir_insn **pos;
