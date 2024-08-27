@@ -221,7 +221,7 @@ int check_need_spill(struct ir_function *fun) {
                     load_stack_to_r0(fun, insn, &insn->addr_val.value, IR_VR_TYPE_64);
                     res = 1;
                 }
-            } else if (insn->op >= IR_INSN_ADD && insn->op < IR_INSN_CALL) {
+            } else if (is_alu(insn)) {
                 // Binary ALU
                 // reg = add reg reg
                 // reg = add reg const
@@ -342,7 +342,8 @@ int check_need_spill(struct ir_function *fun) {
                 DBGASSERT(insn->value_num == 0);
             } else if (insn->op == IR_INSN_JA) {
                 // OK
-            } else if (insn->op >= IR_INSN_JEQ && insn->op < IR_INSN_PHI) {
+            } else if (is_cond_jmp(insn)) {
+                // ERROR: Should not change!!!
                 // jeq reg const/reg
                 if ((t0 != REG && t1 == REG) || (t0 == CONST && t1 == STACK)) {
                     struct ir_value tmp = *v0;
