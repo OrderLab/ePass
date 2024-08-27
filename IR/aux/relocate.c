@@ -18,10 +18,10 @@ void calc_pos(struct ir_function *fun) {
         list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
             struct ir_insn_cg_extra *insn_extra = insn_cg(insn);
             for (__u8 i = 0; i < insn_extra->translated_num; ++i) {
-                struct pre_ir_insn translated_insn = insn_extra->translated[i];
+                struct pre_ir_insn *translated_insn = &insn_extra->translated[i];
                 // Pos
-                translated_insn.pos = ipos;
-                if (translated_insn.it == IMM) {
+                translated_insn->pos = ipos;
+                if (translated_insn->it == IMM) {
                     ipos += 1;
                 } else {
                     ipos += 2;
