@@ -94,7 +94,7 @@ void conflict_analysis(struct ir_function *fun) {
                         DBGASSERT(*pos3 == dst(*pos3));
                         if (*pos2 == *pos3) {
                             // Live across CALL!
-                            printf("Found a VR live across CALL!\n");
+                            // printf("Found a VR live across CALL!\n");
                             caller_constraint(fun, *pos2);
                         }
                     }

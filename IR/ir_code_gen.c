@@ -132,18 +132,18 @@ struct ir_insn *dst(struct ir_insn *insn) {
     return insn_cg(insn)->dst;
 }
 
-void print_ir_prog_pre_cg(struct ir_function *fun) {
-    printf("-----------------\n");
+void print_ir_prog_pre_cg(struct ir_function *fun, char *msg) {
+    printf("\x1B[32m----- CG: %s -----\x1B[0m\n", msg);
     print_ir_prog_advanced(fun, NULL, NULL, NULL);
 }
 
-void print_ir_prog_cg_dst(struct ir_function *fun) {
-    printf("-----------------\n");
+void print_ir_prog_cg_dst(struct ir_function *fun, char *msg) {
+    printf("\x1B[32m----- CG: %s -----\x1B[0m\n", msg);
     print_ir_prog_advanced(fun, NULL, NULL, print_ir_dst);
 }
 
-void print_ir_prog_cg_alloc(struct ir_function *fun) {
-    printf("-----------------\n");
+void print_ir_prog_cg_alloc(struct ir_function *fun, char *msg) {
+    printf("\x1B[32m----- CG: %s -----\x1B[0m\n", msg);
     print_ir_prog_advanced(fun, NULL, NULL, print_ir_alloc);
 }
 
@@ -182,14 +182,13 @@ void code_gen(struct ir_function *fun) {
 
     // Step 1: Flag all raw stack access
     add_stack_offset_pre_cg(fun);
-
     prog_check(fun);
 
     // Step 2: Eliminate SSA
     to_cssa(fun);
-
     prog_check(fun);
-    print_ir_prog_pre_cg(fun);
+
+    print_ir_prog_pre_cg(fun, "To CSSA");
 
     // Init CG, start real code generation
     init_cg(fun);
@@ -201,13 +200,12 @@ void code_gen(struct ir_function *fun) {
 
     // Step 3: Use explicit real registers
     explicit_reg(fun);  // Still in SSA form, users are available
-    print_ir_prog_pre_cg(fun);
-    print_ir_prog_cg_dst(fun);
+    print_ir_prog_cg_dst(fun, "Explicit REG");
 
     // Step 4: SSA Destruction
     // users not available from now on
     remove_phi(fun);
-    print_ir_prog_cg_dst(fun);
+    print_ir_prog_cg_dst(fun, "PHI Removal");
 
     // print_ir_prog_reachable(fun);
 
@@ -221,17 +219,19 @@ void code_gen(struct ir_function *fun) {
 
         // Step 6: Conflict Analysis
         conflict_analysis(fun);
+        printf("Conflicting graph:\n");
         print_interference_graph(fun);
-        printf("-------------\n");
 
         // Step 7: Graph coloring
         graph_coloring(fun);
         coaleasing(fun);
+        printf("Conflicting graph (after coloring):\n");
         print_interference_graph(fun);
-        print_ir_prog_cg_alloc(fun);
+        print_ir_prog_cg_alloc(fun, "After RA");
 
         // Step 8: Check if need to spill and spill
         need_spill = check_need_spill(fun);
+        print_ir_prog_cg_dst(fun, "After Spilling");
         if (need_spill) {
             // Still need to spill
             printf("Need to spill...\n");
@@ -241,7 +241,7 @@ void code_gen(struct ir_function *fun) {
 
     // Register allocation finished (All registers are fixed)
     printf("Register allocation finished in %d iteratinos\n", iterations);
-    print_ir_prog_cg_alloc(fun);
+    print_ir_prog_cg_alloc(fun, "After RA & Spilling");
 
     // Step 9: Calculate stack size
     if (fun->cg_info.spill_callee) {
@@ -251,17 +251,17 @@ void code_gen(struct ir_function *fun) {
 
     // Step 10: Shift raw stack operations
     add_stack_offset(fun, fun->cg_info.stack_offset);
-    print_ir_prog_cg_alloc(fun);
+    print_ir_prog_cg_alloc(fun, "Shifting stack access");
 
     // Step 11: Spill callee saved registers
     if (fun->cg_info.spill_callee) {
         spill_callee(fun);
-        print_ir_prog_cg_alloc(fun);
+        print_ir_prog_cg_alloc(fun, "Spilling callee-saved regs");
     }
 
     // Step 12: Normalize
     normalize(fun);
-    print_ir_prog_cg_alloc(fun);
+    print_ir_prog_cg_alloc(fun, "Normalization");
 
     // // Step 13: Direct Translation
     // translate(fun);

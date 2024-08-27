@@ -290,7 +290,7 @@ void cg_prog_check(struct ir_function *fun) {
 
     struct ir_basic_block **pos;
     array_for(pos, fun->reachable_bbs) {
-        struct ir_basic_block *bb      = *pos;
+        struct ir_basic_block *bb = *pos;
         struct ir_insn        *insn;
         list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
             if (insn->user_data == NULL) {

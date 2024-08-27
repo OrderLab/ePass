@@ -38,7 +38,6 @@ void try_remove_trivial_phi(struct ir_insn *phi) {
 }
 
 void remove_trivial_phi(struct ir_function *fun) {
-    printf("PHI removal\n");
     struct ir_basic_block **bpos;
     array_for(bpos, fun->reachable_bbs) {
         struct ir_basic_block *bb = *bpos;

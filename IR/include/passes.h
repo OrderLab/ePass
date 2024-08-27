@@ -27,7 +27,6 @@ struct function_pass {
  */
 static const struct function_pass passes[] = {
     DEF_FUNC_PASS(remove_trivial_phi, "Remove the trival Phi"),
-    DEF_FUNC_PASS(gen_end_bbs, "Generate ending BBs"),
     DEF_FUNC_PASS(add_counter, "Adding counter"),
 };
 

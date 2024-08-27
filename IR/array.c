@@ -83,7 +83,9 @@ struct array array_clone(struct array *arr) {
 }
 
 void array_free(struct array *arr) {
-    __free(arr->data);
+    if (arr->data) {
+        __free(arr->data);
+    }
     *arr = array_null();
 }
 

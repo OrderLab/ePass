@@ -849,16 +849,17 @@ void run_passes(struct ir_function *fun) {
         fix_bb_succ(fun);
         clean_env_all(fun);
         gen_reachable_bbs(fun);
-        printf("------Running Pass: %s ---------\n", passes[i].name);
+        gen_end_bbs(fun);
+        printf("\x1B[32m------ Running Pass: %s ------\x1B[0m\n", passes[i].name);
         passes[i].pass(fun);
         // Validate the IR
         prog_check(fun);
         print_ir_prog(fun);
-        printf("--------------------\n");
     }
     fix_bb_succ(fun);
     clean_env_all(fun);
     gen_reachable_bbs(fun);
+    gen_end_bbs(fun);
 }
 
 void print_bpf_insn(struct bpf_insn insn) {
