@@ -30,14 +30,14 @@ struct ir_insn_cg_extra *init_insn_cg(struct ir_insn *insn) {
 }
 
 void init_cg(struct ir_function *fun) {
-    struct ir_basic_block **pos;
+    struct ir_basic_block **pos = NULL;
     array_for(pos, fun->reachable_bbs) {
         struct ir_basic_block *bb    = *pos;
         struct ir_bb_cg_extra *bb_cg = __malloc(sizeof(struct ir_bb_cg_extra));
         // Empty bb cg
         bb->user_data = bb_cg;
 
-        struct ir_insn *insn;
+        struct ir_insn *insn = NULL;
         list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
             init_insn_cg(insn);
         }
@@ -72,13 +72,13 @@ void free_insn_cg(struct ir_insn *insn) {
 }
 
 void free_cg_res(struct ir_function *fun) {
-    struct ir_basic_block **pos;
+    struct ir_basic_block **pos = NULL;
     array_for(pos, fun->reachable_bbs) {
         struct ir_basic_block *bb    = *pos;
         struct ir_bb_cg_extra *bb_cg = bb->user_data;
         __free(bb_cg);
-        bb->user_data = NULL;
-        struct ir_insn *insn;
+        bb->user_data        = NULL;
+        struct ir_insn *insn = NULL;
         list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
             free_insn_cg(insn);
         }
@@ -102,10 +102,10 @@ void clean_insn_cg(struct ir_insn *insn) {
 }
 
 void clean_cg(struct ir_function *fun) {
-    struct ir_basic_block **pos;
+    struct ir_basic_block **pos = NULL;
     array_for(pos, fun->reachable_bbs) {
-        struct ir_basic_block *bb = *pos;
-        struct ir_insn        *insn;
+        struct ir_basic_block *bb   = *pos;
+        struct ir_insn        *insn = NULL;
         list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
             clean_insn_cg(insn);
             struct ir_insn_cg_extra *extra = insn_cg(insn);
@@ -147,11 +147,11 @@ void print_ir_prog_cg_alloc(struct ir_function *fun) {
 
 void synthesize(struct ir_function *fun) {
     // The last step, synthesizes the program
-    fun->cg_info.prog = __malloc(fun->cg_info.prog_size * sizeof(struct bpf_insn));
-    struct ir_basic_block **pos;
+    fun->cg_info.prog           = __malloc(fun->cg_info.prog_size * sizeof(struct bpf_insn));
+    struct ir_basic_block **pos = NULL;
     array_for(pos, fun->reachable_bbs) {
-        struct ir_basic_block *bb = *pos;
-        struct ir_insn        *insn;
+        struct ir_basic_block *bb   = *pos;
+        struct ir_insn        *insn = NULL;
         list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
             struct ir_insn_cg_extra *extra = insn_cg(insn);
             for (__u8 i = 0; i < extra->translated_num; ++i) {
@@ -205,6 +205,8 @@ void code_gen(struct ir_function *fun) {
     // users not available from now on
     remove_phi(fun);
     print_ir_prog_cg_dst(fun);
+
+    CRITICAL("G");
 
     int need_spill = 1;
 
