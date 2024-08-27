@@ -264,11 +264,13 @@ struct ir_insn *create_load_insn_bb(struct ir_basic_block *bb, struct ir_value v
 }
 
 struct ir_insn *create_bin_insn_base(struct ir_basic_block *bb, struct ir_value val1,
-                                     struct ir_value val2, enum ir_insn_type ty) {
+                                     struct ir_value val2, enum ir_insn_type ty,
+                                     enum ir_alu_type aluty) {
     struct ir_insn *new_insn = create_insn_base(bb);
     new_insn->op             = ty;
     new_insn->values[0]      = val1;
     new_insn->values[1]      = val2;
+    new_insn->alu            = aluty;
     val_add_user(val1, new_insn);
     val_add_user(val2, new_insn);
     new_insn->value_num = 2;
@@ -276,16 +278,17 @@ struct ir_insn *create_bin_insn_base(struct ir_basic_block *bb, struct ir_value 
 }
 
 struct ir_insn *create_bin_insn(struct ir_insn *insn, struct ir_value val1, struct ir_value val2,
-                                enum ir_insn_type ty, enum insert_position pos) {
-    struct ir_insn *new_insn = create_bin_insn_base(insn->parent_bb, val1, val2, ty);
+                                enum ir_insn_type ty, enum ir_alu_type aluty,
+                                enum insert_position pos) {
+    struct ir_insn *new_insn = create_bin_insn_base(insn->parent_bb, val1, val2, ty, aluty);
     insert_at(new_insn, insn, pos);
     return new_insn;
 }
 
 struct ir_insn *create_bin_insn_bb(struct ir_basic_block *bb, struct ir_value val1,
                                    struct ir_value val2, enum ir_insn_type ty,
-                                   enum insert_position pos) {
-    struct ir_insn *new_insn = create_bin_insn_base(bb, val1, val2, ty);
+                                   enum ir_alu_type aluty, enum insert_position pos) {
+    struct ir_insn *new_insn = create_bin_insn_base(bb, val1, val2, ty, aluty);
     insert_at_bb(new_insn, bb, pos);
     return new_insn;
 }
@@ -330,13 +333,15 @@ struct ir_insn *create_ja_insn_bb(struct ir_basic_block *bb, struct ir_basic_blo
 
 struct ir_insn *create_jbin_insn_base(struct ir_basic_block *bb, struct ir_value val1,
                                       struct ir_value val2, struct ir_basic_block *to_bb1,
-                                      struct ir_basic_block *to_bb2, enum ir_insn_type ty) {
+                                      struct ir_basic_block *to_bb2, enum ir_insn_type ty,
+                                      enum ir_alu_type aluty) {
     struct ir_insn *new_insn = create_insn_base(bb);
     new_insn->op             = ty;
     new_insn->values[0]      = val1;
     new_insn->values[1]      = val2;
     new_insn->bb1            = to_bb1;
     new_insn->bb2            = to_bb2;
+    new_insn->alu            = aluty;
     val_add_user(val1, new_insn);
     val_add_user(val2, new_insn);
     array_push(&to_bb1->users, &new_insn);
@@ -347,9 +352,10 @@ struct ir_insn *create_jbin_insn_base(struct ir_basic_block *bb, struct ir_value
 
 struct ir_insn *create_jbin_insn(struct ir_insn *insn, struct ir_value val1, struct ir_value val2,
                                  struct ir_basic_block *to_bb1, struct ir_basic_block *to_bb2,
-                                 enum ir_insn_type ty, enum insert_position pos) {
+                                 enum ir_insn_type ty, enum ir_alu_type aluty,
+                                 enum insert_position pos) {
     struct ir_insn *new_insn =
-        create_jbin_insn_base(insn->parent_bb, val1, val2, to_bb1, to_bb2, ty);
+        create_jbin_insn_base(insn->parent_bb, val1, val2, to_bb1, to_bb2, ty, aluty);
     insert_at(new_insn, insn, pos);
     return new_insn;
 }
@@ -357,8 +363,8 @@ struct ir_insn *create_jbin_insn(struct ir_insn *insn, struct ir_value val1, str
 struct ir_insn *create_jbin_insn_bb(struct ir_basic_block *bb, struct ir_value val1,
                                     struct ir_value val2, struct ir_basic_block *to_bb1,
                                     struct ir_basic_block *to_bb2, enum ir_insn_type ty,
-                                    enum insert_position pos) {
-    struct ir_insn *new_insn = create_jbin_insn_base(bb, val1, val2, to_bb1, to_bb2, ty);
+                                    enum ir_alu_type aluty, enum insert_position pos) {
+    struct ir_insn *new_insn = create_jbin_insn_base(bb, val1, val2, to_bb1, to_bb2, ty, aluty);
     insert_at_bb(new_insn, bb, pos);
     return new_insn;
 }
