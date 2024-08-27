@@ -178,20 +178,25 @@ void translate(struct ir_function *fun) {
                 DBGASSERT(t0 == REG);
                 DBGASSERT(get_alloc_reg(dst_insn) == get_alloc_reg(v0.data.insn_d));
                 if (t1 == REG) {
-                    extra->translated[0] = alu_reg(get_alloc_reg(dst_insn),
-                                                   get_alloc_reg(v1.data.insn_d), insn->alu,
-                                                   alu_code(insn->op));
+                    extra->translated[0] =
+                        alu_reg(get_alloc_reg(dst_insn), get_alloc_reg(v1.data.insn_d), insn->alu,
+                                alu_code(insn->op));
                 } else if (t1 == CONST) {
                     extra->translated[0] = alu_imm(get_alloc_reg(dst_insn), v1.data.constant_d,
-                                                    insn->alu, alu_code(insn->op));
+                                                   insn->alu, alu_code(insn->op));
                 } else {
                     CRITICAL("Error");
-                
                 }
             } else if (insn->op == IR_INSN_ASSIGN) {
             } else if (insn->op == IR_INSN_RET) {
+                extra->translated[0].opcode = BPF_EXIT | BPF_JMP;
             } else if (insn->op == IR_INSN_CALL) {
+                // Currently only support local helper functions
+                extra->translated[0].opcode = BPF_CALL | BPF_JMP;
+                extra->translated[0].it     = IMM;
+                extra->translated[0].imm    = insn->fid;
             } else if (insn->op == IR_INSN_JA) {
+                extra->translated[0].opcode = BPF_JMP | BPF_JA;
             } else if (insn->op >= IR_INSN_JEQ && insn->op < IR_INSN_PHI) {
             } else {
                 CRITICAL("No such instruction");
