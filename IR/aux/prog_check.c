@@ -79,6 +79,21 @@ void check_insn(struct ir_function *fun) {
                     CRITICAL("Binary ALU type error!");
                 }
             }
+            // Check: JA should have no values and only one valid bb
+            if (insn->op == IR_INSN_JA) {
+                if (insn->value_num != 0) {
+                    print_ir_insn_err(insn, NULL);
+                    CRITICAL("JA instruction should have no values");
+                }
+                if (insn->bb1 == NULL) {
+                    print_ir_insn_err(insn, NULL);
+                    CRITICAL("JA instruction should have a valid bb");
+                }
+                if (insn->bb2 != NULL) {
+                    print_ir_insn_err(insn, NULL);
+                    CRITICAL("JA instruction should have only one valid bb");
+                }
+            }
         }
     }
 }
