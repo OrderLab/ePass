@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <time.h>
 #include "array.h"
 #include "bpf_ir.h"
 #include "dbg.h"
@@ -282,4 +283,19 @@ void prog_check(struct ir_function *fun) {
     check_phi(fun);
     check_users(fun);
     check_jumping(fun);
+}
+
+void cg_prog_check(struct ir_function *fun) {
+    // Check program sanity in Code Generation stage
+
+    struct ir_basic_block **pos;
+    array_for(pos, fun->reachable_bbs) {
+        struct ir_basic_block *bb      = *pos;
+        struct ir_insn        *insn;
+        list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
+            if (insn->user_data == NULL) {
+                CRITICAL("Instruction has no user data!");
+            }
+        }
+    }
 }

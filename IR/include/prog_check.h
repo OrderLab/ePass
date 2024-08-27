@@ -5,4 +5,6 @@
 
 void check_jumping(struct ir_function *fun);
 
+void cg_prog_check(struct ir_function *fun);
+
 #endif

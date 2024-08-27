@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stdio.h>
+#include <time.h>
 #include "array.h"
 #include "bpf_ir.h"
 #include "code_gen.h"
@@ -323,12 +324,9 @@ void print_raw_ir_insn(struct ir_insn *insn) {
     print_raw_ir_insn_full(insn, 0);
 }
 
-void print_ir_bb(struct ir_basic_block *bb, void (*post_bb)(struct ir_basic_block *),
-                 void (*post_insn)(struct ir_insn *), void (*print_insn_name)(struct ir_insn *)) {
-    if (bb->_visited) {
-        return;
-    }
-    bb->_visited = 1;
+void print_ir_bb_no_rec(struct ir_basic_block *bb, void (*post_bb)(struct ir_basic_block *),
+                        void (*post_insn)(struct ir_insn *),
+                        void (*print_insn_name)(struct ir_insn *)) {
     printf("b%zu:\n", bb->_id);
     struct list_head *p = NULL;
     list_for_each(p, &bb->ir_insn_head) {
@@ -354,9 +352,26 @@ void print_ir_bb(struct ir_basic_block *bb, void (*post_bb)(struct ir_basic_bloc
     if (post_bb) {
         post_bb(bb);
     }
+}
+
+void print_ir_bb(struct ir_basic_block *bb, void (*post_bb)(struct ir_basic_block *),
+                 void (*post_insn)(struct ir_insn *), void (*print_insn_name)(struct ir_insn *)) {
+    if (bb->_visited) {
+        return;
+    }
+    bb->_visited = 1;
+    print_ir_bb_no_rec(bb, post_bb, post_insn, print_insn_name);
     for (size_t i = 0; i < bb->succs.num_elem; ++i) {
         struct ir_basic_block *next = ((struct ir_basic_block **)(bb->succs.data))[i];
         print_ir_bb(next, post_bb, post_insn, print_insn_name);
+    }
+}
+
+void print_ir_prog_reachable(struct ir_function *fun) {
+    struct ir_basic_block **pos;
+    array_for(pos, fun->reachable_bbs) {
+        struct ir_basic_block *bb = *pos;
+        print_ir_bb_no_rec(bb, NULL, NULL, NULL);
     }
 }
 

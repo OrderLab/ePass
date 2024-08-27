@@ -7,6 +7,7 @@
 #include "ir_insn.h"
 #include "list.h"
 #include "ir_helper.h"
+#include "prog_check.h"
 
 struct ir_insn_cg_extra *init_insn_cg(struct ir_insn *insn) {
     struct ir_insn_cg_extra *extra = __malloc(sizeof(struct ir_insn_cg_extra));
@@ -196,22 +197,25 @@ void code_gen(struct ir_function *fun) {
     // Debugging settings
     fun->cg_info.spill_callee = 0;
 
+    cg_prog_check(fun);
+
     // Step 3: Use explicit real registers
     explicit_reg(fun);  // Still in SSA form, users are available
     print_ir_prog_pre_cg(fun);
     print_ir_prog_cg_dst(fun);
+    cg_prog_check(fun);
 
     // Step 4: SSA Destruction
     // users not available from now on
     remove_phi(fun);
     print_ir_prog_cg_dst(fun);
-
-    CRITICAL("G");
+    cg_prog_check(fun);
 
     int need_spill = 1;
 
     while (need_spill) {
         // Step 5: Liveness Analysis
+    cg_prog_check(fun);
         liveness_analysis(fun);
 
         // Step 6: Conflict Analysis
