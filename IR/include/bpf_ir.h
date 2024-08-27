@@ -83,6 +83,7 @@ enum ir_alu_type {
     Virtual Register Type
  */
 enum ir_vr_type {
+    IR_VR_TYPE_UNKNOWN,  // To prevent from not manually setting this type
     IR_VR_TYPE_8,
     IR_VR_TYPE_16,
     IR_VR_TYPE_32,

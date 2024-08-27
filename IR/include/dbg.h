@@ -7,7 +7,7 @@
 
 #define CRITICAL(str)                                        \
     {                                                        \
-        printf("<%s>:%d %s\n", __FUNCTION__, __LINE__, str); \
+        printf("%s:%d <%s> %s\n", __FILE__, __LINE__, __FUNCTION__, str); \
         exit(1);                                             \
     }
 

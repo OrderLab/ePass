@@ -391,6 +391,10 @@ struct ir_value read_variable(struct ssa_transform_env *env, __u8 reg,
 struct ir_insn *create_insn() {
     struct ir_insn *insn = __malloc(sizeof(struct ir_insn));
     insn->users          = INIT_ARRAY(struct ir_insn *);
+    // Setting the default values
+    insn->alu       = IR_ALU_UNKNOWN;
+    insn->vr_type   = IR_VR_TYPE_UNKNOWN;
+    insn->value_num = 0;
     return insn;
 }
 
@@ -793,11 +797,12 @@ struct ir_function gen_function(struct ssa_transform_env *env) {
     for (__u8 i = 0; i < MAX_FUNC_ARG; ++i) {
         fun.function_arg[i] = env->function_arg[i];
     }
-    fun.all_bbs         = INIT_ARRAY(struct ir_basic_block *);
-    fun.reachable_bbs   = INIT_ARRAY(struct ir_basic_block *);
-    fun.end_bbs         = INIT_ARRAY(struct ir_basic_block *);
-    fun.cg_info.all_var = INIT_ARRAY(struct ir_insn *);
-    fun.cg_info.prog    = NULL;
+    fun.all_bbs           = INIT_ARRAY(struct ir_basic_block *);
+    fun.reachable_bbs     = INIT_ARRAY(struct ir_basic_block *);
+    fun.end_bbs           = INIT_ARRAY(struct ir_basic_block *);
+    fun.cg_info.all_var   = INIT_ARRAY(struct ir_insn *);
+    fun.cg_info.prog      = NULL;
+    fun.cg_info.prog_size = 0;
     for (size_t i = 0; i < MAX_BPF_REG; ++i) {
         struct array *currentDef = &env->currentDef[i];
         array_free(currentDef);

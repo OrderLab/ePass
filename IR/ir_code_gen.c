@@ -256,14 +256,14 @@ void code_gen(struct ir_function *fun) {
     normalize(fun);
     print_ir_prog_cg_alloc(fun);
 
-    // Step 13: Direct Translation
-    translate(fun);
+    // // Step 13: Direct Translation
+    // translate(fun);
 
-    // Step 14: Relocation
-    relocate(fun);
+    // // Step 14: Relocation
+    // relocate(fun);
 
-    // Step 15: Synthesize
-    synthesize(fun);
+    // // Step 15: Synthesize
+    // synthesize(fun);
 
     // Free CG resources
     free_cg_res(fun);

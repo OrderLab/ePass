@@ -395,6 +395,10 @@ int is_cond_jmp(struct ir_insn *insn) {
     return (insn->op >= IR_INSN_JEQ && insn->op < IR_INSN_PHI);
 }
 
+int is_alu(struct ir_insn *insn) {
+    return insn->op >= IR_INSN_ADD && insn->op < IR_INSN_CALL;
+}
+
 int is_void(struct ir_insn *insn) {
     return is_jmp(insn) || insn->op == IR_INSN_STORERAW || insn->op == IR_INSN_STORE;
 }

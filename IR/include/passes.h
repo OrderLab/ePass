@@ -21,7 +21,7 @@ void gen_end_bbs(struct ir_function *fun);
 static void (*passes[])(struct ir_function *fun) = {
     remove_trivial_phi, gen_end_bbs,
     // add_constraint,
-    // add_counter,
+    add_counter,
 };
 
 #endif
