@@ -212,8 +212,10 @@ void code_gen(struct ir_function *fun) {
     // print_ir_prog_reachable(fun);
 
     int need_spill = 1;
+    int iterations = 0;
 
     while (need_spill) {
+        iterations++;
         // Step 5: Liveness Analysis
         liveness_analysis(fun);
 
@@ -238,7 +240,7 @@ void code_gen(struct ir_function *fun) {
     }
 
     // Register allocation finished (All registers are fixed)
-    printf("Register allocation finished\n");
+    printf("Register allocation finished in %d iteratinos\n", iterations);
     print_ir_prog_cg_alloc(fun);
 
     // Step 9: Calculate stack size

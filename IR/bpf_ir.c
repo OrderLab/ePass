@@ -844,6 +844,7 @@ __u8 ir_value_equal(struct ir_value a, struct ir_value b) {
 }
 
 void run_passes(struct ir_function *fun) {
+    prog_check(fun);
     for (size_t i = 0; i < sizeof(passes) / sizeof(passes[0]); ++i) {
         fix_bb_succ(fun);
         clean_env_all(fun);
@@ -851,11 +852,10 @@ void run_passes(struct ir_function *fun) {
         printf("------Running Pass: %s ---------\n", passes[i].name);
         passes[i].pass(fun);
         // Validate the IR
-        printf("--------------------\n");
         prog_check(fun);
         print_ir_prog(fun);
+        printf("--------------------\n");
     }
-    prog_check(fun);
     fix_bb_succ(fun);
     clean_env_all(fun);
     gen_reachable_bbs(fun);
@@ -891,16 +891,14 @@ void run(struct bpf_insn *insns, size_t len) {
 
     // Drop env
     print_ir_prog(&fun);
-    printf("--------------------\n");
+    printf("Starting IR Passes...\n");
     // Start IR manipulation
 
     run_passes(&fun);
 
     // End IR manipulation
-    printf("--------------------\n");
-    print_ir_prog(&fun);
+    printf("IR Passes Ended!\n");
 
-    printf("--------------------\n");
     code_gen(&fun);
 
     // Got the bpf bytecode
