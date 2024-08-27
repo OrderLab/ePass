@@ -7,6 +7,7 @@
 #include "ir_insn.h"
 #include "list.h"
 #include "ir_helper.h"
+#include "passes.h"
 #include "prog_check.h"
 
 struct ir_insn_cg_extra *init_insn_cg(struct ir_insn *insn) {
@@ -179,8 +180,6 @@ void synthesize(struct ir_function *fun) {
 void code_gen(struct ir_function *fun) {
     // Preparation
 
-    prog_check(fun);
-
     // Step 1: Flag all raw stack access
     add_stack_offset_pre_cg(fun);
 
@@ -188,6 +187,7 @@ void code_gen(struct ir_function *fun) {
 
     // Step 2: Eliminate SSA
     to_cssa(fun);
+
     prog_check(fun);
     print_ir_prog_pre_cg(fun);
 
@@ -203,19 +203,18 @@ void code_gen(struct ir_function *fun) {
     explicit_reg(fun);  // Still in SSA form, users are available
     print_ir_prog_pre_cg(fun);
     print_ir_prog_cg_dst(fun);
-    cg_prog_check(fun);
 
     // Step 4: SSA Destruction
     // users not available from now on
     remove_phi(fun);
     print_ir_prog_cg_dst(fun);
-    cg_prog_check(fun);
+
+    // print_ir_prog_reachable(fun);
 
     int need_spill = 1;
 
     while (need_spill) {
         // Step 5: Liveness Analysis
-    cg_prog_check(fun);
         liveness_analysis(fun);
 
         // Step 6: Conflict Analysis

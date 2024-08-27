@@ -181,9 +181,8 @@ void print_insn_extra(struct ir_insn *insn) {
 void liveness_analysis(struct ir_function *fun) {
     // TODO: Encode Calling convention into GEN KILL
     gen_kill(fun);
-    // in_out(fun);
+    in_out(fun);
     printf("--------------\n");
     print_ir_prog_advanced(fun, NULL, print_insn_extra, print_ir_dst);
     print_ir_prog_advanced(fun, NULL, NULL, print_ir_dst);
-    CRITICAL("HI");
 }

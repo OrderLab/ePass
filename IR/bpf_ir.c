@@ -14,7 +14,7 @@
 #include "read.h"
 
 // TODO: Change this to real function
-static __u32 helper_func_arg_num[100] = {1, 1, 1, 1, 1, 0, 2, 1, 1};
+static const __u32 helper_func_arg_num[100] = {1, 1, 1, 1, 1, 0, 2, 1, 1};
 
 int compare_num(const void *a, const void *b) {
     struct bb_entrance_info *as = (struct bb_entrance_info *)a;
@@ -848,12 +848,17 @@ void run_passes(struct ir_function *fun) {
         fix_bb_succ(fun);
         clean_env_all(fun);
         gen_reachable_bbs(fun);
-        passes[i](fun);
+        printf("------Running Pass: %s ---------\n", passes[i].name);
+        passes[i].pass(fun);
         // Validate the IR
-        prog_check(fun);
         printf("--------------------\n");
+        prog_check(fun);
         print_ir_prog(fun);
     }
+    prog_check(fun);
+    fix_bb_succ(fun);
+    clean_env_all(fun);
+    gen_reachable_bbs(fun);
 }
 
 void print_bpf_insn(struct bpf_insn insn) {

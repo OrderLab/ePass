@@ -507,9 +507,6 @@ void print_ir_insn_err(struct ir_insn *insn, char *msg) {
 }
 
 void print_ir_err_init(struct ir_function *fun) {
-    printf("--- Current IR ---\n");
-    print_ir_prog(fun);
-    printf("--- Current IR ---\n");
     tag_ir(fun);
 }
 

@@ -15,14 +15,20 @@ void gen_reachable_bbs(struct ir_function *);
 
 void gen_end_bbs(struct ir_function *fun);
 
+struct function_pass {
+    void (*pass)(struct ir_function *);
+    char name[30];
+};
+
+#define DEF_FUNC_PASS(fun, msg) {.pass = fun, .name = msg}
+
 /**
     All function passes.
  */
-static void (*passes[])(struct ir_function *fun) = {
-    remove_trivial_phi,
-    gen_end_bbs,
-    // add_constraint,
-    add_counter,
+static const struct function_pass passes[] = {
+    DEF_FUNC_PASS(remove_trivial_phi, "Remove the trival Phi"),
+    DEF_FUNC_PASS(gen_end_bbs, "Generate ending BBs"),
+    DEF_FUNC_PASS(add_counter, "Adding counter"),
 };
 
 #endif

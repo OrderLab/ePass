@@ -7,6 +7,8 @@ void clean_env_all(struct ir_function *fun);
 
 void print_ir_prog(struct ir_function *);
 
+void print_ir_prog_reachable(struct ir_function *fun);
+
 void print_ir_prog_advanced(struct ir_function *, void (*)(struct ir_basic_block *),
                             void (*)(struct ir_insn *), void (*)(struct ir_insn *));
 
@@ -15,8 +17,6 @@ void print_ir_dst(struct ir_insn *insn);
 void print_ir_alloc(struct ir_insn *insn);
 
 void clean_env(struct ir_function *);
-
-void clean_env_all(struct ir_function *fun);
 
 // Tag the instruction and BB
 void tag_ir(struct ir_function *fun);
