@@ -70,6 +70,48 @@ struct pre_ir_insn store_const_to_reg_mem(__u8 dst, __s64 val, __s16 offset, enu
     return insn;
 }
 
+int alu_code(enum ir_insn_type insn) {
+    switch (insn) {
+        case IR_INSN_ADD:
+            return BPF_ADD;
+        case IR_INSN_SUB:
+            return BPF_SUB;
+        case IR_INSN_MUL:
+            return BPF_MUL;
+        case IR_INSN_MOD:
+            return BPF_MOD;
+        case IR_INSN_LSH:
+            return BPF_LSH;
+        default:
+            CRITICAL("Error");
+    }
+}
+
+struct pre_ir_insn alu_reg(__u8 dst, __u8 src, enum ir_alu_type type, int opcode) {
+    struct pre_ir_insn insn;
+    insn.dst_reg  = dst;
+    insn.src_reg  = src;
+    int alu_class = type == IR_ALU_64 ? BPF_ALU64 : BPF_ALU;
+    insn.opcode   = opcode | BPF_X | alu_class;
+    return insn;
+}
+
+struct pre_ir_insn alu_imm(__u8 dst, __s64 src, enum ir_alu_type type, int opcode) {
+    struct pre_ir_insn insn;
+    insn.dst_reg  = dst;
+    insn.src_reg  = src;
+    int alu_class = type == IR_ALU_64 ? BPF_ALU64 : BPF_ALU;
+    if (type == IR_ALU_64) {
+        insn.it    = IMM64;
+        insn.imm64 = src;
+    } else {
+        insn.it  = IMM;
+        insn.imm = src;
+    }
+    insn.opcode = opcode | BPF_K | alu_class;
+    return insn;
+}
+
 __u8 get_alloc_reg(struct ir_insn *insn) {
     return insn_cg(insn)->alloc_reg;
 }
@@ -104,11 +146,12 @@ void translate(struct ir_function *fun) {
                 if (insn->addr_val.value.type == IR_VALUE_STACK_PTR) {
                     // Store value in the stack
                     if (t0 == REG) {
-                        store_reg_to_reg_mem(BPF_REG_10, get_alloc_reg(v0.data.insn_d),
-                                             insn->addr_val.offset, insn->vr_type);
+                        extra->translated[0] =
+                            store_reg_to_reg_mem(BPF_REG_10, get_alloc_reg(v0.data.insn_d),
+                                                 insn->addr_val.offset, insn->vr_type);
                     } else if (t0 == CONST) {
-                        store_const_to_reg_mem(BPF_REG_10, v0.data.constant_d,
-                                               insn->addr_val.offset, insn->vr_type);
+                        extra->translated[0] = store_const_to_reg_mem(
+                            BPF_REG_10, v0.data.constant_d, insn->addr_val.offset, insn->vr_type);
                     } else {
                         CRITICAL("Error");
                     }
@@ -117,13 +160,13 @@ void translate(struct ir_function *fun) {
                     DBGASSERT(vtype(insn->addr_val.value) == REG);
                     // Store value in the stack
                     if (t0 == REG) {
-                        store_reg_to_reg_mem(get_alloc_reg(insn->addr_val.value.data.insn_d),
-                                             get_alloc_reg(v0.data.insn_d), insn->addr_val.offset,
-                                             insn->vr_type);
+                        extra->translated[0] = store_reg_to_reg_mem(
+                            get_alloc_reg(insn->addr_val.value.data.insn_d),
+                            get_alloc_reg(v0.data.insn_d), insn->addr_val.offset, insn->vr_type);
                     } else if (t0 == CONST) {
-                        store_const_to_reg_mem(get_alloc_reg(insn->addr_val.value.data.insn_d),
-                                               v0.data.constant_d, insn->addr_val.offset,
-                                               insn->vr_type);
+                        extra->translated[0] = store_const_to_reg_mem(
+                            get_alloc_reg(insn->addr_val.value.data.insn_d), v0.data.constant_d,
+                            insn->addr_val.offset, insn->vr_type);
                     } else {
                         CRITICAL("Error");
                     }
@@ -131,6 +174,20 @@ void translate(struct ir_function *fun) {
                     CRITICAL("Error");
                 }
             } else if (insn->op >= IR_INSN_ADD && insn->op < IR_INSN_CALL) {
+                DBGASSERT(tdst == REG);
+                DBGASSERT(t0 == REG);
+                DBGASSERT(get_alloc_reg(dst_insn) == get_alloc_reg(v0.data.insn_d));
+                if (t1 == REG) {
+                    extra->translated[0] = alu_reg(get_alloc_reg(dst_insn),
+                                                   get_alloc_reg(v1.data.insn_d), insn->alu,
+                                                   alu_code(insn->op));
+                } else if (t1 == CONST) {
+                    extra->translated[0] = alu_imm(get_alloc_reg(dst_insn), v1.data.constant_d,
+                                                    insn->alu, alu_code(insn->op));
+                } else {
+                    CRITICAL("Error");
+                
+                }
             } else if (insn->op == IR_INSN_ASSIGN) {
             } else if (insn->op == IR_INSN_RET) {
             } else if (insn->op == IR_INSN_CALL) {
