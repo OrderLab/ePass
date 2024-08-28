@@ -1,3 +1,4 @@
+#include <complex.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -71,6 +72,9 @@ int main(int argc, char **argv)
 
 	program_name = argv[1];
 	fp = fopen(program_name, "r");
+	if (!fp) {
+		return -1;
+	}
 
 	fseek(fp, 0, SEEK_SET);
 	fread(&elf_header, 1, sizeof(Elf64_Ehdr), fp);
