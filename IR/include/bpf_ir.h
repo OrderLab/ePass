@@ -21,13 +21,13 @@
 #else
 
 #include <linux/types.h>
+#include <linux/sort.h>
 
 #define PRINT_LOG printk
 
 #define SIZET_MAX ULONG_MAX
 
-void qsort(void *base, size_t num, size_t size,
-	   int (*compar)(const void *, const void *));
+#define qsort(a, b, c, d) sort(a, b, c, d, NULL)
 
 #endif
 
