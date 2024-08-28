@@ -24,18 +24,13 @@ struct array array_null()
 int array_push(struct array *arr, void *data)
 {
 	if (arr->data == NULL) {
-		arr->data = __malloc(arr->elem_size * 2);
-		if (arr->data == NULL) {
-			return -ENOMEM;
-		}
+		SAFE_MALLOC(arr->data, arr->elem_size * 2)
 		arr->max_elem = 2;
 	}
 	if (arr->num_elem >= arr->max_elem) {
 		// Reallocate
-		void *new_data = __malloc(arr->max_elem * 2 * arr->elem_size);
-		if (new_data == NULL) {
-			return -ENOMEM;
-		}
+		void *new_data = NULL;
+		SAFE_MALLOC(new_data, arr->max_elem * 2 * arr->elem_size);
 		memcpy(new_data, arr->data, arr->num_elem * arr->elem_size);
 		__free(arr->data);
 		arr->data = new_data;
