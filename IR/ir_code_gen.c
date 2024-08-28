@@ -14,20 +14,23 @@ struct ir_insn_cg_extra *init_insn_cg(struct ir_insn *insn)
 {
 	struct ir_insn_cg_extra *extra =
 		__malloc(sizeof(struct ir_insn_cg_extra));
+	if (extra == NULL) {
+		return NULL;
+	}
 	// When init, the destination is itself
 	if (is_void(insn)) {
 		extra->dst = NULL;
 	} else {
 		extra->dst = insn;
 	}
-	extra->adj = INIT_ARRAY(struct ir_insn *);
+	INIT_ARRAY(&extra->adj, struct ir_insn *);
 	extra->allocated = 0;
 	extra->spilled = 0;
 	extra->alloc_reg = 0;
-	extra->gen = INIT_ARRAY(struct ir_insn *);
-	extra->kill = INIT_ARRAY(struct ir_insn *);
-	extra->in = INIT_ARRAY(struct ir_insn *);
-	extra->out = INIT_ARRAY(struct ir_insn *);
+	INIT_ARRAY(&extra->gen, struct ir_insn *);
+	INIT_ARRAY(&extra->kill, struct ir_insn *);
+	INIT_ARRAY(&extra->in, struct ir_insn *);
+	INIT_ARRAY(&extra->out, struct ir_insn *);
 	extra->translated_num = 0;
 	insn->user_data = extra;
 	return extra;
@@ -56,7 +59,7 @@ void init_cg(struct ir_function *fun)
 		struct ir_insn *insn = fun->cg_info.regs[i];
 		insn->op = IR_INSN_REG;
 		insn->parent_bb = NULL;
-		insn->users = INIT_ARRAY(struct ir_insn *);
+		INIT_ARRAY(&insn->users, struct ir_insn *);
 		insn->value_num = 0;
 		struct ir_insn_cg_extra *extra = init_insn_cg(insn);
 		extra->alloc_reg = i;
@@ -302,5 +305,5 @@ int code_gen(struct ir_function *fun)
 
 	// Free CG resources
 	free_cg_res(fun);
-    return 0;
+	return 0;
 }

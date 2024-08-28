@@ -52,9 +52,9 @@ struct ir_basic_block *split_bb(struct ir_function *fun, struct ir_insn *insn)
 	struct ir_basic_block *bb = insn->parent_bb;
 	struct ir_basic_block *new_bb = create_bb(fun);
 	struct array old_succs = bb->succs;
-	bb->succs = array_init(sizeof(struct ir_basic_block *));
+	INIT_ARRAY(&bb->succs, struct ir_basic_block *);
 	connect_bb(bb, new_bb);
-	struct ir_basic_block **pos;
+	struct ir_basic_block **pos = NULL;
 	array_for(pos, old_succs)
 	{
 		disconnect_bb(bb, *pos);

@@ -37,7 +37,8 @@ void add_entrance_info(struct bpf_insn *insns, struct array *bb_entrances,
 		}
 	}
 	// New entrance
-	struct array preds = array_init(sizeof(size_t));
+	struct array preds;
+	INIT_ARRAY(&preds, size_t);
 	size_t last_pos = entrance_pos - 1;
 	__u8 code = insns[last_pos].code;
 	if (!(BPF_OP(code) == BPF_JA || BPF_OP(code) == BPF_EXIT)) {
@@ -80,7 +81,8 @@ void init_entrance_info(struct array *bb_entrances, size_t entrance_pos)
 		}
 	}
 	// New entrance
-	struct array preds = array_init(sizeof(size_t));
+	struct array preds;
+	INIT_ARRAY(&preds, size_t);
 	struct bb_entrance_info new_bb;
 	new_bb.entrance = entrance_pos;
 	new_bb.bb = __malloc(sizeof(struct pre_ir_basic_block));
@@ -93,9 +95,9 @@ struct ir_basic_block *init_ir_bb_raw()
 	struct ir_basic_block *new_bb = __malloc(sizeof(struct ir_basic_block));
 	INIT_LIST_HEAD(&new_bb->ir_insn_head);
 	new_bb->user_data = NULL;
-	new_bb->preds = INIT_ARRAY(struct ir_basic_block *);
-	new_bb->succs = INIT_ARRAY(struct ir_basic_block *);
-	new_bb->users = INIT_ARRAY(struct ir_insn *);
+	INIT_ARRAY(&new_bb->preds, struct ir_basic_block *);
+	INIT_ARRAY(&new_bb->succs, struct ir_basic_block *);
+	INIT_ARRAY(&new_bb->users, struct ir_insn *);
 	return new_bb;
 }
 
@@ -111,7 +113,8 @@ void init_ir_bb(struct pre_ir_basic_block *bb)
 
 int gen_bb(struct bb_info *ret, struct bpf_insn *insns, size_t len)
 {
-	struct array bb_entrance = array_init(sizeof(struct bb_entrance_info));
+	struct array bb_entrance;
+	INIT_ARRAY(&bb_entrance, struct bb_entrance_info);
 	// First, scan the code to find all the BB entrances
 	for (size_t i = 0; i < len; ++i) {
 		struct bpf_insn insn = insns[i];
@@ -191,8 +194,7 @@ int gen_bb(struct bb_info *ret, struct bpf_insn *insns, size_t len)
 		struct bb_entrance_info *entry = all_bbs + i;
 		struct pre_ir_basic_block *real_bb = entry->bb;
 		real_bb->id = i;
-		real_bb->succs =
-			array_init(sizeof(struct pre_ir_basic_block *));
+		INIT_ARRAY(&real_bb->succs, struct pre_ir_basic_block *);
 		real_bb->visited = 0;
 		real_bb->pre_insns = NULL;
 		real_bb->start_pos = entry->entrance;
@@ -240,8 +242,8 @@ int gen_bb(struct bb_info *ret, struct bpf_insn *insns, size_t len)
 		struct bb_entrance_info *entry = all_bbs + i;
 
 		struct array preds = entry->bb->preds;
-		struct array new_preds =
-			array_init(sizeof(struct pre_ir_basic_block *));
+		struct array new_preds;
+		INIT_ARRAY(&new_preds, struct pre_ir_basic_block *);
 		for (size_t j = 0; j < preds.num_elem; ++j) {
 			size_t pred_pos = ((size_t *)(preds.data))[j];
 			// Get the real parent BB
@@ -295,15 +297,15 @@ void print_pre_ir_cfg(struct pre_ir_basic_block *bb)
 int init_env(struct ssa_transform_env *env, struct bb_info info)
 {
 	for (size_t i = 0; i < MAX_BPF_REG; ++i) {
-		env->currentDef[i] = INIT_ARRAY(struct bb_val);
+		INIT_ARRAY(&env->currentDef[i], struct bb_val);
 	}
 	env->info = info;
-	env->sp_users = INIT_ARRAY(struct ir_insn *);
+	INIT_ARRAY(&env->sp_users, struct ir_insn *);
 	// Initialize function argument
 	for (__u8 i = 0; i < MAX_FUNC_ARG; ++i) {
 		env->function_arg[i] = __malloc(sizeof(struct ir_insn));
 
-		env->function_arg[i]->users = INIT_ARRAY(struct ir_insn *);
+		INIT_ARRAY(&env->function_arg[i]->users, struct ir_insn *);
 		env->function_arg[i]->op = IR_INSN_FUNCTIONARG;
 		env->function_arg[i]->fid = i;
 		env->function_arg[i]->value_num = 0;
@@ -382,7 +384,7 @@ struct ir_value read_variable_recursive(struct ssa_transform_env *env, __u8 reg,
 		// Incomplete CFG
 		struct ir_insn *new_insn = create_insn_front(bb->ir_bb);
 		new_insn->op = IR_INSN_PHI;
-		new_insn->phi = INIT_ARRAY(struct phi_value);
+		INIT_ARRAY(&new_insn->phi, struct phi_value);
 		bb->incompletePhis[reg] = new_insn;
 		val.type = IR_VALUE_INSN;
 		val.data.insn_d = new_insn;
@@ -393,7 +395,7 @@ struct ir_value read_variable_recursive(struct ssa_transform_env *env, __u8 reg,
 	} else {
 		struct ir_insn *new_insn = create_insn_front(bb->ir_bb);
 		new_insn->op = IR_INSN_PHI;
-		new_insn->phi = INIT_ARRAY(struct phi_value);
+		INIT_ARRAY(&new_insn->phi, struct phi_value);
 		val.type = IR_VALUE_INSN;
 		val.data.insn_d = new_insn;
 		write_variable(env, reg, bb, val);
@@ -430,7 +432,7 @@ struct ir_value read_variable(struct ssa_transform_env *env, __u8 reg,
 struct ir_insn *create_insn()
 {
 	struct ir_insn *insn = __malloc(sizeof(struct ir_insn));
-	insn->users = INIT_ARRAY(struct ir_insn *);
+	INIT_ARRAY(&insn->users, struct ir_insn *);
 	// Setting the default values
 	insn->alu = IR_ALU_UNKNOWN;
 	insn->vr_type = IR_VR_TYPE_UNKNOWN;
@@ -660,7 +662,7 @@ int transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb)
 		if (BPF_CLASS(code) == BPF_ALU ||
 		    BPF_CLASS(code) == BPF_ALU64) {
 			// ALU class
-			enum ir_alu_type alu_ty;
+			enum ir_alu_type alu_ty = IR_ALU_UNKNOWN;
 			if (BPF_CLASS(code) == BPF_ALU) {
 				alu_ty = IR_ALU_32;
 			} else {
@@ -769,7 +771,7 @@ int transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb)
 			add_user(env, new_insn, new_insn->values[0]);
 		} else if (BPF_CLASS(code) == BPF_JMP ||
 			   BPF_CLASS(code) == BPF_JMP32) {
-			enum ir_alu_type alu_ty;
+			enum ir_alu_type alu_ty = IR_ALU_UNKNOWN;
 			if (BPF_CLASS(code) == BPF_JMP) {
 				alu_ty = IR_ALU_64;
 			} else {
@@ -880,7 +882,7 @@ void free_function(struct ir_function *fun)
 		array_free(&bb->succs);
 		array_free(&bb->users);
 		// Free the instructions
-		struct ir_insn *pos, *n;
+		struct ir_insn *pos = NULL, *n = NULL;
 		list_for_each_entry_safe(pos, n, &bb->ir_insn_head, list_ptr) {
 			list_del(&pos->list_ptr);
 			array_free(&pos->users);
@@ -912,10 +914,10 @@ int gen_function(struct ir_function *fun, struct ssa_transform_env *env)
 	for (__u8 i = 0; i < MAX_FUNC_ARG; ++i) {
 		fun->function_arg[i] = env->function_arg[i];
 	}
-	fun->all_bbs = INIT_ARRAY(struct ir_basic_block *);
-	fun->reachable_bbs = INIT_ARRAY(struct ir_basic_block *);
-	fun->end_bbs = INIT_ARRAY(struct ir_basic_block *);
-	fun->cg_info.all_var = INIT_ARRAY(struct ir_insn *);
+	INIT_ARRAY(&fun->all_bbs, struct ir_basic_block *);
+	INIT_ARRAY(&fun->reachable_bbs, struct ir_basic_block *);
+	INIT_ARRAY(&fun->end_bbs, struct ir_basic_block *);
+	INIT_ARRAY(&fun->cg_info.all_var, struct ir_insn *);
 	fun->cg_info.prog = NULL;
 	fun->cg_info.prog_size = 0;
 	for (size_t i = 0; i < MAX_BPF_REG; ++i) {

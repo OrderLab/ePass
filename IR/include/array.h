@@ -11,7 +11,7 @@ struct array {
 	size_t elem_size;
 };
 
-int array_init(struct array *res, size_t size);
+void array_init(struct array *res, size_t size);
 
 int array_push(struct array *, void *);
 
@@ -35,6 +35,6 @@ int array_clone(struct array *res, struct array *arr);
 	for (pos = ((typeof(pos))(arr.data)); \
 	     pos < (typeof(pos))(arr.data) + arr.num_elem; pos++)
 
-#define INIT_ARRAY(type) array_init(sizeof(type))
+#define INIT_ARRAY(arr, type) array_init(arr, sizeof(type))
 
 #endif

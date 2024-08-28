@@ -3,16 +3,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-int array_init(struct array *res, size_t size)
+void array_init(struct array *res, size_t size)
 {
-	res->data = __malloc(size * 4);
-	if (res->data == NULL) {
-		return -ENOMEM;
-	}
-	res->max_elem = 4;
+	res->data = NULL;
+	res->max_elem = 0;
 	res->elem_size = size;
 	res->num_elem = 0;
-	return 0;
 }
 
 struct array array_null()
@@ -27,6 +23,13 @@ struct array array_null()
 
 int array_push(struct array *arr, void *data)
 {
+	if (arr->data == NULL) {
+		arr->data = __malloc(arr->elem_size * 2);
+		if (arr->data == NULL) {
+			return -ENOMEM;
+		}
+		arr->max_elem = 2;
+	}
 	if (arr->num_elem >= arr->max_elem) {
 		// Reallocate
 		void *new_data = __malloc(arr->max_elem * 2 * arr->elem_size);
@@ -87,6 +90,10 @@ int array_clone(struct array *res, struct array *arr)
 	res->num_elem = arr->num_elem;
 	res->max_elem = arr->max_elem;
 	res->elem_size = arr->elem_size;
+	if (arr->num_elem == 0) {
+		res->data = NULL;
+		return 0;
+	}
 	res->data = __malloc(arr->max_elem * arr->elem_size);
 	if (res->data == NULL) {
 		return -ENOMEM;

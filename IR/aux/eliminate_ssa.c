@@ -9,7 +9,8 @@
 // Using "Method I" in paper "Translating Out of Static Single Assignment Form"
 void to_cssa(struct ir_function *fun)
 {
-	struct array phi_insns = INIT_ARRAY(struct ir_insn *);
+	struct array phi_insns;
+	INIT_ARRAY(&phi_insns, struct ir_insn *);
 
 	struct ir_basic_block **pos;
 	array_for(pos, fun->reachable_bbs)
@@ -57,7 +58,8 @@ void to_cssa(struct ir_function *fun)
 void remove_phi(struct ir_function *fun)
 {
 	// dst information ready
-	struct array phi_insns = INIT_ARRAY(struct ir_insn *);
+	struct array phi_insns;
+	INIT_ARRAY(&phi_insns, struct ir_insn *);
 
 	struct ir_basic_block **pos;
 	array_for(pos, fun->reachable_bbs)

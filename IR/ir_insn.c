@@ -12,7 +12,7 @@ struct ir_insn *create_insn_base(struct ir_basic_block *bb)
 {
 	struct ir_insn *new_insn = __malloc(sizeof(struct ir_insn));
 	new_insn->parent_bb = bb;
-	new_insn->users = INIT_ARRAY(struct ir_insn *);
+	INIT_ARRAY(&new_insn->users, struct ir_insn *);
 	new_insn->value_num = 0;
 	return new_insn;
 }
@@ -42,7 +42,7 @@ void replace_all_usage(struct ir_insn *insn, struct ir_value rep)
 {
 	struct ir_insn **pos;
 	struct array users = insn->users;
-	insn->users = INIT_ARRAY(struct ir_insn *);
+	INIT_ARRAY(&insn->users, struct ir_insn *);
 	array_for(pos, users)
 	{
 		struct ir_insn *user = *pos;
@@ -67,7 +67,7 @@ void replace_all_usage_except(struct ir_insn *insn, struct ir_value rep,
 {
 	struct ir_insn **pos;
 	struct array users = insn->users;
-	insn->users = INIT_ARRAY(struct ir_insn *);
+	INIT_ARRAY(&insn->users, struct ir_insn *);
 	array_for(pos, users)
 	{
 		struct ir_insn *user = *pos;
@@ -93,7 +93,8 @@ void replace_all_usage_except(struct ir_insn *insn, struct ir_value rep,
 
 struct array get_operands(struct ir_insn *insn)
 {
-	struct array uses = INIT_ARRAY(struct ir_value *);
+	struct array uses;
+	INIT_ARRAY(&uses, struct ir_value *);
 	struct ir_value *pos;
 
 	for (__u8 j = 0; j < insn->value_num; ++j) {
@@ -552,7 +553,7 @@ struct ir_insn *create_phi_insn_base(struct ir_basic_block *bb)
 {
 	struct ir_insn *new_insn = create_insn_base(bb);
 	new_insn->op = IR_INSN_PHI;
-	new_insn->phi = INIT_ARRAY(struct phi_value);
+	INIT_ARRAY(&new_insn->phi, struct phi_value);
 	return new_insn;
 }
 

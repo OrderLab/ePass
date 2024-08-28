@@ -36,7 +36,8 @@ void graph_coloring(struct ir_function *fun)
 		struct ir_insn **pos2;
 
 		int used_reg[MAX_BPF_REG] = { 0 };
-		struct array used_spill = INIT_ARRAY(size_t);
+		struct array used_spill;
+		INIT_ARRAY(&used_spill, size_t);
 		array_for(pos2, extra->adj)
 		{
 			struct ir_insn *insn2 = *pos2; // Adj instruction

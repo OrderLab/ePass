@@ -70,7 +70,8 @@ int array_contains(struct array *arr, struct ir_insn *insn)
 
 struct array array_delta(struct array *a, struct array *b)
 {
-	struct array res = INIT_ARRAY(struct ir_insn *);
+	struct array res;
+	INIT_ARRAY(&res, struct ir_insn *);
 	struct ir_insn **pos;
 	array_for(pos, (*a))
 	{
@@ -157,7 +158,7 @@ void in_out(struct ir_function *fun)
 				}
 				struct array out_kill_delta = array_delta(
 					&insn_cg->out, &insn_cg->kill);
-				insn_cg->in = array_clone(&insn_cg->gen);
+				array_clone(&insn_cg->in, &insn_cg->gen);
 				merge_array(&insn_cg->in, &out_kill_delta);
 				// Check for change
 				if (!equal_set(&insn_cg->in, &old_in)) {
