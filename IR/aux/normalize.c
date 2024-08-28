@@ -1,5 +1,6 @@
 // Normalization
 
+#include <stdio.h>
 #include "bpf_ir.h"
 #include "code_gen.h"
 #include "dbg.h"
@@ -29,7 +30,7 @@ void normalize(struct ir_function *fun) {
                 // OK
             } else if (insn->op == IR_INSN_STORERAW) {
                 // OK
-            } else if (insn->op >= IR_INSN_ADD && insn->op < IR_INSN_CALL) {
+            } else if (is_alu(insn)) {
                 // Binary ALU
                 if (t0 == STACK && t1 == CONST) {
                     // reg1 = add stack const
@@ -66,14 +67,16 @@ void normalize(struct ir_function *fun) {
                         }
                     }
                 } else if (t0 == REG && t1 == CONST) {
-                    // reg1 = add reg2 const
-                    // ==>
-                    // reg1 = reg2
-                    // reg1 = add reg1 const
-                    struct ir_insn *new_insn = create_assign_insn_cg(insn, *v0, INSERT_FRONT);
-                    insn_cg(new_insn)->dst   = dst_insn;
-                    v0->type                 = IR_VALUE_INSN;
-                    v0->data.insn_d          = dst_insn;
+                    if (insn_cg(v0->data.insn_d)->alloc_reg != insn_cg(dst_insn)->alloc_reg) {
+                        // reg1 = add reg2 const
+                        // ==>
+                        // reg1 = reg2
+                        // reg1 = add reg1 const
+                        struct ir_insn *new_insn = create_assign_insn_cg(insn, *v0, INSERT_FRONT);
+                        insn_cg(new_insn)->dst   = dst_insn;
+                        v0->type                 = IR_VALUE_INSN;
+                        v0->data.insn_d          = dst_insn;
+                    }
                 } else {
                     CRITICAL("Error");
                 }

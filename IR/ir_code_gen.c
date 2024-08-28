@@ -231,7 +231,7 @@ void code_gen(struct ir_function *fun) {
 
         // Step 8: Check if need to spill and spill
         need_spill = check_need_spill(fun);
-        print_ir_prog_cg_dst(fun, "After Spilling");
+        // print_ir_prog_cg_dst(fun, "After Spilling");
         if (need_spill) {
             // Still need to spill
             printf("Need to spill...\n");
