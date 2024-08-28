@@ -3,9 +3,8 @@
 
 #include <linux/bpf.h>
 
-#include <errno.h>
-
 #ifndef __KERNEL__
+#include <errno.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,6 +13,12 @@
 #include <stddef.h>
 
 #define PRINT_LOG printf
+
+#else
+
+#include <linux/types.h>
+
+#define PRINT_LOG printk
 
 #endif
 
@@ -69,16 +74,16 @@ int array_clone(struct array *res, struct array *arr);
 		CRITICAL("Assertion failed"); \
 	}
 
-void *__malloc(size_t size);
+void *malloc_proto(size_t size);
 
-void __free(void *ptr);
+void free_proto(void *ptr);
 
-#define SAFE_MALLOC(dst, size)          \
-	{                               \
-		dst = __malloc(size);   \
-		if (!dst) {             \
-			return -ENOMEM; \
-		}                       \
+#define SAFE_MALLOC(dst, size)            \
+	{                                 \
+		dst = malloc_proto(size); \
+		if (!dst) {               \
+			return -ENOMEM;   \
+		}                         \
 	}
 
 #define MAX_FUNC_ARG 5

@@ -1,4 +1,4 @@
-#include <bpf_ir.h>
+#include "bpf_ir.h"
 
 void array_init(struct array *res, size_t size)
 {
@@ -29,7 +29,7 @@ int array_push(struct array *arr, void *data)
 		void *new_data = NULL;
 		SAFE_MALLOC(new_data, arr->max_elem * 2 * arr->elem_size);
 		memcpy(new_data, arr->data, arr->num_elem * arr->elem_size);
-		__free(arr->data);
+		free_proto(arr->data);
 		arr->data = new_data;
 		arr->max_elem *= 2;
 	}
@@ -67,7 +67,7 @@ void array_erase(struct array *arr, size_t idx)
 
 int array_clear(struct array *arr)
 {
-	__free(arr->data);
+	free_proto(arr->data);
 	SAFE_MALLOC(arr->data, arr->elem_size * 4);
 	arr->max_elem = 4;
 	arr->num_elem = 0;
@@ -91,7 +91,7 @@ int array_clone(struct array *res, struct array *arr)
 void array_free(struct array *arr)
 {
 	if (arr->data) {
-		__free(arr->data);
+		free_proto(arr->data);
 	}
 	*arr = array_null();
 }

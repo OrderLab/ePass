@@ -3,7 +3,7 @@
 // May have exception
 struct ir_insn *create_insn_base(struct ir_basic_block *bb)
 {
-	struct ir_insn *new_insn = __malloc(sizeof(struct ir_insn));
+	struct ir_insn *new_insn = malloc_proto(sizeof(struct ir_insn));
 	if (!new_insn) {
 		return NULL;
 	}
@@ -127,7 +127,7 @@ int is_last_insn(struct ir_insn *insn)
 void erase_insn_raw(struct ir_insn *insn)
 {
 	list_del(&insn->list_ptr);
-	__free(insn);
+	free_proto(insn);
 }
 
 void erase_insn(struct ir_insn *insn)
@@ -141,7 +141,7 @@ void erase_insn(struct ir_insn *insn)
 	}
 	array_free(&operands);
 	list_del(&insn->list_ptr);
-	__free(insn);
+	free_proto(insn);
 }
 
 void insert_at(struct ir_insn *new_insn, struct ir_insn *insn,

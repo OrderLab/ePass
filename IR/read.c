@@ -8,7 +8,7 @@
 #include <stdint.h>
 #include "read.h"
 
-void *__malloc(size_t size)
+void *malloc_proto(size_t size)
 {
 	void *data = malloc(size);
 	if (data) {
@@ -17,7 +17,7 @@ void *__malloc(size_t size)
 	return data;
 }
 
-void __free(void *ptr)
+void free_proto(void *ptr)
 {
 	free(ptr);
 }

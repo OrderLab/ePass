@@ -14,12 +14,14 @@ done
 
 cd build/kernel
 
+rm read.c read.h probe.c
+
 cfiles=$(find . -iname '*.c' -not -path "./build/*")
 
 filelist=""
 
 for file in $cfiles; do
-    filelist="${filelist} ${file:2}"
+    filelist="${filelist} ${file:2:-1}o"
 done
 
 echo $filelist
@@ -31,4 +33,6 @@ obj-y :=$filelist
 echo $makefile_content > Makefile
 # Remove redundant files
 
-rm read.c read.h probe.c
+rm -rf /home/linsy/Projects/ebpf/eBPF-kernel/kernel/bpf/ir/
+mkdir /home/linsy/Projects/ebpf/eBPF-kernel/kernel/bpf/ir/
+cp * /home/linsy/Projects/ebpf/eBPF-kernel/kernel/bpf/ir/

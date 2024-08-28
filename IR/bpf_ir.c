@@ -85,7 +85,8 @@ int init_entrance_info(struct array *bb_entrances, size_t entrance_pos)
 // May have exception
 struct ir_basic_block *init_ir_bb_raw()
 {
-	struct ir_basic_block *new_bb = __malloc(sizeof(struct ir_basic_block));
+	struct ir_basic_block *new_bb =
+		malloc_proto(sizeof(struct ir_basic_block));
 	if (!new_bb) {
 		return NULL;
 	}
@@ -431,7 +432,7 @@ struct ir_value read_variable(struct ssa_transform_env *env, __u8 reg,
 
 struct ir_insn *create_insn()
 {
-	struct ir_insn *insn = __malloc(sizeof(struct ir_insn));
+	struct ir_insn *insn = malloc_proto(sizeof(struct ir_insn));
 	if (!insn) {
 		return NULL;
 	}
@@ -894,20 +895,20 @@ void free_function(struct ir_function *fun)
 			if (pos->op == IR_INSN_PHI) {
 				array_free(&pos->phi);
 			}
-			__free(pos);
+			free_proto(pos);
 		}
-		__free(bb);
+		free_proto(bb);
 	}
 	for (__u8 i = 0; i < MAX_FUNC_ARG; ++i) {
 		array_free(&fun->function_arg[i]->users);
-		__free(fun->function_arg[i]);
+		free_proto(fun->function_arg[i]);
 	}
 	array_free(&fun->all_bbs);
 	array_free(&fun->reachable_bbs);
 	array_free(&fun->end_bbs);
 	array_free(&fun->cg_info.all_var);
 	if (fun->cg_info.prog) {
-		__free(fun->cg_info.prog);
+		free_proto(fun->cg_info.prog);
 	}
 }
 
@@ -935,10 +936,10 @@ int gen_function(struct ir_function *fun, struct ssa_transform_env *env)
 				.bb;
 		array_free(&bb->preds);
 		array_free(&bb->succs);
-		__free(bb->pre_insns);
+		free_proto(bb->pre_insns);
 		bb->ir_bb->user_data = NULL;
 		array_push(&fun->all_bbs, &bb->ir_bb);
-		__free(bb);
+		free_proto(bb);
 	}
 	return 0;
 }

@@ -74,7 +74,7 @@ void free_insn_cg(struct ir_insn *insn)
 	array_free(&extra->kill);
 	array_free(&extra->in);
 	array_free(&extra->out);
-	__free(extra);
+	free_proto(extra);
 	insn->user_data = NULL;
 }
 
@@ -85,7 +85,7 @@ void free_cg_res(struct ir_function *fun)
 	{
 		struct ir_basic_block *bb = *pos;
 		struct ir_bb_cg_extra *bb_cg = bb->user_data;
-		__free(bb_cg);
+		free_proto(bb_cg);
 		bb->user_data = NULL;
 		struct ir_insn *insn = NULL;
 		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
@@ -97,7 +97,7 @@ void free_cg_res(struct ir_function *fun)
 		struct ir_insn *insn = fun->cg_info.regs[i];
 		array_free(&insn->users);
 		free_insn_cg(insn);
-		__free(insn);
+		free_proto(insn);
 	}
 }
 
