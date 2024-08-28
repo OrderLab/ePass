@@ -307,7 +307,7 @@ struct ir_value read_variable(struct ssa_transform_env *env, __u8 reg,
 
 void construct_ir(struct bpf_insn *insns, size_t len);
 
-struct bb_info gen_bb(struct bpf_insn *insns, size_t len);
+int gen_bb(struct bb_info *ret, struct bpf_insn *insns, size_t len);
 
 struct ir_insn *add_phi_operands(struct ssa_transform_env *env, __u8 reg, struct ir_insn *insn);
 

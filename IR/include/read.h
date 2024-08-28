@@ -3,6 +3,6 @@
 #include <linux/bpf.h>
 #include <stdio.h>
 
-void run(struct bpf_insn *, size_t);
+int run(struct bpf_insn *, size_t);
 
 #endif

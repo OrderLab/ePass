@@ -100,7 +100,7 @@ void init_ir_bb(struct pre_ir_basic_block *bb) {
     }
 }
 
-struct bb_info gen_bb(struct bpf_insn *insns, size_t len) {
+int gen_bb(struct bb_info *ret, struct bpf_insn *insns, size_t len) {
     struct array bb_entrance = array_init(sizeof(struct bb_entrance_info));
     // First, scan the code to find all the BB entrances
     for (size_t i = 0; i < len; ++i) {
@@ -230,11 +230,9 @@ struct bb_info gen_bb(struct bpf_insn *insns, size_t len) {
         entry->bb->preds = new_preds;
     }
     // Return the entry BB
-    // TODO: Remove BBs impossible to reach
-    struct bb_info ret;
-    ret.entry   = all_bbs[0].bb;
-    ret.all_bbs = bb_entrance;
-    return ret;
+    ret->entry   = all_bbs[0].bb;
+    ret->all_bbs = bb_entrance;
+    return 0;
 }
 
 void print_pre_ir_cfg(struct pre_ir_basic_block *bb) {
@@ -882,7 +880,7 @@ void print_bpf_prog(struct bpf_insn *insns, size_t len) {
 
 // Interface implementation
 
-void run(struct bpf_insn *insns, size_t len) {
+int run(struct bpf_insn *insns, size_t len) {
     struct bb_info info = gen_bb(insns, len);
     print_pre_ir_cfg(info.entry);
     struct ssa_transform_env env = init_env(info);
@@ -911,4 +909,5 @@ void run(struct bpf_insn *insns, size_t len) {
 
     // Free the memory
     free_function(&fun);
+    return 0;
 }

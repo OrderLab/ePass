@@ -1,10 +1,13 @@
 #include "array.h"
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
 void *__malloc(size_t size) {
     void *data = malloc(size);
-    memset(data, 0, size);
+    if (data) {
+        memset(data, 0, size);
+    }
     return data;
 }
 
@@ -12,13 +15,15 @@ void __free(void *ptr) {
     free(ptr);
 }
 
-struct array array_init(size_t size) {
-    struct array res;
-    res.data      = __malloc(size * 4);
-    res.max_elem  = 4;
-    res.elem_size = size;
-    res.num_elem  = 0;
-    return res;
+int array_init(struct array *res, size_t size) {
+    res->data      = __malloc(size * 4);
+    res->max_elem  = 4;
+    res->elem_size = size;
+    res->num_elem  = 0;
+    if (!res->data) {
+        return -ENOMEM;
+    }
+    return 0;
 }
 
 struct array array_null() {
