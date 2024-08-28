@@ -11,6 +11,9 @@
 struct ir_insn *create_insn_base(struct ir_basic_block *bb)
 {
 	struct ir_insn *new_insn = __malloc(sizeof(struct ir_insn));
+	if (!new_insn) {
+		return NULL;
+	}
 	new_insn->parent_bb = bb;
 	INIT_ARRAY(&new_insn->users, struct ir_insn *);
 	new_insn->value_num = 0;

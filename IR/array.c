@@ -1,4 +1,5 @@
 #include "array.h"
+#include "ext.h"
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
@@ -71,10 +72,7 @@ void array_erase(struct array *arr, size_t idx)
 int array_clear(struct array *arr)
 {
 	__free(arr->data);
-	arr->data = __malloc(arr->elem_size * 4);
-	if (arr->data == NULL) {
-		return -ENOMEM;
-	}
+	SAFE_MALLOC(arr->data, arr->elem_size * 4);
 	arr->max_elem = 4;
 	arr->num_elem = 0;
 	return 0;
@@ -89,10 +87,7 @@ int array_clone(struct array *res, struct array *arr)
 		res->data = NULL;
 		return 0;
 	}
-	res->data = __malloc(arr->max_elem * arr->elem_size);
-	if (res->data == NULL) {
-		return -ENOMEM;
-	}
+	SAFE_MALLOC(res->data, arr->max_elem * arr->elem_size);
 	memcpy(res->data, arr->data, arr->num_elem * arr->elem_size);
 	return 0;
 }

@@ -1,4 +1,7 @@
 #include "bpf_ir.h"
+#include "ext.h"
+#include <errno.h>
+#include <complex.h>
 #include <linux/bpf.h>
 #include <linux/bpf_common.h>
 #include <stdio.h>
@@ -23,8 +26,8 @@ int compare_num(const void *a, const void *b)
 }
 
 // Add current_pos --> entrance_pos in bb_entrances
-void add_entrance_info(struct bpf_insn *insns, struct array *bb_entrances,
-		       size_t entrance_pos, size_t current_pos)
+int add_entrance_info(struct bpf_insn *insns, struct array *bb_entrances,
+		      size_t entrance_pos, size_t current_pos)
 {
 	for (size_t i = 0; i < bb_entrances->num_elem; ++i) {
 		struct bb_entrance_info *entry =
@@ -32,7 +35,7 @@ void add_entrance_info(struct bpf_insn *insns, struct array *bb_entrances,
 		if (entry->entrance == entrance_pos) {
 			// Already has this entrance, add a pred
 			array_push_unique(&entry->bb->preds, &current_pos);
-			return;
+			return 0;
 		}
 	}
 	// New entrance
@@ -47,9 +50,10 @@ void add_entrance_info(struct bpf_insn *insns, struct array *bb_entrances,
 	array_push_unique(&preds, &current_pos);
 	struct bb_entrance_info new_bb;
 	new_bb.entrance = entrance_pos;
-	new_bb.bb = __malloc(sizeof(struct pre_ir_basic_block));
+	SAFE_MALLOC(new_bb.bb, sizeof(struct pre_ir_basic_block));
 	new_bb.bb->preds = preds;
 	array_push(bb_entrances, &new_bb);
+	return 0;
 }
 
 // Return the parent BB of a instruction
@@ -69,14 +73,14 @@ struct pre_ir_basic_block *get_bb_parent(struct array *bb_entrance, size_t pos)
 	return bbs[bb_id].bb;
 }
 
-void init_entrance_info(struct array *bb_entrances, size_t entrance_pos)
+int init_entrance_info(struct array *bb_entrances, size_t entrance_pos)
 {
 	for (size_t i = 0; i < bb_entrances->num_elem; ++i) {
 		struct bb_entrance_info *entry =
 			((struct bb_entrance_info *)(bb_entrances->data)) + i;
 		if (entry->entrance == entrance_pos) {
 			// Already has this entrance
-			return;
+			return 0;
 		}
 	}
 	// New entrance
@@ -84,14 +88,18 @@ void init_entrance_info(struct array *bb_entrances, size_t entrance_pos)
 	INIT_ARRAY(&preds, size_t);
 	struct bb_entrance_info new_bb;
 	new_bb.entrance = entrance_pos;
-	new_bb.bb = __malloc(sizeof(struct pre_ir_basic_block));
+	SAFE_MALLOC(new_bb.bb, sizeof(struct pre_ir_basic_block));
 	new_bb.bb->preds = preds;
 	array_push(bb_entrances, &new_bb);
+	return 0;
 }
 
 struct ir_basic_block *init_ir_bb_raw()
 {
 	struct ir_basic_block *new_bb = __malloc(sizeof(struct ir_basic_block));
+	if (!new_bb) {
+		return NULL;
+	}
 	INIT_LIST_HEAD(&new_bb->ir_insn_head);
 	new_bb->user_data = NULL;
 	INIT_ARRAY(&new_bb->preds, struct ir_basic_block *);
@@ -100,14 +108,18 @@ struct ir_basic_block *init_ir_bb_raw()
 	return new_bb;
 }
 
-void init_ir_bb(struct pre_ir_basic_block *bb)
+int init_ir_bb(struct pre_ir_basic_block *bb)
 {
 	bb->ir_bb = init_ir_bb_raw();
+	if (!bb->ir_bb) {
+		return -ENOMEM;
+	}
 	bb->ir_bb->_visited = 0;
 	bb->ir_bb->user_data = bb;
 	for (__u8 i = 0; i < MAX_BPF_REG; ++i) {
 		bb->incompletePhis[i] = NULL;
 	}
+	return 0;
 }
 
 int gen_bb(struct bb_info *ret, struct bpf_insn *insns, size_t len)
@@ -170,7 +182,7 @@ int gen_bb(struct bb_info *ret, struct bpf_insn *insns, size_t len)
 	// Create the first BB (entry block)
 	struct bb_entrance_info bb_entry_info;
 	bb_entry_info.entrance = 0;
-	bb_entry_info.bb = __malloc(sizeof(struct pre_ir_basic_block));
+	SAFE_MALLOC(bb_entry_info.bb, sizeof(struct pre_ir_basic_block));
 	bb_entry_info.bb->preds = array_null();
 	array_push(&bb_entrance, &bb_entry_info);
 
@@ -302,7 +314,7 @@ int init_env(struct ssa_transform_env *env, struct bb_info info)
 	INIT_ARRAY(&env->sp_users, struct ir_insn *);
 	// Initialize function argument
 	for (__u8 i = 0; i < MAX_FUNC_ARG; ++i) {
-		env->function_arg[i] = __malloc(sizeof(struct ir_insn));
+		SAFE_MALLOC(env->function_arg[i], sizeof(struct ir_insn));
 
 		INIT_ARRAY(&env->function_arg[i]->users, struct ir_insn *);
 		env->function_arg[i]->op = IR_INSN_FUNCTIONARG;
@@ -431,6 +443,9 @@ struct ir_value read_variable(struct ssa_transform_env *env, __u8 reg,
 struct ir_insn *create_insn()
 {
 	struct ir_insn *insn = __malloc(sizeof(struct ir_insn));
+	if (!insn) {
+		return NULL;
+	}
 	INIT_ARRAY(&insn->users, struct ir_insn *);
 	// Setting the default values
 	insn->alu = IR_ALU_UNKNOWN;

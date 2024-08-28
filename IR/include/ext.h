@@ -8,12 +8,12 @@ void *__malloc(size_t size);
 
 void __free(void *ptr);
 
-#define SAFE_MALLOC(dst, size)                     \
-	{                                   \
-		dst = __malloc(size); \
-		if (!dst) {                 \
-			return -ENOMEM;     \
-		}                           \
+#define SAFE_MALLOC(dst, size)          \
+	{                               \
+		dst = __malloc(size);   \
+		if (!dst) {             \
+			return -ENOMEM; \
+		}                       \
 	}
 
 #endif

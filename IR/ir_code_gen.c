@@ -1,3 +1,4 @@
+#include "ext.h"
 #include <linux/bpf.h>
 #include <stdio.h>
 #include "array.h"
@@ -14,7 +15,7 @@ struct ir_insn_cg_extra *init_insn_cg(struct ir_insn *insn)
 {
 	struct ir_insn_cg_extra *extra =
 		__malloc(sizeof(struct ir_insn_cg_extra));
-	if (extra == NULL) {
+	if (!extra) {
 		return NULL;
 	}
 	// When init, the destination is itself
@@ -36,14 +37,14 @@ struct ir_insn_cg_extra *init_insn_cg(struct ir_insn *insn)
 	return extra;
 }
 
-void init_cg(struct ir_function *fun)
+int init_cg(struct ir_function *fun)
 {
 	struct ir_basic_block **pos = NULL;
 	array_for(pos, fun->reachable_bbs)
 	{
 		struct ir_basic_block *bb = *pos;
-		struct ir_bb_cg_extra *bb_cg =
-			__malloc(sizeof(struct ir_bb_cg_extra));
+		struct ir_bb_cg_extra *bb_cg = NULL;
+		SAFE_MALLOC(bb_cg, sizeof(struct ir_bb_cg_extra));
 		// Empty bb cg
 		bb->user_data = bb_cg;
 
@@ -54,7 +55,7 @@ void init_cg(struct ir_function *fun)
 	}
 
 	for (__u8 i = 0; i < MAX_BPF_REG; ++i) {
-		fun->cg_info.regs[i] = __malloc(sizeof(struct ir_insn));
+		SAFE_MALLOC(fun->cg_info.regs[i], sizeof(struct ir_insn));
 		// Those should be read-only
 		struct ir_insn *insn = fun->cg_info.regs[i];
 		insn->op = IR_INSN_REG;
@@ -68,6 +69,7 @@ void init_cg(struct ir_function *fun)
 		extra->allocated = 1;
 		extra->spilled = 0;
 	}
+	return 0;
 }
 
 void free_insn_cg(struct ir_insn *insn)
@@ -166,11 +168,11 @@ void print_ir_prog_cg_alloc(struct ir_function *fun, char *msg)
 	print_ir_prog_advanced(fun, NULL, NULL, print_ir_alloc);
 }
 
-void synthesize(struct ir_function *fun)
+int synthesize(struct ir_function *fun)
 {
 	// The last step, synthesizes the program
-	fun->cg_info.prog =
-		__malloc(fun->cg_info.prog_size * sizeof(struct bpf_insn));
+	SAFE_MALLOC(fun->cg_info.prog,
+		    fun->cg_info.prog_size * sizeof(struct bpf_insn));
 	struct ir_basic_block **pos = NULL;
 	array_for(pos, fun->reachable_bbs)
 	{
@@ -205,6 +207,7 @@ void synthesize(struct ir_function *fun)
 			}
 		}
 	}
+	return 0;
 }
 
 int code_gen(struct ir_function *fun)
