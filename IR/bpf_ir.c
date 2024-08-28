@@ -430,7 +430,7 @@ struct ir_value read_variable(struct ssa_transform_env *env, __u8 reg,
 	return read_variable_recursive(env, reg, bb);
 }
 
-struct ir_insn *create_insn()
+struct ir_insn *create_insn(void)
 {
 	struct ir_insn *insn = malloc_proto(sizeof(struct ir_insn));
 	if (!insn) {
@@ -507,7 +507,7 @@ struct ir_value ir_value_insn(struct ir_insn *insn)
 	return (struct ir_value){ .type = IR_VALUE_INSN, .data.insn_d = insn };
 }
 
-struct ir_value ir_value_stack_ptr()
+struct ir_value ir_value_stack_ptr(void)
 {
 	return (struct ir_value){ .type = IR_VALUE_STACK_PTR };
 }

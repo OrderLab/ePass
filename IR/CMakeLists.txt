@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 project(bpf_ir)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -O3")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror -Wstrict-prototypes -O3")
 
 add_executable(
     read

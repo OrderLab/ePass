@@ -6,7 +6,7 @@ rm -rf build/kernel
 
 mkdir -p build/kernel
 
-files=$(find . -iname '*.h' -o -iname '*.c' -not -path "./build/*")
+files=$(find . -iname '*.h' -o -iname '*.c' -not -path "./build/*" -not -path "./tests/*")
 
 for file in $files; do
     cp $file build/kernel
@@ -16,7 +16,7 @@ cd build/kernel
 
 rm read.c read.h probe.c
 
-cfiles=$(find . -iname '*.c' -not -path "./build/*")
+cfiles=$(find . -iname '*.c' -not -path "./build/*" -not -path "./tests/*")
 
 filelist=""
 

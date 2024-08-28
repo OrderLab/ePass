@@ -8,7 +8,7 @@ void array_init(struct array *res, size_t size)
 	res->num_elem = 0;
 }
 
-struct array array_null()
+struct array array_null(void)
 {
 	struct array res;
 	res.data = NULL;

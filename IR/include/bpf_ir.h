@@ -14,11 +14,17 @@
 
 #define PRINT_LOG printf
 
+#include "stdint.h"
+
+#define SIZET_MAX SIZE_MAX
+
 #else
 
 #include <linux/types.h>
 
 #define PRINT_LOG printk
+
+#define SIZET_MAX ULONG_MAX
 
 #endif
 
@@ -37,7 +43,7 @@ int array_push_unique(struct array *arr, void *data);
 
 void array_free(struct array *);
 
-struct array array_null();
+struct array array_null(void);
 
 void array_erase(struct array *arr, size_t idx);
 
@@ -55,12 +61,24 @@ int array_clone(struct array *res, struct array *arr);
 
 #define INIT_ARRAY(arr, type) array_init(arr, sizeof(type))
 
+#ifndef __KERNEL__
+
 #define CRITICAL(str)                                                          \
 	{                                                                      \
 		PRINT_LOG("%s:%d <%s> %s\n", __FILE__, __LINE__, __FUNCTION__, \
 			  str);                                                \
 		exit(1);                                                       \
 	}
+
+#else
+
+#define CRITICAL(str)                                                      \
+	{                                                                  \
+		panic("%s:%d <%s> %s\n", __FILE__, __LINE__, __FUNCTION__, \
+		      str);                                                \
+	}
+
+#endif
 
 #define RAISE_ERROR(str)                                                       \
 	{                                                                      \
@@ -131,7 +149,7 @@ struct ir_value {
 
 struct ir_value ir_value_insn(struct ir_insn *);
 
-struct ir_value ir_value_stack_ptr();
+struct ir_value ir_value_stack_ptr(void);
 
 /**
     Value plus an offset
@@ -398,7 +416,7 @@ void add_user(struct ssa_transform_env *env, struct ir_insn *user,
 
 __u8 ir_value_equal(struct ir_value a, struct ir_value b);
 
-struct ir_basic_block *init_ir_bb_raw();
+struct ir_basic_block *init_ir_bb_raw(void);
 
 int vr_type_to_size(enum ir_vr_type type);
 

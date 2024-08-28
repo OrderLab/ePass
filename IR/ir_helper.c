@@ -1,5 +1,4 @@
 #include "bpf_ir.h"
-#include "stdint.h"
 
 /// Reset visited flag
 void clean_env_all(struct ir_function *fun)
@@ -60,7 +59,7 @@ void print_insn_ptr_base(struct ir_insn *insn)
 		PRINT_LOG("arg%u", insn->fid);
 		return;
 	}
-	if (insn->_insn_id == SIZE_MAX) {
+	if (insn->_insn_id == SIZET_MAX) {
 		PRINT_LOG("%p", insn);
 		return;
 	}
