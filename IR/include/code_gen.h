@@ -9,50 +9,50 @@ void code_gen(struct ir_function *fun);
 
 // Extra information needed for code gen
 struct ir_bb_cg_extra {
-    // Position of the first instruction
-    size_t pos;
+	// Position of the first instruction
+	size_t pos;
 };
 
 struct ir_insn_cg_extra {
-    // Destination (Not in SSA form anymore)
-    struct ir_insn *dst;
+	// Destination (Not in SSA form anymore)
+	struct ir_insn *dst;
 
-    // Liveness analysis
-    struct array in;
-    struct array out;
-    struct array gen;
-    struct array kill;
+	// Liveness analysis
+	struct array in;
+	struct array out;
+	struct array gen;
+	struct array kill;
 
-    // Adj list in interference graph
-    // Array of struct ir_insn*
-    struct array adj;
+	// Adj list in interference graph
+	// Array of struct ir_insn*
+	struct array adj;
 
-    // Translated pre_ir_insn
-    struct pre_ir_insn translated[2];
+	// Translated pre_ir_insn
+	struct pre_ir_insn translated[2];
 
-    // Translated number
-    __u8 translated_num;
+	// Translated number
+	__u8 translated_num;
 
-    // Whether the VR is allocated with a real register
-    // If it's a pre-colored register, it's also 1
-    __u8 allocated;
+	// Whether the VR is allocated with a real register
+	// If it's a pre-colored register, it's also 1
+	__u8 allocated;
 
-    // When allocating register, whether dst will be spilled
-    // 0: Not spilled
-    // 1: Spilled on stack position 1
-    // etc.
-    size_t spilled;
+	// When allocating register, whether dst will be spilled
+	// 0: Not spilled
+	// 1: Spilled on stack position 1
+	// etc.
+	size_t spilled;
 
-    // Valid if spilled == 0 && allocated == 1
-    // Valid number: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
-    __u8 alloc_reg;
+	// Valid if spilled == 0 && allocated == 1
+	// Valid number: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
+	__u8 alloc_reg;
 };
 
 enum val_type {
-    UNDEF,
-    REG,
-    CONST,
-    STACK,
+	UNDEF,
+	REG,
+	CONST,
+	STACK,
 };
 
 struct ir_insn_cg_extra *insn_cg(struct ir_insn *insn);

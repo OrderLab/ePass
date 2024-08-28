@@ -9,8 +9,10 @@ void print_ir_prog(struct ir_function *);
 
 void print_ir_prog_reachable(struct ir_function *fun);
 
-void print_ir_prog_advanced(struct ir_function *, void (*)(struct ir_basic_block *),
-                            void (*)(struct ir_insn *), void (*)(struct ir_insn *));
+void print_ir_prog_advanced(struct ir_function *,
+			    void (*)(struct ir_basic_block *),
+			    void (*)(struct ir_insn *),
+			    void (*)(struct ir_insn *));
 
 void print_ir_dst(struct ir_insn *insn);
 
