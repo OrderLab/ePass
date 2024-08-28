@@ -261,17 +261,25 @@ void translate(struct ir_function *fun) {
             } else if (insn->op == IR_INSN_JA) {
                 extra->translated[0].opcode = BPF_JMP | BPF_JA;
             } else if (insn->op >= IR_INSN_JEQ && insn->op < IR_INSN_PHI) {
-                DBGASSERT(t0 == REG);
-                if (t1 == REG) {
-                    extra->translated[0] =
-                        cond_jmp_reg(get_alloc_reg(v0.data.insn_d), get_alloc_reg(v1.data.insn_d),
-                                     insn->alu, jmp_code(insn->op));
-                } else if (t1 == CONST) {
-                    extra->translated[0] =
-                        cond_jmp_imm(get_alloc_reg(v0.data.insn_d), v1.data.constant_d, insn->alu,
-                                     jmp_code(insn->op));
+                DBGASSERT(t0 == REG || t1 == REG);
+                if (t0 == REG) {
+                    if (t1 == REG) {
+                        extra->translated[0] = cond_jmp_reg(get_alloc_reg(v0.data.insn_d),
+                                                            get_alloc_reg(v1.data.insn_d),
+                                                            insn->alu, jmp_code(insn->op));
+                    } else if (t1 == CONST) {
+                        extra->translated[0] =
+                            cond_jmp_imm(get_alloc_reg(v0.data.insn_d), v1.data.constant_d,
+                                         insn->alu, jmp_code(insn->op));
+                    } else {
+                        CRITICAL("Error");
+                    }
                 } else {
-                    CRITICAL("Error");
+                    DBGASSERT(t0 == CONST);
+                    DBGASSERT(t1 == REG);
+                    extra->translated[0] =
+                        cond_jmp_imm(get_alloc_reg(v1.data.insn_d), v0.data.constant_d, insn->alu,
+                                     jmp_code(insn->op));
                 }
             } else {
                 CRITICAL("No such instruction");

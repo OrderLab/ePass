@@ -343,9 +343,10 @@ int check_need_spill(struct ir_function *fun) {
             } else if (insn->op == IR_INSN_JA) {
                 // OK
             } else if (is_cond_jmp(insn)) {
-                // ERROR: Should not change!!!
-                // jeq reg const/reg
+                // jmp reg const/reg
+                __u8 switched = 0;
                 if ((t0 != REG && t1 == REG) || (t0 == CONST && t1 == STACK)) {
+                    switched            = 1;
                     struct ir_value tmp = *v0;
                     *v0                 = *v1;
                     *v1                 = tmp;
@@ -356,12 +357,12 @@ int check_need_spill(struct ir_function *fun) {
                 }
 
                 if (t0 == REG) {
-                    // jeq reg reg ==> OK
-                    // jeq reg const ==> OK
-                    // jeq reg stack
+                    // jmp reg reg ==> OK
+                    // jmp reg const ==> OK
+                    // jmp reg stack
                     // ==>
                     // reg2 = stack
-                    // jeq reg reg2
+                    // jmp reg reg2
                     if (t1 == STACK) {
                         __u8            reg1     = insn_cg(v0->data.insn_d)->alloc_reg;
                         __u8            reg2     = reg1 == 0 ? 1 : 0;
@@ -373,10 +374,10 @@ int check_need_spill(struct ir_function *fun) {
                         res                      = 1;
                     }
                 } else {
-                    // jeq const1 const2
+                    // jmp const1 const2
                     // ==>
                     // %tmp = const1
-                    // jeq %tmp const2
+                    // jmp %tmp const2
                     if (t0 == CONST && t1 == CONST) {
                         struct ir_insn *new_insn = create_assign_insn_cg(insn, *v0, INSERT_FRONT);
                         new_insn->vr_type        = alu_to_vr_type(insn->alu);
@@ -384,20 +385,26 @@ int check_need_spill(struct ir_function *fun) {
                         v0->data.insn_d          = new_insn;
                         res                      = 1;
                     }
-                    // jeq stack const
+                    // jmp stack const
                     if (t0 == STACK && t1 == CONST) {
                         load_stack_to_r0(fun, insn, v0, alu_to_vr_type(insn->alu));
                         res = 1;
                     }
-                    // jeq stack1 stack2
+                    // jmp stack1 stack2
                     // ==>
                     // R0 = stack1
                     // R1 = stack2
-                    // jeq R0 R1
+                    // jmp R0 R1
                     if (t0 == STACK && t1 == STACK) {
                         load_stack_to_r0(fun, insn, v0, alu_to_vr_type(insn->alu));
                         res = 1;
                     }
+                }
+                if (switched) {
+                    // Switch back
+                    struct ir_value tmp = *v0;
+                    *v0                 = *v1;
+                    *v1                 = tmp;
                 }
             } else {
                 CRITICAL("No such instruction");

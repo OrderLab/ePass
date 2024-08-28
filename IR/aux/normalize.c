@@ -104,8 +104,9 @@ void normalize(struct ir_function *fun) {
             } else if (insn->op == IR_INSN_JA) {
                 // OK
             } else if (insn->op >= IR_INSN_JEQ && insn->op < IR_INSN_PHI) {
-                // jeq reg const/reg
-                DBGASSERT(t0 == REG && (t1 == REG || t1 == CONST));
+                // jmp reg const/reg
+                // or
+                // jmp const/reg reg
                 // OK
             } else {
                 CRITICAL("No such instruction");
