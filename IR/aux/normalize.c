@@ -112,7 +112,7 @@ void normalize(struct ir_function *fun)
 					// Change to STORERAW
 					insn->op = IR_INSN_STORERAW;
 					insn->addr_val.value =
-						ir_value_stack_ptr();
+						bpf_ir_value_stack_ptr();
 					insn->addr_val.offset =
 						-insn_cg(dst_insn)->spilled * 8;
 				} else {
@@ -120,7 +120,7 @@ void normalize(struct ir_function *fun)
 						// Change to LOADRAW
 						insn->op = IR_INSN_LOADRAW;
 						insn->addr_val.value =
-							ir_value_stack_ptr();
+							bpf_ir_value_stack_ptr();
 						insn->addr_val.offset =
 							-insn_cg(v0->data.insn_d)
 								 ->spilled *

@@ -30,6 +30,22 @@ struct pre_ir_insn load_const_to_reg(__u8 dst, __s64 data,
 	return insn;
 }
 
+static int vr_type_to_size(enum ir_vr_type type)
+{
+	switch (type) {
+	case IR_VR_TYPE_32:
+		return BPF_W;
+	case IR_VR_TYPE_16:
+		return BPF_H;
+	case IR_VR_TYPE_8:
+		return BPF_B;
+	case IR_VR_TYPE_64:
+		return BPF_DW;
+	default:
+		CRITICAL("Error");
+	}
+}
+
 struct pre_ir_insn load_addr_to_reg(__u8 dst, struct ir_address_value addr,
 				    enum ir_vr_type type)
 {

@@ -20,7 +20,7 @@ void check_insn_users_use_insn(struct ir_insn *insn)
 				break;
 			}
 		}
-		array_free(&operands);
+		bpf_ir_array_free(&operands);
 		if (!found) {
 			// Error!
 			print_ir_insn_err(insn, "The instruction");
@@ -85,7 +85,7 @@ void check_insn(struct ir_function *fun)
 
 			if (is_alu(insn) || is_cond_jmp(insn)) {
 				// Binary ALU
-				if (!valid_alu_type(insn->alu)) {
+				if (!bpf_ir_valid_alu_type(insn->alu)) {
 					print_ir_insn_err(insn, NULL);
 					CRITICAL("Binary ALU type error!");
 				}
@@ -94,7 +94,7 @@ void check_insn(struct ir_function *fun)
 			if (insn->op == IR_INSN_ALLOC ||
 			    insn->op == IR_INSN_LOADRAW ||
 			    insn->op == IR_INSN_STORERAW) {
-				if (!valid_vr_type(insn->vr_type)) {
+				if (!bpf_ir_valid_vr_type(insn->vr_type)) {
 					print_ir_insn_err(insn, NULL);
 					CRITICAL("Invalid VR type");
 				}
@@ -135,7 +135,7 @@ void check_insn_operand(struct ir_insn *insn)
 			}
 		}
 	}
-	array_free(&operands);
+	bpf_ir_array_free(&operands);
 }
 
 // Check if the users are correct (only applicable to SSA IR form)

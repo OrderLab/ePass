@@ -39,7 +39,7 @@ void graph_coloring(struct ir_function *fun)
 			struct ir_insn_cg_extra *extra2 = insn_cg(insn2);
 			if (extra2->allocated) {
 				if (extra2->spilled) {
-					array_push_unique(&used_spill,
+					bpf_ir_array_push_unique(&used_spill,
 							  &extra2->spilled);
 				} else {
 					used_reg[extra2->alloc_reg] = 1;
@@ -77,6 +77,6 @@ void graph_coloring(struct ir_function *fun)
 				}
 			}
 		}
-		array_free(&used_spill);
+		bpf_ir_array_free(&used_spill);
 	}
 }

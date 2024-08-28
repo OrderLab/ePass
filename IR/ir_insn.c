@@ -60,9 +60,9 @@ void replace_all_usage(struct ir_insn *insn, struct ir_value rep)
 				val_add_user(rep, user);
 			}
 		}
-		array_free(&operands);
+		bpf_ir_array_free(&operands);
 	}
-	array_free(&users);
+	bpf_ir_array_free(&users);
 }
 
 void replace_all_usage_except(struct ir_insn *insn, struct ir_value rep,
@@ -75,7 +75,7 @@ void replace_all_usage_except(struct ir_insn *insn, struct ir_value rep,
 	{
 		struct ir_insn *user = *pos;
 		if (user == except) {
-			array_push(&insn->users, &user);
+			bpf_ir_array_push(&insn->users, &user);
 			continue;
 		}
 		struct array operands = get_operands(user);
@@ -89,9 +89,9 @@ void replace_all_usage_except(struct ir_insn *insn, struct ir_value rep,
 				val_add_user(rep, user);
 			}
 		}
-		array_free(&operands);
+		bpf_ir_array_free(&operands);
 	}
-	array_free(&users);
+	bpf_ir_array_free(&users);
 }
 
 struct array get_operands(struct ir_insn *insn)
@@ -102,19 +102,19 @@ struct array get_operands(struct ir_insn *insn)
 
 	for (__u8 j = 0; j < insn->value_num; ++j) {
 		pos = &insn->values[j];
-		array_push(&uses, &pos);
+		bpf_ir_array_push(&uses, &pos);
 	}
 	if (insn->op == IR_INSN_PHI) {
 		struct phi_value *pv_pos2;
 		array_for(pv_pos2, insn->phi)
 		{
 			pos = &pv_pos2->value;
-			array_push(&uses, &pos);
+			bpf_ir_array_push(&uses, &pos);
 		}
 	}
 	if (insn->op == IR_INSN_LOADRAW || insn->op == IR_INSN_STORERAW) {
 		pos = &insn->addr_val.value;
-		array_push(&uses, &pos);
+		bpf_ir_array_push(&uses, &pos);
 	}
 	return uses;
 }
@@ -139,7 +139,7 @@ void erase_insn(struct ir_insn *insn)
 	{
 		val_remove_user((**pos2), insn);
 	}
-	array_free(&operands);
+	bpf_ir_array_free(&operands);
 	list_del(&insn->list_ptr);
 	free_proto(insn);
 }
@@ -235,7 +235,7 @@ void val_remove_user(struct ir_value val, struct ir_insn *user)
 	for (size_t i = 0; i < arr->num_elem; ++i) {
 		struct ir_insn *pos = ((struct ir_insn **)(arr->data))[i];
 		if (pos == user) {
-			array_erase(arr, i);
+			bpf_ir_array_erase(arr, i);
 			return;
 		}
 	}
@@ -247,7 +247,7 @@ void val_add_user(struct ir_value val, struct ir_insn *user)
 	if (val.type != IR_VALUE_INSN) {
 		return;
 	}
-	array_push_unique(&val.data.insn_d->users, &user);
+	bpf_ir_array_push_unique(&val.data.insn_d->users, &user);
 }
 
 struct ir_insn *create_store_insn_base(struct ir_basic_block *bb,
@@ -256,7 +256,7 @@ struct ir_insn *create_store_insn_base(struct ir_basic_block *bb,
 {
 	struct ir_insn *new_insn = create_insn_base(bb);
 	new_insn->op = IR_INSN_STORE;
-	struct ir_value nv = ir_value_insn(insn);
+	struct ir_value nv = bpf_ir_value_insn(insn);
 	new_insn->values[0] = nv;
 	new_insn->values[1] = val;
 	new_insn->value_num = 2;
@@ -374,7 +374,7 @@ struct ir_insn *create_ja_insn_base(struct ir_basic_block *bb,
 	struct ir_insn *new_insn = create_insn_base(bb);
 	new_insn->op = IR_INSN_JA;
 	new_insn->bb1 = to_bb;
-	array_push(&to_bb->users, &new_insn);
+	bpf_ir_array_push(&to_bb->users, &new_insn);
 	return new_insn;
 }
 
@@ -411,8 +411,8 @@ create_jbin_insn_base(struct ir_basic_block *bb, struct ir_value val1,
 	new_insn->alu = aluty;
 	val_add_user(val1, new_insn);
 	val_add_user(val2, new_insn);
-	array_push(&to_bb1->users, &new_insn);
-	array_push(&to_bb2->users, &new_insn);
+	bpf_ir_array_push(&to_bb1->users, &new_insn);
+	bpf_ir_array_push(&to_bb2->users, &new_insn);
 	new_insn->value_num = 2;
 	return new_insn;
 }
@@ -582,6 +582,6 @@ void phi_add_operand(struct ir_insn *insn, struct ir_basic_block *bb,
 	struct phi_value pv;
 	pv.value = val;
 	pv.bb = bb;
-	array_push(&insn->phi, &pv);
+	bpf_ir_array_push(&insn->phi, &pv);
 	val_add_user(val, insn);
 }

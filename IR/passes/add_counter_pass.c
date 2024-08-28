@@ -25,7 +25,7 @@ void add_counter(struct ir_function *fun)
 			continue;
 		}
 		struct ir_insn *load_insn = create_load_insn(
-			last, ir_value_insn(alloc_insn), INSERT_FRONT);
+			last, bpf_ir_value_insn(alloc_insn), INSERT_FRONT);
 		struct ir_value val1;
 		val1.type = IR_VALUE_CONSTANT;
 		val1.data.constant_d = len;

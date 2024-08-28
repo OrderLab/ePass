@@ -8,7 +8,7 @@ void array_erase_elem(struct array *arr, struct ir_insn *insn)
 	for (size_t i = 0; i < arr->num_elem; ++i) {
 		struct ir_insn *pos = ((struct ir_insn **)(arr->data))[i];
 		if (pos == insn) {
-			array_erase(arr, i);
+			bpf_ir_array_erase(arr, i);
 			return;
 		}
 	}
@@ -27,7 +27,7 @@ void gen_kill(struct ir_function *fun)
 			struct ir_insn *insn_dst = dst(pos2);
 			struct ir_insn_cg_extra *insn_cg = pos2->user_data;
 			if (!is_void(pos2) && insn_dst) {
-				array_push_unique(&insn_cg->kill, &insn_dst);
+				bpf_ir_array_push_unique(&insn_cg->kill, &insn_dst);
 			}
 			struct array value_uses = get_operands(pos2);
 			struct ir_value **pos3;
@@ -37,11 +37,11 @@ void gen_kill(struct ir_function *fun)
 				if (val->type == IR_VALUE_INSN) {
 					struct ir_insn *insn = val->data.insn_d;
 					DBGASSERT(insn == dst(insn));
-					array_push_unique(&insn_cg->gen, &insn);
+					bpf_ir_array_push_unique(&insn_cg->gen, &insn);
 					// array_erase_elem(&insn_cg->kill, insn);
 				}
 			}
-			array_free(&value_uses);
+			bpf_ir_array_free(&value_uses);
 		}
 	}
 }
@@ -67,7 +67,7 @@ struct array array_delta(struct array *a, struct array *b)
 	{
 		struct ir_insn *insn = *pos;
 		if (!array_contains(b, insn)) {
-			array_push(&res, &insn);
+			bpf_ir_array_push(&res, &insn);
 		}
 	}
 	return res;
@@ -79,7 +79,7 @@ void merge_array(struct array *a, struct array *b)
 	array_for(pos, (*b))
 	{
 		struct ir_insn *insn = *pos;
-		array_push_unique(a, &insn);
+		bpf_ir_array_push_unique(a, &insn);
 	}
 }
 
@@ -115,7 +115,7 @@ void in_out(struct ir_function *fun)
 				struct ir_insn_cg_extra *insn_cg =
 					insn->user_data;
 				struct array old_in = insn_cg->in;
-				array_clear(&insn_cg->out);
+				bpf_ir_array_clear(&insn_cg->out);
 
 				if (get_last_insn(bb) == insn) {
 					// Last instruction
@@ -148,15 +148,15 @@ void in_out(struct ir_function *fun)
 				}
 				struct array out_kill_delta = array_delta(
 					&insn_cg->out, &insn_cg->kill);
-				array_clone(&insn_cg->in, &insn_cg->gen);
+				bpf_ir_array_clone(&insn_cg->in, &insn_cg->gen);
 				merge_array(&insn_cg->in, &out_kill_delta);
 				// Check for change
 				if (!equal_set(&insn_cg->in, &old_in)) {
 					change = 1;
 				}
 				// Collect grabage
-				array_free(&out_kill_delta);
-				array_free(&old_in);
+				bpf_ir_array_free(&out_kill_delta);
+				bpf_ir_array_free(&old_in);
 			}
 		}
 	}

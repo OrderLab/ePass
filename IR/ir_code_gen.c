@@ -69,11 +69,11 @@ int init_cg(struct ir_function *fun)
 void free_insn_cg(struct ir_insn *insn)
 {
 	struct ir_insn_cg_extra *extra = insn_cg(insn);
-	array_free(&extra->adj);
-	array_free(&extra->gen);
-	array_free(&extra->kill);
-	array_free(&extra->in);
-	array_free(&extra->out);
+	bpf_ir_array_free(&extra->adj);
+	bpf_ir_array_free(&extra->gen);
+	bpf_ir_array_free(&extra->kill);
+	bpf_ir_array_free(&extra->in);
+	bpf_ir_array_free(&extra->out);
 	free_proto(extra);
 	insn->user_data = NULL;
 }
@@ -95,7 +95,7 @@ void free_cg_res(struct ir_function *fun)
 
 	for (__u8 i = 0; i < MAX_BPF_REG; ++i) {
 		struct ir_insn *insn = fun->cg_info.regs[i];
-		array_free(&insn->users);
+		bpf_ir_array_free(&insn->users);
 		free_insn_cg(insn);
 		free_proto(insn);
 	}
@@ -104,11 +104,11 @@ void free_cg_res(struct ir_function *fun)
 void clean_insn_cg(struct ir_insn *insn)
 {
 	struct ir_insn_cg_extra *extra = insn_cg(insn);
-	array_clear(&extra->adj);
-	array_clear(&extra->gen);
-	array_clear(&extra->kill);
-	array_clear(&extra->in);
-	array_clear(&extra->out);
+	bpf_ir_array_clear(&extra->adj);
+	bpf_ir_array_clear(&extra->gen);
+	bpf_ir_array_clear(&extra->kill);
+	bpf_ir_array_clear(&extra->in);
+	bpf_ir_array_clear(&extra->out);
 }
 
 void clean_cg(struct ir_function *fun)
@@ -131,7 +131,7 @@ void clean_cg(struct ir_function *fun)
 		struct ir_insn *insn = fun->cg_info.regs[i];
 		clean_insn_cg(insn);
 	}
-	array_clear(&fun->cg_info.all_var);
+	bpf_ir_array_clear(&fun->cg_info.all_var);
 }
 
 struct ir_insn_cg_extra *insn_cg(struct ir_insn *insn)

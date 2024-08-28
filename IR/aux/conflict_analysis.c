@@ -15,8 +15,8 @@ void build_conflict(struct ir_insn *v1, struct ir_insn *v2)
 	if (v1 == v2) {
 		return;
 	}
-	array_push_unique(&insn_cg(v1)->adj, &v2);
-	array_push_unique(&insn_cg(v2)->adj, &v1);
+	bpf_ir_array_push_unique(&insn_cg(v1)->adj, &v2);
+	bpf_ir_array_push_unique(&insn_cg(v2)->adj, &v1);
 }
 
 void print_interference_graph(struct ir_function *fun)
@@ -113,7 +113,7 @@ void conflict_analysis(struct ir_function *fun)
 				struct ir_insn *insn_dst = *pos2;
 				DBGASSERT(insn_dst == dst(insn_dst));
 				if (insn_dst->op != IR_INSN_REG) {
-					array_push_unique(&fun->cg_info.all_var,
+					bpf_ir_array_push_unique(&fun->cg_info.all_var,
 							  &insn_dst);
 				}
 				struct ir_insn **pos3;

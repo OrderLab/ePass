@@ -76,7 +76,7 @@ void add_stack_offset_pre_cg(struct ir_function *fun)
 				*val = new_val;
 			}
 		}
-		array_free(&value_uses);
+		bpf_ir_array_free(&value_uses);
 	}
 }
 
@@ -106,6 +106,6 @@ void add_stack_offset(struct ir_function *fun, __s16 offset)
 				val->data.constant_d = offset;
 			}
 		}
-		array_free(&value_uses);
+		bpf_ir_array_free(&value_uses);
 	}
 }

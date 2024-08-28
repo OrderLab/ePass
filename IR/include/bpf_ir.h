@@ -38,31 +38,31 @@ struct array {
 	size_t elem_size;
 };
 
-void array_init(struct array *res, size_t size);
+void bpf_ir_array_init(struct array *res, size_t size);
 
-int array_push(struct array *, void *);
+int bpf_ir_array_push(struct array *, void *);
 
-int array_push_unique(struct array *arr, void *data);
+int bpf_ir_array_push_unique(struct array *arr, void *data);
 
-void array_free(struct array *);
+void bpf_ir_array_free(struct array *);
 
-struct array array_null(void);
+struct array bpf_ir_array_null(void);
 
-void array_erase(struct array *arr, size_t idx);
+void bpf_ir_array_erase(struct array *arr, size_t idx);
 
-void *array_get_void(struct array *arr, size_t idx);
+void *bpf_ir_array_get_void(struct array *arr, size_t idx);
 
-#define array_get(arr, idx, type) ((type *)array_get_void(arr, idx))
+#define array_get(arr, idx, type) ((type *)bpf_ir_array_get_void(arr, idx))
 
-int array_clear(struct array *arr);
+int bpf_ir_array_clear(struct array *arr);
 
-int array_clone(struct array *res, struct array *arr);
+int bpf_ir_array_clone(struct array *res, struct array *arr);
 
 #define array_for(pos, arr)                   \
 	for (pos = ((typeof(pos))(arr.data)); \
 	     pos < (typeof(pos))(arr.data) + arr.num_elem; pos++)
 
-#define INIT_ARRAY(arr, type) array_init(arr, sizeof(type))
+#define INIT_ARRAY(arr, type) bpf_ir_array_init(arr, sizeof(type))
 
 #ifndef __KERNEL__
 
@@ -150,9 +150,9 @@ struct ir_value {
 	enum ir_value_type type;
 };
 
-struct ir_value ir_value_insn(struct ir_insn *);
+struct ir_value bpf_ir_value_insn(struct ir_insn *);
 
-struct ir_value ir_value_stack_ptr(void);
+struct ir_value bpf_ir_value_stack_ptr(void);
 
 /**
     Value plus an offset
@@ -177,7 +177,7 @@ enum ir_alu_type {
 	IR_ALU_64,
 };
 
-int valid_alu_type(enum ir_alu_type type);
+int bpf_ir_valid_alu_type(enum ir_alu_type type);
 
 /**
     Virtual Register Type
@@ -190,7 +190,7 @@ enum ir_vr_type {
 	IR_VR_TYPE_64,
 };
 
-int valid_vr_type(enum ir_vr_type type);
+int bpf_ir_valid_vr_type(enum ir_vr_type type);
 
 enum ir_insn_type {
 	IR_INSN_ALLOC,
@@ -394,34 +394,22 @@ struct error {
 
 // helper functions
 
-void write_variable(struct ssa_transform_env *env, __u8 reg,
+
+void bpf_ir_write_variable(struct ssa_transform_env *env, __u8 reg,
 		    struct pre_ir_basic_block *bb, struct ir_value val);
 
-struct ir_value read_variable_recursive(struct ssa_transform_env *env, __u8 reg,
-					struct pre_ir_basic_block *bb);
-
-struct ir_value read_variable(struct ssa_transform_env *env, __u8 reg,
+struct ir_value bpf_ir_read_variable(struct ssa_transform_env *env, __u8 reg,
 			      struct pre_ir_basic_block *bb);
 
-void construct_ir(struct bpf_insn *insns, size_t len);
-
-int gen_bb(struct bb_info *ret, struct bpf_insn *insns, size_t len);
-
-struct ir_insn *add_phi_operands(struct ssa_transform_env *env, __u8 reg,
+struct ir_insn *bpf_ir_add_phi_operands(struct ssa_transform_env *env, __u8 reg,
 				 struct ir_insn *insn);
 
-struct ir_insn *create_insn_back(struct ir_basic_block *bb);
-
-struct ir_insn *create_insn_front(struct ir_basic_block *bb);
-
-void add_user(struct ssa_transform_env *env, struct ir_insn *user,
+void bpf_ir_add_user(struct ssa_transform_env *env, struct ir_insn *user,
 	      struct ir_value val);
 
-__u8 ir_value_equal(struct ir_value a, struct ir_value b);
+__u8 bpf_ir_value_equal(struct ir_value a, struct ir_value b);
 
-struct ir_basic_block *init_ir_bb_raw(void);
-
-int vr_type_to_size(enum ir_vr_type type);
+struct ir_basic_block *bpf_ir_init_bb_raw(void);
 
 /* Fun Start */
 
@@ -474,10 +462,6 @@ struct ir_function {
 };
 
 // Constructor and Destructor
-
-int gen_function(struct ir_function *fun, struct ssa_transform_env *env);
-
-void free_function(struct ir_function *fun);
 
 void fix_bb_succ(struct ir_function *fun);
 

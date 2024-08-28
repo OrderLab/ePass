@@ -1,6 +1,6 @@
 #include "bpf_ir.h"
 
-void array_init(struct array *res, size_t size)
+void bpf_ir_array_init(struct array *res, size_t size)
 {
 	res->data = NULL;
 	res->max_elem = 0;
@@ -8,7 +8,7 @@ void array_init(struct array *res, size_t size)
 	res->num_elem = 0;
 }
 
-struct array array_null(void)
+struct array bpf_ir_array_null(void)
 {
 	struct array res;
 	res.data = NULL;
@@ -18,7 +18,7 @@ struct array array_null(void)
 	return res;
 }
 
-int array_push(struct array *arr, void *data)
+int bpf_ir_array_push(struct array *arr, void *data)
 {
 	if (arr->data == NULL) {
 		SAFE_MALLOC(arr->data, arr->elem_size * 2)
@@ -40,7 +40,7 @@ int array_push(struct array *arr, void *data)
 	return 0;
 }
 
-int array_push_unique(struct array *arr, void *data)
+int bpf_ir_array_push_unique(struct array *arr, void *data)
 {
 	for (size_t i = 0; i < arr->num_elem; ++i) {
 		if (memcmp((char *)(arr->data) + arr->elem_size * i, data,
@@ -48,10 +48,10 @@ int array_push_unique(struct array *arr, void *data)
 			return 0;
 		}
 	}
-	return array_push(arr, data);
+	return bpf_ir_array_push(arr, data);
 }
 
-void array_erase(struct array *arr, size_t idx)
+void bpf_ir_array_erase(struct array *arr, size_t idx)
 {
 	if (idx >= arr->num_elem) {
 		return;
@@ -65,7 +65,7 @@ void array_erase(struct array *arr, size_t idx)
 	arr->num_elem--;
 }
 
-int array_clear(struct array *arr)
+int bpf_ir_array_clear(struct array *arr)
 {
 	free_proto(arr->data);
 	SAFE_MALLOC(arr->data, arr->elem_size * 4);
@@ -74,7 +74,7 @@ int array_clear(struct array *arr)
 	return 0;
 }
 
-int array_clone(struct array *res, struct array *arr)
+int bpf_ir_array_clone(struct array *res, struct array *arr)
 {
 	res->num_elem = arr->num_elem;
 	res->max_elem = arr->max_elem;
@@ -88,15 +88,15 @@ int array_clone(struct array *res, struct array *arr)
 	return 0;
 }
 
-void array_free(struct array *arr)
+void bpf_ir_array_free(struct array *arr)
 {
 	if (arr->data) {
 		free_proto(arr->data);
 	}
-	*arr = array_null();
+	*arr = bpf_ir_array_null();
 }
 
-void *array_get_void(struct array *arr, size_t idx)
+void *bpf_ir_array_get_void(struct array *arr, size_t idx)
 {
 	if (idx >= arr->num_elem) {
 		return NULL;

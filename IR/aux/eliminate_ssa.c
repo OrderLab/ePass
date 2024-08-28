@@ -14,7 +14,7 @@ void to_cssa(struct ir_function *fun)
 		struct ir_insn *insn;
 		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
 			if (insn->op == IR_INSN_PHI) {
-				array_push(&phi_insns, &insn);
+				bpf_ir_array_push(&phi_insns, &insn);
 			} else {
 				break;
 			}
@@ -35,18 +35,18 @@ void to_cssa(struct ir_function *fun)
 			// Remove use
 			val_remove_user(pos3->value, insn);
 			phi_add_operand(new_phi, pos3->bb,
-					ir_value_insn(new_insn));
+					bpf_ir_value_insn(new_insn));
 		}
 
-		array_free(&insn->phi);
+		bpf_ir_array_free(&insn->phi);
 		insn->op = IR_INSN_ASSIGN;
-		struct ir_value val = ir_value_insn(new_phi);
+		struct ir_value val = bpf_ir_value_insn(new_phi);
 		insn->values[0] = val;
 		insn->value_num = 1;
 		val_add_user(val, insn);
 	}
 
-	array_free(&phi_insns);
+	bpf_ir_array_free(&phi_insns);
 }
 
 // Remove PHI insn
@@ -63,7 +63,7 @@ void remove_phi(struct ir_function *fun)
 		struct ir_insn *insn;
 		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
 			if (insn->op == IR_INSN_PHI) {
-				array_push(&phi_insns, &insn);
+				bpf_ir_array_push(&phi_insns, &insn);
 			} else {
 				break;
 			}
@@ -90,9 +90,9 @@ void remove_phi(struct ir_function *fun)
 
 		DBGASSERT(repr == dst(repr));
 
-		replace_all_usage(insn, ir_value_insn(repr));
+		replace_all_usage(insn, bpf_ir_value_insn(repr));
 		erase_insn(insn);
 	}
 
-	array_free(&phi_insns);
+	bpf_ir_array_free(&phi_insns);
 }

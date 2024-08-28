@@ -91,7 +91,7 @@ void spill_callee(struct ir_function *fun)
 			struct ir_insn *st = create_insn_base_cg(fun->entry);
 			insert_at_bb(st, fun->entry, INSERT_FRONT);
 			st->op = IR_INSN_STORERAW;
-			st->values[0] = ir_value_insn(fun->cg_info.regs[i]);
+			st->values[0] = bpf_ir_value_insn(fun->cg_info.regs[i]);
 			st->value_num = 1;
 			st->vr_type = IR_VR_TYPE_64;
 			struct ir_value val;
@@ -200,7 +200,7 @@ int check_need_spill(struct ir_function *fun)
 					struct ir_insn *tmp =
 						create_assign_insn_cg(
 							insn,
-							ir_value_insn(
+							bpf_ir_value_insn(
 								fun->cg_info
 									.regs[0]),
 							INSERT_BACK);
@@ -259,7 +259,7 @@ int check_need_spill(struct ir_function *fun)
 					struct ir_insn *tmp =
 						create_assign_insn_cg(
 							insn,
-							ir_value_insn(
+							bpf_ir_value_insn(
 								fun->cg_info
 									.regs[0]),
 							INSERT_BACK);

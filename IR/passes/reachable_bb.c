@@ -6,7 +6,7 @@ void add_reach(struct ir_function *fun, struct ir_basic_block *bb)
 		return;
 	}
 	bb->_visited = 1;
-	array_push(&fun->reachable_bbs, &bb);
+	bpf_ir_array_push(&fun->reachable_bbs, &bb);
 
 	struct ir_basic_block **succ;
 	__u8 i = 0;
@@ -26,6 +26,6 @@ void add_reach(struct ir_function *fun, struct ir_basic_block *bb)
 void gen_reachable_bbs(struct ir_function *fun)
 {
 	clean_env(fun);
-	array_clear(&fun->reachable_bbs);
+	bpf_ir_array_clear(&fun->reachable_bbs);
 	add_reach(fun, fun->entry);
 }
