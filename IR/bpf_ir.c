@@ -292,29 +292,28 @@ void print_pre_ir_cfg(struct pre_ir_basic_block *bb)
 	}
 }
 
-struct ssa_transform_env init_env(struct bb_info info)
+int init_env(struct ssa_transform_env *env, struct bb_info info)
 {
-	struct ssa_transform_env env;
 	for (size_t i = 0; i < MAX_BPF_REG; ++i) {
-		env.currentDef[i] = INIT_ARRAY(struct bb_val);
+		env->currentDef[i] = INIT_ARRAY(struct bb_val);
 	}
-	env.info = info;
-	env.sp_users = INIT_ARRAY(struct ir_insn *);
+	env->info = info;
+	env->sp_users = INIT_ARRAY(struct ir_insn *);
 	// Initialize function argument
 	for (__u8 i = 0; i < MAX_FUNC_ARG; ++i) {
-		env.function_arg[i] = __malloc(sizeof(struct ir_insn));
+		env->function_arg[i] = __malloc(sizeof(struct ir_insn));
 
-		env.function_arg[i]->users = INIT_ARRAY(struct ir_insn *);
-		env.function_arg[i]->op = IR_INSN_FUNCTIONARG;
-		env.function_arg[i]->fid = i;
-		env.function_arg[i]->value_num = 0;
-		env.function_arg[i]->user_data = NULL;
+		env->function_arg[i]->users = INIT_ARRAY(struct ir_insn *);
+		env->function_arg[i]->op = IR_INSN_FUNCTIONARG;
+		env->function_arg[i]->fid = i;
+		env->function_arg[i]->value_num = 0;
+		env->function_arg[i]->user_data = NULL;
 		struct ir_value val;
 		val.type = IR_VALUE_INSN;
-		val.data.insn_d = env.function_arg[i];
-		write_variable(&env, BPF_REG_1 + i, info.entry, val);
+		val.data.insn_d = env->function_arg[i];
+		write_variable(env, BPF_REG_1 + i, info.entry, val);
 	}
-	return env;
+	return 0;
 }
 
 void seal_block(struct ssa_transform_env *env, struct pre_ir_basic_block *bb)
@@ -524,7 +523,7 @@ void add_user(struct ssa_transform_env *env, struct ir_insn *user,
 
     Allocate memory and set the preds and succs.
  */
-void init_ir_bbs(struct ssa_transform_env *env)
+int init_ir_bbs(struct ssa_transform_env *env)
 {
 	for (size_t i = 0; i < env->info.all_bbs.num_elem; ++i) {
 		struct pre_ir_basic_block *bb =
@@ -551,6 +550,7 @@ void init_ir_bbs(struct ssa_transform_env *env)
 			array_push(&irbb->succs, &succ->ir_bb);
 		}
 	}
+    return 0;
 }
 
 struct ir_basic_block *get_ir_bb_from_position(struct ssa_transform_env *env,
@@ -629,11 +629,11 @@ void create_cond_jmp(struct ssa_transform_env *env,
 	array_push(&new_insn->bb2->users, &new_insn);
 }
 
-void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb)
+int transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb)
 {
 	printf("Transforming BB%zu\n", bb->id);
 	if (bb->sealed) {
-		return;
+		return 0;
 	}
 	// Try sealing a BB
 	__u8 pred_all_filled = 1;
@@ -651,7 +651,7 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb)
 	}
 	if (bb->filled) {
 		// Already visited (filled)
-		return;
+		return 0;
 	}
 	// Fill the BB
 	for (size_t i = 0; i < bb->len; ++i) {
@@ -866,6 +866,7 @@ void transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb)
 			((struct pre_ir_basic_block **)(bb->succs.data))[i];
 		transform_bb(env, succ);
 	}
+    return 0;
 }
 
 void free_function(struct ir_function *fun)
@@ -903,21 +904,20 @@ void free_function(struct ir_function *fun)
 	}
 }
 
-struct ir_function gen_function(struct ssa_transform_env *env)
+int gen_function(struct ir_function *fun, struct ssa_transform_env *env)
 {
-	struct ir_function fun;
-	fun.arg_num = 1;
-	fun.entry = env->info.entry->ir_bb;
-	fun.sp_users = env->sp_users;
+	fun->arg_num = 1;
+	fun->entry = env->info.entry->ir_bb;
+	fun->sp_users = env->sp_users;
 	for (__u8 i = 0; i < MAX_FUNC_ARG; ++i) {
-		fun.function_arg[i] = env->function_arg[i];
+		fun->function_arg[i] = env->function_arg[i];
 	}
-	fun.all_bbs = INIT_ARRAY(struct ir_basic_block *);
-	fun.reachable_bbs = INIT_ARRAY(struct ir_basic_block *);
-	fun.end_bbs = INIT_ARRAY(struct ir_basic_block *);
-	fun.cg_info.all_var = INIT_ARRAY(struct ir_insn *);
-	fun.cg_info.prog = NULL;
-	fun.cg_info.prog_size = 0;
+	fun->all_bbs = INIT_ARRAY(struct ir_basic_block *);
+	fun->reachable_bbs = INIT_ARRAY(struct ir_basic_block *);
+	fun->end_bbs = INIT_ARRAY(struct ir_basic_block *);
+	fun->cg_info.all_var = INIT_ARRAY(struct ir_insn *);
+	fun->cg_info.prog = NULL;
+	fun->cg_info.prog_size = 0;
 	for (size_t i = 0; i < MAX_BPF_REG; ++i) {
 		struct array *currentDef = &env->currentDef[i];
 		array_free(currentDef);
@@ -930,10 +930,10 @@ struct ir_function gen_function(struct ssa_transform_env *env)
 		array_free(&bb->succs);
 		free(bb->pre_insns);
 		bb->ir_bb->user_data = NULL;
-		array_push(&fun.all_bbs, &bb->ir_bb);
+		array_push(&fun->all_bbs, &bb->ir_bb);
 		free(bb);
 	}
-	return fun;
+	return 0;
 }
 
 __u8 ir_value_equal(struct ir_value a, struct ir_value b)
@@ -953,7 +953,7 @@ __u8 ir_value_equal(struct ir_value a, struct ir_value b)
 	CRITICAL("Error");
 }
 
-void run_passes(struct ir_function *fun)
+int run_passes(struct ir_function *fun)
 {
 	prog_check(fun);
 	for (size_t i = 0; i < sizeof(passes) / sizeof(passes[0]); ++i) {
@@ -972,6 +972,7 @@ void run_passes(struct ir_function *fun)
 	clean_env_all(fun);
 	gen_reachable_bbs(fun);
 	gen_end_bbs(fun);
+    return 0;
 }
 
 void print_bpf_insn(struct bpf_insn insn)
@@ -1004,23 +1005,38 @@ int run(struct bpf_insn *insns, size_t len)
 	if (ret) {
 		return ret;
 	}
+
 	print_pre_ir_cfg(info.entry);
-	struct ssa_transform_env env = init_env(info);
-	init_ir_bbs(&env);
-	transform_bb(&env, info.entry);
-	struct ir_function fun = gen_function(&env);
+	struct ssa_transform_env env;
+    ret = init_env(&env, info);
+    if (ret) {
+		return ret;
+	}
+	ret = init_ir_bbs(&env);
+    if (ret) {
+		return ret;
+	}
+	ret = transform_bb(&env, info.entry);
+    if (ret) {
+		return ret;
+	}
+	struct ir_function fun;
+    ret = gen_function(&fun, &env);
+    if (ret) {
+		return ret;
+	}
 
 	// Drop env
 	print_ir_prog(&fun);
 	printf("Starting IR Passes...\n");
 	// Start IR manipulation
 
-	run_passes(&fun);
+	ret = run_passes(&fun);
 
 	// End IR manipulation
 	printf("IR Passes Ended!\n");
 
-	code_gen(&fun);
+	ret = code_gen(&fun);
 
 	// Got the bpf bytecode
 

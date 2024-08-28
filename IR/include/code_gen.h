@@ -5,7 +5,7 @@
 #include "bpf_ir.h"
 #include "ir_fun.h"
 
-void code_gen(struct ir_function *fun);
+int code_gen(struct ir_function *fun);
 
 // Extra information needed for code gen
 struct ir_bb_cg_extra {
@@ -88,8 +88,6 @@ void translate(struct ir_function *fun);
 void spill_callee(struct ir_function *fun);
 
 enum val_type vtype_insn(struct ir_insn *insn);
-
-enum val_type vtype(struct ir_value val);
 
 void calc_callee_num(struct ir_function *fun);
 

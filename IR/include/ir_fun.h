@@ -53,7 +53,7 @@ struct ir_function {
 
 // Constructor and Destructor
 
-struct ir_function gen_function(struct ssa_transform_env *env);
+int gen_function(struct ir_function *fun, struct ssa_transform_env *env);
 
 void free_function(struct ir_function *fun);
 

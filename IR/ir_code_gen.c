@@ -204,7 +204,7 @@ void synthesize(struct ir_function *fun)
 	}
 }
 
-void code_gen(struct ir_function *fun)
+int code_gen(struct ir_function *fun)
 {
 	// Preparation
 
