@@ -168,36 +168,36 @@ void print_insn_extra(struct ir_insn *insn)
 	if (insn_cg == NULL) {
 		CRITICAL("NULL user data");
 	}
-	printf("--\nGen:");
+	PRINT_LOG("--\nGen:");
 	struct ir_insn **pos;
 	array_for(pos, insn_cg->gen)
 	{
 		struct ir_insn *insn = *pos;
-		printf(" ");
+		PRINT_LOG(" ");
 		print_insn_ptr_base(insn);
 	}
-	printf("\nKill:");
+	PRINT_LOG("\nKill:");
 	array_for(pos, insn_cg->kill)
 	{
 		struct ir_insn *insn = *pos;
-		printf(" ");
+		PRINT_LOG(" ");
 		print_insn_ptr_base(insn);
 	}
-	printf("\nIn:");
+	PRINT_LOG("\nIn:");
 	array_for(pos, insn_cg->in)
 	{
 		struct ir_insn *insn = *pos;
-		printf(" ");
+		PRINT_LOG(" ");
 		print_insn_ptr_base(insn);
 	}
-	printf("\nOut:");
+	PRINT_LOG("\nOut:");
 	array_for(pos, insn_cg->out)
 	{
 		struct ir_insn *insn = *pos;
-		printf(" ");
+		PRINT_LOG(" ");
 		print_insn_ptr_base(insn);
 	}
-	printf("\n-------------\n");
+	PRINT_LOG("\n-------------\n");
 }
 
 void liveness_analysis(struct ir_function *fun)
@@ -205,7 +205,7 @@ void liveness_analysis(struct ir_function *fun)
 	// TODO: Encode Calling convention into GEN KILL
 	gen_kill(fun);
 	in_out(fun);
-	printf("--------------\n");
+	PRINT_LOG("--------------\n");
 	print_ir_prog_advanced(fun, NULL, print_insn_extra, print_ir_dst);
 	print_ir_prog_advanced(fun, NULL, NULL, print_ir_dst);
 }

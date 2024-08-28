@@ -1,5 +1,5 @@
-#ifndef __BPF_IR_H__
-#define __BPF_IR_H__
+#ifndef _LINUX_BPF_IR_H
+#define _LINUX_BPF_IR_H
 
 #include <linux/bpf.h>
 
@@ -12,6 +12,9 @@
 #include "list.h"
 #include "read.h"
 #include <stddef.h>
+
+#define PRINT_LOG printf
+
 #endif
 
 struct array {
@@ -47,18 +50,18 @@ int array_clone(struct array *res, struct array *arr);
 
 #define INIT_ARRAY(arr, type) array_init(arr, sizeof(type))
 
-#define CRITICAL(str)                                                       \
-	{                                                                   \
-		printf("%s:%d <%s> %s\n", __FILE__, __LINE__, __FUNCTION__, \
-		       str);                                                \
-		exit(1);                                                    \
+#define CRITICAL(str)                                                          \
+	{                                                                      \
+		PRINT_LOG("%s:%d <%s> %s\n", __FILE__, __LINE__, __FUNCTION__, \
+			  str);                                                \
+		exit(1);                                                       \
 	}
 
-#define RAISE_ERROR(str)                                                    \
-	{                                                                   \
-		printf("%s:%d <%s> %s\n", __FILE__, __LINE__, __FUNCTION__, \
-		       str);                                                \
-		return -ENOSYS;                                             \
+#define RAISE_ERROR(str)                                                       \
+	{                                                                      \
+		PRINT_LOG("%s:%d <%s> %s\n", __FILE__, __LINE__, __FUNCTION__, \
+			  str);                                                \
+		return -ENOSYS;                                                \
 	}
 
 #define DBGASSERT(cond)                       \

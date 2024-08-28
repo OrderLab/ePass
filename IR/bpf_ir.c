@@ -186,7 +186,7 @@ int gen_bb(struct bb_info *ret, struct bpf_insn *insns, size_t len)
 	// Print the BB
 	// for (size_t i = 0; i < bb_entrance.num_elem; ++i) {
 	//     struct bb_entrance_info entry = all_bbs[i];
-	//     printf("%ld: %ld\n", entry.entrance, entry.bb->preds.num_elem);
+	//     PRINT_LOG("%ld: %ld\n", entry.entrance, entry.bb->preds.num_elem);
 	// }
 
 	// Init preds
@@ -269,24 +269,24 @@ void print_pre_ir_cfg(struct pre_ir_basic_block *bb)
 		return;
 	}
 	bb->visited = 1;
-	printf("BB %ld:\n", bb->id);
+	PRINT_LOG("BB %ld:\n", bb->id);
 	for (size_t i = 0; i < bb->len; ++i) {
 		struct pre_ir_insn insn = bb->pre_insns[i];
-		printf("%x %x %llx\n", insn.opcode, insn.imm, insn.imm64);
+		PRINT_LOG("%x %x %llx\n", insn.opcode, insn.imm, insn.imm64);
 	}
-	printf("preds (%ld): ", bb->preds.num_elem);
+	PRINT_LOG("preds (%ld): ", bb->preds.num_elem);
 	for (size_t i = 0; i < bb->preds.num_elem; ++i) {
 		struct pre_ir_basic_block *pred =
 			((struct pre_ir_basic_block **)(bb->preds.data))[i];
-		printf("%ld ", pred->id);
+		PRINT_LOG("%ld ", pred->id);
 	}
-	printf("\nsuccs (%ld): ", bb->succs.num_elem);
+	PRINT_LOG("\nsuccs (%ld): ", bb->succs.num_elem);
 	for (size_t i = 0; i < bb->succs.num_elem; ++i) {
 		struct pre_ir_basic_block *succ =
 			((struct pre_ir_basic_block **)(bb->succs.data))[i];
-		printf("%ld ", succ->id);
+		PRINT_LOG("%ld ", succ->id);
 	}
-	printf("\n\n");
+	PRINT_LOG("\n\n");
 	for (size_t i = 0; i < bb->succs.num_elem; ++i) {
 		struct pre_ir_basic_block *succ =
 			((struct pre_ir_basic_block **)(bb->succs.data))[i];
@@ -636,7 +636,7 @@ void create_cond_jmp(struct ssa_transform_env *env,
 
 int transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb)
 {
-	printf("Transforming BB%zu\n", bb->id);
+	PRINT_LOG("Transforming BB%zu\n", bb->id);
 	if (bb->sealed) {
 		return 0;
 	}
@@ -829,7 +829,8 @@ int transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb)
 				new_insn->op = IR_INSN_CALL;
 				new_insn->fid = insn.imm;
 				if (insn.imm < 0) {
-					printf("Not supported function call\n");
+					PRINT_LOG(
+						"Not supported function call\n");
 					new_insn->value_num = 0;
 				} else {
 					new_insn->value_num =
@@ -860,7 +861,8 @@ int transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb)
 			}
 		} else {
 			// TODO
-			printf("Class 0x%02x not supported\n", BPF_CLASS(code));
+			PRINT_LOG("Class 0x%02x not supported\n",
+				  BPF_CLASS(code));
 			CRITICAL("Error");
 		}
 	}
@@ -966,8 +968,8 @@ int run_passes(struct ir_function *fun)
 		clean_env_all(fun);
 		gen_reachable_bbs(fun);
 		gen_end_bbs(fun);
-		printf("\x1B[32m------ Running Pass: %s ------\x1B[0m\n",
-		       passes[i].name);
+		PRINT_LOG("\x1B[32m------ Running Pass: %s ------\x1B[0m\n",
+			  passes[i].name);
 		passes[i].pass(fun);
 		// Validate the IR
 		prog_check(fun);
@@ -983,17 +985,17 @@ int run_passes(struct ir_function *fun)
 void print_bpf_insn(struct bpf_insn insn)
 {
 	if (insn.off < 0) {
-		printf("%4x       %x       %x %8x -%8x\n", insn.code,
-		       insn.src_reg, insn.dst_reg, insn.imm, -insn.off);
+		PRINT_LOG("%4x       %x       %x %8x -%8x\n", insn.code,
+			  insn.src_reg, insn.dst_reg, insn.imm, -insn.off);
 	} else {
-		printf("%4x       %x       %x %8x  %8x\n", insn.code,
-		       insn.src_reg, insn.dst_reg, insn.imm, insn.off);
+		PRINT_LOG("%4x       %x       %x %8x  %8x\n", insn.code,
+			  insn.src_reg, insn.dst_reg, insn.imm, insn.off);
 	}
 }
 
 void print_bpf_prog(struct bpf_insn *insns, size_t len)
 {
-	printf("code src_reg dst_reg      imm       off\n");
+	PRINT_LOG("code src_reg dst_reg      imm       off\n");
 	for (size_t i = 0; i < len; ++i) {
 		struct bpf_insn insn = insns[i];
 		print_bpf_insn(insn);
@@ -1033,7 +1035,7 @@ int run(struct bpf_insn *insns, size_t len)
 
 	// Drop env
 	print_ir_prog(&fun);
-	printf("Starting IR Passes...\n");
+	PRINT_LOG("Starting IR Passes...\n");
 	// Start IR manipulation
 
 	ret = run_passes(&fun);
@@ -1042,7 +1044,7 @@ int run(struct bpf_insn *insns, size_t len)
 	}
 
 	// End IR manipulation
-	printf("IR Passes Ended!\n");
+	PRINT_LOG("IR Passes Ended!\n");
 
 	ret = code_gen(&fun);
 	if (ret) {
@@ -1051,10 +1053,10 @@ int run(struct bpf_insn *insns, size_t len)
 
 	// Got the bpf bytecode
 
-	printf("--------------------\nOriginal Program:\n");
+	PRINT_LOG("--------------------\nOriginal Program:\n");
 	print_bpf_prog(insns, len);
-	printf("--------------------\nRewritten Program %zu:\n",
-	       fun.cg_info.prog_size);
+	PRINT_LOG("--------------------\nRewritten Program %zu:\n",
+		  fun.cg_info.prog_size);
 	print_bpf_prog(fun.cg_info.prog, fun.cg_info.prog_size);
 
 	// Free the memory

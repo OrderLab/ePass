@@ -146,19 +146,19 @@ struct ir_insn *dst(struct ir_insn *insn)
 
 void print_ir_prog_pre_cg(struct ir_function *fun, char *msg)
 {
-	printf("\x1B[32m----- CG: %s -----\x1B[0m\n", msg);
+	PRINT_LOG("\x1B[32m----- CG: %s -----\x1B[0m\n", msg);
 	print_ir_prog_advanced(fun, NULL, NULL, NULL);
 }
 
 void print_ir_prog_cg_dst(struct ir_function *fun, char *msg)
 {
-	printf("\x1B[32m----- CG: %s -----\x1B[0m\n", msg);
+	PRINT_LOG("\x1B[32m----- CG: %s -----\x1B[0m\n", msg);
 	print_ir_prog_advanced(fun, NULL, NULL, print_ir_dst);
 }
 
 void print_ir_prog_cg_alloc(struct ir_function *fun, char *msg)
 {
-	printf("\x1B[32m----- CG: %s -----\x1B[0m\n", msg);
+	PRINT_LOG("\x1B[32m----- CG: %s -----\x1B[0m\n", msg);
 	print_ir_prog_advanced(fun, NULL, NULL, print_ir_alloc);
 }
 
@@ -177,8 +177,8 @@ int synthesize(struct ir_function *fun)
 			for (__u8 i = 0; i < extra->translated_num; ++i) {
 				struct pre_ir_insn translated_insn =
 					extra->translated[i];
-				printf("Writing to insn %zu\n",
-				       translated_insn.pos);
+				PRINT_LOG("Writing to insn %zu\n",
+					  translated_insn.pos);
 				struct bpf_insn *real_insn =
 					&fun->cg_info.prog[translated_insn.pos];
 				real_insn->code = translated_insn.opcode;
@@ -247,13 +247,13 @@ int code_gen(struct ir_function *fun)
 
 		// Step 6: Conflict Analysis
 		conflict_analysis(fun);
-		printf("Conflicting graph:\n");
+		PRINT_LOG("Conflicting graph:\n");
 		print_interference_graph(fun);
 
 		// Step 7: Graph coloring
 		graph_coloring(fun);
 		coaleasing(fun);
-		printf("Conflicting graph (after coloring):\n");
+		PRINT_LOG("Conflicting graph (after coloring):\n");
 		print_interference_graph(fun);
 		print_ir_prog_cg_alloc(fun, "After RA");
 
@@ -262,13 +262,14 @@ int code_gen(struct ir_function *fun)
 		// print_ir_prog_cg_dst(fun, "After Spilling");
 		if (need_spill) {
 			// Still need to spill
-			printf("Need to spill...\n");
+			PRINT_LOG("Need to spill...\n");
 			clean_cg(fun);
 		}
 	}
 
 	// Register allocation finished (All registers are fixed)
-	printf("Register allocation finished in %d iteratinos\n", iterations);
+	PRINT_LOG("Register allocation finished in %d iteratinos\n",
+		  iterations);
 	print_ir_prog_cg_alloc(fun, "After RA & Spilling");
 
 	// Step 9: Calculate stack size

@@ -53,18 +53,18 @@ void clean_tag(struct ir_function *fun)
 void print_insn_ptr_base(struct ir_insn *insn)
 {
 	if (insn->op == IR_INSN_REG) {
-		printf("R%u", insn_cg(insn)->alloc_reg);
+		PRINT_LOG("R%u", insn_cg(insn)->alloc_reg);
 		return;
 	}
 	if (insn->op == IR_INSN_FUNCTIONARG) {
-		printf("arg%u", insn->fid);
+		PRINT_LOG("arg%u", insn->fid);
 		return;
 	}
 	if (insn->_insn_id == SIZE_MAX) {
-		printf("%p", insn);
+		PRINT_LOG("%p", insn);
 		return;
 	}
-	printf("%%%zu", insn->_insn_id);
+	PRINT_LOG("%%%zu", insn->_insn_id);
 }
 
 void print_insn_ptr(struct ir_insn *insn, void (*print_ir)(struct ir_insn *))
@@ -79,10 +79,10 @@ void print_insn_ptr(struct ir_insn *insn, void (*print_ir)(struct ir_insn *))
 void print_bb_ptr(struct ir_basic_block *insn)
 {
 	if (insn->_id == SIZE_MAX) {
-		printf("b%p", insn);
+		PRINT_LOG("b%p", insn);
 		return;
 	}
-	printf("b%zu", insn->_id);
+	PRINT_LOG("b%zu", insn->_id);
 }
 
 void print_ir_value_full(struct ir_value v, void (*print_ir)(struct ir_insn *))
@@ -92,16 +92,16 @@ void print_ir_value_full(struct ir_value v, void (*print_ir)(struct ir_insn *))
 		print_insn_ptr(v.data.insn_d, print_ir);
 		break;
 	case IR_VALUE_STACK_PTR:
-		printf("SP");
+		PRINT_LOG("SP");
 		break;
 	case IR_VALUE_CONSTANT:
-		printf("0x%llx", v.data.constant_d);
+		PRINT_LOG("0x%llx", v.data.constant_d);
 		break;
 	case IR_VALUE_CONSTANT_RAWOFF:
-		printf("(hole)");
+		PRINT_LOG("(hole)");
 		break;
 	case IR_VALUE_UNDEF:
-		printf("undef");
+		PRINT_LOG("undef");
 		break;
 	default:
 		CRITICAL("Unknown IR value type");
@@ -118,7 +118,7 @@ void print_address_value_full(struct ir_address_value v,
 {
 	print_ir_value_full(v.value, print_ir);
 	if (v.offset != 0) {
-		printf("+%d", v.offset);
+		PRINT_LOG("+%d", v.offset);
 	}
 }
 
@@ -131,16 +131,16 @@ void print_vr_type(enum ir_vr_type t)
 {
 	switch (t) {
 	case IR_VR_TYPE_8:
-		printf("u8");
+		PRINT_LOG("u8");
 		break;
 	case IR_VR_TYPE_64:
-		printf("u64");
+		PRINT_LOG("u64");
 		break;
 	case IR_VR_TYPE_16:
-		printf("u16");
+		PRINT_LOG("u16");
 		break;
 	case IR_VR_TYPE_32:
-		printf("u32");
+		PRINT_LOG("u32");
 		break;
 	default:
 		CRITICAL("Unknown VR type");
@@ -151,11 +151,11 @@ void print_phi_full(struct array *phi, void (*print_ir)(struct ir_insn *))
 {
 	for (size_t i = 0; i < phi->num_elem; ++i) {
 		struct phi_value v = ((struct phi_value *)(phi->data))[i];
-		printf(" <");
+		PRINT_LOG(" <");
 		print_bb_ptr(v.bb);
-		printf(" -> ");
+		PRINT_LOG(" -> ");
 		print_ir_value_full(v.value, print_ir);
-		printf(">");
+		PRINT_LOG(">");
 	}
 }
 
@@ -172,146 +172,146 @@ void print_ir_insn_full(struct ir_insn *insn,
 {
 	switch (insn->op) {
 	case IR_INSN_ALLOC:
-		printf("alloc ");
+		PRINT_LOG("alloc ");
 		print_vr_type(insn->vr_type);
 		break;
 	case IR_INSN_STORE:
-		printf("store ");
+		PRINT_LOG("store ");
 		print_ir_value_full(insn->values[0], print_ir);
-		printf(", ");
+		PRINT_LOG(", ");
 		print_ir_value_full(insn->values[1], print_ir);
 		break;
 	case IR_INSN_LOAD:
-		printf("load ");
+		PRINT_LOG("load ");
 		print_ir_value_full(insn->values[0], print_ir);
 		break;
 	case IR_INSN_LOADRAW:
-		printf("loadraw ");
+		PRINT_LOG("loadraw ");
 		print_vr_type(insn->vr_type);
-		printf(" ");
+		PRINT_LOG(" ");
 		print_address_value_full(insn->addr_val, print_ir);
 		break;
 	case IR_INSN_STORERAW:
-		printf("storeraw ");
+		PRINT_LOG("storeraw ");
 		print_vr_type(insn->vr_type);
-		printf(" ");
+		PRINT_LOG(" ");
 		print_address_value_full(insn->addr_val, print_ir);
-		printf(" ");
+		PRINT_LOG(" ");
 		print_ir_value_full(insn->values[0], print_ir);
 		break;
 	case IR_INSN_ADD:
-		printf("add ");
+		PRINT_LOG("add ");
 		print_ir_value_full(insn->values[0], print_ir);
-		printf(", ");
+		PRINT_LOG(", ");
 		print_ir_value_full(insn->values[1], print_ir);
 		break;
 	case IR_INSN_SUB:
-		printf("sub ");
+		PRINT_LOG("sub ");
 		print_ir_value_full(insn->values[0], print_ir);
-		printf(", ");
+		PRINT_LOG(", ");
 		print_ir_value_full(insn->values[1], print_ir);
 		break;
 	case IR_INSN_MUL:
-		printf("mul ");
+		PRINT_LOG("mul ");
 		print_ir_value_full(insn->values[0], print_ir);
-		printf(", ");
+		PRINT_LOG(", ");
 		print_ir_value_full(insn->values[1], print_ir);
 		break;
 	case IR_INSN_CALL:
-		printf("call __built_in_func_%d(", insn->fid);
+		PRINT_LOG("call __built_in_func_%d(", insn->fid);
 		if (insn->value_num >= 1) {
 			print_ir_value_full(insn->values[0], print_ir);
 		}
 		for (size_t i = 1; i < insn->value_num; ++i) {
-			printf(", ");
+			PRINT_LOG(", ");
 			print_ir_value_full(insn->values[i], print_ir);
 		}
-		printf(")");
+		PRINT_LOG(")");
 		break;
 	case IR_INSN_RET:
-		printf("ret ");
+		PRINT_LOG("ret ");
 		if (insn->value_num > 0) {
 			print_ir_value_full(insn->values[0], print_ir);
 		}
 		break;
 	case IR_INSN_JA:
-		printf("ja ");
+		PRINT_LOG("ja ");
 		print_bb_ptr(insn->bb1);
 		break;
 	case IR_INSN_JEQ:
-		printf("jeq ");
+		PRINT_LOG("jeq ");
 		print_ir_value_full(insn->values[0], print_ir);
-		printf(", ");
+		PRINT_LOG(", ");
 		print_ir_value_full(insn->values[1], print_ir);
-		printf(", ");
+		PRINT_LOG(", ");
 		print_bb_ptr(insn->bb1);
-		printf("/");
+		PRINT_LOG("/");
 		print_bb_ptr(insn->bb2);
 		break;
 	case IR_INSN_JGT:
-		printf("jgt ");
+		PRINT_LOG("jgt ");
 		print_ir_value_full(insn->values[0], print_ir);
-		printf(", ");
+		PRINT_LOG(", ");
 		print_ir_value_full(insn->values[1], print_ir);
-		printf(", ");
+		PRINT_LOG(", ");
 		print_bb_ptr(insn->bb1);
-		printf("/");
+		PRINT_LOG("/");
 		print_bb_ptr(insn->bb2);
 		break;
 	case IR_INSN_JGE:
-		printf("jge ");
+		PRINT_LOG("jge ");
 		print_ir_value_full(insn->values[0], print_ir);
-		printf(", ");
+		PRINT_LOG(", ");
 		print_ir_value_full(insn->values[1], print_ir);
-		printf(", ");
+		PRINT_LOG(", ");
 		print_bb_ptr(insn->bb1);
-		printf("/");
+		PRINT_LOG("/");
 		print_bb_ptr(insn->bb2);
 		break;
 	case IR_INSN_JLT:
-		printf("jlt ");
+		PRINT_LOG("jlt ");
 		print_ir_value_full(insn->values[0], print_ir);
-		printf(", ");
+		PRINT_LOG(", ");
 		print_ir_value_full(insn->values[1], print_ir);
-		printf(", ");
+		PRINT_LOG(", ");
 		print_bb_ptr(insn->bb1);
-		printf("/");
+		PRINT_LOG("/");
 		print_bb_ptr(insn->bb2);
 		break;
 	case IR_INSN_JLE:
-		printf("jle ");
+		PRINT_LOG("jle ");
 		print_ir_value_full(insn->values[0], print_ir);
-		printf(", ");
+		PRINT_LOG(", ");
 		print_ir_value_full(insn->values[1], print_ir);
-		printf(", ");
+		PRINT_LOG(", ");
 		print_bb_ptr(insn->bb1);
-		printf("/");
+		PRINT_LOG("/");
 		print_bb_ptr(insn->bb2);
 		break;
 	case IR_INSN_JNE:
-		printf("jne ");
+		PRINT_LOG("jne ");
 		print_ir_value_full(insn->values[0], print_ir);
-		printf(", ");
+		PRINT_LOG(", ");
 		print_ir_value_full(insn->values[1], print_ir);
-		printf(", ");
+		PRINT_LOG(", ");
 		print_bb_ptr(insn->bb1);
-		printf("/");
+		PRINT_LOG("/");
 		print_bb_ptr(insn->bb2);
 		break;
 	case IR_INSN_PHI:
-		printf("phi");
+		PRINT_LOG("phi");
 		print_phi_full(&insn->phi, print_ir);
 		break;
 	case IR_INSN_LSH:
-		printf("lsh ");
+		PRINT_LOG("lsh ");
 		print_ir_value_full(insn->values[0], print_ir);
-		printf(", ");
+		PRINT_LOG(", ");
 		print_ir_value_full(insn->values[1], print_ir);
 		break;
 	case IR_INSN_MOD:
-		printf("mod ");
+		PRINT_LOG("mod ");
 		print_ir_value_full(insn->values[0], print_ir);
-		printf(", ");
+		PRINT_LOG(", ");
 		print_ir_value_full(insn->values[1], print_ir);
 		break;
 	case IR_INSN_ASSIGN:
@@ -333,11 +333,11 @@ void print_raw_ir_insn_full(struct ir_insn *insn,
 	if (print_ir) {
 		print_ir(insn);
 	} else {
-		printf("%p", insn);
+		PRINT_LOG("%p", insn);
 	}
-	printf(" = ");
+	PRINT_LOG(" = ");
 	print_ir_insn_full(insn, print_ir);
-	printf("\n");
+	PRINT_LOG("\n");
 }
 
 void print_raw_ir_insn(struct ir_insn *insn)
@@ -350,24 +350,24 @@ void print_ir_bb_no_rec(struct ir_basic_block *bb,
 			void (*post_insn)(struct ir_insn *),
 			void (*print_insn_name)(struct ir_insn *))
 {
-	printf("b%zu:\n", bb->_id);
+	PRINT_LOG("b%zu:\n", bb->_id);
 	struct list_head *p = NULL;
 	list_for_each(p, &bb->ir_insn_head) {
 		struct ir_insn *insn = list_entry(p, struct ir_insn, list_ptr);
 		if (is_void(insn)) {
-			printf("  ");
+			PRINT_LOG("  ");
 		} else {
-			printf("  ");
+			PRINT_LOG("  ");
 			if (print_insn_name) {
 				print_insn_name(insn);
 			} else {
-				printf("%%%zu", insn->_insn_id);
+				PRINT_LOG("%%%zu", insn->_insn_id);
 			}
-			printf(" = ");
+			PRINT_LOG(" = ");
 		}
 
 		print_ir_insn_full(insn, print_insn_name);
-		printf("\n");
+		PRINT_LOG("\n");
 		if (post_insn) {
 			post_insn(insn);
 		}
@@ -407,11 +407,11 @@ void print_ir_prog_reachable(struct ir_function *fun)
 void print_raw_ir_bb_full(struct ir_basic_block *bb,
 			  void (*print_ir)(struct ir_insn *))
 {
-	printf("b%p:\n", bb);
+	PRINT_LOG("b%p:\n", bb);
 	struct list_head *p = NULL;
 	list_for_each(p, &bb->ir_insn_head) {
 		struct ir_insn *insn = list_entry(p, struct ir_insn, list_ptr);
-		printf("  ");
+		PRINT_LOG("  ");
 		print_raw_ir_insn_full(insn, print_ir);
 	}
 }
@@ -454,14 +454,14 @@ void tag_ir(struct ir_function *fun)
 
 void print_bb_succ(struct ir_basic_block *bb)
 {
-	printf("succs: ");
+	PRINT_LOG("succs: ");
 	struct ir_basic_block **next;
 	array_for(next, bb->succs)
 	{
 		print_bb_ptr(*next);
-		printf(" ");
+		PRINT_LOG(" ");
 	}
-	printf("\n\n");
+	PRINT_LOG("\n\n");
 }
 
 void print_ir_prog(struct ir_function *fun)
@@ -476,7 +476,7 @@ void print_ir_dst(struct ir_insn *insn)
 	if (insn) {
 		print_insn_ptr_base(insn);
 	} else {
-		printf("(NULL)");
+		PRINT_LOG("(NULL)");
 	}
 }
 
@@ -487,15 +487,15 @@ void print_ir_alloc(struct ir_insn *insn)
 		struct ir_insn_cg_extra *extra = insn_cg(insn);
 		if (extra->allocated) {
 			if (extra->spilled) {
-				printf("sp-%zu", extra->spilled * 8);
+				PRINT_LOG("sp-%zu", extra->spilled * 8);
 			} else {
-				printf("r%u", extra->alloc_reg);
+				PRINT_LOG("r%u", extra->alloc_reg);
 			}
 		} else {
 			CRITICAL("Not allocated");
 		}
 	} else {
-		printf("(NULL)");
+		PRINT_LOG("(NULL)");
 	}
 }
 
@@ -510,42 +510,42 @@ void print_ir_prog_advanced(struct ir_function *fun,
 
 void print_ir_insn_err(struct ir_insn *insn, char *msg)
 {
-	printf("In BB %zu,\n", insn->parent_bb->_id);
+	PRINT_LOG("In BB %zu,\n", insn->parent_bb->_id);
 	struct ir_insn *prev = prev_insn(insn);
 	struct ir_insn *next = next_insn(insn);
 	if (prev) {
-		printf("  ");
+		PRINT_LOG("  ");
 		if (!is_void(prev)) {
-			printf("%%%zu", prev->_insn_id);
-			printf(" = ");
+			PRINT_LOG("%%%zu", prev->_insn_id);
+			PRINT_LOG(" = ");
 		}
 		print_ir_insn(prev);
-		printf("\n");
+		PRINT_LOG("\n");
 	} else {
-		printf("  (No instruction)\n");
+		PRINT_LOG("  (No instruction)\n");
 	}
-	printf("  ");
+	PRINT_LOG("  ");
 	if (!is_void(insn)) {
-		printf("%%%zu", insn->_insn_id);
-		printf(" = ");
+		PRINT_LOG("%%%zu", insn->_insn_id);
+		PRINT_LOG(" = ");
 	}
 	print_ir_insn(insn);
-	printf("         <--- ");
+	PRINT_LOG("         <--- ");
 	if (msg) {
-		printf("%s\n", msg);
+		PRINT_LOG("%s\n", msg);
 	} else {
-		printf("Error\n");
+		PRINT_LOG("Error\n");
 	}
 	if (next) {
-		printf("  ");
+		PRINT_LOG("  ");
 		if (!is_void(next)) {
-			printf("%%%zu", next->_insn_id);
-			printf(" = ");
+			PRINT_LOG("%%%zu", next->_insn_id);
+			PRINT_LOG(" = ");
 		}
 		print_ir_insn(next);
-		printf("\n");
+		PRINT_LOG("\n");
 	} else {
-		printf("  (No instruction)\n");
+		PRINT_LOG("  (No instruction)\n");
 	}
 }
 
@@ -556,5 +556,5 @@ void print_ir_err_init(struct ir_function *fun)
 
 void print_ir_bb_err(struct ir_basic_block *bb)
 {
-	printf("BB %zu encountered an error:\n", bb->_id);
+	PRINT_LOG("BB %zu encountered an error:\n", bb->_id);
 }

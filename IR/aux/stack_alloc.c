@@ -41,7 +41,7 @@ void calc_stack_size(struct ir_function *fun)
 		}
 	}
 	fun->cg_info.stack_offset = -(off + max * 8);
-	printf("Stack size: %d\n", fun->cg_info.stack_offset);
+	PRINT_LOG("Stack size: %d\n", fun->cg_info.stack_offset);
 }
 
 void add_stack_offset_pre_cg(struct ir_function *fun)

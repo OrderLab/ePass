@@ -239,7 +239,7 @@ void val_remove_user(struct ir_value val, struct ir_insn *user)
 			return;
 		}
 	}
-	printf("Warning: User not found in the users\n");
+	PRINT_LOG("Warning: User not found in the users\n");
 }
 
 void val_add_user(struct ir_value val, struct ir_insn *user)
