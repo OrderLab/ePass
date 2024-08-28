@@ -2,7 +2,6 @@
 #include <linux/bpf.h>
 #include <linux/bpf_common.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <stddef.h>
 #include "ir_helper.h"
 #include "array.h"
@@ -889,9 +888,9 @@ void free_function(struct ir_function *fun)
 			if (pos->op == IR_INSN_PHI) {
 				array_free(&pos->phi);
 			}
-			free(pos);
+			__free(pos);
 		}
-		free(bb);
+		__free(bb);
 	}
 	for (__u8 i = 0; i < MAX_FUNC_ARG; ++i) {
 		array_free(&fun->function_arg[i]->users);
@@ -930,10 +929,10 @@ int gen_function(struct ir_function *fun, struct ssa_transform_env *env)
 				.bb;
 		array_free(&bb->preds);
 		array_free(&bb->succs);
-		free(bb->pre_insns);
+		__free(bb->pre_insns);
 		bb->ir_bb->user_data = NULL;
 		array_push(&fun->all_bbs, &bb->ir_bb);
-		free(bb);
+		__free(bb);
 	}
 	return 0;
 }
