@@ -1,16 +1,7 @@
 // Live variable analysis
-#include <stdio.h>
-#include <time.h>
 #include "array.h"
 #include "bpf_ir.h"
-#include "code_gen.h"
 #include "dbg.h"
-#include "ir_bb.h"
-#include "ir_fun.h"
-#include "ir_insn.h"
-#include "list.h"
-#include "ir_helper.h"
-#include "prog_check.h"
 
 void array_erase_elem(struct array *arr, struct ir_insn *insn)
 {

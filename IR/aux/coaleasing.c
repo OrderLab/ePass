@@ -1,9 +1,5 @@
-#include <stdio.h>
 #include "bpf_ir.h"
-#include "code_gen.h"
 #include "dbg.h"
-#include "ir_fun.h"
-#include "ir_insn.h"
 #include "list.h"
 
 void coaleasing(struct ir_function *fun)

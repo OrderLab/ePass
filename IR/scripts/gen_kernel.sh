@@ -31,5 +31,4 @@ obj-y :=$filelist
 echo $makefile_content > Makefile
 # Remove redundant files
 
-rm read.c
-rm probe.c
+rm read.c read.h probe.c

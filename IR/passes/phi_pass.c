@@ -1,10 +1,6 @@
-#include <stdio.h>
 #include "array.h"
 #include "bpf_ir.h"
 #include "dbg.h"
-#include "ir_insn.h"
-#include "list.h"
-#include "passes.h"
 
 void try_remove_trivial_phi(struct ir_insn *phi)
 {

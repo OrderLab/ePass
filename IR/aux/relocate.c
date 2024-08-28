@@ -1,9 +1,5 @@
 // Relocate BB
 #include "bpf_ir.h"
-#include "code_gen.h"
-#include "ir_bb.h"
-#include "ir_fun.h"
-#include "ir_insn.h"
 #include "dbg.h"
 
 void calc_pos(struct ir_function *fun)

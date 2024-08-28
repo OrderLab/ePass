@@ -1,13 +1,7 @@
-#include <stdint.h>
-#include <stdio.h>
-#include <time.h>
 #include "array.h"
 #include "bpf_ir.h"
-#include "code_gen.h"
+#include "stdint.h"
 #include "dbg.h"
-#include "ir_insn.h"
-#include "list.h"
-#include "ir_fun.h"
 
 /// Reset visited flag
 void clean_env_all(struct ir_function *fun)

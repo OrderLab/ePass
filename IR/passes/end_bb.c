@@ -1,5 +1,5 @@
 #include "array.h"
-#include "ir_fun.h"
+#include "bpf_ir.h"
 
 void gen_end_bbs(struct ir_function *fun)
 {

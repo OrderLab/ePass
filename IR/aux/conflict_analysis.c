@@ -1,11 +1,7 @@
 #include <linux/bpf.h>
-#include <stdio.h>
 #include "array.h"
 #include "bpf_ir.h"
-#include "code_gen.h"
 #include "dbg.h"
-#include "ir_helper.h"
-#include "list.h"
 
 int is_final(struct ir_insn *v1)
 {

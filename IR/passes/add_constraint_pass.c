@@ -2,8 +2,6 @@
 #include "bpf_ir.h"
 #include "constraint.h"
 #include "dbg.h"
-#include "ir_bb.h"
-#include "ir_insn.h"
 
 // Initialize some testing constraints
 void init_test_constraints(struct ir_function *fun)

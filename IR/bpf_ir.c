@@ -4,16 +4,8 @@
 #include <complex.h>
 #include <linux/bpf.h>
 #include <linux/bpf_common.h>
-#include <stdio.h>
-#include <stddef.h>
-#include "ir_helper.h"
 #include "array.h"
-#include "code_gen.h"
-#include "ir_fun.h"
-#include "list.h"
 #include "dbg.h"
-#include "passes.h"
-#include "read.h"
 
 // TODO: Change this to real function
 static const __u32 helper_func_arg_num[100] = { 1, 1, 1, 1, 1, 0, 2, 1, 1 };

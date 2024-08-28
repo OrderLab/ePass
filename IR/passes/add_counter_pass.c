@@ -1,7 +1,5 @@
 #include "bpf_ir.h"
 #include "dbg.h"
-#include "ir_bb.h"
-#include "ir_insn.h"
 
 void add_counter(struct ir_function *fun)
 {

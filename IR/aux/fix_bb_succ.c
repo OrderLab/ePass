@@ -1,8 +1,5 @@
 #include "bpf_ir.h"
 #include "dbg.h"
-#include "ir_bb.h"
-#include "ir_fun.h"
-#include "ir_insn.h"
 
 void fix_bb_succ(struct ir_function *fun)
 {

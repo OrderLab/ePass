@@ -1,11 +1,6 @@
-#include <stdio.h>
-#include <time.h>
 #include "array.h"
 #include "bpf_ir.h"
 #include "dbg.h"
-#include "ir_insn.h"
-#include "ir_helper.h"
-#include "list.h"
 
 void check_insn_users_use_insn(struct ir_insn *insn)
 {

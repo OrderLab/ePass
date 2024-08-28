@@ -1,7 +1,6 @@
 #include "array.h"
 #include "dbg.h"
-#include "passes.h"
-#include "ir_helper.h"
+#include "bpf_ir.h"
 
 void add_reach(struct ir_function *fun, struct ir_basic_block *bb)
 {

@@ -1,12 +1,6 @@
-#include "ir_insn.h"
-#include <stdio.h>
 #include "array.h"
 #include "bpf_ir.h"
-#include "code_gen.h"
 #include "dbg.h"
-#include "ir_bb.h"
-#include "list.h"
-#include "ir_helper.h"
 
 // May have exception
 struct ir_insn *create_insn_base(struct ir_basic_block *bb)

@@ -4,13 +4,9 @@
 // arg1 is r0 at the beginning of the function
 // We then add a new instruction to the beginning of the function.
 
-#include <stdio.h>
 #include "array.h"
 #include "bpf_ir.h"
-#include "code_gen.h"
 #include "dbg.h"
-#include "ir_insn.h"
-#include "ir_helper.h"
 
 void explicit_reg(struct ir_function *fun)
 {

@@ -1,12 +1,8 @@
 // Allocate stack in code generation
 
-#include <stdio.h>
-#include "code_gen.h"
 #include "dbg.h"
-#include "ir_fun.h"
 #include "array.h"
 #include "bpf_ir.h"
-#include "ir_insn.h"
 
 void calc_callee_num(struct ir_function *fun)
 {

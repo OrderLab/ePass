@@ -1,15 +1,8 @@
 #include "ext.h"
 #include <linux/bpf.h>
-#include <stdio.h>
 #include "array.h"
 #include "bpf_ir.h"
-#include "code_gen.h"
 #include "dbg.h"
-#include "ir_insn.h"
-#include "list.h"
-#include "ir_helper.h"
-#include "passes.h"
-#include "prog_check.h"
 
 int init_insn_cg(struct ir_insn *insn)
 {

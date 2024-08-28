@@ -1,12 +1,8 @@
 #include <linux/bpf.h>
-#include <stdio.h>
 #include <time.h>
 #include "array.h"
 #include "bpf_ir.h"
-#include "code_gen.h"
 #include "dbg.h"
-#include "ir_insn.h"
-#include "ir_helper.h"
 
 enum val_type vtype_insn(struct ir_insn *insn)
 {
