@@ -8,6 +8,7 @@
 #include "list.h"
 #include "ir_helper.h"
 
+// May have exception
 struct ir_insn *create_insn_base(struct ir_basic_block *bb)
 {
 	struct ir_insn *new_insn = __malloc(sizeof(struct ir_insn));
@@ -20,10 +21,17 @@ struct ir_insn *create_insn_base(struct ir_basic_block *bb)
 	return new_insn;
 }
 
+// May have exception
 struct ir_insn *create_insn_base_cg(struct ir_basic_block *bb)
 {
 	struct ir_insn *new_insn = create_insn_base(bb);
-	init_insn_cg(new_insn);
+	if (!new_insn) {
+		return NULL;
+	}
+
+	if (init_insn_cg(new_insn)) {
+		return NULL;
+	}
 	insn_cg(new_insn)->dst = new_insn;
 	return new_insn;
 }

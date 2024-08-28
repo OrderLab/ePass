@@ -57,7 +57,7 @@ enum val_type {
 
 struct ir_insn_cg_extra *insn_cg(struct ir_insn *insn);
 
-struct ir_insn_cg_extra *init_insn_cg(struct ir_insn *insn);
+int init_insn_cg(struct ir_insn *insn);
 
 struct ir_insn *dst(struct ir_insn *insn);
 

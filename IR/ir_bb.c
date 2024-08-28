@@ -18,9 +18,13 @@ int bb_empty(struct ir_basic_block *bb)
 	return list_empty(&bb->ir_insn_head);
 }
 
+// May have exception
 struct ir_basic_block *create_bb(struct ir_function *fun)
 {
 	struct ir_basic_block *new_bb = init_ir_bb_raw();
+	if (!new_bb) {
+		return NULL;
+	}
 	array_push(&fun->all_bbs, &new_bb);
 	return new_bb;
 }

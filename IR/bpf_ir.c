@@ -94,6 +94,7 @@ int init_entrance_info(struct array *bb_entrances, size_t entrance_pos)
 	return 0;
 }
 
+// May have exception
 struct ir_basic_block *init_ir_bb_raw()
 {
 	struct ir_basic_block *new_bb = __malloc(sizeof(struct ir_basic_block));
@@ -220,9 +221,9 @@ int gen_bb(struct bb_info *ret, struct bpf_insn *insns, size_t len)
 	// Allocate instructions
 	for (size_t i = 0; i < bb_entrance.num_elem; ++i) {
 		struct pre_ir_basic_block *real_bb = all_bbs[i].bb;
-		real_bb->pre_insns =
-			__malloc(sizeof(struct pre_ir_insn) *
-				 (real_bb->end_pos - real_bb->start_pos));
+		SAFE_MALLOC(real_bb->pre_insns,
+			    sizeof(struct pre_ir_insn) *
+				    (real_bb->end_pos - real_bb->start_pos));
 		size_t bb_pos = 0;
 		for (size_t pos = real_bb->start_pos; pos < real_bb->end_pos;
 		     ++pos, ++bb_pos) {

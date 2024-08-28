@@ -11,13 +11,10 @@
 #include "passes.h"
 #include "prog_check.h"
 
-struct ir_insn_cg_extra *init_insn_cg(struct ir_insn *insn)
+int init_insn_cg(struct ir_insn *insn)
 {
-	struct ir_insn_cg_extra *extra =
-		__malloc(sizeof(struct ir_insn_cg_extra));
-	if (!extra) {
-		return NULL;
-	}
+	struct ir_insn_cg_extra *extra = NULL;
+	SAFE_MALLOC(extra, sizeof(struct ir_insn_cg_extra));
 	// When init, the destination is itself
 	if (is_void(insn)) {
 		extra->dst = NULL;
@@ -34,11 +31,12 @@ struct ir_insn_cg_extra *init_insn_cg(struct ir_insn *insn)
 	INIT_ARRAY(&extra->out, struct ir_insn *);
 	extra->translated_num = 0;
 	insn->user_data = extra;
-	return extra;
+	return 0;
 }
 
 int init_cg(struct ir_function *fun)
 {
+	int ret = 0;
 	struct ir_basic_block **pos = NULL;
 	array_for(pos, fun->reachable_bbs)
 	{
@@ -50,7 +48,10 @@ int init_cg(struct ir_function *fun)
 
 		struct ir_insn *insn = NULL;
 		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
-			init_insn_cg(insn);
+			ret = init_insn_cg(insn);
+			if (ret) {
+				return ret;
+			}
 		}
 	}
 
@@ -62,7 +63,11 @@ int init_cg(struct ir_function *fun)
 		insn->parent_bb = NULL;
 		INIT_ARRAY(&insn->users, struct ir_insn *);
 		insn->value_num = 0;
-		struct ir_insn_cg_extra *extra = init_insn_cg(insn);
+		ret = init_insn_cg(insn);
+		if (ret) {
+			return ret;
+		}
+		struct ir_insn_cg_extra *extra = insn_cg(insn);
 		extra->alloc_reg = i;
 		extra->dst = insn;
 		// Pre-colored registers are allocated
