@@ -11,11 +11,11 @@ struct array {
 	size_t elem_size;
 };
 
-struct array array_init(size_t);
+int array_init(struct array *res, size_t size);
 
-void array_push(struct array *, void *);
+int array_push(struct array *, void *);
 
-void array_push_unique(struct array *arr, void *data);
+int array_push_unique(struct array *arr, void *data);
 
 void array_free(struct array *);
 
@@ -27,9 +27,9 @@ void *array_get_void(struct array *arr, size_t idx);
 
 #define array_get(arr, idx, type) ((type *)array_get_void(arr, idx))
 
-void array_clear(struct array *arr);
+int array_clear(struct array *arr);
 
-struct array array_clone(struct array *arr);
+int array_clone(struct array *res, struct array *arr);
 
 #define array_for(pos, arr)                   \
 	for (pos = ((typeof(pos))(arr.data)); \
