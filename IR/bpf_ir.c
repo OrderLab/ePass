@@ -550,7 +550,7 @@ int init_ir_bbs(struct ssa_transform_env *env)
 			array_push(&irbb->succs, &succ->ir_bb);
 		}
 	}
-    return 0;
+	return 0;
 }
 
 struct ir_basic_block *get_ir_bb_from_position(struct ssa_transform_env *env,
@@ -866,7 +866,7 @@ int transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb)
 			((struct pre_ir_basic_block **)(bb->succs.data))[i];
 		transform_bb(env, succ);
 	}
-    return 0;
+	return 0;
 }
 
 void free_function(struct ir_function *fun)
@@ -972,7 +972,7 @@ int run_passes(struct ir_function *fun)
 	clean_env_all(fun);
 	gen_reachable_bbs(fun);
 	gen_end_bbs(fun);
-    return 0;
+	return 0;
 }
 
 void print_bpf_insn(struct bpf_insn insn)
@@ -1008,21 +1008,21 @@ int run(struct bpf_insn *insns, size_t len)
 
 	print_pre_ir_cfg(info.entry);
 	struct ssa_transform_env env;
-    ret = init_env(&env, info);
-    if (ret) {
+	ret = init_env(&env, info);
+	if (ret) {
 		return ret;
 	}
 	ret = init_ir_bbs(&env);
-    if (ret) {
+	if (ret) {
 		return ret;
 	}
 	ret = transform_bb(&env, info.entry);
-    if (ret) {
+	if (ret) {
 		return ret;
 	}
 	struct ir_function fun;
-    ret = gen_function(&fun, &env);
-    if (ret) {
+	ret = gen_function(&fun, &env);
+	if (ret) {
 		return ret;
 	}
 
@@ -1032,11 +1032,17 @@ int run(struct bpf_insn *insns, size_t len)
 	// Start IR manipulation
 
 	ret = run_passes(&fun);
+	if (ret) {
+		return ret;
+	}
 
 	// End IR manipulation
 	printf("IR Passes Ended!\n");
 
 	ret = code_gen(&fun);
+	if (ret) {
+		return ret;
+	}
 
 	// Got the bpf bytecode
 

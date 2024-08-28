@@ -7,6 +7,20 @@
 #include <stdint.h>
 #include "read.h"
 
+void *__malloc(size_t size)
+{
+	void *data = malloc(size);
+	if (data) {
+		memset(data, 0, size);
+	}
+	return data;
+}
+
+void __free(void *ptr)
+{
+	free(ptr);
+}
+
 void print_item(FILE *fd, Elf64_Ehdr eh, Elf64_Shdr sh_table[])
 {
 	int i = 0;
