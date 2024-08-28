@@ -1,5 +1,4 @@
 #include <linux/bpf.h>
-#include <time.h>
 
 #include "bpf_ir.h"
 

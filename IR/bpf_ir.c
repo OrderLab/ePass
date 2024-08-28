@@ -83,7 +83,7 @@ int init_entrance_info(struct array *bb_entrances, size_t entrance_pos)
 }
 
 // May have exception
-struct ir_basic_block *init_ir_bb_raw()
+struct ir_basic_block *init_ir_bb_raw(void)
 {
 	struct ir_basic_block *new_bb =
 		malloc_proto(sizeof(struct ir_basic_block));
