@@ -1,6 +1,4 @@
-#include "array.h"
 #include "bpf_ir.h"
-#include "dbg.h"
 
 // Convert from TSSA to CSSA
 // Using "Method I" in paper "Translating Out of Static Single Assignment Form"

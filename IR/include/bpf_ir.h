@@ -3,17 +3,80 @@
 
 #include <linux/bpf.h>
 
+#include <errno.h>
+
 #ifndef __KERNEL__
+#include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "list.h"
 #include "read.h"
-
+#include <stddef.h>
 #endif
 
-#include <stddef.h>
+struct array {
+	void *data;
+	size_t num_elem; // Current length
+	size_t max_elem; // Maximum length
+	size_t elem_size;
+};
 
-#include "array.h"
-#include "list.h"
+void array_init(struct array *res, size_t size);
+
+int array_push(struct array *, void *);
+
+int array_push_unique(struct array *arr, void *data);
+
+void array_free(struct array *);
+
+struct array array_null();
+
+void array_erase(struct array *arr, size_t idx);
+
+void *array_get_void(struct array *arr, size_t idx);
+
+#define array_get(arr, idx, type) ((type *)array_get_void(arr, idx))
+
+int array_clear(struct array *arr);
+
+int array_clone(struct array *res, struct array *arr);
+
+#define array_for(pos, arr)                   \
+	for (pos = ((typeof(pos))(arr.data)); \
+	     pos < (typeof(pos))(arr.data) + arr.num_elem; pos++)
+
+#define INIT_ARRAY(arr, type) array_init(arr, sizeof(type))
+
+#define CRITICAL(str)                                                       \
+	{                                                                   \
+		printf("%s:%d <%s> %s\n", __FILE__, __LINE__, __FUNCTION__, \
+		       str);                                                \
+		exit(1);                                                    \
+	}
+
+#define RAISE_ERROR(str)                                                    \
+	{                                                                   \
+		printf("%s:%d <%s> %s\n", __FILE__, __LINE__, __FUNCTION__, \
+		       str);                                                \
+		return -ENOSYS;                                             \
+	}
+
+#define DBGASSERT(cond)                       \
+	if (!(cond)) {                        \
+		CRITICAL("Assertion failed"); \
+	}
+
+void *__malloc(size_t size);
+
+void __free(void *ptr);
+
+#define SAFE_MALLOC(dst, size)          \
+	{                               \
+		dst = __malloc(size);   \
+		if (!dst) {             \
+			return -ENOMEM; \
+		}                       \
+	}
 
 #define MAX_FUNC_ARG 5
 
@@ -753,5 +816,29 @@ void relocate(struct ir_function *fun);
 enum ir_vr_type alu_to_vr_type(enum ir_alu_type ty);
 
 /* Code Gen End */
+
+/* Constraint Start */
+
+enum constraint_type {
+	CONSTRAINT_TYPE_VALUE_EQUAL,
+	CONSTRAINT_TYPE_VALUE_RANGE
+};
+
+struct ir_constraint {
+	enum constraint_type type;
+
+	// Range: [start, end)
+	struct ir_value start;
+	struct ir_value end;
+
+	// Constrain value
+	struct ir_value cval;
+
+	// Real value to be compared
+	struct ir_value val;
+	struct ir_insn *pos;
+};
+
+/* Constraint End */
 
 #endif

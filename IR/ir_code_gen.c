@@ -1,8 +1,4 @@
-#include "ext.h"
-#include <linux/bpf.h>
-#include "array.h"
 #include "bpf_ir.h"
-#include "dbg.h"
 
 int init_insn_cg(struct ir_insn *insn)
 {

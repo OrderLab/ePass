@@ -1,7 +1,6 @@
 // Normalization
 
 #include "bpf_ir.h"
-#include "dbg.h"
 
 void normalize(struct ir_function *fun)
 {

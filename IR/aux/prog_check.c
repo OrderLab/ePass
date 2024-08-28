@@ -1,6 +1,4 @@
-#include "array.h"
 #include "bpf_ir.h"
-#include "dbg.h"
 
 void check_insn_users_use_insn(struct ir_insn *insn)
 {

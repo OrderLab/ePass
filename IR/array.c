@@ -1,8 +1,4 @@
-#include "array.h"
-#include "ext.h"
-#include <errno.h>
-#include <stdlib.h>
-#include <string.h>
+#include <bpf_ir.h>
 
 void array_init(struct array *res, size_t size)
 {

@@ -1,6 +1,5 @@
-#include "array.h"
+
 #include "bpf_ir.h"
-#include "dbg.h"
 
 // Warning: Not usable now
 void cut_bb(struct ir_function *fun)

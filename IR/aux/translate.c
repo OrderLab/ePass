@@ -1,7 +1,6 @@
 #include <linux/bpf.h>
 #include <linux/bpf_common.h>
 #include "bpf_ir.h"
-#include "dbg.h"
 
 struct pre_ir_insn load_reg_to_reg(__u8 dst, __u8 src)
 {

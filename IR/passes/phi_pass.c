@@ -1,6 +1,4 @@
-#include "array.h"
 #include "bpf_ir.h"
-#include "dbg.h"
 
 void try_remove_trivial_phi(struct ir_insn *phi)
 {

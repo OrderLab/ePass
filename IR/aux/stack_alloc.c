@@ -1,7 +1,4 @@
 // Allocate stack in code generation
-
-#include "dbg.h"
-#include "array.h"
 #include "bpf_ir.h"
 
 void calc_callee_num(struct ir_function *fun)

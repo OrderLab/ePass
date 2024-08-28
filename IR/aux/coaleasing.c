@@ -1,6 +1,4 @@
 #include "bpf_ir.h"
-#include "dbg.h"
-#include "list.h"
 
 void coaleasing(struct ir_function *fun)
 {

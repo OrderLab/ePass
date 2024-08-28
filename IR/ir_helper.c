@@ -1,7 +1,5 @@
-#include "array.h"
 #include "bpf_ir.h"
 #include "stdint.h"
-#include "dbg.h"
 
 /// Reset visited flag
 void clean_env_all(struct ir_function *fun)

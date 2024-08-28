@@ -1,4 +1,3 @@
-#include "array.h"
 #include "bpf_ir.h"
 
 void gen_end_bbs(struct ir_function *fun)

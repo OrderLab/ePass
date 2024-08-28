@@ -1,7 +1,6 @@
 #include <linux/bpf.h>
-#include "array.h"
+
 #include "bpf_ir.h"
-#include "dbg.h"
 
 int compare_insn(const void *a, const void *b)
 {

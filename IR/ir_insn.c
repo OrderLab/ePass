@@ -1,6 +1,4 @@
-#include "array.h"
 #include "bpf_ir.h"
-#include "dbg.h"
 
 // May have exception
 struct ir_insn *create_insn_base(struct ir_basic_block *bb)
