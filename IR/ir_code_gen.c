@@ -302,4 +302,5 @@ int code_gen(struct ir_function *fun)
 
 	// Free CG resources
 	free_cg_res(fun);
+    return 0;
 }
