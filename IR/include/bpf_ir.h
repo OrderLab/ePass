@@ -22,6 +22,7 @@
 
 #include <linux/types.h>
 #include <linux/sort.h>
+#include <linux/list.h>
 
 #define PRINT_LOG printk
 
@@ -394,18 +395,17 @@ struct error {
 
 // helper functions
 
-
 void bpf_ir_write_variable(struct ssa_transform_env *env, __u8 reg,
-		    struct pre_ir_basic_block *bb, struct ir_value val);
+			   struct pre_ir_basic_block *bb, struct ir_value val);
 
 struct ir_value bpf_ir_read_variable(struct ssa_transform_env *env, __u8 reg,
-			      struct pre_ir_basic_block *bb);
+				     struct pre_ir_basic_block *bb);
 
 struct ir_insn *bpf_ir_add_phi_operands(struct ssa_transform_env *env, __u8 reg,
-				 struct ir_insn *insn);
+					struct ir_insn *insn);
 
 void bpf_ir_add_user(struct ssa_transform_env *env, struct ir_insn *user,
-	      struct ir_value val);
+		     struct ir_value val);
 
 __u8 bpf_ir_value_equal(struct ir_value a, struct ir_value b);
 

@@ -27,7 +27,8 @@ void gen_kill(struct ir_function *fun)
 			struct ir_insn *insn_dst = dst(pos2);
 			struct ir_insn_cg_extra *insn_cg = pos2->user_data;
 			if (!is_void(pos2) && insn_dst) {
-				bpf_ir_array_push_unique(&insn_cg->kill, &insn_dst);
+				bpf_ir_array_push_unique(&insn_cg->kill,
+							 &insn_dst);
 			}
 			struct array value_uses = get_operands(pos2);
 			struct ir_value **pos3;
@@ -37,7 +38,8 @@ void gen_kill(struct ir_function *fun)
 				if (val->type == IR_VALUE_INSN) {
 					struct ir_insn *insn = val->data.insn_d;
 					DBGASSERT(insn == dst(insn));
-					bpf_ir_array_push_unique(&insn_cg->gen, &insn);
+					bpf_ir_array_push_unique(&insn_cg->gen,
+								 &insn);
 					// array_erase_elem(&insn_cg->kill, insn);
 				}
 			}

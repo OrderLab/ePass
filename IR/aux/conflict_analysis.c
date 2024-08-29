@@ -113,8 +113,9 @@ void conflict_analysis(struct ir_function *fun)
 				struct ir_insn *insn_dst = *pos2;
 				DBGASSERT(insn_dst == dst(insn_dst));
 				if (insn_dst->op != IR_INSN_REG) {
-					bpf_ir_array_push_unique(&fun->cg_info.all_var,
-							  &insn_dst);
+					bpf_ir_array_push_unique(
+						&fun->cg_info.all_var,
+						&insn_dst);
 				}
 				struct ir_insn **pos3;
 				array_for(pos3, insn_cg->out)

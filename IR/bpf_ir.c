@@ -15,14 +15,15 @@ static int compare_num(const void *a, const void *b)
 
 // Add current_pos --> entrance_pos in bb_entrances
 static int add_entrance_info(struct bpf_insn *insns, struct array *bb_entrances,
-		      size_t entrance_pos, size_t current_pos)
+			     size_t entrance_pos, size_t current_pos)
 {
 	for (size_t i = 0; i < bb_entrances->num_elem; ++i) {
 		struct bb_entrance_info *entry =
 			((struct bb_entrance_info *)(bb_entrances->data)) + i;
 		if (entry->entrance == entrance_pos) {
 			// Already has this entrance, add a pred
-			bpf_ir_array_push_unique(&entry->bb->preds, &current_pos);
+			bpf_ir_array_push_unique(&entry->bb->preds,
+						 &current_pos);
 			return 0;
 		}
 	}
@@ -45,7 +46,8 @@ static int add_entrance_info(struct bpf_insn *insns, struct array *bb_entrances,
 }
 
 // Return the parent BB of a instruction
-static struct pre_ir_basic_block *get_bb_parent(struct array *bb_entrance, size_t pos)
+static struct pre_ir_basic_block *get_bb_parent(struct array *bb_entrance,
+						size_t pos)
 {
 	size_t bb_id = 0;
 	struct bb_entrance_info *bbs =
@@ -319,7 +321,8 @@ static int init_env(struct ssa_transform_env *env, struct bb_info info)
 	return 0;
 }
 
-static void seal_block(struct ssa_transform_env *env, struct pre_ir_basic_block *bb)
+static void seal_block(struct ssa_transform_env *env,
+		       struct pre_ir_basic_block *bb)
 {
 	// Seal a BB
 	for (__u8 i = 0; i < MAX_BPF_REG; ++i) {
@@ -331,7 +334,7 @@ static void seal_block(struct ssa_transform_env *env, struct pre_ir_basic_block 
 }
 
 void bpf_ir_write_variable(struct ssa_transform_env *env, __u8 reg,
-		    struct pre_ir_basic_block *bb, struct ir_value val)
+			   struct pre_ir_basic_block *bb, struct ir_value val)
 {
 	if (reg >= MAX_BPF_REG - 1) {
 		// Stack pointer is read-only
@@ -356,7 +359,7 @@ void bpf_ir_write_variable(struct ssa_transform_env *env, __u8 reg,
 }
 
 struct ir_insn *bpf_ir_add_phi_operands(struct ssa_transform_env *env, __u8 reg,
-				 struct ir_insn *insn)
+					struct ir_insn *insn)
 {
 	// insn must be a (initialized) PHI instruction
 	if (insn->op != IR_INSN_PHI) {
@@ -391,7 +394,6 @@ struct ir_insn *create_insn(void)
 	return insn;
 }
 
-
 static struct ir_insn *create_insn_back(struct ir_basic_block *bb)
 {
 	struct ir_insn *insn = create_insn();
@@ -408,9 +410,9 @@ static struct ir_insn *create_insn_front(struct ir_basic_block *bb)
 	return insn;
 }
 
-
-static struct ir_value read_variable_recursive(struct ssa_transform_env *env, __u8 reg,
-					struct pre_ir_basic_block *bb)
+static struct ir_value read_variable_recursive(struct ssa_transform_env *env,
+					       __u8 reg,
+					       struct pre_ir_basic_block *bb)
 {
 	struct ir_value val;
 	if (!bb->sealed) {
@@ -440,9 +442,8 @@ static struct ir_value read_variable_recursive(struct ssa_transform_env *env, __
 	return val;
 }
 
-
 struct ir_value bpf_ir_read_variable(struct ssa_transform_env *env, __u8 reg,
-			      struct pre_ir_basic_block *bb)
+				     struct pre_ir_basic_block *bb)
 {
 	// Read a variable from a BB
 	if (reg == BPF_REG_10) {
@@ -501,7 +502,7 @@ struct ir_value bpf_ir_value_stack_ptr(void)
 
 // User uses val
 void bpf_ir_add_user(struct ssa_transform_env *env, struct ir_insn *user,
-	      struct ir_value val)
+		     struct ir_value val)
 {
 	if (val.type == IR_VALUE_INSN) {
 		bpf_ir_array_push_unique(&val.data.insn_d->users, &user);
@@ -594,9 +595,9 @@ void alu_write(struct ssa_transform_env *env, enum ir_insn_type ty,
 	       struct pre_ir_insn insn, struct pre_ir_basic_block *bb,
 	       enum ir_alu_type alu_ty)
 {
-	struct ir_insn *new_insn =
-		create_alu_bin(bb->ir_bb, bpf_ir_read_variable(env, insn.dst_reg, bb),
-			       get_src_value(env, bb, insn), ty, env, alu_ty);
+	struct ir_insn *new_insn = create_alu_bin(
+		bb->ir_bb, bpf_ir_read_variable(env, insn.dst_reg, bb),
+		get_src_value(env, bb, insn), ty, env, alu_ty);
 	struct ir_value new_val;
 	new_val.type = IR_VALUE_INSN;
 	new_val.data.insn_d = new_insn;
@@ -668,7 +669,8 @@ int transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb)
 			} else if (BPF_OP(code) == BPF_MOV) {
 				// Do not create instructions
 				bpf_ir_write_variable(env, insn.dst_reg, bb,
-					       get_src_value(env, bb, insn));
+						      get_src_value(env, bb,
+								    insn));
 			} else if (BPF_OP(code) == BPF_LSH) {
 				alu_write(env, IR_INSN_LSH, insn, bb, alu_ty);
 			} else if (BPF_OP(code) == BPF_MOD) {
@@ -690,7 +692,8 @@ int transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb)
 				struct ir_value imm_val;
 				imm_val.type = IR_VALUE_CONSTANT;
 				imm_val.data.constant_d = insn.imm64;
-				bpf_ir_write_variable(env, insn.dst_reg, bb, imm_val);
+				bpf_ir_write_variable(env, insn.dst_reg, bb,
+						      imm_val);
 			} else {
 				CRITICAL("Not supported");
 			}
@@ -702,7 +705,8 @@ int transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb)
 			struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
 			new_insn->op = IR_INSN_LOADRAW;
 			struct ir_address_value addr_val;
-			addr_val.value = bpf_ir_read_variable(env, insn.src_reg, bb);
+			addr_val.value =
+				bpf_ir_read_variable(env, insn.src_reg, bb);
 			bpf_ir_add_user(env, new_insn, addr_val.value);
 			addr_val.offset = insn.off;
 			new_insn->vr_type = to_ir_ld_u(BPF_SIZE(code));
@@ -721,7 +725,8 @@ int transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb)
 			struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
 			new_insn->op = IR_INSN_LOADRAW;
 			struct ir_address_value addr_val;
-			addr_val.value = bpf_ir_read_variable(env, insn.src_reg, bb);
+			addr_val.value =
+				bpf_ir_read_variable(env, insn.src_reg, bb);
 			bpf_ir_add_user(env, new_insn, addr_val.value);
 			addr_val.offset = insn.off;
 			new_insn->vr_type = to_ir_ld_u(BPF_SIZE(code));
@@ -737,7 +742,8 @@ int transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb)
 			struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
 			new_insn->op = IR_INSN_STORERAW;
 			struct ir_address_value addr_val;
-			addr_val.value = bpf_ir_read_variable(env, insn.dst_reg, bb);
+			addr_val.value =
+				bpf_ir_read_variable(env, insn.dst_reg, bb);
 			bpf_ir_add_user(env, new_insn, addr_val.value);
 			addr_val.offset = insn.off;
 			new_insn->vr_type = to_ir_ld_u(BPF_SIZE(code));
@@ -751,7 +757,8 @@ int transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb)
 			struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
 			new_insn->op = IR_INSN_STORERAW;
 			struct ir_address_value addr_val;
-			addr_val.value = bpf_ir_read_variable(env, insn.dst_reg, bb);
+			addr_val.value =
+				bpf_ir_read_variable(env, insn.dst_reg, bb);
 			bpf_ir_add_user(env, new_insn, addr_val.value);
 			addr_val.offset = insn.off;
 			new_insn->vr_type = to_ir_ld_u(BPF_SIZE(code));
@@ -777,14 +784,15 @@ int transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb)
 				size_t pos = insn.pos + insn.off + 1;
 				new_insn->bb1 =
 					get_ir_bb_from_position(env, pos);
-				bpf_ir_array_push(&new_insn->bb1->users, &new_insn);
+				bpf_ir_array_push(&new_insn->bb1->users,
+						  &new_insn);
 			} else if (BPF_OP(code) == BPF_EXIT) {
 				// Exit
 				struct ir_insn *new_insn =
 					create_insn_back(bb->ir_bb);
 				new_insn->op = IR_INSN_RET;
-				new_insn->values[0] =
-					bpf_ir_read_variable(env, BPF_REG_0, bb);
+				new_insn->values[0] = bpf_ir_read_variable(
+					env, BPF_REG_0, bb);
 				new_insn->value_num = 1;
 			} else if (BPF_OP(code) == BPF_JEQ) {
 				// PC += offset if dst == src
@@ -834,15 +842,17 @@ int transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb)
 								env,
 								BPF_REG_1 + j,
 								bb);
-						bpf_ir_add_user(env, new_insn,
-							 new_insn->values[j]);
+						bpf_ir_add_user(
+							env, new_insn,
+							new_insn->values[j]);
 					}
 				}
 
 				struct ir_value new_val;
 				new_val.type = IR_VALUE_INSN;
 				new_val.data.insn_d = new_insn;
-				bpf_ir_write_variable(env, BPF_REG_0, bb, new_val);
+				bpf_ir_write_variable(env, BPF_REG_0, bb,
+						      new_val);
 			} else {
 				// TODO
 				CRITICAL("Error");
