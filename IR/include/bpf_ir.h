@@ -31,6 +31,8 @@
 
 #endif
 
+/* Array Start */
+
 struct array {
 	void *data;
 	size_t num_elem; // Current length
@@ -64,6 +66,9 @@ int bpf_ir_array_clone(struct array *res, struct array *arr);
 
 #define INIT_ARRAY(arr, type) bpf_ir_array_init(arr, sizeof(type))
 
+/* Array End */
+
+/* DBG Macro Start */
 #ifndef __KERNEL__
 
 #define CRITICAL(str)                                                          \
@@ -94,6 +99,10 @@ int bpf_ir_array_clone(struct array *res, struct array *arr);
 	if (!(cond)) {                        \
 		CRITICAL("Assertion failed"); \
 	}
+
+/* DBG Macro End */
+
+/*  */
 
 void *malloc_proto(size_t size);
 
@@ -150,9 +159,6 @@ struct ir_value {
 	enum ir_value_type type;
 };
 
-struct ir_value bpf_ir_value_insn(struct ir_insn *);
-
-struct ir_value bpf_ir_value_stack_ptr(void);
 
 /**
     Value plus an offset
@@ -393,8 +399,6 @@ struct error {
 };
 
 // Helper functions
-
-__u8 bpf_ir_value_equal(struct ir_value a, struct ir_value b);
 
 struct ir_basic_block *bpf_ir_init_bb_raw(void);
 
@@ -753,9 +757,9 @@ enum val_type {
 
 #define insn_cg(insn) ((struct ir_insn_cg_extra *)(insn)->user_data)
 
-int init_insn_cg(struct ir_insn *insn);
-
 #define insn_dst(insn) insn_cg(insn)->dst
+
+int init_insn_cg(struct ir_insn *insn);
 
 void to_cssa(struct ir_function *fun);
 
@@ -825,5 +829,15 @@ struct ir_constraint {
 };
 
 /* Constraint End */
+
+/* IR Value Start */
+
+__u8 bpf_ir_value_equal(struct ir_value a, struct ir_value b);
+
+struct ir_value bpf_ir_value_insn(struct ir_insn *);
+
+struct ir_value bpf_ir_value_stack_ptr(void);
+
+/* IR Value End */
 
 #endif
