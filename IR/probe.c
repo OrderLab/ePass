@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <linux/bpf_ir.h>
 
-int run(struct bpf_insn *insns, size_t len)
+int bpf_ir_run(struct bpf_insn *insns, size_t len)
 {
 	printf("CLASS\tSIZE\tMODE\tOP\tSRC\tIMM\n");
 	for (size_t i = 0; i < len; ++i) {

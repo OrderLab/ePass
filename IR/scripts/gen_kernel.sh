@@ -2,6 +2,8 @@
 
 # Generating kernel source files
 
+KERNEL_PATH=/home/linsy/Projects/ebpf/eBPF-kernel
+
 rm -rf build/kernel
 
 mkdir -p build/kernel
@@ -34,12 +36,12 @@ obj-y :=$filelist
 echo $makefile_content > Makefile
 # Remove redundant files
 
-rm -rf /home/linsy/Projects/ebpf/eBPF-kernel/kernel/bpf/ir/
-mkdir /home/linsy/Projects/ebpf/eBPF-kernel/kernel/bpf/ir/
-cp * /home/linsy/Projects/ebpf/eBPF-kernel/kernel/bpf/ir/
+rm -rf ${KERNEL_PATH}/kernel/bpf/ir/
+mkdir ${KERNEL_PATH}/kernel/bpf/ir/
+cp * ${KERNEL_PATH}/kernel/bpf/ir/
 
 cd ../../
 
-rm /home/linsy/Projects/ebpf/eBPF-kernel/include/linux/bpf_ir.h
+rm ${KERNEL_PATH}/include/linux/bpf_ir.h
 
-cp include/linux/bpf_ir.h /home/linsy/Projects/ebpf/eBPF-kernel/include/linux/
+cp include/linux/bpf_ir.h ${KERNEL_PATH}/include/linux/

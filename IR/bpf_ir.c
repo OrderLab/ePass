@@ -1025,7 +1025,7 @@ static void print_bpf_prog(struct bpf_insn *insns, size_t len)
 
 // Interface implementation
 
-int run(struct bpf_insn *insns, size_t len)
+int bpf_ir_run(struct bpf_insn *insns, size_t len)
 {
 	struct bb_info info;
 	int ret = 0;

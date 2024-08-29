@@ -54,7 +54,7 @@ void print_item(FILE *fd, Elf64_Ehdr eh, Elf64_Shdr sh_table[])
 		fseek(fd, sh_table[i].sh_offset, SEEK_SET);
 		fread(mydata, 1, size, fd);
 		struct bpf_insn *prog = (struct bpf_insn *)mydata;
-		run(prog, insn_cnt);
+		bpf_ir_run(prog, insn_cnt);
 		free(mydata);
 	}
 	free(buff);

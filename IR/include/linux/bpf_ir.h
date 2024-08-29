@@ -402,7 +402,7 @@ struct error {
 struct ir_basic_block *bpf_ir_init_bb_raw(void);
 
 // Main interface
-int run(struct bpf_insn *insns, size_t len);
+int bpf_ir_run(struct bpf_insn *insns, size_t len);
 
 /* Fun Start */
 
