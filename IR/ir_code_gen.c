@@ -592,18 +592,6 @@ static void graph_coloring(struct ir_function *fun)
 
 // Live variable analysis
 
-static void array_erase_elem(struct array *arr, struct ir_insn *insn)
-{
-	// Remove insn from arr
-	for (size_t i = 0; i < arr->num_elem; ++i) {
-		struct ir_insn *pos = ((struct ir_insn **)(arr->data))[i];
-		if (pos == insn) {
-			bpf_ir_array_erase(arr, i);
-			return;
-		}
-	}
-}
-
 static void gen_kill(struct ir_function *fun)
 {
 	struct ir_basic_block **pos;
@@ -1044,14 +1032,6 @@ static void load_stack_to_r0(struct ir_function *fun, struct ir_insn *insn,
 
 	val->type = IR_VALUE_INSN;
 	val->data.insn_d = fun->cg_info.regs[0];
-}
-
-static void load_const_to_vr(struct ir_insn *insn, struct ir_value *val)
-{
-	struct ir_insn *tmp = create_assign_insn_cg(insn, *val, INSERT_FRONT);
-
-	val->type = IR_VALUE_INSN;
-	val->data.insn_d = tmp;
 }
 
 static void add_stack_offset_vr(struct ir_function *fun, size_t num)
@@ -2074,14 +2054,14 @@ int bpf_ir_code_gen(struct ir_function *fun)
 	normalize(fun);
 	print_ir_prog_cg_alloc(fun, "Normalization");
 
-	// // Step 13: Direct Translation
-	// translate(fun);
+	// Step 13: Direct Translation
+	translate(fun);
 
-	// // Step 14: Relocation
-	// relocate(fun);
+	// Step 14: Relocation
+	relocate(fun);
 
-	// // Step 15: Synthesize
-	// synthesize(fun);
+	// Step 15: Synthesize
+	synthesize(fun);
 
 	// Free CG resources
 	free_cg_res(fun);
