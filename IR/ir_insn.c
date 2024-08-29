@@ -21,7 +21,7 @@ struct ir_insn *create_insn_base_cg(struct ir_basic_block *bb)
 		return NULL;
 	}
 
-	if (init_insn_cg(new_insn)) {
+	if (bpf_ir_init_insn_cg(new_insn)) {
 		return NULL;
 	}
 	insn_cg(new_insn)->dst = new_insn;

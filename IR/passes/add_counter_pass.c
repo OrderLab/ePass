@@ -39,7 +39,8 @@ void add_counter(struct ir_function *fun)
 		val.type = IR_VALUE_INSN;
 		struct ir_insn *store_back =
 			create_store_insn(added, alloc_insn, val, INSERT_BACK);
-		struct ir_basic_block *new_bb = bpf_ir_split_bb(fun, store_back);
+		struct ir_basic_block *new_bb =
+			bpf_ir_split_bb(fun, store_back);
 		val2.data.insn_d = added;
 		val1.data.constant_d = 0x10000;
 		create_jbin_insn(store_back, val1, val2, new_bb, err_bb,

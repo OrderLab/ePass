@@ -159,7 +159,6 @@ struct ir_value {
 	enum ir_value_type type;
 };
 
-
 /**
     Value plus an offset
  */
@@ -476,10 +475,12 @@ struct ir_basic_block *bpf_ir_create_bb(struct ir_function *fun);
 
 void bpf_ir_connect_bb(struct ir_basic_block *from, struct ir_basic_block *to);
 
-void bpf_ir_disconnect_bb(struct ir_basic_block *from, struct ir_basic_block *to);
+void bpf_ir_disconnect_bb(struct ir_basic_block *from,
+			  struct ir_basic_block *to);
 
 /// Split a BB after an instruction
-struct ir_basic_block *bpf_ir_split_bb(struct ir_function *fun, struct ir_insn *insn);
+struct ir_basic_block *bpf_ir_split_bb(struct ir_function *fun,
+				       struct ir_insn *insn);
 
 struct ir_insn *bpf_ir_get_last_insn(struct ir_basic_block *bb);
 
@@ -705,7 +706,9 @@ struct function_pass {
 
 /* Code Gen Start */
 
-int code_gen(struct ir_function *fun);
+int bpf_ir_init_insn_cg(struct ir_insn *insn);
+
+int bpf_ir_code_gen(struct ir_function *fun);
 
 // Extra information needed for code gen
 struct ir_bb_cg_extra {
@@ -758,51 +761,6 @@ enum val_type {
 #define insn_cg(insn) ((struct ir_insn_cg_extra *)(insn)->user_data)
 
 #define insn_dst(insn) insn_cg(insn)->dst
-
-int init_insn_cg(struct ir_insn *insn);
-
-void to_cssa(struct ir_function *fun);
-
-void remove_phi(struct ir_function *fun);
-
-void print_ir_prog_cg(struct ir_function *fun);
-
-void liveness_analysis(struct ir_function *fun);
-
-void conflict_analysis(struct ir_function *fun);
-
-void print_interference_graph(struct ir_function *fun);
-
-void graph_coloring(struct ir_function *fun);
-
-void explicit_reg(struct ir_function *fun);
-
-void coaleasing(struct ir_function *fun);
-
-enum val_type vtype(struct ir_value val);
-
-int check_need_spill(struct ir_function *fun);
-
-void translate(struct ir_function *fun);
-
-void spill_callee(struct ir_function *fun);
-
-enum val_type vtype_insn(struct ir_insn *insn);
-
-void calc_callee_num(struct ir_function *fun);
-
-void calc_stack_size(struct ir_function *fun);
-
-void add_stack_offset_pre_cg(struct ir_function *fun);
-
-// Add stack offset to all stack access
-void add_stack_offset(struct ir_function *fun, __s16 offset);
-
-void normalize(struct ir_function *fun);
-
-void relocate(struct ir_function *fun);
-
-enum ir_vr_type alu_to_vr_type(enum ir_alu_type ty);
 
 /* Code Gen End */
 

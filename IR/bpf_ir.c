@@ -1004,7 +1004,7 @@ int run(struct bpf_insn *insns, size_t len)
 	// End IR manipulation
 	PRINT_LOG("IR Passes Ended!\n");
 
-	ret = code_gen(&fun);
+	ret = bpf_ir_code_gen(&fun);
 	if (ret) {
 		return ret;
 	}

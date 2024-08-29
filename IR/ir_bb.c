@@ -48,7 +48,8 @@ void bpf_ir_connect_bb(struct ir_basic_block *from, struct ir_basic_block *to)
 	bpf_ir_array_push_unique(&to->preds, &from);
 }
 
-void bpf_ir_disconnect_bb(struct ir_basic_block *from, struct ir_basic_block *to)
+void bpf_ir_disconnect_bb(struct ir_basic_block *from,
+			  struct ir_basic_block *to)
 {
 	for (size_t i = 0; i < from->succs.num_elem; ++i) {
 		if (((struct ir_basic_block **)(from->succs.data))[i] == to) {
@@ -64,7 +65,8 @@ void bpf_ir_disconnect_bb(struct ir_basic_block *from, struct ir_basic_block *to
 	}
 }
 
-struct ir_basic_block *bpf_ir_split_bb(struct ir_function *fun, struct ir_insn *insn)
+struct ir_basic_block *bpf_ir_split_bb(struct ir_function *fun,
+				       struct ir_insn *insn)
 {
 	struct ir_basic_block *bb = insn->parent_bb;
 	struct ir_basic_block *new_bb = bpf_ir_create_bb(fun);
