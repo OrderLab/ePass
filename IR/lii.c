@@ -4,10 +4,10 @@
 
 void *malloc_proto(size_t size)
 {
-	// TODO
-	return NULL;
+	return kvzalloc(size, GFP_KERNEL);
 }
 
 void free_proto(void *ptr)
 {
+	kvfree(ptr);
 }
