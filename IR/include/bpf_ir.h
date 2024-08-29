@@ -459,8 +459,6 @@ void fix_bb_succ(struct ir_function *fun);
 
 void prog_check(struct ir_function *fun);
 
-void check_users(struct ir_function *fun);
-
 /* Fun End */
 
 /* BB Start */
@@ -708,14 +706,6 @@ static const struct function_pass passes[] = {
 };
 
 /* Passes End */
-
-/* Prog Check Start */
-
-void check_jumping(struct ir_function *fun);
-
-void cg_prog_check(struct ir_function *fun);
-
-/* Prog Check End */
 
 /* Code Gen Start */
 

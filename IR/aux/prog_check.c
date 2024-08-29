@@ -1,6 +1,6 @@
 #include "bpf_ir.h"
 
-void check_insn_users_use_insn(struct ir_insn *insn)
+static void check_insn_users_use_insn(struct ir_insn *insn)
 {
 	struct ir_insn **pos;
 	array_for(pos, insn->users)
@@ -30,7 +30,7 @@ void check_insn_users_use_insn(struct ir_insn *insn)
 	}
 }
 
-void check_insn(struct ir_function *fun)
+static void check_insn(struct ir_function *fun)
 {
 	// Check syntax
 	// Check value num
@@ -103,7 +103,7 @@ void check_insn(struct ir_function *fun)
 	}
 }
 
-void check_insn_operand(struct ir_insn *insn)
+static void check_insn_operand(struct ir_insn *insn)
 {
 	struct array operands = get_operands(insn);
 	struct ir_value **val;
@@ -139,7 +139,7 @@ void check_insn_operand(struct ir_insn *insn)
 }
 
 // Check if the users are correct (only applicable to SSA IR form)
-void check_users(struct ir_function *fun)
+static void check_users(struct ir_function *fun)
 {
 	// Check FunctionCallArgument Instructions
 	for (__u8 i = 0; i < MAX_FUNC_ARG; ++i) {
@@ -160,7 +160,7 @@ void check_users(struct ir_function *fun)
 	}
 }
 
-void check_jumping(struct ir_function *fun)
+static void check_jumping(struct ir_function *fun)
 {
 	// Check if the jump instruction is at the end of the BB
 	struct ir_basic_block **pos;
@@ -299,7 +299,7 @@ void check_jumping(struct ir_function *fun)
 }
 
 // Check if the PHI nodes are at the beginning of the BB
-void check_phi(struct ir_function *fun)
+static void check_phi(struct ir_function *fun)
 {
 	struct ir_basic_block **pos;
 	array_for(pos, fun->reachable_bbs)
@@ -322,6 +322,8 @@ void check_phi(struct ir_function *fun)
 	}
 }
 
+// Interface Implementation
+
 // Check that the program is valid and able to be compiled
 void prog_check(struct ir_function *fun)
 {
@@ -331,21 +333,4 @@ void prog_check(struct ir_function *fun)
 	check_phi(fun);
 	check_users(fun);
 	check_jumping(fun);
-}
-
-void cg_prog_check(struct ir_function *fun)
-{
-	// Check program sanity in Code Generation stage
-
-	struct ir_basic_block **pos;
-	array_for(pos, fun->reachable_bbs)
-	{
-		struct ir_basic_block *bb = *pos;
-		struct ir_insn *insn;
-		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
-			if (insn->user_data == NULL) {
-				CRITICAL("Instruction has no user data!");
-			}
-		}
-	}
 }

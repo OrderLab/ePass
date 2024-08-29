@@ -6,19 +6,17 @@
 // TODO: Change this to real function
 static const __u32 helper_func_arg_num[100] = { 1, 1, 1, 1, 1, 0, 2, 1, 1 };
 
-static void bpf_ir_write_variable(struct ssa_transform_env *env, __u8 reg,
-				  struct pre_ir_basic_block *bb,
-				  struct ir_value val);
+static void write_variable(struct ssa_transform_env *env, __u8 reg,
+			   struct pre_ir_basic_block *bb, struct ir_value val);
 
-static struct ir_value bpf_ir_read_variable(struct ssa_transform_env *env,
-					    __u8 reg,
-					    struct pre_ir_basic_block *bb);
+static struct ir_value read_variable(struct ssa_transform_env *env, __u8 reg,
+				     struct pre_ir_basic_block *bb);
 
-static struct ir_insn *bpf_ir_add_phi_operands(struct ssa_transform_env *env,
-					       __u8 reg, struct ir_insn *insn);
+static struct ir_insn *add_phi_operands(struct ssa_transform_env *env, __u8 reg,
+					struct ir_insn *insn);
 
-static void bpf_ir_add_user(struct ssa_transform_env *env, struct ir_insn *user,
-			    struct ir_value val);
+static void add_user(struct ssa_transform_env *env, struct ir_insn *user,
+		     struct ir_value val);
 
 static int compare_num(const void *a, const void *b)
 {
@@ -97,7 +95,6 @@ static int init_entrance_info(struct array *bb_entrances, size_t entrance_pos)
 	bpf_ir_array_push(bb_entrances, &new_bb);
 	return 0;
 }
-
 
 static int init_ir_bb(struct pre_ir_basic_block *bb)
 {
@@ -315,7 +312,7 @@ static int init_env(struct ssa_transform_env *env, struct bb_info info)
 		struct ir_value val;
 		val.type = IR_VALUE_INSN;
 		val.data.insn_d = env->function_arg[i];
-		bpf_ir_write_variable(env, BPF_REG_1 + i, info.entry, val);
+		write_variable(env, BPF_REG_1 + i, info.entry, val);
 	}
 	return 0;
 }
@@ -326,13 +323,13 @@ static void seal_block(struct ssa_transform_env *env,
 	// Seal a BB
 	for (__u8 i = 0; i < MAX_BPF_REG; ++i) {
 		if (bb->incompletePhis[i]) {
-			bpf_ir_add_phi_operands(env, i, bb->incompletePhis[i]);
+			add_phi_operands(env, i, bb->incompletePhis[i]);
 		}
 	}
 	bb->sealed = 1;
 }
 
-static void bpf_ir_write_variable(struct ssa_transform_env *env, __u8 reg,
+static void write_variable(struct ssa_transform_env *env, __u8 reg,
 			   struct pre_ir_basic_block *bb, struct ir_value val)
 {
 	if (reg >= MAX_BPF_REG - 1) {
@@ -357,7 +354,7 @@ static void bpf_ir_write_variable(struct ssa_transform_env *env, __u8 reg,
 	bpf_ir_array_push(currentDef, &new_val);
 }
 
-static struct ir_insn *bpf_ir_add_phi_operands(struct ssa_transform_env *env, __u8 reg,
+static struct ir_insn *add_phi_operands(struct ssa_transform_env *env, __u8 reg,
 					struct ir_insn *insn)
 {
 	// insn must be a (initialized) PHI instruction
@@ -370,9 +367,9 @@ static struct ir_insn *bpf_ir_add_phi_operands(struct ssa_transform_env *env, __
 							    .data))[i];
 		struct phi_value phi;
 		phi.bb = pred;
-		phi.value = bpf_ir_read_variable(
+		phi.value = read_variable(
 			env, reg, (struct pre_ir_basic_block *)pred->user_data);
-		bpf_ir_add_user(env, insn, phi.value);
+		add_user(env, insn, phi.value);
 		bpf_ir_array_push(&pred->users, &insn);
 		bpf_ir_array_push(&insn->phi, &phi);
 	}
@@ -423,7 +420,7 @@ static struct ir_value read_variable_recursive(struct ssa_transform_env *env,
 		val.type = IR_VALUE_INSN;
 		val.data.insn_d = new_insn;
 	} else if (bb->preds.num_elem == 1) {
-		val = bpf_ir_read_variable(
+		val = read_variable(
 			env, reg,
 			((struct pre_ir_basic_block **)(bb->preds.data))[0]);
 	} else {
@@ -432,16 +429,16 @@ static struct ir_value read_variable_recursive(struct ssa_transform_env *env,
 		INIT_ARRAY(&new_insn->phi, struct phi_value);
 		val.type = IR_VALUE_INSN;
 		val.data.insn_d = new_insn;
-		bpf_ir_write_variable(env, reg, bb, val);
-		new_insn = bpf_ir_add_phi_operands(env, reg, new_insn);
+		write_variable(env, reg, bb, val);
+		new_insn = add_phi_operands(env, reg, new_insn);
 		val.type = IR_VALUE_INSN;
 		val.data.insn_d = new_insn;
 	}
-	bpf_ir_write_variable(env, reg, bb, val);
+	write_variable(env, reg, bb, val);
 	return val;
 }
 
-static struct ir_value bpf_ir_read_variable(struct ssa_transform_env *env, __u8 reg,
+static struct ir_value read_variable(struct ssa_transform_env *env, __u8 reg,
 				     struct pre_ir_basic_block *bb)
 {
 	// Read a variable from a BB
@@ -479,9 +476,8 @@ static enum ir_vr_type to_ir_ld_u(__u8 size)
 	}
 }
 
-
 // User uses val
-static void bpf_ir_add_user(struct ssa_transform_env *env, struct ir_insn *user,
+static void add_user(struct ssa_transform_env *env, struct ir_insn *user,
 		     struct ir_value val)
 {
 	if (val.type == IR_VALUE_INSN) {
@@ -527,8 +523,8 @@ static int init_ir_bbs(struct ssa_transform_env *env)
 	return 0;
 }
 
-static struct ir_basic_block *get_ir_bb_from_position(struct ssa_transform_env *env,
-					       size_t pos)
+static struct ir_basic_block *
+get_ir_bb_from_position(struct ssa_transform_env *env, size_t pos)
 {
 	// Iterate through all the BBs
 	for (size_t i = 0; i < env->info.all_bbs.num_elem; ++i) {
@@ -542,24 +538,24 @@ static struct ir_basic_block *get_ir_bb_from_position(struct ssa_transform_env *
 }
 
 static struct ir_value get_src_value(struct ssa_transform_env *env,
-			      struct pre_ir_basic_block *bb,
-			      struct pre_ir_insn insn)
+				     struct pre_ir_basic_block *bb,
+				     struct pre_ir_insn insn)
 {
 	__u8 code = insn.opcode;
 	if (BPF_SRC(code) == BPF_K) {
 		return (struct ir_value){ .type = IR_VALUE_CONSTANT,
 					  .data.constant_d = insn.imm };
 	} else if (BPF_SRC(code) == BPF_X) {
-		return bpf_ir_read_variable(env, insn.src_reg, bb);
+		return read_variable(env, insn.src_reg, bb);
 	} else {
 		CRITICAL("Error");
 	}
 }
 
-static struct ir_insn *create_alu_bin(struct ir_basic_block *bb, struct ir_value val1,
-			       struct ir_value val2, enum ir_insn_type ty,
-			       struct ssa_transform_env *env,
-			       enum ir_alu_type alu_ty)
+static struct ir_insn *
+create_alu_bin(struct ir_basic_block *bb, struct ir_value val1,
+	       struct ir_value val2, enum ir_insn_type ty,
+	       struct ssa_transform_env *env, enum ir_alu_type alu_ty)
 {
 	struct ir_insn *new_insn = create_insn_back(bb);
 	new_insn->op = ty;
@@ -567,36 +563,37 @@ static struct ir_insn *create_alu_bin(struct ir_basic_block *bb, struct ir_value
 	new_insn->values[1] = val2;
 	new_insn->value_num = 2;
 	new_insn->alu = alu_ty;
-	bpf_ir_add_user(env, new_insn, new_insn->values[0]);
-	bpf_ir_add_user(env, new_insn, new_insn->values[1]);
+	add_user(env, new_insn, new_insn->values[0]);
+	add_user(env, new_insn, new_insn->values[1]);
 	return new_insn;
 }
 
 static void alu_write(struct ssa_transform_env *env, enum ir_insn_type ty,
-	       struct pre_ir_insn insn, struct pre_ir_basic_block *bb,
-	       enum ir_alu_type alu_ty)
+		      struct pre_ir_insn insn, struct pre_ir_basic_block *bb,
+		      enum ir_alu_type alu_ty)
 {
-	struct ir_insn *new_insn = create_alu_bin(
-		bb->ir_bb, bpf_ir_read_variable(env, insn.dst_reg, bb),
-		get_src_value(env, bb, insn), ty, env, alu_ty);
+	struct ir_insn *new_insn =
+		create_alu_bin(bb->ir_bb, read_variable(env, insn.dst_reg, bb),
+			       get_src_value(env, bb, insn), ty, env, alu_ty);
 	struct ir_value new_val;
 	new_val.type = IR_VALUE_INSN;
 	new_val.data.insn_d = new_insn;
-	bpf_ir_write_variable(env, insn.dst_reg, bb, new_val);
+	write_variable(env, insn.dst_reg, bb, new_val);
 }
 
 static void create_cond_jmp(struct ssa_transform_env *env,
-		     struct pre_ir_basic_block *bb, struct pre_ir_insn insn,
-		     enum ir_insn_type ty, enum ir_alu_type alu_ty)
+			    struct pre_ir_basic_block *bb,
+			    struct pre_ir_insn insn, enum ir_insn_type ty,
+			    enum ir_alu_type alu_ty)
 {
 	struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
 	new_insn->op = ty;
-	new_insn->values[0] = bpf_ir_read_variable(env, insn.dst_reg, bb);
+	new_insn->values[0] = read_variable(env, insn.dst_reg, bb);
 	new_insn->values[1] = get_src_value(env, bb, insn);
 	new_insn->value_num = 2;
 	new_insn->alu = alu_ty;
-	bpf_ir_add_user(env, new_insn, new_insn->values[0]);
-	bpf_ir_add_user(env, new_insn, new_insn->values[1]);
+	add_user(env, new_insn, new_insn->values[0]);
+	add_user(env, new_insn, new_insn->values[1]);
 	size_t pos = insn.pos + insn.off + 1;
 	new_insn->bb1 = get_ir_bb_from_position(env, insn.pos + 1);
 	new_insn->bb2 = get_ir_bb_from_position(env, pos);
@@ -604,7 +601,8 @@ static void create_cond_jmp(struct ssa_transform_env *env,
 	bpf_ir_array_push(&new_insn->bb2->users, &new_insn);
 }
 
-static int transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block *bb)
+static int transform_bb(struct ssa_transform_env *env,
+			struct pre_ir_basic_block *bb)
 {
 	PRINT_LOG("Transforming BB%zu\n", bb->id);
 	if (bb->sealed) {
@@ -649,9 +647,8 @@ static int transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block
 				alu_write(env, IR_INSN_MUL, insn, bb, alu_ty);
 			} else if (BPF_OP(code) == BPF_MOV) {
 				// Do not create instructions
-				bpf_ir_write_variable(env, insn.dst_reg, bb,
-						      get_src_value(env, bb,
-								    insn));
+				write_variable(env, insn.dst_reg, bb,
+					       get_src_value(env, bb, insn));
 			} else if (BPF_OP(code) == BPF_LSH) {
 				alu_write(env, IR_INSN_LSH, insn, bb, alu_ty);
 			} else if (BPF_OP(code) == BPF_MOD) {
@@ -673,8 +670,7 @@ static int transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block
 				struct ir_value imm_val;
 				imm_val.type = IR_VALUE_CONSTANT;
 				imm_val.data.constant_d = insn.imm64;
-				bpf_ir_write_variable(env, insn.dst_reg, bb,
-						      imm_val);
+				write_variable(env, insn.dst_reg, bb, imm_val);
 			} else {
 				CRITICAL("Not supported");
 			}
@@ -686,9 +682,8 @@ static int transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block
 			struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
 			new_insn->op = IR_INSN_LOADRAW;
 			struct ir_address_value addr_val;
-			addr_val.value =
-				bpf_ir_read_variable(env, insn.src_reg, bb);
-			bpf_ir_add_user(env, new_insn, addr_val.value);
+			addr_val.value = read_variable(env, insn.src_reg, bb);
+			add_user(env, new_insn, addr_val.value);
 			addr_val.offset = insn.off;
 			new_insn->vr_type = to_ir_ld_u(BPF_SIZE(code));
 			new_insn->addr_val = addr_val;
@@ -696,7 +691,7 @@ static int transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block
 			struct ir_value new_val;
 			new_val.type = IR_VALUE_INSN;
 			new_val.data.insn_d = new_insn;
-			bpf_ir_write_variable(env, insn.dst_reg, bb, new_val);
+			write_variable(env, insn.dst_reg, bb, new_val);
 		} else if (BPF_CLASS(code) == BPF_LDX &&
 			   BPF_MODE(code) == BPF_MEM) {
 			// Regular load
@@ -706,9 +701,8 @@ static int transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block
 			struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
 			new_insn->op = IR_INSN_LOADRAW;
 			struct ir_address_value addr_val;
-			addr_val.value =
-				bpf_ir_read_variable(env, insn.src_reg, bb);
-			bpf_ir_add_user(env, new_insn, addr_val.value);
+			addr_val.value = read_variable(env, insn.src_reg, bb);
+			add_user(env, new_insn, addr_val.value);
 			addr_val.offset = insn.off;
 			new_insn->vr_type = to_ir_ld_u(BPF_SIZE(code));
 			new_insn->addr_val = addr_val;
@@ -716,16 +710,15 @@ static int transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block
 			struct ir_value new_val;
 			new_val.type = IR_VALUE_INSN;
 			new_val.data.insn_d = new_insn;
-			bpf_ir_write_variable(env, insn.dst_reg, bb, new_val);
+			write_variable(env, insn.dst_reg, bb, new_val);
 		} else if (BPF_CLASS(code) == BPF_ST &&
 			   BPF_MODE(code) == BPF_MEM) {
 			// *(size *) (dst + offset) = imm32
 			struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
 			new_insn->op = IR_INSN_STORERAW;
 			struct ir_address_value addr_val;
-			addr_val.value =
-				bpf_ir_read_variable(env, insn.dst_reg, bb);
-			bpf_ir_add_user(env, new_insn, addr_val.value);
+			addr_val.value = read_variable(env, insn.dst_reg, bb);
+			add_user(env, new_insn, addr_val.value);
 			addr_val.offset = insn.off;
 			new_insn->vr_type = to_ir_ld_u(BPF_SIZE(code));
 			new_insn->addr_val = addr_val;
@@ -738,16 +731,15 @@ static int transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block
 			struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
 			new_insn->op = IR_INSN_STORERAW;
 			struct ir_address_value addr_val;
-			addr_val.value =
-				bpf_ir_read_variable(env, insn.dst_reg, bb);
-			bpf_ir_add_user(env, new_insn, addr_val.value);
+			addr_val.value = read_variable(env, insn.dst_reg, bb);
+			add_user(env, new_insn, addr_val.value);
 			addr_val.offset = insn.off;
 			new_insn->vr_type = to_ir_ld_u(BPF_SIZE(code));
 			new_insn->addr_val = addr_val;
 			new_insn->values[0] =
-				bpf_ir_read_variable(env, insn.src_reg, bb);
+				read_variable(env, insn.src_reg, bb);
 			new_insn->value_num = 1;
-			bpf_ir_add_user(env, new_insn, new_insn->values[0]);
+			add_user(env, new_insn, new_insn->values[0]);
 		} else if (BPF_CLASS(code) == BPF_JMP ||
 			   BPF_CLASS(code) == BPF_JMP32) {
 			enum ir_alu_type alu_ty = IR_ALU_UNKNOWN;
@@ -772,8 +764,8 @@ static int transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block
 				struct ir_insn *new_insn =
 					create_insn_back(bb->ir_bb);
 				new_insn->op = IR_INSN_RET;
-				new_insn->values[0] = bpf_ir_read_variable(
-					env, BPF_REG_0, bb);
+				new_insn->values[0] =
+					read_variable(env, BPF_REG_0, bb);
 				new_insn->value_num = 1;
 			} else if (BPF_OP(code) == BPF_JEQ) {
 				// PC += offset if dst == src
@@ -819,21 +811,19 @@ static int transform_bb(struct ssa_transform_env *env, struct pre_ir_basic_block
 					for (size_t j = 0;
 					     j < new_insn->value_num; ++j) {
 						new_insn->values[j] =
-							bpf_ir_read_variable(
+							read_variable(
 								env,
 								BPF_REG_1 + j,
 								bb);
-						bpf_ir_add_user(
-							env, new_insn,
-							new_insn->values[j]);
+						add_user(env, new_insn,
+							 new_insn->values[j]);
 					}
 				}
 
 				struct ir_value new_val;
 				new_val.type = IR_VALUE_INSN;
 				new_val.data.insn_d = new_insn;
-				bpf_ir_write_variable(env, BPF_REG_0, bb,
-						      new_val);
+				write_variable(env, BPF_REG_0, bb, new_val);
 			} else {
 				// TODO
 				CRITICAL("Error");

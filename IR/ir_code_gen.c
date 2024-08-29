@@ -224,8 +224,6 @@ int code_gen(struct ir_function *fun)
 	// Debugging settings
 	fun->cg_info.spill_callee = 0;
 
-	cg_prog_check(fun);
-
 	// Step 3: Use explicit real registers
 	explicit_reg(fun); // Still in SSA form, users are available
 	print_ir_prog_cg_dst(fun, "Explicit REG");
