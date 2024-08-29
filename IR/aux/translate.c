@@ -218,7 +218,7 @@ void translate(struct ir_function *fun)
 								  UNDEF;
 			enum val_type tdst = vtype_insn(insn);
 			struct ir_insn_cg_extra *extra = insn_cg(insn);
-			struct ir_insn *dst_insn = dst(insn);
+			struct ir_insn *dst_insn = insn_dst(insn);
 			extra->translated_num = 1; // Default: 1 instruction
 			if (insn->op == IR_INSN_ALLOC) {
 				// Nothing to do

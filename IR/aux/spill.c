@@ -4,7 +4,7 @@
 
 enum val_type vtype_insn(struct ir_insn *insn)
 {
-	insn = dst(insn);
+	insn = insn_dst(insn);
 	if (insn == NULL) {
 		// Void
 		return UNDEF;
@@ -151,7 +151,7 @@ int check_need_spill(struct ir_function *fun)
 								  UNDEF;
 			enum val_type tdst = vtype_insn(insn);
 			struct ir_insn_cg_extra *extra = insn_cg(insn);
-			struct ir_insn *dst_insn = dst(insn);
+			struct ir_insn *dst_insn = insn_dst(insn);
 			if (insn->op == IR_INSN_ALLOC) {
 				// dst = alloc <size>
 				// Nothing to do

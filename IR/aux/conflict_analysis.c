@@ -4,7 +4,7 @@
 
 int is_final(struct ir_insn *v1)
 {
-	return v1 == dst(v1);
+	return v1 == insn_dst(v1);
 }
 
 void build_conflict(struct ir_insn *v1, struct ir_insn *v2)
@@ -69,7 +69,7 @@ void caller_constraint(struct ir_function *fun, struct ir_insn *insn)
 {
 	for (__u8 i = BPF_REG_0; i < BPF_REG_6; ++i) {
 		// R0-R5 are caller saved register
-		DBGASSERT(fun->cg_info.regs[i] == dst(fun->cg_info.regs[i]));
+		DBGASSERT(fun->cg_info.regs[i] == insn_dst(fun->cg_info.regs[i]));
 		build_conflict(fun->cg_info.regs[i], insn);
 	}
 }
@@ -93,11 +93,11 @@ void conflict_analysis(struct ir_function *fun)
 				struct ir_insn **pos2;
 				array_for(pos2, insn_cg->in)
 				{
-					DBGASSERT(*pos2 == dst(*pos2));
+					DBGASSERT(*pos2 == insn_dst(*pos2));
 					struct ir_insn **pos3;
 					array_for(pos3, insn_cg->out)
 					{
-						DBGASSERT(*pos3 == dst(*pos3));
+						DBGASSERT(*pos3 == insn_dst(*pos3));
 						if (*pos2 == *pos3) {
 							// Live across CALL!
 							// PRINT_LOG("Found a VR live across CALL!\n");
@@ -111,7 +111,7 @@ void conflict_analysis(struct ir_function *fun)
 			array_for(pos2, insn_cg->kill)
 			{
 				struct ir_insn *insn_dst = *pos2;
-				DBGASSERT(insn_dst == dst(insn_dst));
+				DBGASSERT(insn_dst == insn_dst(insn_dst));
 				if (insn_dst->op != IR_INSN_REG) {
 					bpf_ir_array_push_unique(
 						&fun->cg_info.all_var,
@@ -120,7 +120,7 @@ void conflict_analysis(struct ir_function *fun)
 				struct ir_insn **pos3;
 				array_for(pos3, insn_cg->out)
 				{
-					DBGASSERT(*pos3 == dst(*pos3));
+					DBGASSERT(*pos3 == insn_dst(*pos3));
 					build_conflict(insn_dst, *pos3);
 				}
 			}

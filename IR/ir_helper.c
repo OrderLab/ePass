@@ -481,7 +481,7 @@ void print_ir_prog(struct ir_function *fun)
 
 void print_ir_dst(struct ir_insn *insn)
 {
-	insn = dst(insn);
+	insn = insn_dst(insn);
 	if (insn) {
 		print_insn_ptr_base(insn);
 	} else {
@@ -491,7 +491,7 @@ void print_ir_dst(struct ir_insn *insn)
 
 void print_ir_alloc(struct ir_insn *insn)
 {
-	insn = dst(insn);
+	insn = insn_dst(insn);
 	if (insn) {
 		struct ir_insn_cg_extra *extra = insn_cg(insn);
 		if (extra->allocated) {

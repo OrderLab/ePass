@@ -17,7 +17,7 @@ void normalize(struct ir_function *fun)
 			enum val_type t1 = insn->value_num >= 2 ? vtype(*v1) :
 								  UNDEF;
 			enum val_type tdst = vtype_insn(insn);
-			struct ir_insn *dst_insn = dst(insn);
+			struct ir_insn *dst_insn = insn_dst(insn);
 			if (insn->op == IR_INSN_ALLOC) {
 				// Skip
 			} else if (insn->op == IR_INSN_STORE) {

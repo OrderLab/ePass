@@ -1,29 +1,6 @@
 #include "bpf_ir.h"
 
-int init_insn_cg(struct ir_insn *insn)
-{
-	struct ir_insn_cg_extra *extra = NULL;
-	SAFE_MALLOC(extra, sizeof(struct ir_insn_cg_extra));
-	// When init, the destination is itself
-	if (is_void(insn)) {
-		extra->dst = NULL;
-	} else {
-		extra->dst = insn;
-	}
-	INIT_ARRAY(&extra->adj, struct ir_insn *);
-	extra->allocated = 0;
-	extra->spilled = 0;
-	extra->alloc_reg = 0;
-	INIT_ARRAY(&extra->gen, struct ir_insn *);
-	INIT_ARRAY(&extra->kill, struct ir_insn *);
-	INIT_ARRAY(&extra->in, struct ir_insn *);
-	INIT_ARRAY(&extra->out, struct ir_insn *);
-	extra->translated_num = 0;
-	insn->user_data = extra;
-	return 0;
-}
-
-int init_cg(struct ir_function *fun)
+static int init_cg(struct ir_function *fun)
 {
 	int ret = 0;
 	struct ir_basic_block **pos = NULL;
@@ -66,7 +43,7 @@ int init_cg(struct ir_function *fun)
 	return 0;
 }
 
-void free_insn_cg(struct ir_insn *insn)
+static void free_insn_cg(struct ir_insn *insn)
 {
 	struct ir_insn_cg_extra *extra = insn_cg(insn);
 	bpf_ir_array_free(&extra->adj);
@@ -78,7 +55,7 @@ void free_insn_cg(struct ir_insn *insn)
 	insn->user_data = NULL;
 }
 
-void free_cg_res(struct ir_function *fun)
+static void free_cg_res(struct ir_function *fun)
 {
 	struct ir_basic_block **pos = NULL;
 	array_for(pos, fun->reachable_bbs)
@@ -101,7 +78,7 @@ void free_cg_res(struct ir_function *fun)
 	}
 }
 
-void clean_insn_cg(struct ir_insn *insn)
+static void clean_insn_cg(struct ir_insn *insn)
 {
 	struct ir_insn_cg_extra *extra = insn_cg(insn);
 	bpf_ir_array_clear(&extra->adj);
@@ -111,7 +88,7 @@ void clean_insn_cg(struct ir_insn *insn)
 	bpf_ir_array_clear(&extra->out);
 }
 
-void clean_cg(struct ir_function *fun)
+static void clean_cg(struct ir_function *fun)
 {
 	struct ir_basic_block **pos = NULL;
 	array_for(pos, fun->reachable_bbs)
@@ -134,35 +111,25 @@ void clean_cg(struct ir_function *fun)
 	bpf_ir_array_clear(&fun->cg_info.all_var);
 }
 
-struct ir_insn_cg_extra *insn_cg(struct ir_insn *insn)
-{
-	return insn->user_data;
-}
-
-struct ir_insn *dst(struct ir_insn *insn)
-{
-	return insn_cg(insn)->dst;
-}
-
-void print_ir_prog_pre_cg(struct ir_function *fun, char *msg)
+static void print_ir_prog_pre_cg(struct ir_function *fun, char *msg)
 {
 	PRINT_LOG("\x1B[32m----- CG: %s -----\x1B[0m\n", msg);
 	print_ir_prog_advanced(fun, NULL, NULL, NULL);
 }
 
-void print_ir_prog_cg_dst(struct ir_function *fun, char *msg)
+static void print_ir_prog_cg_dst(struct ir_function *fun, char *msg)
 {
 	PRINT_LOG("\x1B[32m----- CG: %s -----\x1B[0m\n", msg);
 	print_ir_prog_advanced(fun, NULL, NULL, print_ir_dst);
 }
 
-void print_ir_prog_cg_alloc(struct ir_function *fun, char *msg)
+static void print_ir_prog_cg_alloc(struct ir_function *fun, char *msg)
 {
 	PRINT_LOG("\x1B[32m----- CG: %s -----\x1B[0m\n", msg);
 	print_ir_prog_advanced(fun, NULL, NULL, print_ir_alloc);
 }
 
-int synthesize(struct ir_function *fun)
+static int synthesize(struct ir_function *fun)
 {
 	// The last step, synthesizes the program
 	SAFE_MALLOC(fun->cg_info.prog,
@@ -203,6 +170,8 @@ int synthesize(struct ir_function *fun)
 	}
 	return 0;
 }
+
+// Interface Implementation
 
 int code_gen(struct ir_function *fun)
 {
@@ -301,5 +270,28 @@ int code_gen(struct ir_function *fun)
 
 	// Free CG resources
 	free_cg_res(fun);
+	return 0;
+}
+
+int init_insn_cg(struct ir_insn *insn)
+{
+	struct ir_insn_cg_extra *extra = NULL;
+	SAFE_MALLOC(extra, sizeof(struct ir_insn_cg_extra));
+	// When init, the destination is itself
+	if (is_void(insn)) {
+		extra->dst = NULL;
+	} else {
+		extra->dst = insn;
+	}
+	INIT_ARRAY(&extra->adj, struct ir_insn *);
+	extra->allocated = 0;
+	extra->spilled = 0;
+	extra->alloc_reg = 0;
+	INIT_ARRAY(&extra->gen, struct ir_insn *);
+	INIT_ARRAY(&extra->kill, struct ir_insn *);
+	INIT_ARRAY(&extra->in, struct ir_insn *);
+	INIT_ARRAY(&extra->out, struct ir_insn *);
+	extra->translated_num = 0;
+	insn->user_data = extra;
 	return 0;
 }

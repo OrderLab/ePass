@@ -11,12 +11,12 @@ void coaleasing(struct ir_function *fun)
 		// For each operation
 		list_for_each_entry_safe(pos2, tmp, &bb->ir_insn_head,
 					 list_ptr) {
-			struct ir_insn *insn_dst = dst(pos2);
+			struct ir_insn *insn_dst = insn_dst(pos2);
 			if (pos2->op == IR_INSN_ASSIGN) {
 				if (pos2->values[0].type == IR_VALUE_INSN) {
 					struct ir_insn *src =
 						pos2->values[0].data.insn_d;
-					DBGASSERT(src == dst(src));
+					DBGASSERT(src == insn_dst(src));
 					if (insn_cg(src)->alloc_reg ==
 					    insn_cg(insn_dst)->alloc_reg) {
 						// Remove

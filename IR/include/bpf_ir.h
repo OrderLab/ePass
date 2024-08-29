@@ -697,14 +697,6 @@ struct function_pass {
 
 #define DEF_FUNC_PASS(fun, msg) { .pass = fun, .name = msg }
 
-/**
-    All function passes.
- */
-static const struct function_pass passes[] = {
-	DEF_FUNC_PASS(remove_trivial_phi, "Remove the trival Phi"),
-	DEF_FUNC_PASS(add_counter, "Adding counter"),
-};
-
 /* Passes End */
 
 /* Code Gen Start */
@@ -759,11 +751,11 @@ enum val_type {
 	STACK,
 };
 
-struct ir_insn_cg_extra *insn_cg(struct ir_insn *insn);
+#define insn_cg(insn) ((struct ir_insn_cg_extra *)(insn)->user_data)
 
 int init_insn_cg(struct ir_insn *insn);
 
-struct ir_insn *dst(struct ir_insn *insn);
+#define insn_dst(insn) insn_cg(insn)->dst
 
 void to_cssa(struct ir_function *fun);
 
