@@ -1,4 +1,4 @@
-#include "bpf_ir.h"
+#include <linux/bpf_ir.h>
 
 void add_counter(struct ir_function *fun)
 {

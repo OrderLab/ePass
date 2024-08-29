@@ -1,4 +1,4 @@
-#include "bpf_ir.h"
+#include <linux/bpf_ir.h>
 
 static void check_insn_users_use_insn(struct ir_insn *insn)
 {

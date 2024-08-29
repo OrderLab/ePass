@@ -1,6 +1,6 @@
-// Kernel-side Low Interface Implementation
+#include <linux/bpf_ir.h>
 
-#include "bpf_ir.h"
+// Kernel-side Low Interface Implementation
 
 void *malloc_proto(size_t size)
 {

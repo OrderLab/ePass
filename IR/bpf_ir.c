@@ -1,7 +1,4 @@
-#include "bpf_ir.h"
-
-#include <linux/bpf.h>
-#include <linux/bpf_common.h>
+#include <linux/bpf_ir.h>
 
 // TODO: Change this to real function
 static const __u32 helper_func_arg_num[100] = { 1, 1, 1, 1, 1, 0, 2, 1, 1 };

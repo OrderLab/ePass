@@ -12,7 +12,6 @@ for file in $files; do
     cp $file build/kernel
 done
 
-cp include/bpf_ir.h build/kernel
 
 cd build/kernel
 
@@ -38,3 +37,9 @@ echo $makefile_content > Makefile
 rm -rf /home/linsy/Projects/ebpf/eBPF-kernel/kernel/bpf/ir/
 mkdir /home/linsy/Projects/ebpf/eBPF-kernel/kernel/bpf/ir/
 cp * /home/linsy/Projects/ebpf/eBPF-kernel/kernel/bpf/ir/
+
+cd ../../
+
+rm /home/linsy/Projects/ebpf/eBPF-kernel/include/linux/bpf_ir.h
+
+cp include/linux/bpf_ir.h /home/linsy/Projects/ebpf/eBPF-kernel/include/linux/

@@ -1,4 +1,4 @@
-#include "bpf_ir.h"
+#include <linux/bpf_ir.h>
 
 // May have exception
 struct ir_insn *create_insn_base(struct ir_basic_block *bb)

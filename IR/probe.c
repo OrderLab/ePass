@@ -1,6 +1,6 @@
 #include <linux/bpf_common.h>
 #include <stdio.h>
-#include "bpf_ir.h"
+#include <linux/bpf_ir.h>
 
 int run(struct bpf_insn *insns, size_t len)
 {

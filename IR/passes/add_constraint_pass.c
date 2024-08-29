@@ -1,4 +1,4 @@
-#include "bpf_ir.h"
+#include <linux/bpf_ir.h>
 
 // Initialize some testing constraints
 void init_test_constraints(struct ir_function *fun)

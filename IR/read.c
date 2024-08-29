@@ -6,7 +6,7 @@
 #include <string.h>
 #include <linux/bpf.h>
 #include <stdint.h>
-#include "bpf_ir.h"
+#include <linux/bpf_ir.h>
 
 void *malloc_proto(size_t size)
 {

@@ -1,4 +1,4 @@
-#include "bpf_ir.h"
+#include <linux/bpf_ir.h>
 
 static int init_cg(struct ir_function *fun)
 {

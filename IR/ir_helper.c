@@ -1,4 +1,4 @@
-#include "bpf_ir.h"
+#include <linux/bpf_ir.h>
 
 int bpf_ir_valid_alu_type(enum ir_alu_type type)
 {

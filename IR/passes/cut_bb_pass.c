@@ -1,5 +1,5 @@
 
-#include "bpf_ir.h"
+#include <linux/bpf_ir.h>
 
 // Warning: Not usable now
 void cut_bb(struct ir_function *fun)

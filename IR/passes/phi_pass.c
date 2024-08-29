@@ -1,4 +1,4 @@
-#include "bpf_ir.h"
+#include <linux/bpf_ir.h>
 
 void try_remove_trivial_phi(struct ir_insn *phi)
 {

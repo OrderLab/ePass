@@ -1,4 +1,4 @@
-#include "bpf_ir.h"
+#include <linux/bpf_ir.h>
 
 void bpf_ir_array_init(struct array *res, size_t size)
 {
