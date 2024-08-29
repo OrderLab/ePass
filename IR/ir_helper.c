@@ -1,5 +1,15 @@
 #include "bpf_ir.h"
 
+int bpf_ir_valid_alu_type(enum ir_alu_type type)
+{
+	return type >= IR_ALU_32 && type <= IR_ALU_64;
+}
+
+int bpf_ir_valid_vr_type(enum ir_vr_type type)
+{
+	return type >= IR_VR_TYPE_8 && type <= IR_VR_TYPE_64;
+}
+
 /// Reset visited flag
 void clean_env_all(struct ir_function *fun)
 {

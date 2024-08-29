@@ -16,6 +16,22 @@ int bb_empty(struct ir_basic_block *bb)
 }
 
 // May have exception
+struct ir_basic_block *bpf_ir_init_bb_raw(void)
+{
+	struct ir_basic_block *new_bb =
+		malloc_proto(sizeof(struct ir_basic_block));
+	if (!new_bb) {
+		return NULL;
+	}
+	INIT_LIST_HEAD(&new_bb->ir_insn_head);
+	new_bb->user_data = NULL;
+	INIT_ARRAY(&new_bb->preds, struct ir_basic_block *);
+	INIT_ARRAY(&new_bb->succs, struct ir_basic_block *);
+	INIT_ARRAY(&new_bb->users, struct ir_insn *);
+	return new_bb;
+}
+
+// May have exception
 struct ir_basic_block *create_bb(struct ir_function *fun)
 {
 	struct ir_basic_block *new_bb = bpf_ir_init_bb_raw();

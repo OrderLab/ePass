@@ -6,22 +6,24 @@ rm -rf build/kernel
 
 mkdir -p build/kernel
 
-files=$(find . -iname '*.h' -o -iname '*.c' -not -path "./build/*" -not -path "./tests/*")
+files=$(find . -iname '*.c' -not -path "./build/*" -not -path "./tests/*")
 
 for file in $files; do
     cp $file build/kernel
 done
 
+cp include/bpf_ir.h build/kernel
+
 cd build/kernel
 
-rm read.c read.h probe.c
+rm read.c probe.c
 
-cfiles=$(find . -iname '*.c' -not -path "./build/*" -not -path "./tests/*")
+cfiles=$(ls *.c)
 
 filelist=""
 
 for file in $cfiles; do
-    filelist="${filelist} ${file:2:-1}o"
+    filelist="${filelist} ${file::-1}o"
 done
 
 echo $filelist

@@ -8,6 +8,7 @@ add_executable(
     bpf_ir.c
     array.c
     ir_helper.c
+    ir_value.c
     ir_bb.c
     ir_insn.c
     passes/phi_pass.c
