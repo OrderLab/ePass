@@ -173,7 +173,7 @@ static int synthesize(struct ir_function *fun)
 
 // Convert from TSSA to CSSA
 // Using "Method I" in paper "Translating Out of Static Single Assignment Form"
-static void bpf_ir_to_cssa(struct ir_function *fun)
+static void to_cssa(struct ir_function *fun)
 {
 	struct array phi_insns;
 	INIT_ARRAY(&phi_insns, struct ir_insn *);
@@ -221,7 +221,7 @@ static void bpf_ir_to_cssa(struct ir_function *fun)
 }
 
 // Remove PHI insn
-static void bpf_ir_remove_phi(struct ir_function *fun)
+static void remove_phi(struct ir_function *fun)
 {
 	// dst information ready
 	struct array phi_insns;
@@ -268,7 +268,7 @@ static void bpf_ir_remove_phi(struct ir_function *fun)
 	bpf_ir_array_free(&phi_insns);
 }
 
-static void bpf_ir_coaleasing(struct ir_function *fun)
+static void coaleasing(struct ir_function *fun)
 {
 	struct ir_basic_block **pos;
 	// For each BB
@@ -369,7 +369,7 @@ static void caller_constraint(struct ir_function *fun, struct ir_insn *insn)
 	}
 }
 
-static void bpf_ir_conflict_analysis(struct ir_function *fun)
+static void conflict_analysis(struct ir_function *fun)
 {
 	// Basic conflict:
 	// For every x in KILL set, x is conflict with every element in OUT set.
@@ -441,7 +441,7 @@ static enum ir_vr_type alu_to_vr_type(enum ir_alu_type ty)
 // arg1 is r0 at the beginning of the function
 // We then add a new instruction to the beginning of the function.
 
-static void bpf_ir_explicit_reg(struct ir_function *fun)
+static void explicit_reg(struct ir_function *fun)
 {
 	// fun is still in IR form
 	// Before this step, users are correct
@@ -518,7 +518,7 @@ static int compare_insn(const void *a, const void *b)
 	return ap->_insn_id > bp->_insn_id;
 }
 
-static void bpf_ir_graph_coloring(struct ir_function *fun)
+static void graph_coloring(struct ir_function *fun)
 {
 	// Using the Chaitin's Algorithm
 	// Using the simple dominance heuristic (Simple traversal of BB)
@@ -793,7 +793,7 @@ static void print_insn_extra(struct ir_insn *insn)
 	PRINT_LOG("\n-------------\n");
 }
 
-static void bpf_ir_liveness_analysis(struct ir_function *fun)
+static void liveness_analysis(struct ir_function *fun)
 {
 	// TODO: Encode Calling convention into GEN KILL
 	gen_kill(fun);
@@ -1997,7 +1997,7 @@ int bpf_ir_code_gen(struct ir_function *fun)
 	bpf_ir_prog_check(fun);
 
 	// Step 2: Eliminate SSA
-	bpf_ir_to_cssa(fun);
+	to_cssa(fun);
 	bpf_ir_prog_check(fun);
 
 	print_ir_prog_pre_cg(fun, "To CSSA");
@@ -2009,12 +2009,12 @@ int bpf_ir_code_gen(struct ir_function *fun)
 	fun->cg_info.spill_callee = 0;
 
 	// Step 3: Use explicit real registers
-	bpf_ir_explicit_reg(fun); // Still in SSA form, users are available
+	explicit_reg(fun); // Still in SSA form, users are available
 	print_ir_prog_cg_dst(fun, "Explicit REG");
 
 	// Step 4: SSA Destruction
 	// users not available from now on
-	bpf_ir_remove_phi(fun);
+	remove_phi(fun);
 	print_ir_prog_cg_dst(fun, "PHI Removal");
 
 	// print_ir_prog_reachable(fun);
@@ -2025,16 +2025,16 @@ int bpf_ir_code_gen(struct ir_function *fun)
 	while (need_spill) {
 		iterations++;
 		// Step 5: Liveness Analysis
-		bpf_ir_liveness_analysis(fun);
+		liveness_analysis(fun);
 
 		// Step 6: Conflict Analysis
-		bpf_ir_conflict_analysis(fun);
+		conflict_analysis(fun);
 		PRINT_LOG("Conflicting graph:\n");
 		bpf_ir_print_interference_graph(fun);
 
 		// Step 7: Graph coloring
-		bpf_ir_graph_coloring(fun);
-		bpf_ir_coaleasing(fun);
+		graph_coloring(fun);
+		coaleasing(fun);
 		PRINT_LOG("Conflicting graph (after coloring):\n");
 		bpf_ir_print_interference_graph(fun);
 		print_ir_prog_cg_alloc(fun, "After RA");
