@@ -12,6 +12,8 @@ One opinion, one benefit of designing the raw constraint from is that our runtim
 
 - [x] Register spilling
 - [x] Caller-saved/callee-saved register
+- [ ] Fix: stack offset should be changed before CG
+- [ ] VR type & Constant type (inference)
 - [ ] Translation
 
 # TODO
