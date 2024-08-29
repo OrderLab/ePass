@@ -12,13 +12,10 @@ add_executable(
     ir_bb.c
     ir_insn.c
     passes/phi_pass.c
-    passes/reachable_bb.c
     passes/add_counter_pass.c
     passes/add_constraint_pass.c
     passes/cut_bb_pass.c
-    passes/end_bb.c
     aux/prog_check.c
-    aux/fix_bb_succ.c
     ir_code_gen.c
 )
 
