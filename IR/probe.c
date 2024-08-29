@@ -4,9 +4,9 @@
 
 int bpf_ir_run(struct bpf_insn *insns, size_t len)
 {
-	for (__u32 i = 0; i <= len; ++i) {
+	for (__u32 i = 0; i < len; ++i) {
 		struct bpf_insn *insn = &insns[i];
-		printf("insn[%d]: code=%d, dst_reg=%d, src_reg=%d, off=%d, imm=%d\n",
+		printf("insn[%d]: code=%x, dst_reg=%x, src_reg=%x, off=%x, imm=%x\n",
 		       i, insn->code, insn->dst_reg, insn->src_reg, insn->off,
 		       insn->imm);
 	}

@@ -108,12 +108,15 @@ void *malloc_proto(size_t size);
 
 void free_proto(void *ptr);
 
-#define SAFE_MALLOC(dst, size)            \
-	{                                 \
-		dst = malloc_proto(size); \
-		if (!dst) {               \
-			return -ENOMEM;   \
-		}                         \
+#define SAFE_MALLOC(dst, size)                            \
+	{                                                 \
+		if (size > 10000000) {                     \
+			CRITICAL("Incorrect Allocation"); \
+		}                                         \
+		dst = malloc_proto(size);                 \
+		if (!dst) {                               \
+			return -ENOMEM;                   \
+		}                                         \
 	}
 
 #define MAX_FUNC_ARG 5

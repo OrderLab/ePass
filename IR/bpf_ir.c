@@ -213,7 +213,8 @@ static int gen_bb(struct bb_info *ret, struct bpf_insn *insns, size_t len)
 		struct pre_ir_basic_block *real_bb = all_bbs[i].bb;
 		SAFE_MALLOC(real_bb->pre_insns,
 			    sizeof(struct pre_ir_insn) *
-				    (real_bb->end_pos - real_bb->start_pos));
+				    (real_bb->end_pos -
+				     real_bb->start_pos)); // Error!
 		size_t bb_pos = 0;
 		for (size_t pos = real_bb->start_pos; pos < real_bb->end_pos;
 		     ++pos, ++bb_pos) {
