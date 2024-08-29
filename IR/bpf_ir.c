@@ -920,9 +920,9 @@ static int gen_function(struct ir_function *fun, struct ssa_transform_env *env)
 
 static int run_passes(struct ir_function *fun)
 {
-	prog_check(fun);
+	bpf_ir_prog_check(fun);
 	for (size_t i = 0; i < sizeof(passes) / sizeof(passes[0]); ++i) {
-		fix_bb_succ(fun);
+		bpf_ir_fix_bb_succ(fun);
 		clean_env_all(fun);
 		gen_reachable_bbs(fun);
 		gen_end_bbs(fun);
@@ -930,10 +930,10 @@ static int run_passes(struct ir_function *fun)
 			  passes[i].name);
 		passes[i].pass(fun);
 		// Validate the IR
-		prog_check(fun);
+		bpf_ir_prog_check(fun);
 		print_ir_prog(fun);
 	}
-	fix_bb_succ(fun);
+	bpf_ir_fix_bb_succ(fun);
 	clean_env_all(fun);
 	gen_reachable_bbs(fun);
 	gen_end_bbs(fun);

@@ -11,15 +11,15 @@ void add_counter(struct ir_function *fun)
 	create_store_insn(alloc_insn, alloc_insn, val, INSERT_BACK);
 	struct ir_basic_block **pos;
 
-	struct ir_basic_block *err_bb = create_bb(fun);
+	struct ir_basic_block *err_bb = bpf_ir_create_bb(fun);
 	val.data.constant_d = 1;
 	create_ret_insn_bb(err_bb, val, INSERT_BACK);
 
 	array_for(pos, fun->reachable_bbs)
 	{
 		struct ir_basic_block *bb = *pos;
-		size_t len = bb_len(bb);
-		struct ir_insn *last = get_last_insn(bb);
+		size_t len = bpf_ir_bb_len(bb);
+		struct ir_insn *last = bpf_ir_get_last_insn(bb);
 		if (!last) {
 			// No insn in the bb
 			continue;
@@ -39,12 +39,12 @@ void add_counter(struct ir_function *fun)
 		val.type = IR_VALUE_INSN;
 		struct ir_insn *store_back =
 			create_store_insn(added, alloc_insn, val, INSERT_BACK);
-		struct ir_basic_block *new_bb = split_bb(fun, store_back);
+		struct ir_basic_block *new_bb = bpf_ir_split_bb(fun, store_back);
 		val2.data.insn_d = added;
 		val1.data.constant_d = 0x10000;
 		create_jbin_insn(store_back, val1, val2, new_bb, err_bb,
 				 IR_INSN_JLT, IR_ALU_64, INSERT_BACK);
 		// Manually connect BBs
-		connect_bb(bb, err_bb);
+		bpf_ir_connect_bb(bb, err_bb);
 	}
 }

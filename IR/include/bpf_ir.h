@@ -453,35 +453,35 @@ struct ir_function {
 
 // Constructor and Destructor
 
-void fix_bb_succ(struct ir_function *fun);
+void bpf_ir_fix_bb_succ(struct ir_function *fun);
 
 // IR checks
 
-void prog_check(struct ir_function *fun);
+void bpf_ir_prog_check(struct ir_function *fun);
 
 /* Fun End */
 
 /* BB Start */
 
 /// Get the number of instructions in a basic block
-size_t bb_len(struct ir_basic_block *);
+size_t bpf_ir_bb_len(struct ir_basic_block *);
 
-struct ir_bb_cg_extra *bb_cg(struct ir_basic_block *bb);
+struct ir_bb_cg_extra *bpf_ir_bb_cg(struct ir_basic_block *bb);
 
-struct ir_basic_block *create_bb(struct ir_function *fun);
+struct ir_basic_block *bpf_ir_create_bb(struct ir_function *fun);
 
-void connect_bb(struct ir_basic_block *from, struct ir_basic_block *to);
+void bpf_ir_connect_bb(struct ir_basic_block *from, struct ir_basic_block *to);
 
-void disconnect_bb(struct ir_basic_block *from, struct ir_basic_block *to);
+void bpf_ir_disconnect_bb(struct ir_basic_block *from, struct ir_basic_block *to);
 
 /// Split a BB after an instruction
-struct ir_basic_block *split_bb(struct ir_function *fun, struct ir_insn *insn);
+struct ir_basic_block *bpf_ir_split_bb(struct ir_function *fun, struct ir_insn *insn);
 
-struct ir_insn *get_last_insn(struct ir_basic_block *bb);
+struct ir_insn *bpf_ir_get_last_insn(struct ir_basic_block *bb);
 
-struct ir_insn *get_first_insn(struct ir_basic_block *bb);
+struct ir_insn *bpf_ir_get_first_insn(struct ir_basic_block *bb);
 
-int bb_empty(struct ir_basic_block *bb);
+int bpf_ir_bb_empty(struct ir_basic_block *bb);
 
 /* BB End */
 

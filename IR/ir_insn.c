@@ -166,7 +166,7 @@ void insert_at_bb(struct ir_insn *new_insn, struct ir_basic_block *bb,
 	} else if (pos == INSERT_BACK_BEFORE_JMP) {
 		// 1. If no JMP instruction, directly insert at the back
 		// 2. If there is a JMP at the end, insert before it
-		struct ir_insn *last_insn = get_last_insn(bb);
+		struct ir_insn *last_insn = bpf_ir_get_last_insn(bb);
 		if (last_insn) {
 			if (is_jmp(last_insn)) {
 				// Insert before this insn

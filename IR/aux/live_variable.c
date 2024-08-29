@@ -119,19 +119,19 @@ void in_out(struct ir_function *fun)
 				struct array old_in = insn_cg->in;
 				bpf_ir_array_clear(&insn_cg->out);
 
-				if (get_last_insn(bb) == insn) {
+				if (bpf_ir_get_last_insn(bb) == insn) {
 					// Last instruction
 					struct ir_basic_block **pos2;
 					array_for(pos2, bb->succs)
 					{
 						struct ir_basic_block *bb2 =
 							*pos2;
-						if (bb_empty(bb2)) {
+						if (bpf_ir_bb_empty(bb2)) {
 							CRITICAL(
 								"Found empty BB");
 						}
 						struct ir_insn *first =
-							get_first_insn(bb2);
+							bpf_ir_get_first_insn(bb2);
 						struct ir_insn_cg_extra
 							*insn2_cg =
 								first->user_data;

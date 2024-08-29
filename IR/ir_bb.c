@@ -1,6 +1,6 @@
 #include "bpf_ir.h"
 
-size_t bb_len(struct ir_basic_block *bb)
+size_t bpf_ir_bb_len(struct ir_basic_block *bb)
 {
 	size_t len = 0;
 	struct list_head *p = NULL;
@@ -10,7 +10,7 @@ size_t bb_len(struct ir_basic_block *bb)
 	return len;
 }
 
-int bb_empty(struct ir_basic_block *bb)
+int bpf_ir_bb_empty(struct ir_basic_block *bb)
 {
 	return list_empty(&bb->ir_insn_head);
 }
@@ -32,7 +32,7 @@ struct ir_basic_block *bpf_ir_init_bb_raw(void)
 }
 
 // May have exception
-struct ir_basic_block *create_bb(struct ir_function *fun)
+struct ir_basic_block *bpf_ir_create_bb(struct ir_function *fun)
 {
 	struct ir_basic_block *new_bb = bpf_ir_init_bb_raw();
 	if (!new_bb) {
@@ -42,13 +42,13 @@ struct ir_basic_block *create_bb(struct ir_function *fun)
 	return new_bb;
 }
 
-void connect_bb(struct ir_basic_block *from, struct ir_basic_block *to)
+void bpf_ir_connect_bb(struct ir_basic_block *from, struct ir_basic_block *to)
 {
 	bpf_ir_array_push_unique(&from->succs, &to);
 	bpf_ir_array_push_unique(&to->preds, &from);
 }
 
-void disconnect_bb(struct ir_basic_block *from, struct ir_basic_block *to)
+void bpf_ir_disconnect_bb(struct ir_basic_block *from, struct ir_basic_block *to)
 {
 	for (size_t i = 0; i < from->succs.num_elem; ++i) {
 		if (((struct ir_basic_block **)(from->succs.data))[i] == to) {
@@ -64,18 +64,18 @@ void disconnect_bb(struct ir_basic_block *from, struct ir_basic_block *to)
 	}
 }
 
-struct ir_basic_block *split_bb(struct ir_function *fun, struct ir_insn *insn)
+struct ir_basic_block *bpf_ir_split_bb(struct ir_function *fun, struct ir_insn *insn)
 {
 	struct ir_basic_block *bb = insn->parent_bb;
-	struct ir_basic_block *new_bb = create_bb(fun);
+	struct ir_basic_block *new_bb = bpf_ir_create_bb(fun);
 	struct array old_succs = bb->succs;
 	INIT_ARRAY(&bb->succs, struct ir_basic_block *);
-	connect_bb(bb, new_bb);
+	bpf_ir_connect_bb(bb, new_bb);
 	struct ir_basic_block **pos = NULL;
 	array_for(pos, old_succs)
 	{
-		disconnect_bb(bb, *pos);
-		connect_bb(new_bb, *pos);
+		bpf_ir_disconnect_bb(bb, *pos);
+		bpf_ir_connect_bb(new_bb, *pos);
 	}
 	bpf_ir_array_free(&old_succs);
 	// Move all instructions after insn to new_bb
@@ -90,23 +90,23 @@ struct ir_basic_block *split_bb(struct ir_function *fun, struct ir_insn *insn)
 	return new_bb;
 }
 
-struct ir_insn *get_last_insn(struct ir_basic_block *bb)
+struct ir_insn *bpf_ir_get_last_insn(struct ir_basic_block *bb)
 {
-	if (bb_empty(bb)) {
+	if (bpf_ir_bb_empty(bb)) {
 		return NULL;
 	}
 	return list_entry(bb->ir_insn_head.prev, struct ir_insn, list_ptr);
 }
 
-struct ir_insn *get_first_insn(struct ir_basic_block *bb)
+struct ir_insn *bpf_ir_get_first_insn(struct ir_basic_block *bb)
 {
-	if (bb_empty(bb)) {
+	if (bpf_ir_bb_empty(bb)) {
 		return NULL;
 	}
 	return list_entry(bb->ir_insn_head.next, struct ir_insn, list_ptr);
 }
 
-struct ir_bb_cg_extra *bb_cg(struct ir_basic_block *bb)
+struct ir_bb_cg_extra *bpf_ir_bb_cg(struct ir_basic_block *bb)
 {
 	return bb->user_data;
 }

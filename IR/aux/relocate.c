@@ -42,14 +42,14 @@ void relocate(struct ir_function *fun)
 			struct ir_insn_cg_extra *insn_extra = insn_cg(insn);
 			if (insn->op == IR_INSN_JA) {
 				DBGASSERT(insn_extra->translated_num == 1);
-				size_t target = bb_cg(insn->bb1)->pos;
+				size_t target = bpf_ir_bb_cg(insn->bb1)->pos;
 				insn_extra->translated[0].off =
 					target - insn_extra->translated[0].pos -
 					1;
 			}
 			if (is_cond_jmp(insn)) {
 				DBGASSERT(insn_extra->translated_num == 1);
-				size_t target = bb_cg(insn->bb2)->pos;
+				size_t target = bpf_ir_bb_cg(insn->bb2)->pos;
 				insn_extra->translated[0].off =
 					target - insn_extra->translated[0].pos -
 					1;

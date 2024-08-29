@@ -325,7 +325,7 @@ static void check_phi(struct ir_function *fun)
 // Interface Implementation
 
 // Check that the program is valid and able to be compiled
-void prog_check(struct ir_function *fun)
+void bpf_ir_prog_check(struct ir_function *fun)
 {
 	print_ir_err_init(fun);
 

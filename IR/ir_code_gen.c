@@ -179,11 +179,11 @@ int code_gen(struct ir_function *fun)
 
 	// Step 1: Flag all raw stack access
 	add_stack_offset_pre_cg(fun);
-	prog_check(fun);
+	bpf_ir_prog_check(fun);
 
 	// Step 2: Eliminate SSA
 	to_cssa(fun);
-	prog_check(fun);
+	bpf_ir_prog_check(fun);
 
 	print_ir_prog_pre_cg(fun, "To CSSA");
 

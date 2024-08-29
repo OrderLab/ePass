@@ -1,12 +1,12 @@
 #include "bpf_ir.h"
 
-void fix_bb_succ(struct ir_function *fun)
+void bpf_ir_fix_bb_succ(struct ir_function *fun)
 {
 	struct ir_basic_block **pos;
 	array_for(pos, fun->all_bbs)
 	{
 		struct ir_basic_block *bb = *pos;
-		struct ir_insn *insn = get_last_insn(bb);
+		struct ir_insn *insn = bpf_ir_get_last_insn(bb);
 		if (insn && is_cond_jmp(insn)) {
 			// Conditional jmp
 			if (bb->succs.num_elem != 2) {
