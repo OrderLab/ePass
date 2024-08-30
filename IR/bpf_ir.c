@@ -35,8 +35,9 @@ static int compare_num(const void *a, const void *b)
 }
 
 // Add current_pos --> entrance_pos in bb_entrances
-static int add_entrance_info(const struct bpf_insn *insns, struct array *bb_entrances,
-			     size_t entrance_pos, size_t current_pos)
+static int add_entrance_info(const struct bpf_insn *insns,
+			     struct array *bb_entrances, size_t entrance_pos,
+			     size_t current_pos)
 {
 	for (size_t i = 0; i < bb_entrances->num_elem; ++i) {
 		struct bb_entrance_info *entry =
@@ -119,7 +120,7 @@ static int init_ir_bb(struct pre_ir_basic_block *bb)
 	return 0;
 }
 
-static int gen_bb(struct bb_info *ret,const struct bpf_insn *insns, size_t len)
+static int gen_bb(struct bb_info *ret, const struct bpf_insn *insns, size_t len)
 {
 	struct array bb_entrance;
 	INIT_ARRAY(&bb_entrance, struct bb_entrance_info);
