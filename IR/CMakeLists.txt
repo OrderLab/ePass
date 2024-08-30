@@ -22,10 +22,14 @@ add_executable(read read.c)
 
 add_executable(readlog readlog.c)
 
+add_executable(loader loader/loader.c)
+
 target_link_libraries(read bpf_ir)
 
 target_link_libraries(readlog bpf_ir)
 
 add_executable(probe probe.c read.c array.c lii.c)
+
+target_link_libraries(loader bpf bpf_ir)
 
 include_directories(include)
