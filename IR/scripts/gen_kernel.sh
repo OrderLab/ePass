@@ -17,7 +17,7 @@ done
 
 cd build/kernel
 
-rm read.c probe.c
+rm read.c readlog.c probe.c
 
 cfiles=$(ls *.c)
 
