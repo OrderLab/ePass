@@ -2055,13 +2055,13 @@ int bpf_ir_code_gen(struct ir_function *fun)
 	print_ir_prog_cg_alloc(fun, "Normalization");
 
 	// Step 13: Direct Translation
-	// translate(fun);
+	translate(fun);
 
 	// Step 14: Relocation
-	// relocate(fun);
+	relocate(fun);
 
 	// Step 15: Synthesize
-	// synthesize(fun);
+	synthesize(fun);
 
 	// Free CG resources
 	free_cg_res(fun);

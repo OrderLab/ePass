@@ -110,7 +110,7 @@ void free_proto(void *ptr);
 
 #define SAFE_MALLOC(dst, size)                            \
 	{                                                 \
-		if (size > 10000000) {                     \
+		if (size > 10000000) {                    \
 			CRITICAL("Incorrect Allocation"); \
 		}                                         \
 		dst = malloc_proto(size);                 \

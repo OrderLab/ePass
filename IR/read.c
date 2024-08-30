@@ -8,20 +8,6 @@
 #include <stdint.h>
 #include <linux/bpf_ir.h>
 
-void *malloc_proto(size_t size)
-{
-	void *data = malloc(size);
-	if (data) {
-		memset(data, 0, size);
-	}
-	return data;
-}
-
-void free_proto(void *ptr)
-{
-	free(ptr);
-}
-
 void print_item(FILE *fd, Elf64_Ehdr eh, Elf64_Shdr sh_table[])
 {
 	int i = 0;
@@ -38,11 +24,11 @@ void print_item(FILE *fd, Elf64_Ehdr eh, Elf64_Shdr sh_table[])
 
 	for (i = 0; i < eh.e_shnum; i++) {
 		if (!strcmp("xdp", (sh_str + sh_table[i].sh_name))) {
-			printf("Found section\t\".text\"\n");
-			printf("at offset\t0x%08x\n",
-			       (unsigned int)sh_table[i].sh_offset);
-			printf("of size\t\t0x%08x\n",
-			       (unsigned int)sh_table[i].sh_size);
+			// printf("Found section\t\".text\"\n");
+			// printf("at offset\t0x%08x\n",
+			//        (unsigned int)sh_table[i].sh_offset);
+			// printf("of size\t\t0x%08x\n",
+			//        (unsigned int)sh_table[i].sh_size);
 			break;
 		}
 	}
