@@ -129,23 +129,17 @@ static int gen_bb(struct bb_info *ret, struct bpf_insn *insns, size_t len)
 		__u8 code = insn.code;
 		if (BPF_CLASS(code) == BPF_JMP ||
 		    BPF_CLASS(code) == BPF_JMP32) {
-			if (i + 1 < len && insns[i + 1].code == 0) {
-				// TODO: What if insns[i+1] is a pseudo instruction?
-				CRITICAL("Error");
-			}
 			if (BPF_OP(code) == BPF_JA) {
 				// Direct Jump
 				size_t pos = 0;
 				if (BPF_CLASS(code) == BPF_JMP) {
 					// JMP class (64 bits)
-					// TODO
 					// Add offset
 					pos = (__s16)i + insn.off + 1;
 				} else {
-					// JMP32 class
-					// TODO
-					// Add immediate
-					pos = (__s32)i + insn.imm + 1;
+					// Impossible by spec
+					RAISE_ERROR(
+						"BPF_JA only allows JMP class");
 				}
 				// Add to bb entrance
 				// This is one-way control flow
@@ -160,11 +154,6 @@ static int gen_bb(struct bb_info *ret, struct bpf_insn *insns, size_t len)
 				add_entrance_info(insns, &bb_entrance, pos, i);
 				add_entrance_info(insns, &bb_entrance, i + 1,
 						  i);
-			}
-			if (BPF_OP(code) == BPF_CALL) {
-				// BPF_CALL
-				// Unsupported yet
-				continue;
 			}
 			if (BPF_OP(code) == BPF_EXIT) {
 				// BPF_EXIT
@@ -670,7 +659,7 @@ static int transform_bb(struct ssa_transform_env *env,
 
 			else {
 				// TODO
-				CRITICAL("Error");
+				RAISE_ERROR("Not supported");
 			}
 
 		} else if (BPF_CLASS(code) == BPF_LD &&
@@ -684,7 +673,7 @@ static int transform_bb(struct ssa_transform_env *env,
 				imm_val.data.constant_d = insn.imm64;
 				write_variable(env, insn.dst_reg, bb, imm_val);
 			} else {
-				CRITICAL("Not supported");
+				RAISE_ERROR("Not supported");
 			}
 		} else if (BPF_CLASS(code) == BPF_LDX &&
 			   BPF_MODE(code) == BPF_MEMSX) {
@@ -818,7 +807,8 @@ static int transform_bb(struct ssa_transform_env *env,
 						helper_func_arg_num[insn.imm];
 					if (new_insn->value_num >
 					    MAX_FUNC_ARG) {
-						CRITICAL("Too many arguments");
+						RAISE_ERROR(
+							"Too many arguments");
 					}
 					for (size_t j = 0;
 					     j < new_insn->value_num; ++j) {
@@ -838,13 +828,13 @@ static int transform_bb(struct ssa_transform_env *env,
 				write_variable(env, BPF_REG_0, bb, new_val);
 			} else {
 				// TODO
-				CRITICAL("Error");
+				RAISE_ERROR("Error");
 			}
 		} else {
 			// TODO
 			PRINT_LOG("Class 0x%02x not supported\n",
 				  BPF_CLASS(code));
-			CRITICAL("Error");
+			RAISE_ERROR("Error");
 		}
 	}
 	bb->filled = 1;
@@ -852,7 +842,10 @@ static int transform_bb(struct ssa_transform_env *env,
 	for (size_t i = 0; i < bb->succs.num_elem; ++i) {
 		struct pre_ir_basic_block *succ =
 			((struct pre_ir_basic_block **)(bb->succs.data))[i];
-		transform_bb(env, succ);
+		int ret = transform_bb(env, succ);
+		if (ret) {
+			return ret;
+		}
 	}
 	return 0;
 }
