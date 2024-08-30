@@ -25,7 +25,13 @@ static int compare_num(const void *a, const void *b)
 {
 	struct bb_entrance_info *as = (struct bb_entrance_info *)a;
 	struct bb_entrance_info *bs = (struct bb_entrance_info *)b;
-	return as->entrance > bs->entrance;
+	if (as->entrance > bs->entrance) {
+		return 1;
+	}
+	if (as->entrance < bs->entrance) {
+		return -1;
+	}
+	return 0;
 }
 
 // Add current_pos --> entrance_pos in bb_entrances
@@ -186,10 +192,11 @@ static int gen_bb(struct bb_info *ret, struct bpf_insn *insns, size_t len)
 		((struct bb_entrance_info *)(bb_entrance.data));
 
 	// Print the BB
-	// for (size_t i = 0; i < bb_entrance.num_elem; ++i) {
-	//     struct bb_entrance_info entry = all_bbs[i];
-	//     PRINT_LOG("%ld: %ld\n", entry.entrance, entry.bb->preds.num_elem);
-	// }
+	for (size_t i = 0; i < bb_entrance.num_elem; ++i) {
+		struct bb_entrance_info entry = all_bbs[i];
+		PRINT_LOG("%ld: %ld\n", entry.entrance,
+			  entry.bb->preds.num_elem);
+	}
 
 	// Init preds
 	for (size_t i = 0; i < bb_entrance.num_elem; ++i) {
@@ -211,10 +218,11 @@ static int gen_bb(struct bb_info *ret, struct bpf_insn *insns, size_t len)
 	// Allocate instructions
 	for (size_t i = 0; i < bb_entrance.num_elem; ++i) {
 		struct pre_ir_basic_block *real_bb = all_bbs[i].bb;
+		PRINT_LOG("BB Alloc, %zu %zu\n", real_bb->end_pos,
+			  real_bb->start_pos);
 		SAFE_MALLOC(real_bb->pre_insns,
 			    sizeof(struct pre_ir_insn) *
-				    (real_bb->end_pos -
-				     real_bb->start_pos)); // Error!
+				    (real_bb->end_pos - real_bb->start_pos));
 		size_t bb_pos = 0;
 		for (size_t pos = real_bb->start_pos; pos < real_bb->end_pos;
 		     ++pos, ++bb_pos) {

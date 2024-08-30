@@ -13,7 +13,6 @@ int bpf_ir_run(struct bpf_insn *insns, size_t len)
 		//        i, insn->code, insn->dst_reg, insn->src_reg, insn->off,
 		//        insn->imm);
 		__u64 data;
-		// assert(sizeof(__u64) == sizeof(struct bpf_insn));
 		memcpy(&data, insn, sizeof(struct bpf_insn));
 		printf("insn[%d]: %llu\n", i, data);
 	}
