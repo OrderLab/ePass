@@ -21,6 +21,7 @@ add_library(bpf_ir STATIC
 add_executable(read userspace/read.c)
 add_executable(readlog userspace/readlog.c)
 add_executable(print userspace/print.c)
+add_executable(printlog userspace/printlog.c)
 
 target_link_libraries(read bpf bpf_ir)
 target_link_libraries(readlog bpf_ir)
