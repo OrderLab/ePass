@@ -173,6 +173,18 @@ void print_phi(struct array *phi)
 	print_phi_full(phi, 0);
 }
 
+void print_alu(enum ir_alu_type ty, const char *str)
+{
+	PRINT_LOG("%s", str);
+	if (ty == IR_ALU_64) {
+		PRINT_LOG("(64) ");
+	} else if (ty == IR_ALU_32) {
+		PRINT_LOG("(32) ");
+	} else {
+		PRINT_LOG("(?) ");
+	}
+}
+
 /**
     Print the IR insn
  */
@@ -209,19 +221,19 @@ void print_ir_insn_full(struct ir_insn *insn,
 		print_ir_value_full(insn->values[0], print_ir);
 		break;
 	case IR_INSN_ADD:
-		PRINT_LOG("add ");
+		print_alu(insn->alu, "add");
 		print_ir_value_full(insn->values[0], print_ir);
 		PRINT_LOG(", ");
 		print_ir_value_full(insn->values[1], print_ir);
 		break;
 	case IR_INSN_SUB:
-		PRINT_LOG("sub ");
+		print_alu(insn->alu, "sub");
 		print_ir_value_full(insn->values[0], print_ir);
 		PRINT_LOG(", ");
 		print_ir_value_full(insn->values[1], print_ir);
 		break;
 	case IR_INSN_MUL:
-		PRINT_LOG("mul ");
+		print_alu(insn->alu, "mul");
 		print_ir_value_full(insn->values[0], print_ir);
 		PRINT_LOG(", ");
 		print_ir_value_full(insn->values[1], print_ir);
@@ -248,7 +260,7 @@ void print_ir_insn_full(struct ir_insn *insn,
 		print_bb_ptr(insn->bb1);
 		break;
 	case IR_INSN_JEQ:
-		PRINT_LOG("jeq ");
+		print_alu(insn->alu, "jeq");
 		print_ir_value_full(insn->values[0], print_ir);
 		PRINT_LOG(", ");
 		print_ir_value_full(insn->values[1], print_ir);
@@ -258,7 +270,7 @@ void print_ir_insn_full(struct ir_insn *insn,
 		print_bb_ptr(insn->bb2);
 		break;
 	case IR_INSN_JGT:
-		PRINT_LOG("jgt ");
+		print_alu(insn->alu, "jgt");
 		print_ir_value_full(insn->values[0], print_ir);
 		PRINT_LOG(", ");
 		print_ir_value_full(insn->values[1], print_ir);
@@ -268,7 +280,7 @@ void print_ir_insn_full(struct ir_insn *insn,
 		print_bb_ptr(insn->bb2);
 		break;
 	case IR_INSN_JGE:
-		PRINT_LOG("jge ");
+		print_alu(insn->alu, "jge");
 		print_ir_value_full(insn->values[0], print_ir);
 		PRINT_LOG(", ");
 		print_ir_value_full(insn->values[1], print_ir);
@@ -278,7 +290,7 @@ void print_ir_insn_full(struct ir_insn *insn,
 		print_bb_ptr(insn->bb2);
 		break;
 	case IR_INSN_JLT:
-		PRINT_LOG("jlt ");
+		print_alu(insn->alu, "jlt");
 		print_ir_value_full(insn->values[0], print_ir);
 		PRINT_LOG(", ");
 		print_ir_value_full(insn->values[1], print_ir);
@@ -288,7 +300,7 @@ void print_ir_insn_full(struct ir_insn *insn,
 		print_bb_ptr(insn->bb2);
 		break;
 	case IR_INSN_JLE:
-		PRINT_LOG("jle ");
+		print_alu(insn->alu, "jle");
 		print_ir_value_full(insn->values[0], print_ir);
 		PRINT_LOG(", ");
 		print_ir_value_full(insn->values[1], print_ir);
@@ -298,7 +310,7 @@ void print_ir_insn_full(struct ir_insn *insn,
 		print_bb_ptr(insn->bb2);
 		break;
 	case IR_INSN_JNE:
-		PRINT_LOG("jne ");
+		print_alu(insn->alu, "jne");
 		print_ir_value_full(insn->values[0], print_ir);
 		PRINT_LOG(", ");
 		print_ir_value_full(insn->values[1], print_ir);
@@ -312,13 +324,13 @@ void print_ir_insn_full(struct ir_insn *insn,
 		print_phi_full(&insn->phi, print_ir);
 		break;
 	case IR_INSN_LSH:
-		PRINT_LOG("lsh ");
+		print_alu(insn->alu, "lsh");
 		print_ir_value_full(insn->values[0], print_ir);
 		PRINT_LOG(", ");
 		print_ir_value_full(insn->values[1], print_ir);
 		break;
 	case IR_INSN_MOD:
-		PRINT_LOG("mod ");
+		print_alu(insn->alu, "mod");
 		print_ir_value_full(insn->values[0], print_ir);
 		PRINT_LOG(", ");
 		print_ir_value_full(insn->values[1], print_ir);

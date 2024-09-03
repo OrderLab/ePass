@@ -140,6 +140,12 @@ struct pre_ir_insn {
 	size_t pos; // Original position
 };
 
+enum ir_alu_type {
+	IR_ALU_UNKNOWN, // To prevent from not manually setting this type
+	IR_ALU_32,
+	IR_ALU_64,
+};
+
 enum ir_value_type {
 	IR_VALUE_CONSTANT,
 	IR_VALUE_CONSTANT_RAWOFF, // A constant value in raw operations to be added during code
@@ -160,6 +166,7 @@ struct ir_value {
 		struct ir_insn *insn_d;
 	} data;
 	enum ir_value_type type;
+	enum ir_alu_type alu_type; // Used when type is a constant
 };
 
 /**
@@ -177,12 +184,6 @@ struct ir_address_value {
 struct phi_value {
 	struct ir_value value;
 	struct ir_basic_block *bb;
-};
-
-enum ir_alu_type {
-	IR_ALU_UNKNOWN, // To prevent from not manually setting this type
-	IR_ALU_32,
-	IR_ALU_64,
 };
 
 int bpf_ir_valid_alu_type(enum ir_alu_type type);

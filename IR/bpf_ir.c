@@ -1,3 +1,4 @@
+#include <linux/bpf_common.h>
 #include <linux/bpf_ir.h>
 
 // TODO: Change this to real function
@@ -649,8 +650,13 @@ static int transform_bb(struct ssa_transform_env *env,
 				alu_write(env, IR_INSN_MUL, insn, bb, alu_ty);
 			} else if (BPF_OP(code) == BPF_MOV) {
 				// Do not create instructions
-				write_variable(env, insn.dst_reg, bb,
-					       get_src_value(env, bb, insn));
+				struct ir_value v =
+					get_src_value(env, bb, insn);
+				if (BPF_SRC(code) == BPF_K) {
+					// Mov a constant
+					v.alu_type = alu_ty;
+				}
+				write_variable(env, insn.dst_reg, bb, v);
 			} else if (BPF_OP(code) == BPF_LSH) {
 				alu_write(env, IR_INSN_LSH, insn, bb, alu_ty);
 			} else if (BPF_OP(code) == BPF_MOD) {
@@ -672,6 +678,7 @@ static int transform_bb(struct ssa_transform_env *env,
 				struct ir_value imm_val;
 				imm_val.type = IR_VALUE_CONSTANT;
 				imm_val.data.constant_d = insn.imm64;
+				imm_val.alu_type = IR_ALU_64;
 				write_variable(env, insn.dst_reg, bb, imm_val);
 			} else {
 				RAISE_ERROR("Not supported");
