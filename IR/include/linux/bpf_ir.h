@@ -746,7 +746,7 @@ struct function_pass {
 
 int bpf_ir_init_insn_cg(struct ir_insn *insn);
 
-int bpf_ir_code_gen(struct ir_function *fun);
+int bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun);
 
 // Extra information needed for code gen
 struct ir_bb_cg_extra {

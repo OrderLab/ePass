@@ -1110,7 +1110,7 @@ int bpf_ir_run(struct bpf_ir_env *env, const struct bpf_insn *insns, size_t len)
 	// End IR manipulation
 	PRINT_LOG(env, "IR Passes Ended!\n");
 
-	ret = bpf_ir_code_gen(&fun);
+	ret = bpf_ir_code_gen(env, &fun);
 	if (ret) {
 		return ret;
 	}

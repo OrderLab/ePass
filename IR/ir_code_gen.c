@@ -144,7 +144,7 @@ static int synthesize(struct ir_function *fun)
 			for (__u8 i = 0; i < extra->translated_num; ++i) {
 				struct pre_ir_insn translated_insn =
 					extra->translated[i];
-				PRINT_LOG("Writing to insn %zu\n",
+				PRINT_DBG("Writing to insn %zu\n",
 					  translated_insn.pos);
 				struct bpf_insn *real_insn =
 					&fun->cg_info.prog[translated_insn.pos];
@@ -313,7 +313,7 @@ static void build_conflict(struct ir_insn *v1, struct ir_insn *v2)
 	bpf_ir_array_push_unique(&insn_cg(v2)->adj, &v1);
 }
 
-static void bpf_ir_print_interference_graph(struct ir_function *fun)
+static void bpf_ir_print_interference_graph(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	// Tag the IR to have the actual number to print
 	tag_ir(fun);
@@ -332,17 +332,17 @@ static void bpf_ir_print_interference_graph(struct ir_function *fun)
 		struct ir_insn_cg_extra *extra = insn_cg(insn);
 		if (extra->allocated) {
 			// Allocated VR
-			PRINT_LOG("%%%zu(", insn->_insn_id);
+			PRINT_LOG(env, "%%%zu(", insn->_insn_id);
 			if (extra->spilled) {
-				PRINT_LOG("sp-%zu", extra->spilled * 8);
+				PRINT_LOG(env, "sp-%zu", extra->spilled * 8);
 			} else {
-				PRINT_LOG("r%u", extra->alloc_reg);
+				PRINT_LOG(env, "r%u", extra->alloc_reg);
 			}
-			PRINT_LOG("):");
+			PRINT_LOG(env, "):");
 		} else {
 			// Pre-colored registers or unallocated VR
-			print_insn_ptr_base(insn);
-			PRINT_LOG(":");
+			print_insn_ptr_base(env, insn);
+			PRINT_LOG(env, ":");
 		}
 		struct ir_insn **pos2;
 		array_for(pos2, insn_cg(insn)->adj)
@@ -352,10 +352,10 @@ static void bpf_ir_print_interference_graph(struct ir_function *fun)
 				// Not final value, give up
 				CRITICAL("Not Final Value!");
 			}
-			PRINT_LOG(" ");
-			print_insn_ptr_base(adj_insn);
+			PRINT_LOG(env, " ");
+			print_insn_ptr_base(env, adj_insn);
 		}
-		PRINT_LOG("\n");
+		PRINT_LOG(env, "\n");
 	}
 }
 
@@ -518,7 +518,7 @@ static int compare_insn(const void *a, const void *b)
 	return ap->_insn_id > bp->_insn_id;
 }
 
-static void graph_coloring(struct ir_function *fun)
+static void graph_coloring(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	// Using the Chaitin's Algorithm
 	// Using the simple dominance heuristic (Simple traversal of BB)
@@ -559,7 +559,7 @@ static void graph_coloring(struct ir_function *fun)
 		for (__u8 i = 0; i < MAX_BPF_REG; i++) {
 			if (!used_reg[i]) {
 				extra->allocated = 1;
-				PRINT_LOG("Allocate r%u for %%%zu\n", i,
+				PRINT_LOG(env, "Allocate r%u for %%%zu\n", i,
 					  insn->_insn_id);
 				extra->alloc_reg = i;
 				need_spill = 0;
@@ -743,42 +743,42 @@ static void in_out(struct ir_function *fun)
 	}
 }
 
-static void print_insn_extra(struct ir_insn *insn)
+static void print_insn_extra(struct bpf_ir_env *env, struct ir_insn *insn)
 {
 	struct ir_insn_cg_extra *insn_cg = insn->user_data;
 	if (insn_cg == NULL) {
 		CRITICAL("NULL user data");
 	}
-	PRINT_LOG("--\nGen:");
+	PRINT_LOG(env, "--\nGen:");
 	struct ir_insn **pos;
 	array_for(pos, insn_cg->gen)
 	{
 		struct ir_insn *insn = *pos;
-		PRINT_LOG(" ");
-		print_insn_ptr_base(insn);
+		PRINT_LOG(env, " ");
+		print_insn_ptr_base(env, insn);
 	}
-	PRINT_LOG("\nKill:");
+	PRINT_LOG(env, "\nKill:");
 	array_for(pos, insn_cg->kill)
 	{
 		struct ir_insn *insn = *pos;
-		PRINT_LOG(" ");
-		print_insn_ptr_base(insn);
+		PRINT_LOG(env, " ");
+		print_insn_ptr_base(env, insn);
 	}
-	PRINT_LOG("\nIn:");
+	PRINT_LOG(env, "\nIn:");
 	array_for(pos, insn_cg->in)
 	{
 		struct ir_insn *insn = *pos;
-		PRINT_LOG(" ");
-		print_insn_ptr_base(insn);
+		PRINT_LOG(env, " ");
+		print_insn_ptr_base(env, insn);
 	}
-	PRINT_LOG("\nOut:");
+	PRINT_LOG(env, "\nOut:");
 	array_for(pos, insn_cg->out)
 	{
 		struct ir_insn *insn = *pos;
-		PRINT_LOG(" ");
-		print_insn_ptr_base(insn);
+		PRINT_LOG(env, " ");
+		print_insn_ptr_base(env, insn);
 	}
-	PRINT_LOG("\n-------------\n");
+	PRINT_LOG(env, "\n-------------\n");
 }
 
 static void liveness_analysis(struct bpf_ir_env *env, struct ir_function *fun)
@@ -786,7 +786,7 @@ static void liveness_analysis(struct bpf_ir_env *env, struct ir_function *fun)
 	// TODO: Encode Calling convention into GEN KILL
 	gen_kill(fun);
 	in_out(fun);
-	PRINT_LOG("--------------\n");
+	PRINT_LOG(env, "--------------\n");
 	print_ir_prog_advanced(env, fun, NULL, print_insn_extra, print_ir_dst);
 	print_ir_prog_advanced(env, fun, NULL, NULL, print_ir_dst);
 }
@@ -1543,7 +1543,7 @@ static void calc_stack_size(struct ir_function *fun)
 		}
 	}
 	fun->cg_info.stack_offset = -(off + max * 8);
-	PRINT_LOG("Stack size: %d\n", fun->cg_info.stack_offset);
+	PRINT_DBG("Stack size: %d\n", fun->cg_info.stack_offset);
 }
 
 static void add_stack_offset_pre_cg(struct ir_function *fun)
@@ -2009,19 +2009,19 @@ static void translate(struct ir_function *fun)
 
 // Interface Implementation
 
-int bpf_ir_code_gen(struct ir_function *fun)
+int bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	// Preparation
 
 	// Step 1: Flag all raw stack access
 	add_stack_offset_pre_cg(fun);
-	bpf_ir_prog_check(fun);
+	bpf_ir_prog_check(env, fun);
 
 	// Step 2: Eliminate SSA
 	to_cssa(fun);
-	bpf_ir_prog_check(fun);
+	bpf_ir_prog_check(env, fun);
 
-	print_ir_prog_pre_cg(fun, "To CSSA");
+	print_ir_prog_pre_cg(env, fun, "To CSSA");
 
 	// Init CG, start real code generation
 	init_cg(fun);
@@ -2031,12 +2031,12 @@ int bpf_ir_code_gen(struct ir_function *fun)
 
 	// Step 3: Use explicit real registers
 	explicit_reg(fun); // Still in SSA form, users are available
-	print_ir_prog_cg_dst(fun, "Explicit REG");
+	print_ir_prog_cg_dst(env, fun, "Explicit REG");
 
 	// Step 4: SSA Destruction
 	// users not available from now on
 	remove_phi(fun);
-	print_ir_prog_cg_dst(fun, "PHI Removal");
+	print_ir_prog_cg_dst(env, fun, "PHI Removal");
 
 	// print_ir_prog_reachable(fun);
 
@@ -2046,34 +2046,34 @@ int bpf_ir_code_gen(struct ir_function *fun)
 	while (need_spill) {
 		iterations++;
 		// Step 5: Liveness Analysis
-		liveness_analysis(fun);
+		liveness_analysis(env, fun);
 
 		// Step 6: Conflict Analysis
 		conflict_analysis(fun);
-		PRINT_LOG("Conflicting graph:\n");
-		bpf_ir_print_interference_graph(fun);
+		PRINT_LOG(env, "Conflicting graph:\n");
+		bpf_ir_print_interference_graph(env, fun);
 
 		// Step 7: Graph coloring
-		graph_coloring(fun);
+		graph_coloring(env, fun);
 		coaleasing(fun);
-		PRINT_LOG("Conflicting graph (after coloring):\n");
-		bpf_ir_print_interference_graph(fun);
-		print_ir_prog_cg_alloc(fun, "After RA");
+		PRINT_LOG(env, "Conflicting graph (after coloring):\n");
+		bpf_ir_print_interference_graph(env, fun);
+		print_ir_prog_cg_alloc(env, fun, "After RA");
 
 		// Step 8: Check if need to spill and spill
 		need_spill = check_need_spill(fun);
-		// print_ir_prog_cg_dst(fun, "After Spilling");
+		// print_ir_prog_cg_dst(env, fun, "After Spilling");
 		if (need_spill) {
 			// Still need to spill
-			PRINT_LOG("Need to spill...\n");
+			PRINT_LOG(env, "Need to spill...\n");
 			clean_cg(fun);
 		}
 	}
 
 	// Register allocation finished (All registers are fixed)
-	PRINT_LOG("Register allocation finished in %d iteratinos\n",
+	PRINT_LOG(env, "Register allocation finished in %d iteratinos\n",
 		  iterations);
-	print_ir_prog_cg_alloc(fun, "After RA & Spilling");
+	print_ir_prog_cg_alloc(env, fun, "After RA & Spilling");
 
 	// Step 9: Calculate stack size
 	if (fun->cg_info.spill_callee) {
@@ -2083,17 +2083,17 @@ int bpf_ir_code_gen(struct ir_function *fun)
 
 	// Step 10: Shift raw stack operations
 	add_stack_offset(fun, fun->cg_info.stack_offset);
-	print_ir_prog_cg_alloc(fun, "Shifting stack access");
+	print_ir_prog_cg_alloc(env, fun, "Shifting stack access");
 
 	// Step 11: Spill callee saved registers
 	if (fun->cg_info.spill_callee) {
 		spill_callee(fun);
-		print_ir_prog_cg_alloc(fun, "Spilling callee-saved regs");
+		print_ir_prog_cg_alloc(env, fun, "Spilling callee-saved regs");
 	}
 
 	// Step 12: Normalize
 	normalize(fun);
-	print_ir_prog_cg_alloc(fun, "Normalization");
+	print_ir_prog_cg_alloc(env, fun, "Normalization");
 
 	// Step 13: Direct Translation
 	translate(fun);
