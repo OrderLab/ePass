@@ -4,6 +4,12 @@
 
 KERNEL_PATH=/home/linsy/Projects/ebpf/eBPF-kernel
 
+if [ ! -d $KERNEL_PATH ]; then
+  echo "Directory does not exists."
+  exit 1
+fi
+
+
 rm -rf build/kernel
 
 mkdir -p build/kernel

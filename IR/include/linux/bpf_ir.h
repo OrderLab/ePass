@@ -199,12 +199,23 @@ enum ir_vr_type {
 	IR_VR_TYPE_64,
 };
 
+enum ir_loadimm_extra_type {
+	IR_LOADIMM_IMM64 = 0,
+	IR_LOADIMM_MAP_BY_FD,
+	IR_LOADIMM_MAP_VAL_FD,
+	IR_LOADIMM_VAR_ADDR,
+	IR_LOADIMM_CODE_ADDR,
+	IR_LOADIMM_MAP_BY_IDX,
+	IR_LOADIMM_MAP_VAL_IDX,
+};
+
 int bpf_ir_valid_vr_type(enum ir_vr_type type);
 
 enum ir_insn_type {
 	IR_INSN_ALLOC,
 	IR_INSN_STORE,
 	IR_INSN_LOAD,
+	IR_INSN_LOADIMM_EXTRA,
 	IR_INSN_STORERAW,
 	IR_INSN_LOADRAW,
 	// ALU
@@ -285,7 +296,11 @@ struct ir_insn {
 	// Array of phi_value
 	struct array phi;
 
-	__s32 fid;
+	__s32 fid; // Function ID
+
+	enum ir_loadimm_extra_type imm_extra_type; // For 64 imm load
+	__s64 imm64; // H (next_imm:32)(imm:32) L
+
 	enum ir_insn_type op;
 
 	// Linked list
