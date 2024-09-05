@@ -952,8 +952,7 @@ static void normalize(struct ir_function *fun)
 				// OK
 			} else if (insn->op == IR_INSN_JA) {
 				// OK
-			} else if (insn->op >= IR_INSN_JEQ &&
-				   insn->op < IR_INSN_PHI) {
+			} else if (is_cond_jmp(insn)) {
 				// jmp reg const/reg
 				// or
 				// jmp const/reg reg
@@ -1187,6 +1186,24 @@ static int check_need_spill(struct ir_function *fun)
 					load_stack_to_r0(fun, insn,
 							 &insn->addr_val.value,
 							 IR_VR_TYPE_64);
+					res = 1;
+				}
+			} else if (insn->op == IR_INSN_LOADIMM_EXTRA) {
+				// IMM64 Map instructions, must load to register
+				if (tdst == STACK) {
+					// stack = loadimm
+					// ==>
+					// R0 = loadimm
+					// stack = R0
+					struct ir_insn *new_insn =
+						create_assign_insn_cg(
+							insn,
+							bpf_ir_value_insn(
+								fun->cg_info
+									.regs[0]),
+							INSERT_BACK);
+					insn_cg(new_insn)->dst = dst_insn;
+					extra->dst = fun->cg_info.regs[0];
 					res = 1;
 				}
 			} else if (insn->op == IR_INSN_STORERAW) {
