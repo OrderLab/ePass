@@ -230,7 +230,7 @@ static int gen_bb(struct bb_info *ret, const struct bpf_insn *insns, size_t len)
 			new_insn.dst_reg = insn.dst_reg;
 			new_insn.imm = insn.imm;
 			new_insn.it = IMM;
-			new_insn.imm64 = 0;
+			new_insn.imm64 = insn.imm;
 			new_insn.off = insn.off;
 			new_insn.pos = pos;
 			if (pos + 1 < real_bb->end_pos &&
@@ -686,6 +686,13 @@ static int transform_bb(struct ssa_transform_env *env,
 				write_variable(env, insn.dst_reg, bb, imm_val);
 			} else if (insn.src_reg > 0 && insn.src_reg <= 0x06) {
 				// BPF MAP instructions
+				struct ir_insn *new_insn =
+					create_insn_back(bb->ir_bb);
+				new_insn->op = IR_INSN_LOADIMM_EXTRA;
+				new_insn->imm_extra_type = insn.src_reg;
+				new_insn->imm64 = insn.imm64;
+				write_variable(env, insn.dst_reg, bb,
+					       bpf_ir_value_insn(new_insn));
 			} else {
 				RAISE_ERROR("Not supported");
 			}
@@ -703,10 +710,8 @@ static int transform_bb(struct ssa_transform_env *env,
 			new_insn->vr_type = to_ir_ld_u(BPF_SIZE(code));
 			new_insn->addr_val = addr_val;
 
-			struct ir_value new_val;
-			new_val.type = IR_VALUE_INSN;
-			new_val.data.insn_d = new_insn;
-			write_variable(env, insn.dst_reg, bb, new_val);
+			write_variable(env, insn.dst_reg, bb,
+				       bpf_ir_value_insn(new_insn));
 		} else if (BPF_CLASS(code) == BPF_LDX &&
 			   BPF_MODE(code) == BPF_MEM) {
 			// Regular load
@@ -722,10 +727,8 @@ static int transform_bb(struct ssa_transform_env *env,
 			new_insn->vr_type = to_ir_ld_u(BPF_SIZE(code));
 			new_insn->addr_val = addr_val;
 
-			struct ir_value new_val;
-			new_val.type = IR_VALUE_INSN;
-			new_val.data.insn_d = new_insn;
-			write_variable(env, insn.dst_reg, bb, new_val);
+			write_variable(env, insn.dst_reg, bb,
+				       bpf_ir_value_insn(new_insn));
 		} else if (BPF_CLASS(code) == BPF_ST &&
 			   BPF_MODE(code) == BPF_MEM) {
 			// *(size *) (dst + offset) = imm32
