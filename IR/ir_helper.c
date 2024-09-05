@@ -212,6 +212,9 @@ void print_ir_insn_full(struct ir_insn *insn,
 		PRINT_LOG(" ");
 		print_address_value_full(insn->addr_val, print_ir);
 		break;
+	case IR_INSN_LOADIMM_EXTRA:
+		PRINT_LOG("loadimm(type%d) ", insn->imm_extra_type);
+		break;
 	case IR_INSN_STORERAW:
 		PRINT_LOG("storeraw ");
 		print_vr_type(insn->vr_type);
