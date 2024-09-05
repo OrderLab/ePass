@@ -42,9 +42,13 @@ void bpf_ir_print_to_log(struct bpf_ir_env *env, char *fmt, ...);
 
 #ifndef __KERNEL__
 
+#define PRINT_DBG printf
+
 #define PRINT_LOG bpf_ir_print_to_log
 
 #else
+
+#define PRINT_DBG prink
 
 #define PRINT_LOG bpf_ir_print_to_log
 
@@ -497,7 +501,7 @@ struct ir_function {
 
 // IR checks
 
-void bpf_ir_prog_check(struct ir_function *fun);
+void bpf_ir_prog_check(struct bpf_ir_env *env, struct ir_function *fun);
 
 /* Fun End */
 
@@ -536,9 +540,10 @@ void print_ir_prog(struct bpf_ir_env *env, struct ir_function *);
 void print_ir_prog_reachable(struct bpf_ir_env *env, struct ir_function *fun);
 
 void print_ir_prog_advanced(struct bpf_ir_env *env, struct ir_function *,
-			    void (*)(struct ir_basic_block *),
-			    void (*)(struct ir_insn *),
-			    void (*)(struct ir_insn *));
+			    void (*)(struct bpf_ir_env *env,
+				     struct ir_basic_block *),
+			    void (*)(struct bpf_ir_env *env, struct ir_insn *),
+			    void (*)(struct bpf_ir_env *env, struct ir_insn *));
 
 void print_ir_dst(struct bpf_ir_env *env, struct ir_insn *insn);
 

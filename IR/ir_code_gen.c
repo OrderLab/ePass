@@ -111,22 +111,22 @@ static void clean_cg(struct ir_function *fun)
 	bpf_ir_array_clear(&fun->cg_info.all_var);
 }
 
-static void print_ir_prog_pre_cg(struct ir_function *fun, char *msg)
+static void print_ir_prog_pre_cg(struct bpf_ir_env *env, struct ir_function *fun, char *msg)
 {
-	PRINT_LOG("\x1B[32m----- CG: %s -----\x1B[0m\n", msg);
-	print_ir_prog_advanced(fun, NULL, NULL, NULL);
+	PRINT_LOG(env, "\x1B[32m----- CG: %s -----\x1B[0m\n", msg);
+	print_ir_prog_advanced(env, fun, NULL, NULL, NULL);
 }
 
-static void print_ir_prog_cg_dst(struct ir_function *fun, char *msg)
+static void print_ir_prog_cg_dst(struct bpf_ir_env *env, struct ir_function *fun, char *msg)
 {
-	PRINT_LOG("\x1B[32m----- CG: %s -----\x1B[0m\n", msg);
-	print_ir_prog_advanced(fun, NULL, NULL, print_ir_dst);
+	PRINT_LOG(env, "\x1B[32m----- CG: %s -----\x1B[0m\n", msg);
+	print_ir_prog_advanced(env, fun, NULL, NULL, print_ir_dst);
 }
 
-static void print_ir_prog_cg_alloc(struct ir_function *fun, char *msg)
+static void print_ir_prog_cg_alloc(struct bpf_ir_env *env, struct ir_function *fun, char *msg)
 {
-	PRINT_LOG("\x1B[32m----- CG: %s -----\x1B[0m\n", msg);
-	print_ir_prog_advanced(fun, NULL, NULL, print_ir_alloc);
+	PRINT_LOG(env, "\x1B[32m----- CG: %s -----\x1B[0m\n", msg);
+	print_ir_prog_advanced(env, fun, NULL, NULL, print_ir_alloc);
 }
 
 static int synthesize(struct ir_function *fun)
@@ -781,14 +781,14 @@ static void print_insn_extra(struct ir_insn *insn)
 	PRINT_LOG("\n-------------\n");
 }
 
-static void liveness_analysis(struct ir_function *fun)
+static void liveness_analysis(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	// TODO: Encode Calling convention into GEN KILL
 	gen_kill(fun);
 	in_out(fun);
 	PRINT_LOG("--------------\n");
-	print_ir_prog_advanced(fun, NULL, print_insn_extra, print_ir_dst);
-	print_ir_prog_advanced(fun, NULL, NULL, print_ir_dst);
+	print_ir_prog_advanced(env, fun, NULL, print_insn_extra, print_ir_dst);
+	print_ir_prog_advanced(env, fun, NULL, NULL, print_ir_dst);
 }
 
 static enum val_type vtype_insn(struct ir_insn *insn)
