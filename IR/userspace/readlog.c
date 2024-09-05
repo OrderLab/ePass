@@ -37,7 +37,9 @@ int main(int argc, char **argv)
 	}
 
 	printf("Loaded program of size %zu\n", index);
-	bpf_ir_run(insns, index);
+	struct bpf_ir_env *env = malloc_proto(sizeof(struct bpf_ir_env));
+	bpf_ir_run(env, insns, index);
+	free_proto(env);
 
 	fclose(fp);
 	return 0;

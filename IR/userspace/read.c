@@ -15,6 +15,8 @@ int main(int argn, char **argv)
 	size_t sz = bpf_program__insn_cnt(prog);
 	const struct bpf_insn *insn = bpf_program__insns(prog);
 	// bpf_program__set_insns
-	bpf_ir_run(insn, sz);
+	struct bpf_ir_env *env = malloc_proto(sizeof(struct bpf_ir_env));
+	bpf_ir_run(env, insn, sz);
+	free_proto(env);
 	bpf_object__close(obj);
 }

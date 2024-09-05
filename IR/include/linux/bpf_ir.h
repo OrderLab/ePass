@@ -11,8 +11,6 @@
 #include "list.h"
 #include <stddef.h>
 
-#define PRINT_LOG printf
-
 #include "stdint.h"
 
 #define SIZET_MAX SIZE_MAX
@@ -23,13 +21,36 @@
 #include <linux/sort.h>
 #include <linux/list.h>
 
-#define PRINT_LOG printk
-
 #define SIZET_MAX ULONG_MAX
 
 #define qsort(a, b, c, d) sort(a, b, c, d, NULL)
 
 #endif
+
+/* IR Env Start */
+
+// A environment for communicating with external functions
+
+#define BPF_IR_LOG_SIZE 10000
+
+struct bpf_ir_env {
+	char log[BPF_IR_LOG_SIZE];
+	size_t log_pos;
+};
+
+void bpf_ir_print_to_log(struct bpf_ir_env *env, char *fmt, ...);
+
+#ifndef __KERNEL__
+
+#define PRINT_LOG bpf_ir_print_to_log
+
+#else
+
+#define PRINT_LOG bpf_ir_print_to_log
+
+#endif
+
+/* IR Env End */
 
 /* Array Start */
 
@@ -71,11 +92,11 @@ int bpf_ir_array_clone(struct array *res, struct array *arr);
 /* DBG Macro Start */
 #ifndef __KERNEL__
 
-#define CRITICAL(str)                                                          \
-	{                                                                      \
-		PRINT_LOG("%s:%d <%s> %s\n", __FILE__, __LINE__, __FUNCTION__, \
-			  str);                                                \
-		exit(1);                                                       \
+#define CRITICAL(str)                                                       \
+	{                                                                   \
+		printf("%s:%d <%s> %s\n", __FILE__, __LINE__, __FUNCTION__, \
+		       str);                                                \
+		exit(1);                                                    \
 	}
 
 #else
@@ -88,11 +109,11 @@ int bpf_ir_array_clone(struct array *res, struct array *arr);
 
 #endif
 
-#define RAISE_ERROR(str)                                                       \
-	{                                                                      \
-		PRINT_LOG("%s:%d <%s> %s\n", __FILE__, __LINE__, __FUNCTION__, \
-			  str);                                                \
-		return -ENOSYS;                                                \
+#define RAISE_ERROR(str)                                              \
+	{                                                             \
+		PRINT_LOG(env, "%s:%d <%s> %s\n", __FILE__, __LINE__, \
+			  __FUNCTION__, str);                         \
+		return -ENOSYS;                                       \
 	}
 
 #define DBGASSERT(cond)                       \
@@ -421,7 +442,8 @@ struct error {
 struct ir_basic_block *bpf_ir_init_bb_raw(void);
 
 // Main interface
-int bpf_ir_run(const struct bpf_insn *insns, size_t len);
+int bpf_ir_run(struct bpf_ir_env *env, const struct bpf_insn *insns,
+	       size_t len);
 
 /* Fun Start */
 
@@ -509,18 +531,18 @@ int bpf_ir_bb_empty(struct ir_basic_block *bb);
 
 void clean_env_all(struct ir_function *fun);
 
-void print_ir_prog(struct ir_function *);
+void print_ir_prog(struct bpf_ir_env *env, struct ir_function *);
 
-void print_ir_prog_reachable(struct ir_function *fun);
+void print_ir_prog_reachable(struct bpf_ir_env *env, struct ir_function *fun);
 
-void print_ir_prog_advanced(struct ir_function *,
+void print_ir_prog_advanced(struct bpf_ir_env *env, struct ir_function *,
 			    void (*)(struct ir_basic_block *),
 			    void (*)(struct ir_insn *),
 			    void (*)(struct ir_insn *));
 
-void print_ir_dst(struct ir_insn *insn);
+void print_ir_dst(struct bpf_ir_env *env, struct ir_insn *insn);
 
-void print_ir_alloc(struct ir_insn *insn);
+void print_ir_alloc(struct bpf_ir_env *env, struct ir_insn *insn);
 
 void clean_env(struct ir_function *);
 
@@ -530,29 +552,29 @@ void tag_ir(struct ir_function *fun);
 // Remove all tag information
 void clean_tag(struct ir_function *);
 
-void print_address_value(struct ir_address_value v);
+void print_address_value(struct bpf_ir_env *env, struct ir_address_value v);
 
-void print_vr_type(enum ir_vr_type t);
+void print_vr_type(struct bpf_ir_env *env, enum ir_vr_type t);
 
-void print_phi(struct array *phi);
+void print_phi(struct bpf_ir_env *env, struct array *phi);
 
 void assign_id(struct ir_basic_block *bb, size_t *cnt, size_t *bb_cnt);
 
-void print_ir_insn(struct ir_insn *);
+void print_ir_insn(struct bpf_ir_env *env, struct ir_insn *);
 
-void print_ir_value(struct ir_value v);
+void print_ir_value(struct bpf_ir_env *env, struct ir_value v);
 
-void print_raw_ir_insn(struct ir_insn *insn);
+void print_raw_ir_insn(struct bpf_ir_env *env, struct ir_insn *insn);
 
-void print_raw_ir_bb(struct ir_basic_block *bb);
+void print_raw_ir_bb(struct bpf_ir_env *env, struct ir_basic_block *bb);
 
-void print_insn_ptr_base(struct ir_insn *insn);
+void print_insn_ptr_base(struct bpf_ir_env *env, struct ir_insn *insn);
 
 void print_ir_err_init(struct ir_function *fun);
 
-void print_ir_insn_err(struct ir_insn *insn, char *msg);
+void print_ir_insn_err(struct bpf_ir_env *env, struct ir_insn *insn, char *msg);
 
-void print_ir_bb_err(struct ir_basic_block *bb);
+void print_ir_bb_err(struct bpf_ir_env *env, struct ir_basic_block *bb);
 
 /* IR Helper End */
 
@@ -789,7 +811,7 @@ struct ir_constraint {
 	struct ir_value start;
 	struct ir_value end;
 
-	// Constrain value
+	// Constraint value
 	struct ir_value cval;
 
 	// Real value to be compared
