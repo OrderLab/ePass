@@ -846,6 +846,9 @@ static void normalize(struct ir_function *fun)
 				CRITICAL("Error");
 			} else if (insn->op == IR_INSN_LOADRAW) {
 				// OK
+
+			} else if (insn->op == IR_INSN_LOADIMM_EXTRA) {
+				// OK
 			} else if (insn->op == IR_INSN_STORERAW) {
 				// OK
 			} else if (is_alu(insn)) {
@@ -1839,6 +1842,27 @@ static void translate(struct ir_function *fun)
 				extra->translated[0] = load_addr_to_reg(
 					get_alloc_reg(dst_insn), insn->addr_val,
 					insn->vr_type);
+			} else if (insn->op == IR_INSN_LOADIMM_EXTRA) {
+				DBGASSERT(tdst == REG);
+				extra->translated[0].opcode = BPF_IMM | BPF_LD |
+							      BPF_DW;
+				DBGASSERT(insn->imm_extra_type <= 0x6);
+				extra->translated[0].src_reg =
+					insn->imm_extra_type;
+				// 0 2 6 needs next
+				if (insn->imm_extra_type == IR_LOADIMM_IMM64 ||
+				    insn->imm_extra_type ==
+					    IR_LOADIMM_MAP_VAL_FD ||
+				    insn->imm_extra_type ==
+					    IR_LOADIMM_MAP_VAL_IDX) {
+					extra->translated[0].it = IMM64;
+					extra->translated[0].imm64 =
+						insn->imm64;
+				} else {
+					extra->translated[0].imm = insn->imm64 &
+								   0xFFFFFFFF;
+					extra->translated[0].it = IMM;
+				}
 			} else if (insn->op == IR_INSN_STORERAW) {
 				// storeraw
 				if (insn->addr_val.value.type ==
