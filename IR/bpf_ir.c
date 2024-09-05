@@ -121,6 +121,12 @@ static int init_ir_bb(struct pre_ir_basic_block *bb)
 	return 0;
 }
 
+static __s64 to_s64(__s32 imm, __s32 next_imm)
+{
+	__u64 imml = (__u64)imm & 0xFFFFFFFF;
+	return ((__s64)next_imm << 32) | imml;
+}
+
 static int gen_bb(struct bb_info *ret, const struct bpf_insn *insns, size_t len)
 {
 	struct array bb_entrance;
@@ -229,10 +235,8 @@ static int gen_bb(struct bb_info *ret, const struct bpf_insn *insns, size_t len)
 			new_insn.pos = pos;
 			if (pos + 1 < real_bb->end_pos &&
 			    insns[pos + 1].code == 0) {
-				__u64 imml = (__u64)insn.imm & 0xFFFFFFFF;
 				new_insn.imm64 =
-					((__s64)(insns[pos + 1].imm) << 32) |
-					imml;
+					to_s64(insn.imm, insns[pos + 1].imm);
 				new_insn.it = IMM64;
 				pos++;
 			}
@@ -680,6 +684,8 @@ static int transform_bb(struct ssa_transform_env *env,
 				imm_val.data.constant_d = insn.imm64;
 				imm_val.alu_type = IR_ALU_64;
 				write_variable(env, insn.dst_reg, bb, imm_val);
+			} else if (insn.src_reg > 0 && insn.src_reg <= 0x06) {
+				// BPF MAP instructions
 			} else {
 				RAISE_ERROR("Not supported");
 			}
