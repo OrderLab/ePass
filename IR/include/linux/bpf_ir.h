@@ -54,6 +54,8 @@ void bpf_ir_print_to_log(struct bpf_ir_env *env, char *fmt, ...);
 
 #endif
 
+void bpf_ir_print_log_dbg(struct bpf_ir_env *env);
+
 /* IR Env End */
 
 /* Array Start */

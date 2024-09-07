@@ -144,8 +144,8 @@ static int synthesize(struct ir_function *fun)
 			for (__u8 i = 0; i < extra->translated_num; ++i) {
 				struct pre_ir_insn translated_insn =
 					extra->translated[i];
-				PRINT_DBG("Writing to insn %zu\n",
-					  translated_insn.pos);
+				// PRINT_DBG("Writing to insn %zu\n",
+				// 	  translated_insn.pos);
 				struct bpf_insn *real_insn =
 					&fun->cg_info.prog[translated_insn.pos];
 				real_insn->code = translated_insn.opcode;

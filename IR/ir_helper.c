@@ -78,7 +78,8 @@ void print_insn_ptr_base(struct bpf_ir_env *env, struct ir_insn *insn)
 }
 
 static void print_insn_ptr(struct bpf_ir_env *env, struct ir_insn *insn,
-			   void (*print_ir)(struct bpf_ir_env *env, struct ir_insn *))
+			   void (*print_ir)(struct bpf_ir_env *env,
+					    struct ir_insn *))
 {
 	if (print_ir) {
 		print_ir(env, insn);
@@ -97,7 +98,8 @@ void print_bb_ptr(struct bpf_ir_env *env, struct ir_basic_block *insn)
 }
 
 void print_ir_value_full(struct bpf_ir_env *env, struct ir_value v,
-			 void (*print_ir)(struct bpf_ir_env *env, struct ir_insn *))
+			 void (*print_ir)(struct bpf_ir_env *env,
+					  struct ir_insn *))
 {
 	switch (v.type) {
 	case IR_VALUE_INSN:
@@ -126,7 +128,8 @@ void print_ir_value(struct bpf_ir_env *env, struct ir_value v)
 }
 
 void print_address_value_full(struct bpf_ir_env *env, struct ir_address_value v,
-			      void (*print_ir)(struct bpf_ir_env *env, struct ir_insn *))
+			      void (*print_ir)(struct bpf_ir_env *env,
+					       struct ir_insn *))
 {
 	print_ir_value_full(env, v.value, print_ir);
 	if (v.offset != 0) {
@@ -193,7 +196,8 @@ void print_alu(struct bpf_ir_env *env, enum ir_alu_type ty, const char *str)
     Print the IR insn
  */
 void print_ir_insn_full(struct bpf_ir_env *env, struct ir_insn *insn,
-			void (*print_ir)(struct bpf_ir_env *env, struct ir_insn *))
+			void (*print_ir)(struct bpf_ir_env *env,
+					 struct ir_insn *))
 {
 	switch (insn->op) {
 	case IR_INSN_ALLOC:
@@ -356,7 +360,8 @@ void print_ir_insn(struct bpf_ir_env *env, struct ir_insn *insn)
 }
 
 void print_raw_ir_insn_full(struct bpf_ir_env *env, struct ir_insn *insn,
-			    void (*print_ir)(struct bpf_ir_env *env, struct ir_insn *))
+			    void (*print_ir)(struct bpf_ir_env *env,
+					     struct ir_insn *))
 {
 	if (print_ir) {
 		print_ir(env, insn);
@@ -373,10 +378,11 @@ void print_raw_ir_insn(struct bpf_ir_env *env, struct ir_insn *insn)
 	print_raw_ir_insn_full(env, insn, 0);
 }
 
-void print_ir_bb_no_rec(struct bpf_ir_env *env, struct ir_basic_block *bb,
-			void (*post_bb)(struct bpf_ir_env *env, struct ir_basic_block *),
-			void (*post_insn)(struct bpf_ir_env *env, struct ir_insn *),
-			void (*print_insn_name)(struct bpf_ir_env *env, struct ir_insn *))
+void print_ir_bb_no_rec(
+	struct bpf_ir_env *env, struct ir_basic_block *bb,
+	void (*post_bb)(struct bpf_ir_env *env, struct ir_basic_block *),
+	void (*post_insn)(struct bpf_ir_env *env, struct ir_insn *),
+	void (*print_insn_name)(struct bpf_ir_env *env, struct ir_insn *))
 {
 	PRINT_LOG(env, "b%zu:\n", bb->_id);
 	struct list_head *p = NULL;
@@ -406,9 +412,11 @@ void print_ir_bb_no_rec(struct bpf_ir_env *env, struct ir_basic_block *bb,
 }
 
 void print_ir_bb(struct bpf_ir_env *env, struct ir_basic_block *bb,
-		 void (*post_bb)(struct bpf_ir_env *env, struct ir_basic_block *),
+		 void (*post_bb)(struct bpf_ir_env *env,
+				 struct ir_basic_block *),
 		 void (*post_insn)(struct bpf_ir_env *env, struct ir_insn *),
-		 void (*print_insn_name)(struct bpf_ir_env *env, struct ir_insn *))
+		 void (*print_insn_name)(struct bpf_ir_env *env,
+					 struct ir_insn *))
 {
 	if (bb->_visited) {
 		return;
@@ -433,7 +441,8 @@ void print_ir_prog_reachable(struct bpf_ir_env *env, struct ir_function *fun)
 }
 
 void print_raw_ir_bb_full(struct bpf_ir_env *env, struct ir_basic_block *bb,
-			  void (*print_ir)(struct bpf_ir_env *env, struct ir_insn *))
+			  void (*print_ir)(struct bpf_ir_env *env,
+					   struct ir_insn *))
 {
 	PRINT_LOG(env, "b%p:\n", bb);
 	struct list_head *p = NULL;
@@ -527,10 +536,11 @@ void print_ir_alloc(struct bpf_ir_env *env, struct ir_insn *insn)
 	}
 }
 
-void print_ir_prog_advanced(struct bpf_ir_env *env, struct ir_function *fun,
-			    void (*post_bb)(struct bpf_ir_env *env, struct ir_basic_block *),
-			    void (*post_insn)(struct bpf_ir_env *env, struct ir_insn *),
-			    void (*print_insn_name)(struct bpf_ir_env *env, struct ir_insn *))
+void print_ir_prog_advanced(
+	struct bpf_ir_env *env, struct ir_function *fun,
+	void (*post_bb)(struct bpf_ir_env *env, struct ir_basic_block *),
+	void (*post_insn)(struct bpf_ir_env *env, struct ir_insn *),
+	void (*print_insn_name)(struct bpf_ir_env *env, struct ir_insn *))
 {
 	tag_ir(fun);
 	print_ir_bb(env, fun->entry, post_bb, post_insn, print_insn_name);
@@ -601,4 +611,12 @@ void bpf_ir_print_to_log(struct bpf_ir_env *env, char *fmt, ...)
 	memcpy(env->log + env->log_pos, buf, len);
 	env->log_pos += len;
 	va_end(args);
+}
+
+void bpf_ir_print_log_dbg(struct bpf_ir_env *env)
+{
+	env->log[env->log_pos] = '\0';
+	PRINT_DBG("----- Begin of Log -----\n");
+	PRINT_DBG("%s", env->log);
+	PRINT_DBG("----- End of Log -----\nLog size: %zu\n", env->log_pos);
 }

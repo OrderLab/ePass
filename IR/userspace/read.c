@@ -1,5 +1,6 @@
 #include "bpf/libbpf.h"
 #include "linux/bpf_ir.h"
+#include <stdio.h>
 
 int main(int argn, char **argv)
 {
@@ -17,6 +18,7 @@ int main(int argn, char **argv)
 	// bpf_program__set_insns
 	struct bpf_ir_env *env = malloc_proto(sizeof(struct bpf_ir_env));
 	bpf_ir_run(env, insn, sz);
+	bpf_ir_print_log_dbg(env);
 	free_proto(env);
 	bpf_object__close(obj);
 }
