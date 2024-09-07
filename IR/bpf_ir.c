@@ -1004,7 +1004,7 @@ static void add_reach(struct bpf_ir_env *env, struct ir_function *fun,
 
 static void gen_reachable_bbs(struct bpf_ir_env *env, struct ir_function *fun)
 {
-	clean_env(fun);
+	bpf_ir_clean_visited(fun);
 	bpf_ir_array_clear(&fun->reachable_bbs);
 	add_reach(env, fun, fun->entry);
 }
@@ -1027,7 +1027,7 @@ static int run_passes(struct bpf_ir_env *env, struct ir_function *fun)
 	bpf_ir_prog_check(env, fun);
 	for (size_t i = 0; i < sizeof(passes) / sizeof(passes[0]); ++i) {
 		bpf_ir_fix_bb_succ(fun);
-		clean_env_all(fun);
+		bpf_ir_clean_metadata_all(fun);
 		gen_reachable_bbs(env, fun);
 		gen_end_bbs(fun);
 		PRINT_LOG(env,
@@ -1039,7 +1039,7 @@ static int run_passes(struct bpf_ir_env *env, struct ir_function *fun)
 		print_ir_prog(env, fun);
 	}
 	bpf_ir_fix_bb_succ(fun);
-	clean_env_all(fun);
+	bpf_ir_clean_metadata_all(fun);
 	gen_reachable_bbs(env, fun);
 	gen_end_bbs(fun);
 	return 0;

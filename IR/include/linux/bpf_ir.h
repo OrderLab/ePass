@@ -535,7 +535,7 @@ int bpf_ir_bb_empty(struct ir_basic_block *bb);
 
 /* IR Helper Start */
 
-void clean_env_all(struct ir_function *fun);
+void bpf_ir_clean_metadata_all(struct ir_function *fun);
 
 void print_ir_prog(struct bpf_ir_env *env, struct ir_function *);
 
@@ -551,13 +551,13 @@ void print_ir_dst(struct bpf_ir_env *env, struct ir_insn *insn);
 
 void print_ir_alloc(struct bpf_ir_env *env, struct ir_insn *insn);
 
-void clean_env(struct ir_function *);
+void bpf_ir_clean_visited(struct ir_function *);
 
 // Tag the instruction and BB
 void tag_ir(struct ir_function *fun);
 
-// Remove all tag information
-void clean_tag(struct ir_function *);
+// Remove id
+void bpf_ir_clean_id(struct ir_function *);
 
 void print_address_value(struct bpf_ir_env *env, struct ir_address_value v);
 
@@ -596,20 +596,16 @@ enum insert_position {
 };
 
 // Return an array of struct ir_value*
-struct array get_operands(struct ir_insn *insn);
+struct array bpf_ir_get_operands(struct ir_insn *insn);
 
-void replace_all_usage(struct ir_insn *insn, struct ir_value rep);
+void bpf_ir_replace_all_usage(struct ir_insn *insn, struct ir_value rep);
 
-void replace_all_usage_except(struct ir_insn *insn, struct ir_value rep,
-			      struct ir_insn *except);
+void bpf_ir_replace_all_usage_except(struct ir_insn *insn, struct ir_value rep,
+				     struct ir_insn *except);
 
-void erase_insn(struct ir_insn *insn);
+void bpf_ir_erase_insn(struct ir_insn *insn);
 
-int is_last_insn(struct ir_insn *insn);
-
-// Erase an instruction without checking the users
-// Used in code gen
-void erase_insn_raw(struct ir_insn *insn);
+int bpf_ir_is_last_insn(struct ir_insn *insn);
 
 int is_void(struct ir_insn *insn);
 

@@ -41,7 +41,7 @@ void replace_operand(struct ir_insn *insn, struct ir_value v1,
 	}
 }
 
-void replace_all_usage(struct ir_insn *insn, struct ir_value rep)
+void bpf_ir_replace_all_usage(struct ir_insn *insn, struct ir_value rep)
 {
 	struct ir_insn **pos;
 	struct array users = insn->users;
@@ -49,7 +49,7 @@ void replace_all_usage(struct ir_insn *insn, struct ir_value rep)
 	array_for(pos, users)
 	{
 		struct ir_insn *user = *pos;
-		struct array operands = get_operands(user);
+		struct array operands = bpf_ir_get_operands(user);
 		struct ir_value **pos2;
 		array_for(pos2, operands)
 		{
@@ -65,8 +65,8 @@ void replace_all_usage(struct ir_insn *insn, struct ir_value rep)
 	bpf_ir_array_free(&users);
 }
 
-void replace_all_usage_except(struct ir_insn *insn, struct ir_value rep,
-			      struct ir_insn *except)
+void bpf_ir_replace_all_usage_except(struct ir_insn *insn, struct ir_value rep,
+				     struct ir_insn *except)
 {
 	struct ir_insn **pos;
 	struct array users = insn->users;
@@ -78,7 +78,7 @@ void replace_all_usage_except(struct ir_insn *insn, struct ir_value rep,
 			bpf_ir_array_push(&insn->users, &user);
 			continue;
 		}
-		struct array operands = get_operands(user);
+		struct array operands = bpf_ir_get_operands(user);
 		struct ir_value **pos2;
 		array_for(pos2, operands)
 		{
@@ -94,7 +94,7 @@ void replace_all_usage_except(struct ir_insn *insn, struct ir_value rep,
 	bpf_ir_array_free(&users);
 }
 
-struct array get_operands(struct ir_insn *insn)
+struct array bpf_ir_get_operands(struct ir_insn *insn)
 {
 	struct array uses;
 	INIT_ARRAY(&uses, struct ir_value *);
@@ -119,21 +119,15 @@ struct array get_operands(struct ir_insn *insn)
 	return uses;
 }
 
-int is_last_insn(struct ir_insn *insn)
+int bpf_ir_is_last_insn(struct ir_insn *insn)
 {
 	return insn->parent_bb->ir_insn_head.prev == &insn->list_ptr;
 }
 
-void erase_insn_raw(struct ir_insn *insn)
-{
-	list_del(&insn->list_ptr);
-	free_proto(insn);
-}
-
-void erase_insn(struct ir_insn *insn)
+void bpf_ir_erase_insn(struct ir_insn *insn)
 {
 	// TODO: remove users
-	struct array operands = get_operands(insn);
+	struct array operands = bpf_ir_get_operands(insn);
 	struct ir_value **pos2;
 	array_for(pos2, operands)
 	{

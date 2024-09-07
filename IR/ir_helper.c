@@ -11,25 +11,27 @@ int bpf_ir_valid_vr_type(enum ir_vr_type type)
 	return type >= IR_VR_TYPE_8 && type <= IR_VR_TYPE_64;
 }
 
-/// Reset visited flag
-void clean_env_all(struct ir_function *fun)
+/// Reset visited flag and user_data
+void bpf_ir_clean_metadata_all(struct ir_function *fun)
 {
 	for (size_t i = 0; i < fun->all_bbs.num_elem; ++i) {
 		struct ir_basic_block *bb =
 			((struct ir_basic_block **)(fun->all_bbs.data))[i];
 		bb->_visited = 0;
+		bb->_id = -1;
 		bb->user_data = NULL;
 		struct list_head *p = NULL;
 		list_for_each(p, &bb->ir_insn_head) {
 			struct ir_insn *insn =
 				list_entry(p, struct ir_insn, list_ptr);
 			insn->user_data = NULL;
+			insn->_insn_id = -1;
 			insn->_visited = 0;
 		}
 	}
 }
 
-void clean_env(struct ir_function *fun)
+void bpf_ir_clean_visited(struct ir_function *fun)
 {
 	for (size_t i = 0; i < fun->all_bbs.num_elem; ++i) {
 		struct ir_basic_block *bb =
@@ -45,7 +47,7 @@ void clean_env(struct ir_function *fun)
 }
 
 /// Reset instruction/BB ID
-void clean_tag(struct ir_function *fun)
+void bpf_ir_clean_id(struct ir_function *fun)
 {
 	for (size_t i = 0; i < fun->all_bbs.num_elem; ++i) {
 		struct ir_basic_block *ir_bb =
@@ -481,12 +483,12 @@ void assign_id(struct ir_basic_block *bb, size_t *cnt, size_t *bb_cnt)
 
 void tag_ir(struct ir_function *fun)
 {
-	clean_tag(fun);
+	bpf_ir_clean_id(fun);
 	size_t cnt = 0;
 	size_t bb_cnt = 0;
-	clean_env(fun);
+	bpf_ir_clean_visited(fun);
 	assign_id(fun->entry, &cnt, &bb_cnt);
-	clean_env(fun);
+	bpf_ir_clean_visited(fun);
 }
 
 void print_bb_succ(struct bpf_ir_env *env, struct ir_basic_block *bb)

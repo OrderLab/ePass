@@ -29,9 +29,9 @@ void try_remove_trivial_phi(struct ir_insn *phi)
 	if (!same_has_value) {
 		same.type = IR_VALUE_UNDEF;
 	}
-	replace_all_usage_except(phi, same, phi);
+	bpf_ir_replace_all_usage_except(phi, same, phi);
 
-	erase_insn(phi);
+	bpf_ir_erase_insn(phi);
 }
 
 void remove_trivial_phi(struct ir_function *fun)

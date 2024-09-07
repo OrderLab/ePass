@@ -111,19 +111,22 @@ static void clean_cg(struct ir_function *fun)
 	bpf_ir_array_clear(&fun->cg_info.all_var);
 }
 
-static void print_ir_prog_pre_cg(struct bpf_ir_env *env, struct ir_function *fun, char *msg)
+static void print_ir_prog_pre_cg(struct bpf_ir_env *env,
+				 struct ir_function *fun, char *msg)
 {
 	PRINT_LOG(env, "\x1B[32m----- CG: %s -----\x1B[0m\n", msg);
 	print_ir_prog_advanced(env, fun, NULL, NULL, NULL);
 }
 
-static void print_ir_prog_cg_dst(struct bpf_ir_env *env, struct ir_function *fun, char *msg)
+static void print_ir_prog_cg_dst(struct bpf_ir_env *env,
+				 struct ir_function *fun, char *msg)
 {
 	PRINT_LOG(env, "\x1B[32m----- CG: %s -----\x1B[0m\n", msg);
 	print_ir_prog_advanced(env, fun, NULL, NULL, print_ir_dst);
 }
 
-static void print_ir_prog_cg_alloc(struct bpf_ir_env *env, struct ir_function *fun, char *msg)
+static void print_ir_prog_cg_alloc(struct bpf_ir_env *env,
+				   struct ir_function *fun, char *msg)
 {
 	PRINT_LOG(env, "\x1B[32m----- CG: %s -----\x1B[0m\n", msg);
 	print_ir_prog_advanced(env, fun, NULL, NULL, print_ir_alloc);
@@ -261,11 +264,18 @@ static void remove_phi(struct ir_function *fun)
 
 		DBGASSERT(repr == insn_dst(repr));
 
-		replace_all_usage(insn, bpf_ir_value_insn(repr));
-		erase_insn(insn);
+		bpf_ir_replace_all_usage(insn, bpf_ir_value_insn(repr));
+		bpf_ir_erase_insn(insn);
 	}
 
 	bpf_ir_array_free(&phi_insns);
+}
+
+// Erase an instruction without checking the users
+static void bpf_ir_erase_insn_raw(struct ir_insn *insn)
+{
+	list_del(&insn->list_ptr);
+	free_proto(insn);
 }
 
 static void coaleasing(struct ir_function *fun)
@@ -288,7 +298,7 @@ static void coaleasing(struct ir_function *fun)
 					if (insn_cg(src)->alloc_reg ==
 					    insn_cg(insn_dst)->alloc_reg) {
 						// Remove
-						erase_insn_raw(pos2);
+						bpf_ir_erase_insn_raw(pos2);
 					}
 				}
 			}
@@ -313,7 +323,8 @@ static void build_conflict(struct ir_insn *v1, struct ir_insn *v2)
 	bpf_ir_array_push_unique(&insn_cg(v2)->adj, &v1);
 }
 
-static void bpf_ir_print_interference_graph(struct bpf_ir_env *env, struct ir_function *fun)
+static void bpf_ir_print_interference_graph(struct bpf_ir_env *env,
+					    struct ir_function *fun)
 {
 	// Tag the IR to have the actual number to print
 	tag_ir(fun);
@@ -478,8 +489,8 @@ static void explicit_reg(struct ir_function *fun)
 					insn,
 					bpf_ir_value_insn(fun->cg_info.regs[0]),
 					INSERT_BACK);
-				replace_all_usage(insn,
-						  bpf_ir_value_insn(new_insn));
+				bpf_ir_replace_all_usage(
+					insn, bpf_ir_value_insn(new_insn));
 			}
 
 			if (insn->op == IR_INSN_RET) {
@@ -505,8 +516,8 @@ static void explicit_reg(struct ir_function *fun)
 				fun->entry,
 				bpf_ir_value_insn(fun->cg_info.regs[i + 1]),
 				INSERT_FRONT_AFTER_PHI);
-			replace_all_usage(fun->function_arg[i],
-					  bpf_ir_value_insn(new_insn));
+			bpf_ir_replace_all_usage(fun->function_arg[i],
+						 bpf_ir_value_insn(new_insn));
 		}
 	}
 }
@@ -608,7 +619,7 @@ static void gen_kill(struct ir_function *fun)
 				bpf_ir_array_push_unique(&insn_cg->kill,
 							 &insn_dst);
 			}
-			struct array value_uses = get_operands(pos2);
+			struct array value_uses = bpf_ir_get_operands(pos2);
 			struct ir_value **pos3;
 			array_for(pos3, value_uses)
 			{
@@ -1561,7 +1572,7 @@ static void add_stack_offset_pre_cg(struct ir_function *fun)
 			// insn->addr_val.offset += offset;
 			continue;
 		}
-		struct array value_uses = get_operands(insn);
+		struct array value_uses = bpf_ir_get_operands(insn);
 		struct ir_value **pos2;
 		array_for(pos2, value_uses)
 		{
@@ -1597,7 +1608,7 @@ static void add_stack_offset(struct ir_function *fun, __s16 offset)
 				continue;
 			}
 		}
-		struct array value_uses = get_operands(insn);
+		struct array value_uses = bpf_ir_get_operands(insn);
 		struct ir_value **pos2;
 		array_for(pos2, value_uses)
 		{

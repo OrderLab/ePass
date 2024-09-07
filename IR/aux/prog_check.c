@@ -8,7 +8,7 @@ static void check_insn_users_use_insn(struct bpf_ir_env *env,
 	{
 		struct ir_insn *user = *pos;
 		// Check if the user actually uses this instruction
-		struct array operands = get_operands(user);
+		struct array operands = bpf_ir_get_operands(user);
 		struct ir_value **val;
 		int found = 0;
 		array_for(val, operands)
@@ -107,7 +107,7 @@ static void check_insn(struct bpf_ir_env *env, struct ir_function *fun)
 
 static void check_insn_operand(struct bpf_ir_env *env, struct ir_insn *insn)
 {
-	struct array operands = get_operands(insn);
+	struct array operands = bpf_ir_get_operands(insn);
 	struct ir_value **val;
 	array_for(val, operands)
 	{
@@ -219,7 +219,7 @@ static void check_jumping(struct bpf_ir_env *env, struct ir_function *fun)
 		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
 			if (is_jmp(insn)) {
 				jmp_exists = 1;
-				if (!is_last_insn(insn)) {
+				if (!bpf_ir_is_last_insn(insn)) {
 					// Error
 
 					print_ir_insn_err(env, insn, NULL);
