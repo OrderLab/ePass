@@ -4,20 +4,23 @@
 
 KERNEL_PATH=/home/linsy/Projects/ebpf/eBPF-kernel
 
+if [ ! -d $KERNEL_PATH ]; then
+  echo "Directory does not exists."
+  exit 1
+fi
+
+
 rm -rf build/kernel
 
 mkdir -p build/kernel
 
-files=$(find . -iname '*.c' -not -path "./build/*" -not -path "./tests/*")
+files=$(find . -iname '*.c' -not -path "./build/*" -not -path "./tests/*" -not -path "./userspace/*")
 
 for file in $files; do
     cp $file build/kernel
 done
 
-
 cd build/kernel
-
-rm read.c probe.c
 
 cfiles=$(ls *.c)
 

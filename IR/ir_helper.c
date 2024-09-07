@@ -10,25 +10,27 @@ int bpf_ir_valid_vr_type(enum ir_vr_type type)
 	return type >= IR_VR_TYPE_8 && type <= IR_VR_TYPE_64;
 }
 
-/// Reset visited flag
-void clean_env_all(struct ir_function *fun)
+/// Reset visited flag and user_data
+void bpf_ir_clean_metadata_all(struct ir_function *fun)
 {
 	for (size_t i = 0; i < fun->all_bbs.num_elem; ++i) {
 		struct ir_basic_block *bb =
 			((struct ir_basic_block **)(fun->all_bbs.data))[i];
 		bb->_visited = 0;
+		bb->_id = -1;
 		bb->user_data = NULL;
 		struct list_head *p = NULL;
 		list_for_each(p, &bb->ir_insn_head) {
 			struct ir_insn *insn =
 				list_entry(p, struct ir_insn, list_ptr);
 			insn->user_data = NULL;
+			insn->_insn_id = -1;
 			insn->_visited = 0;
 		}
 	}
 }
 
-void clean_env(struct ir_function *fun)
+void bpf_ir_clean_visited(struct ir_function *fun)
 {
 	for (size_t i = 0; i < fun->all_bbs.num_elem; ++i) {
 		struct ir_basic_block *bb =
@@ -44,7 +46,7 @@ void clean_env(struct ir_function *fun)
 }
 
 /// Reset instruction/BB ID
-void clean_tag(struct ir_function *fun)
+void bpf_ir_clean_id(struct ir_function *fun)
 {
 	for (size_t i = 0; i < fun->all_bbs.num_elem; ++i) {
 		struct ir_basic_block *ir_bb =
@@ -59,375 +61,402 @@ void clean_tag(struct ir_function *fun)
 	}
 }
 
-void print_insn_ptr_base(struct ir_insn *insn)
+void print_insn_ptr_base(struct bpf_ir_env *env, struct ir_insn *insn)
 {
 	if (insn->op == IR_INSN_REG) {
-		PRINT_LOG("R%u", insn_cg(insn)->alloc_reg);
+		PRINT_LOG(env, "R%u", insn_cg(insn)->alloc_reg);
 		return;
 	}
 	if (insn->op == IR_INSN_FUNCTIONARG) {
-		PRINT_LOG("arg%u", insn->fid);
+		PRINT_LOG(env, "arg%u", insn->fid);
 		return;
 	}
 	if (insn->_insn_id == SIZET_MAX) {
-		PRINT_LOG("%p", insn);
+		PRINT_LOG(env, "%p", insn);
 		return;
 	}
-	PRINT_LOG("%%%zu", insn->_insn_id);
+	PRINT_LOG(env, "%%%zu", insn->_insn_id);
 }
 
-void print_insn_ptr(struct ir_insn *insn, void (*print_ir)(struct ir_insn *))
+static void print_insn_ptr(struct bpf_ir_env *env, struct ir_insn *insn,
+			   void (*print_ir)(struct bpf_ir_env *env,
+					    struct ir_insn *))
 {
 	if (print_ir) {
-		print_ir(insn);
+		print_ir(env, insn);
 	} else {
-		print_insn_ptr_base(insn);
+		print_insn_ptr_base(env, insn);
 	}
 }
 
-void print_bb_ptr(struct ir_basic_block *insn)
+void print_bb_ptr(struct bpf_ir_env *env, struct ir_basic_block *insn)
 {
 	if (insn->_id == SIZE_MAX) {
-		PRINT_LOG("b%p", insn);
+		PRINT_LOG(env, "b%p", insn);
 		return;
 	}
-	PRINT_LOG("b%zu", insn->_id);
+	PRINT_LOG(env, "b%zu", insn->_id);
 }
 
-void print_ir_value_full(struct ir_value v, void (*print_ir)(struct ir_insn *))
+void print_ir_value_full(struct bpf_ir_env *env, struct ir_value v,
+			 void (*print_ir)(struct bpf_ir_env *env,
+					  struct ir_insn *))
 {
 	switch (v.type) {
 	case IR_VALUE_INSN:
-		print_insn_ptr(v.data.insn_d, print_ir);
+		print_insn_ptr(env, v.data.insn_d, print_ir);
 		break;
 	case IR_VALUE_STACK_PTR:
-		PRINT_LOG("SP");
+		PRINT_LOG(env, "SP");
 		break;
 	case IR_VALUE_CONSTANT:
-		PRINT_LOG("0x%llx", v.data.constant_d);
+		PRINT_LOG(env, "0x%llx", v.data.constant_d);
 		break;
 	case IR_VALUE_CONSTANT_RAWOFF:
-		PRINT_LOG("(hole)");
+		PRINT_LOG(env, "(hole)");
 		break;
 	case IR_VALUE_UNDEF:
-		PRINT_LOG("undef");
+		PRINT_LOG(env, "undef");
 		break;
 	default:
 		CRITICAL("Unknown IR value type");
 	}
 }
 
-void print_ir_value(struct ir_value v)
+void print_ir_value(struct bpf_ir_env *env, struct ir_value v)
 {
-	print_ir_value_full(v, 0);
+	print_ir_value_full(env, v, 0);
 }
 
-void print_address_value_full(struct ir_address_value v,
-			      void (*print_ir)(struct ir_insn *))
+void print_address_value_full(struct bpf_ir_env *env, struct ir_address_value v,
+			      void (*print_ir)(struct bpf_ir_env *env,
+					       struct ir_insn *))
 {
-	print_ir_value_full(v.value, print_ir);
+	print_ir_value_full(env, v.value, print_ir);
 	if (v.offset != 0) {
-		PRINT_LOG("+%d", v.offset);
+		PRINT_LOG(env, "+%d", v.offset);
 	}
 }
 
-void print_address_value(struct ir_address_value v)
+void print_address_value(struct bpf_ir_env *env, struct ir_address_value v)
 {
-	print_address_value_full(v, 0);
+	print_address_value_full(env, v, 0);
 }
 
-void print_vr_type(enum ir_vr_type t)
+void print_vr_type(struct bpf_ir_env *env, enum ir_vr_type t)
 {
 	switch (t) {
 	case IR_VR_TYPE_8:
-		PRINT_LOG("u8");
+		PRINT_LOG(env, "u8");
 		break;
 	case IR_VR_TYPE_64:
-		PRINT_LOG("u64");
+		PRINT_LOG(env, "u64");
 		break;
 	case IR_VR_TYPE_16:
-		PRINT_LOG("u16");
+		PRINT_LOG(env, "u16");
 		break;
 	case IR_VR_TYPE_32:
-		PRINT_LOG("u32");
+		PRINT_LOG(env, "u32");
 		break;
 	default:
 		CRITICAL("Unknown VR type");
 	}
 }
 
-void print_phi_full(struct array *phi, void (*print_ir)(struct ir_insn *))
+void print_phi_full(struct bpf_ir_env *env, struct array *phi,
+		    void (*print_ir)(struct bpf_ir_env *env, struct ir_insn *))
 {
 	for (size_t i = 0; i < phi->num_elem; ++i) {
 		struct phi_value v = ((struct phi_value *)(phi->data))[i];
-		PRINT_LOG(" <");
-		print_bb_ptr(v.bb);
-		PRINT_LOG(" -> ");
-		print_ir_value_full(v.value, print_ir);
-		PRINT_LOG(">");
+		PRINT_LOG(env, " <");
+		print_bb_ptr(env, v.bb);
+		PRINT_LOG(env, " -> ");
+		print_ir_value_full(env, v.value, print_ir);
+		PRINT_LOG(env, ">");
 	}
 }
 
-void print_phi(struct array *phi)
+void print_phi(struct bpf_ir_env *env, struct array *phi)
 {
-	print_phi_full(phi, 0);
+	print_phi_full(env, phi, 0);
+}
+
+void print_alu(struct bpf_ir_env *env, enum ir_alu_type ty, const char *str)
+{
+	PRINT_LOG(env, "%s", str);
+	if (ty == IR_ALU_64) {
+		PRINT_LOG(env, "(64) ");
+	} else if (ty == IR_ALU_32) {
+		PRINT_LOG(env, "(32) ");
+	} else {
+		PRINT_LOG(env, "(?) ");
+	}
 }
 
 /**
     Print the IR insn
  */
-void print_ir_insn_full(struct ir_insn *insn,
-			void (*print_ir)(struct ir_insn *))
+void print_ir_insn_full(struct bpf_ir_env *env, struct ir_insn *insn,
+			void (*print_ir)(struct bpf_ir_env *env,
+					 struct ir_insn *))
 {
 	switch (insn->op) {
 	case IR_INSN_ALLOC:
-		PRINT_LOG("alloc ");
-		print_vr_type(insn->vr_type);
+		PRINT_LOG(env, "alloc ");
+		print_vr_type(env, insn->vr_type);
 		break;
 	case IR_INSN_STORE:
-		PRINT_LOG("store ");
-		print_ir_value_full(insn->values[0], print_ir);
-		PRINT_LOG(", ");
-		print_ir_value_full(insn->values[1], print_ir);
+		PRINT_LOG(env, "store ");
+		print_ir_value_full(env, insn->values[0], print_ir);
+		PRINT_LOG(env, ", ");
+		print_ir_value_full(env, insn->values[1], print_ir);
 		break;
 	case IR_INSN_LOAD:
-		PRINT_LOG("load ");
-		print_ir_value_full(insn->values[0], print_ir);
+		PRINT_LOG(env, "load ");
+		print_ir_value_full(env, insn->values[0], print_ir);
 		break;
 	case IR_INSN_LOADRAW:
-		PRINT_LOG("loadraw ");
-		print_vr_type(insn->vr_type);
-		PRINT_LOG(" ");
-		print_address_value_full(insn->addr_val, print_ir);
+		PRINT_LOG(env, "loadraw ");
+		print_vr_type(env, insn->vr_type);
+		PRINT_LOG(env, " ");
+		print_address_value_full(env, insn->addr_val, print_ir);
+		break;
+	case IR_INSN_LOADIMM_EXTRA:
+		PRINT_LOG(env, "loadimm(type%d) ", insn->imm_extra_type);
 		break;
 	case IR_INSN_STORERAW:
-		PRINT_LOG("storeraw ");
-		print_vr_type(insn->vr_type);
-		PRINT_LOG(" ");
-		print_address_value_full(insn->addr_val, print_ir);
-		PRINT_LOG(" ");
-		print_ir_value_full(insn->values[0], print_ir);
+		PRINT_LOG(env, "storeraw ");
+		print_vr_type(env, insn->vr_type);
+		PRINT_LOG(env, " ");
+		print_address_value_full(env, insn->addr_val, print_ir);
+		PRINT_LOG(env, " ");
+		print_ir_value_full(env, insn->values[0], print_ir);
 		break;
 	case IR_INSN_ADD:
-		PRINT_LOG("add ");
-		print_ir_value_full(insn->values[0], print_ir);
-		PRINT_LOG(", ");
-		print_ir_value_full(insn->values[1], print_ir);
+		print_alu(env, insn->alu, "add");
+		print_ir_value_full(env, insn->values[0], print_ir);
+		PRINT_LOG(env, ", ");
+		print_ir_value_full(env, insn->values[1], print_ir);
 		break;
 	case IR_INSN_SUB:
-		PRINT_LOG("sub ");
-		print_ir_value_full(insn->values[0], print_ir);
-		PRINT_LOG(", ");
-		print_ir_value_full(insn->values[1], print_ir);
+		print_alu(env, insn->alu, "sub");
+		print_ir_value_full(env, insn->values[0], print_ir);
+		PRINT_LOG(env, ", ");
+		print_ir_value_full(env, insn->values[1], print_ir);
 		break;
 	case IR_INSN_MUL:
-		PRINT_LOG("mul ");
-		print_ir_value_full(insn->values[0], print_ir);
-		PRINT_LOG(", ");
-		print_ir_value_full(insn->values[1], print_ir);
+		print_alu(env, insn->alu, "mul");
+		print_ir_value_full(env, insn->values[0], print_ir);
+		PRINT_LOG(env, ", ");
+		print_ir_value_full(env, insn->values[1], print_ir);
 		break;
 	case IR_INSN_CALL:
-		PRINT_LOG("call __built_in_func_%d(", insn->fid);
+		PRINT_LOG(env, "call __built_in_func_%d(", insn->fid);
 		if (insn->value_num >= 1) {
-			print_ir_value_full(insn->values[0], print_ir);
+			print_ir_value_full(env, insn->values[0], print_ir);
 		}
 		for (size_t i = 1; i < insn->value_num; ++i) {
-			PRINT_LOG(", ");
-			print_ir_value_full(insn->values[i], print_ir);
+			PRINT_LOG(env, ", ");
+			print_ir_value_full(env, insn->values[i], print_ir);
 		}
-		PRINT_LOG(")");
+		PRINT_LOG(env, ")");
 		break;
 	case IR_INSN_RET:
-		PRINT_LOG("ret ");
+		PRINT_LOG(env, "ret ");
 		if (insn->value_num > 0) {
-			print_ir_value_full(insn->values[0], print_ir);
+			print_ir_value_full(env, insn->values[0], print_ir);
 		}
 		break;
 	case IR_INSN_JA:
-		PRINT_LOG("ja ");
-		print_bb_ptr(insn->bb1);
+		PRINT_LOG(env, "ja ");
+		print_bb_ptr(env, insn->bb1);
 		break;
 	case IR_INSN_JEQ:
-		PRINT_LOG("jeq ");
-		print_ir_value_full(insn->values[0], print_ir);
-		PRINT_LOG(", ");
-		print_ir_value_full(insn->values[1], print_ir);
-		PRINT_LOG(", ");
-		print_bb_ptr(insn->bb1);
-		PRINT_LOG("/");
-		print_bb_ptr(insn->bb2);
+		print_alu(env, insn->alu, "jeq");
+		print_ir_value_full(env, insn->values[0], print_ir);
+		PRINT_LOG(env, ", ");
+		print_ir_value_full(env, insn->values[1], print_ir);
+		PRINT_LOG(env, ", ");
+		print_bb_ptr(env, insn->bb1);
+		PRINT_LOG(env, "/");
+		print_bb_ptr(env, insn->bb2);
 		break;
 	case IR_INSN_JGT:
-		PRINT_LOG("jgt ");
-		print_ir_value_full(insn->values[0], print_ir);
-		PRINT_LOG(", ");
-		print_ir_value_full(insn->values[1], print_ir);
-		PRINT_LOG(", ");
-		print_bb_ptr(insn->bb1);
-		PRINT_LOG("/");
-		print_bb_ptr(insn->bb2);
+		print_alu(env, insn->alu, "jgt");
+		print_ir_value_full(env, insn->values[0], print_ir);
+		PRINT_LOG(env, ", ");
+		print_ir_value_full(env, insn->values[1], print_ir);
+		PRINT_LOG(env, ", ");
+		print_bb_ptr(env, insn->bb1);
+		PRINT_LOG(env, "/");
+		print_bb_ptr(env, insn->bb2);
 		break;
 	case IR_INSN_JGE:
-		PRINT_LOG("jge ");
-		print_ir_value_full(insn->values[0], print_ir);
-		PRINT_LOG(", ");
-		print_ir_value_full(insn->values[1], print_ir);
-		PRINT_LOG(", ");
-		print_bb_ptr(insn->bb1);
-		PRINT_LOG("/");
-		print_bb_ptr(insn->bb2);
+		print_alu(env, insn->alu, "jge");
+		print_ir_value_full(env, insn->values[0], print_ir);
+		PRINT_LOG(env, ", ");
+		print_ir_value_full(env, insn->values[1], print_ir);
+		PRINT_LOG(env, ", ");
+		print_bb_ptr(env, insn->bb1);
+		PRINT_LOG(env, "/");
+		print_bb_ptr(env, insn->bb2);
 		break;
 	case IR_INSN_JLT:
-		PRINT_LOG("jlt ");
-		print_ir_value_full(insn->values[0], print_ir);
-		PRINT_LOG(", ");
-		print_ir_value_full(insn->values[1], print_ir);
-		PRINT_LOG(", ");
-		print_bb_ptr(insn->bb1);
-		PRINT_LOG("/");
-		print_bb_ptr(insn->bb2);
+		print_alu(env, insn->alu, "jlt");
+		print_ir_value_full(env, insn->values[0], print_ir);
+		PRINT_LOG(env, ", ");
+		print_ir_value_full(env, insn->values[1], print_ir);
+		PRINT_LOG(env, ", ");
+		print_bb_ptr(env, insn->bb1);
+		PRINT_LOG(env, "/");
+		print_bb_ptr(env, insn->bb2);
 		break;
 	case IR_INSN_JLE:
-		PRINT_LOG("jle ");
-		print_ir_value_full(insn->values[0], print_ir);
-		PRINT_LOG(", ");
-		print_ir_value_full(insn->values[1], print_ir);
-		PRINT_LOG(", ");
-		print_bb_ptr(insn->bb1);
-		PRINT_LOG("/");
-		print_bb_ptr(insn->bb2);
+		print_alu(env, insn->alu, "jle");
+		print_ir_value_full(env, insn->values[0], print_ir);
+		PRINT_LOG(env, ", ");
+		print_ir_value_full(env, insn->values[1], print_ir);
+		PRINT_LOG(env, ", ");
+		print_bb_ptr(env, insn->bb1);
+		PRINT_LOG(env, "/");
+		print_bb_ptr(env, insn->bb2);
 		break;
 	case IR_INSN_JNE:
-		PRINT_LOG("jne ");
-		print_ir_value_full(insn->values[0], print_ir);
-		PRINT_LOG(", ");
-		print_ir_value_full(insn->values[1], print_ir);
-		PRINT_LOG(", ");
-		print_bb_ptr(insn->bb1);
-		PRINT_LOG("/");
-		print_bb_ptr(insn->bb2);
+		print_alu(env, insn->alu, "jne");
+		print_ir_value_full(env, insn->values[0], print_ir);
+		PRINT_LOG(env, ", ");
+		print_ir_value_full(env, insn->values[1], print_ir);
+		PRINT_LOG(env, ", ");
+		print_bb_ptr(env, insn->bb1);
+		PRINT_LOG(env, "/");
+		print_bb_ptr(env, insn->bb2);
 		break;
 	case IR_INSN_PHI:
-		PRINT_LOG("phi");
-		print_phi_full(&insn->phi, print_ir);
+		PRINT_LOG(env, "phi");
+		print_phi_full(env, &insn->phi, print_ir);
 		break;
 	case IR_INSN_LSH:
-		PRINT_LOG("lsh ");
-		print_ir_value_full(insn->values[0], print_ir);
-		PRINT_LOG(", ");
-		print_ir_value_full(insn->values[1], print_ir);
+		print_alu(env, insn->alu, "lsh");
+		print_ir_value_full(env, insn->values[0], print_ir);
+		PRINT_LOG(env, ", ");
+		print_ir_value_full(env, insn->values[1], print_ir);
 		break;
 	case IR_INSN_MOD:
-		PRINT_LOG("mod ");
-		print_ir_value_full(insn->values[0], print_ir);
-		PRINT_LOG(", ");
-		print_ir_value_full(insn->values[1], print_ir);
+		print_alu(env, insn->alu, "mod");
+		print_ir_value_full(env, insn->values[0], print_ir);
+		PRINT_LOG(env, ", ");
+		print_ir_value_full(env, insn->values[1], print_ir);
 		break;
 	case IR_INSN_ASSIGN:
-		print_ir_value_full(insn->values[0], print_ir);
+		print_ir_value_full(env, insn->values[0], print_ir);
 		break;
 	default:
 		CRITICAL("Unknown IR insn");
 	}
 }
 
-void print_ir_insn(struct ir_insn *insn)
+void print_ir_insn(struct bpf_ir_env *env, struct ir_insn *insn)
 {
-	print_ir_insn_full(insn, 0);
+	print_ir_insn_full(env, insn, 0);
 }
 
-void print_raw_ir_insn_full(struct ir_insn *insn,
-			    void (*print_ir)(struct ir_insn *))
+void print_raw_ir_insn_full(struct bpf_ir_env *env, struct ir_insn *insn,
+			    void (*print_ir)(struct bpf_ir_env *env,
+					     struct ir_insn *))
 {
 	if (print_ir) {
-		print_ir(insn);
+		print_ir(env, insn);
 	} else {
-		PRINT_LOG("%p", insn);
+		PRINT_LOG(env, "%p", insn);
 	}
-	PRINT_LOG(" = ");
-	print_ir_insn_full(insn, print_ir);
-	PRINT_LOG("\n");
+	PRINT_LOG(env, " = ");
+	print_ir_insn_full(env, insn, print_ir);
+	PRINT_LOG(env, "\n");
 }
 
-void print_raw_ir_insn(struct ir_insn *insn)
+void print_raw_ir_insn(struct bpf_ir_env *env, struct ir_insn *insn)
 {
-	print_raw_ir_insn_full(insn, 0);
+	print_raw_ir_insn_full(env, insn, 0);
 }
 
-void print_ir_bb_no_rec(struct ir_basic_block *bb,
-			void (*post_bb)(struct ir_basic_block *),
-			void (*post_insn)(struct ir_insn *),
-			void (*print_insn_name)(struct ir_insn *))
+void print_ir_bb_no_rec(
+	struct bpf_ir_env *env, struct ir_basic_block *bb,
+	void (*post_bb)(struct bpf_ir_env *env, struct ir_basic_block *),
+	void (*post_insn)(struct bpf_ir_env *env, struct ir_insn *),
+	void (*print_insn_name)(struct bpf_ir_env *env, struct ir_insn *))
 {
-	PRINT_LOG("b%zu:\n", bb->_id);
+	PRINT_LOG(env, "b%zu:\n", bb->_id);
 	struct list_head *p = NULL;
 	list_for_each(p, &bb->ir_insn_head) {
 		struct ir_insn *insn = list_entry(p, struct ir_insn, list_ptr);
 		if (is_void(insn)) {
-			PRINT_LOG("  ");
+			PRINT_LOG(env, "  ");
 		} else {
-			PRINT_LOG("  ");
+			PRINT_LOG(env, "  ");
 			if (print_insn_name) {
-				print_insn_name(insn);
+				print_insn_name(env, insn);
 			} else {
-				PRINT_LOG("%%%zu", insn->_insn_id);
+				PRINT_LOG(env, "%%%zu", insn->_insn_id);
 			}
-			PRINT_LOG(" = ");
+			PRINT_LOG(env, " = ");
 		}
 
-		print_ir_insn_full(insn, print_insn_name);
-		PRINT_LOG("\n");
+		print_ir_insn_full(env, insn, print_insn_name);
+		PRINT_LOG(env, "\n");
 		if (post_insn) {
-			post_insn(insn);
+			post_insn(env, insn);
 		}
 	}
 	if (post_bb) {
-		post_bb(bb);
+		post_bb(env, bb);
 	}
 }
 
-void print_ir_bb(struct ir_basic_block *bb,
-		 void (*post_bb)(struct ir_basic_block *),
-		 void (*post_insn)(struct ir_insn *),
-		 void (*print_insn_name)(struct ir_insn *))
+void print_ir_bb(struct bpf_ir_env *env, struct ir_basic_block *bb,
+		 void (*post_bb)(struct bpf_ir_env *env,
+				 struct ir_basic_block *),
+		 void (*post_insn)(struct bpf_ir_env *env, struct ir_insn *),
+		 void (*print_insn_name)(struct bpf_ir_env *env,
+					 struct ir_insn *))
 {
 	if (bb->_visited) {
 		return;
 	}
 	bb->_visited = 1;
-	print_ir_bb_no_rec(bb, post_bb, post_insn, print_insn_name);
+	print_ir_bb_no_rec(env, bb, post_bb, post_insn, print_insn_name);
 	for (size_t i = 0; i < bb->succs.num_elem; ++i) {
 		struct ir_basic_block *next =
 			((struct ir_basic_block **)(bb->succs.data))[i];
-		print_ir_bb(next, post_bb, post_insn, print_insn_name);
+		print_ir_bb(env, next, post_bb, post_insn, print_insn_name);
 	}
 }
 
-void print_ir_prog_reachable(struct ir_function *fun)
+void print_ir_prog_reachable(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	struct ir_basic_block **pos;
 	array_for(pos, fun->reachable_bbs)
 	{
 		struct ir_basic_block *bb = *pos;
-		print_ir_bb_no_rec(bb, NULL, NULL, NULL);
+		print_ir_bb_no_rec(env, bb, NULL, NULL, NULL);
 	}
 }
 
-void print_raw_ir_bb_full(struct ir_basic_block *bb,
-			  void (*print_ir)(struct ir_insn *))
+void print_raw_ir_bb_full(struct bpf_ir_env *env, struct ir_basic_block *bb,
+			  void (*print_ir)(struct bpf_ir_env *env,
+					   struct ir_insn *))
 {
-	PRINT_LOG("b%p:\n", bb);
+	PRINT_LOG(env, "b%p:\n", bb);
 	struct list_head *p = NULL;
 	list_for_each(p, &bb->ir_insn_head) {
 		struct ir_insn *insn = list_entry(p, struct ir_insn, list_ptr);
-		PRINT_LOG("  ");
-		print_raw_ir_insn_full(insn, print_ir);
+		PRINT_LOG(env, "  ");
+		print_raw_ir_insn_full(env, insn, print_ir);
 	}
 }
 
-void print_raw_ir_bb(struct ir_basic_block *bb)
+void print_raw_ir_bb(struct bpf_ir_env *env, struct ir_basic_block *bb)
 {
-	print_raw_ir_bb_full(bb, 0);
+	print_raw_ir_bb_full(env, bb, 0);
 }
 
 void assign_id(struct ir_basic_block *bb, size_t *cnt, size_t *bb_cnt)
@@ -453,108 +482,109 @@ void assign_id(struct ir_basic_block *bb, size_t *cnt, size_t *bb_cnt)
 
 void tag_ir(struct ir_function *fun)
 {
-	clean_tag(fun);
+	bpf_ir_clean_id(fun);
 	size_t cnt = 0;
 	size_t bb_cnt = 0;
-	clean_env(fun);
+	bpf_ir_clean_visited(fun);
 	assign_id(fun->entry, &cnt, &bb_cnt);
-	clean_env(fun);
+	bpf_ir_clean_visited(fun);
 }
 
-void print_bb_succ(struct ir_basic_block *bb)
+void print_bb_succ(struct bpf_ir_env *env, struct ir_basic_block *bb)
 {
-	PRINT_LOG("succs: ");
+	PRINT_LOG(env, "succs: ");
 	struct ir_basic_block **next;
 	array_for(next, bb->succs)
 	{
-		print_bb_ptr(*next);
-		PRINT_LOG(" ");
+		print_bb_ptr(env, *next);
+		PRINT_LOG(env, " ");
 	}
-	PRINT_LOG("\n\n");
+	PRINT_LOG(env, "\n\n");
 }
 
-void print_ir_prog(struct ir_function *fun)
+void print_ir_prog(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	tag_ir(fun);
-	print_ir_bb(fun->entry, NULL, NULL, NULL);
+	print_ir_bb(env, fun->entry, NULL, NULL, NULL);
 }
 
-void print_ir_dst(struct ir_insn *insn)
+void print_ir_dst(struct bpf_ir_env *env, struct ir_insn *insn)
 {
 	insn = insn_dst(insn);
 	if (insn) {
-		print_insn_ptr_base(insn);
+		print_insn_ptr_base(env, insn);
 	} else {
-		PRINT_LOG("(NULL)");
+		PRINT_LOG(env, "(NULL)");
 	}
 }
 
-void print_ir_alloc(struct ir_insn *insn)
+void print_ir_alloc(struct bpf_ir_env *env, struct ir_insn *insn)
 {
 	insn = insn_dst(insn);
 	if (insn) {
 		struct ir_insn_cg_extra *extra = insn_cg(insn);
 		if (extra->allocated) {
 			if (extra->spilled) {
-				PRINT_LOG("sp-%zu", extra->spilled * 8);
+				PRINT_LOG(env, "sp-%zu", extra->spilled * 8);
 			} else {
-				PRINT_LOG("r%u", extra->alloc_reg);
+				PRINT_LOG(env, "r%u", extra->alloc_reg);
 			}
 		} else {
 			CRITICAL("Not allocated");
 		}
 	} else {
-		PRINT_LOG("(NULL)");
+		PRINT_LOG(env, "(NULL)");
 	}
 }
 
-void print_ir_prog_advanced(struct ir_function *fun,
-			    void (*post_bb)(struct ir_basic_block *),
-			    void (*post_insn)(struct ir_insn *),
-			    void (*print_insn_name)(struct ir_insn *))
+void print_ir_prog_advanced(
+	struct bpf_ir_env *env, struct ir_function *fun,
+	void (*post_bb)(struct bpf_ir_env *env, struct ir_basic_block *),
+	void (*post_insn)(struct bpf_ir_env *env, struct ir_insn *),
+	void (*print_insn_name)(struct bpf_ir_env *env, struct ir_insn *))
 {
 	tag_ir(fun);
-	print_ir_bb(fun->entry, post_bb, post_insn, print_insn_name);
+	print_ir_bb(env, fun->entry, post_bb, post_insn, print_insn_name);
 }
 
-void print_ir_insn_err(struct ir_insn *insn, char *msg)
+void print_ir_insn_err(struct bpf_ir_env *env, struct ir_insn *insn, char *msg)
 {
-	PRINT_LOG("In BB %zu,\n", insn->parent_bb->_id);
+	PRINT_LOG(env, "In BB %zu,\n", insn->parent_bb->_id);
 	struct ir_insn *prev = prev_insn(insn);
 	struct ir_insn *next = next_insn(insn);
 	if (prev) {
-		PRINT_LOG("  ");
+		PRINT_LOG(env, "  ");
 		if (!is_void(prev)) {
-			PRINT_LOG("%%%zu", prev->_insn_id);
-			PRINT_LOG(" = ");
+			PRINT_LOG(env, "%%%zu", prev->_insn_id);
+			PRINT_LOG(env, " = ");
 		}
-		print_ir_insn(prev);
-		PRINT_LOG("\n");
+		print_ir_insn(env, prev);
+		PRINT_LOG(env, "\n");
 	} else {
-		PRINT_LOG("  (No instruction)\n");
+		PRINT_LOG(env, "  (No instruction)\n");
 	}
-	PRINT_LOG("  ");
+	PRINT_LOG(env, "  ");
 	if (!is_void(insn)) {
-		PRINT_LOG("%%%zu", insn->_insn_id);
-		PRINT_LOG(" = ");
+		PRINT_LOG(env, "%%%zu", insn->_insn_id);
+		PRINT_LOG(env, " = ");
 	}
-	print_ir_insn(insn);
-	PRINT_LOG("         <--- ");
+	print_ir_insn(env, insn);
+	PRINT_LOG(env, "         <--- ");
 	if (msg) {
-		PRINT_LOG("%s\n", msg);
+		PRINT_LOG(env, "%s\n", msg);
 	} else {
-		PRINT_LOG("Error\n");
+		PRINT_LOG(env, "Error\n");
 	}
 	if (next) {
-		PRINT_LOG("  ");
+		PRINT_LOG(env, "  ");
 		if (!is_void(next)) {
-			PRINT_LOG("%%%zu", next->_insn_id);
-			PRINT_LOG(" = ");
+			PRINT_LOG(env, "%%%zu", next->_insn_id);
+			PRINT_LOG(env, " = ");
 		}
-		print_ir_insn(next);
-		PRINT_LOG("\n");
+		print_ir_insn(env, next);
+		PRINT_LOG(env, "\n");
 	} else {
-		PRINT_LOG("  (No instruction)\n");
+		PRINT_LOG(env, "  (No instruction)\n");
 	}
 }
 
@@ -563,7 +593,31 @@ void print_ir_err_init(struct ir_function *fun)
 	tag_ir(fun);
 }
 
-void print_ir_bb_err(struct ir_basic_block *bb)
+void print_ir_bb_err(struct bpf_ir_env *env, struct ir_basic_block *bb)
 {
-	PRINT_LOG("BB %zu encountered an error:\n", bb->_id);
+	PRINT_LOG(env, "BB %zu encountered an error:\n", bb->_id);
+}
+
+void bpf_ir_print_to_log(struct bpf_ir_env *env, char *fmt, ...)
+{
+	va_list args;
+	va_start(args, fmt);
+	char buf[200];
+	vsprintf(buf, fmt, args);
+	size_t len = strlen(buf);
+	if (env->log_pos + len >= BPF_IR_LOG_SIZE) {
+		// Clean the log
+		env->log_pos = 0;
+	}
+	memcpy(env->log + env->log_pos, buf, len);
+	env->log_pos += len;
+	va_end(args);
+}
+
+void bpf_ir_print_log_dbg(struct bpf_ir_env *env)
+{
+	env->log[env->log_pos] = '\0';
+	PRINT_DBG("----- Begin of Log -----\n");
+	PRINT_DBG("%s", env->log);
+	PRINT_DBG("----- End of Log -----\nLog size: %zu\n", env->log_pos);
 }

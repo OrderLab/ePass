@@ -9,9 +9,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "list.h"
+#include <stdarg.h>
 #include <stddef.h>
-
-#define PRINT_LOG printf
 
 #include "stdint.h"
 
@@ -23,13 +22,42 @@
 #include <linux/sort.h>
 #include <linux/list.h>
 
-#define PRINT_LOG printk
-
 #define SIZET_MAX ULONG_MAX
 
 #define qsort(a, b, c, d) sort(a, b, c, d, NULL)
 
 #endif
+
+/* IR Env Start */
+
+// A environment for communicating with external functions
+
+#define BPF_IR_LOG_SIZE 100000
+
+struct bpf_ir_env {
+	char log[BPF_IR_LOG_SIZE];
+	size_t log_pos;
+};
+
+void bpf_ir_print_to_log(struct bpf_ir_env *env, char *fmt, ...);
+
+#ifndef __KERNEL__
+
+#define PRINT_DBG printf
+
+#define PRINT_LOG bpf_ir_print_to_log
+
+#else
+
+#define PRINT_DBG printk
+
+#define PRINT_LOG bpf_ir_print_to_log
+
+#endif
+
+void bpf_ir_print_log_dbg(struct bpf_ir_env *env);
+
+/* IR Env End */
 
 /* Array Start */
 
@@ -71,11 +99,11 @@ int bpf_ir_array_clone(struct array *res, struct array *arr);
 /* DBG Macro Start */
 #ifndef __KERNEL__
 
-#define CRITICAL(str)                                                          \
-	{                                                                      \
-		PRINT_LOG("%s:%d <%s> %s\n", __FILE__, __LINE__, __FUNCTION__, \
-			  str);                                                \
-		exit(1);                                                       \
+#define CRITICAL(str)                                                       \
+	{                                                                   \
+		printf("%s:%d <%s> %s\n", __FILE__, __LINE__, __FUNCTION__, \
+		       str);                                                \
+		exit(1);                                                    \
 	}
 
 #else
@@ -88,11 +116,11 @@ int bpf_ir_array_clone(struct array *res, struct array *arr);
 
 #endif
 
-#define RAISE_ERROR(str)                                                       \
-	{                                                                      \
-		PRINT_LOG("%s:%d <%s> %s\n", __FILE__, __LINE__, __FUNCTION__, \
-			  str);                                                \
-		return -ENOSYS;                                                \
+#define RAISE_ERROR(str)                                              \
+	{                                                             \
+		PRINT_LOG(env, "%s:%d <%s> %s\n", __FILE__, __LINE__, \
+			  __FUNCTION__, str);                         \
+		return -ENOSYS;                                       \
 	}
 
 #define DBGASSERT(cond)                       \
@@ -108,12 +136,15 @@ void *malloc_proto(size_t size);
 
 void free_proto(void *ptr);
 
-#define SAFE_MALLOC(dst, size)            \
-	{                                 \
-		dst = malloc_proto(size); \
-		if (!dst) {               \
-			return -ENOMEM;   \
-		}                         \
+#define SAFE_MALLOC(dst, size)                            \
+	{                                                 \
+		if (size > 10000000) {                    \
+			CRITICAL("Incorrect Allocation"); \
+		}                                         \
+		dst = malloc_proto(size);                 \
+		if (!dst) {                               \
+			return -ENOMEM;                   \
+		}                                         \
 	}
 
 #define MAX_FUNC_ARG 5
@@ -137,6 +168,12 @@ struct pre_ir_insn {
 	size_t pos; // Original position
 };
 
+enum ir_alu_type {
+	IR_ALU_UNKNOWN, // To prevent from not manually setting this type
+	IR_ALU_32,
+	IR_ALU_64,
+};
+
 enum ir_value_type {
 	IR_VALUE_CONSTANT,
 	IR_VALUE_CONSTANT_RAWOFF, // A constant value in raw operations to be added during code
@@ -157,6 +194,7 @@ struct ir_value {
 		struct ir_insn *insn_d;
 	} data;
 	enum ir_value_type type;
+	enum ir_alu_type alu_type; // Used when type is a constant
 };
 
 /**
@@ -176,12 +214,6 @@ struct phi_value {
 	struct ir_basic_block *bb;
 };
 
-enum ir_alu_type {
-	IR_ALU_UNKNOWN, // To prevent from not manually setting this type
-	IR_ALU_32,
-	IR_ALU_64,
-};
-
 int bpf_ir_valid_alu_type(enum ir_alu_type type);
 
 /**
@@ -195,12 +227,23 @@ enum ir_vr_type {
 	IR_VR_TYPE_64,
 };
 
+enum ir_loadimm_extra_type {
+	IR_LOADIMM_IMM64 = 0,
+	IR_LOADIMM_MAP_BY_FD,
+	IR_LOADIMM_MAP_VAL_FD,
+	IR_LOADIMM_VAR_ADDR,
+	IR_LOADIMM_CODE_ADDR,
+	IR_LOADIMM_MAP_BY_IDX,
+	IR_LOADIMM_MAP_VAL_IDX,
+};
+
 int bpf_ir_valid_vr_type(enum ir_vr_type type);
 
 enum ir_insn_type {
 	IR_INSN_ALLOC,
 	IR_INSN_STORE,
 	IR_INSN_LOAD,
+	IR_INSN_LOADIMM_EXTRA,
 	IR_INSN_STORERAW,
 	IR_INSN_LOADRAW,
 	// ALU
@@ -281,7 +324,11 @@ struct ir_insn {
 	// Array of phi_value
 	struct array phi;
 
-	__s32 fid;
+	__s32 fid; // Function ID
+
+	enum ir_loadimm_extra_type imm_extra_type; // For 64 imm load
+	__s64 imm64; // H (next_imm:32)(imm:32) L
+
 	enum ir_insn_type op;
 
 	// Linked list
@@ -402,7 +449,8 @@ struct error {
 struct ir_basic_block *bpf_ir_init_bb_raw(void);
 
 // Main interface
-int bpf_ir_run(struct bpf_insn *insns, size_t len);
+int bpf_ir_run(struct bpf_ir_env *env, const struct bpf_insn *insns,
+	       size_t len);
 
 /* Fun Start */
 
@@ -456,7 +504,7 @@ struct ir_function {
 
 // IR checks
 
-void bpf_ir_prog_check(struct ir_function *fun);
+void bpf_ir_prog_check(struct bpf_ir_env *env, struct ir_function *fun);
 
 /* Fun End */
 
@@ -488,52 +536,53 @@ int bpf_ir_bb_empty(struct ir_basic_block *bb);
 
 /* IR Helper Start */
 
-void clean_env_all(struct ir_function *fun);
+void bpf_ir_clean_metadata_all(struct ir_function *fun);
 
-void print_ir_prog(struct ir_function *);
+void print_ir_prog(struct bpf_ir_env *env, struct ir_function *);
 
-void print_ir_prog_reachable(struct ir_function *fun);
+void print_ir_prog_reachable(struct bpf_ir_env *env, struct ir_function *fun);
 
-void print_ir_prog_advanced(struct ir_function *,
-			    void (*)(struct ir_basic_block *),
-			    void (*)(struct ir_insn *),
-			    void (*)(struct ir_insn *));
+void print_ir_prog_advanced(struct bpf_ir_env *env, struct ir_function *,
+			    void (*)(struct bpf_ir_env *env,
+				     struct ir_basic_block *),
+			    void (*)(struct bpf_ir_env *env, struct ir_insn *),
+			    void (*)(struct bpf_ir_env *env, struct ir_insn *));
 
-void print_ir_dst(struct ir_insn *insn);
+void print_ir_dst(struct bpf_ir_env *env, struct ir_insn *insn);
 
-void print_ir_alloc(struct ir_insn *insn);
+void print_ir_alloc(struct bpf_ir_env *env, struct ir_insn *insn);
 
-void clean_env(struct ir_function *);
+void bpf_ir_clean_visited(struct ir_function *);
 
 // Tag the instruction and BB
 void tag_ir(struct ir_function *fun);
 
-// Remove all tag information
-void clean_tag(struct ir_function *);
+// Remove id
+void bpf_ir_clean_id(struct ir_function *);
 
-void print_address_value(struct ir_address_value v);
+void print_address_value(struct bpf_ir_env *env, struct ir_address_value v);
 
-void print_vr_type(enum ir_vr_type t);
+void print_vr_type(struct bpf_ir_env *env, enum ir_vr_type t);
 
-void print_phi(struct array *phi);
+void print_phi(struct bpf_ir_env *env, struct array *phi);
 
 void assign_id(struct ir_basic_block *bb, size_t *cnt, size_t *bb_cnt);
 
-void print_ir_insn(struct ir_insn *);
+void print_ir_insn(struct bpf_ir_env *env, struct ir_insn *);
 
-void print_ir_value(struct ir_value v);
+void print_ir_value(struct bpf_ir_env *env, struct ir_value v);
 
-void print_raw_ir_insn(struct ir_insn *insn);
+void print_raw_ir_insn(struct bpf_ir_env *env, struct ir_insn *insn);
 
-void print_raw_ir_bb(struct ir_basic_block *bb);
+void print_raw_ir_bb(struct bpf_ir_env *env, struct ir_basic_block *bb);
 
-void print_insn_ptr_base(struct ir_insn *insn);
+void print_insn_ptr_base(struct bpf_ir_env *env, struct ir_insn *insn);
 
 void print_ir_err_init(struct ir_function *fun);
 
-void print_ir_insn_err(struct ir_insn *insn, char *msg);
+void print_ir_insn_err(struct bpf_ir_env *env, struct ir_insn *insn, char *msg);
 
-void print_ir_bb_err(struct ir_basic_block *bb);
+void print_ir_bb_err(struct bpf_ir_env *env, struct ir_basic_block *bb);
 
 /* IR Helper End */
 
@@ -548,20 +597,16 @@ enum insert_position {
 };
 
 // Return an array of struct ir_value*
-struct array get_operands(struct ir_insn *insn);
+struct array bpf_ir_get_operands(struct ir_insn *insn);
 
-void replace_all_usage(struct ir_insn *insn, struct ir_value rep);
+void bpf_ir_replace_all_usage(struct ir_insn *insn, struct ir_value rep);
 
-void replace_all_usage_except(struct ir_insn *insn, struct ir_value rep,
-			      struct ir_insn *except);
+void bpf_ir_replace_all_usage_except(struct ir_insn *insn, struct ir_value rep,
+				     struct ir_insn *except);
 
-void erase_insn(struct ir_insn *insn);
+void bpf_ir_erase_insn(struct ir_insn *insn);
 
-int is_last_insn(struct ir_insn *insn);
-
-// Erase an instruction without checking the users
-// Used in code gen
-void erase_insn_raw(struct ir_insn *insn);
+int bpf_ir_is_last_insn(struct ir_insn *insn);
 
 int is_void(struct ir_insn *insn);
 
@@ -700,7 +745,7 @@ struct function_pass {
 
 int bpf_ir_init_insn_cg(struct ir_insn *insn);
 
-int bpf_ir_code_gen(struct ir_function *fun);
+int bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun);
 
 // Extra information needed for code gen
 struct ir_bb_cg_extra {
@@ -770,7 +815,7 @@ struct ir_constraint {
 	struct ir_value start;
 	struct ir_value end;
 
-	// Constrain value
+	// Constraint value
 	struct ir_value cval;
 
 	// Real value to be compared
