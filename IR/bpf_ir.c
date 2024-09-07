@@ -233,7 +233,7 @@ static int gen_bb(struct bpf_ir_env *env, struct bb_info *ret,
 			new_insn.dst_reg = insn.dst_reg;
 			new_insn.imm = insn.imm;
 			new_insn.it = IMM;
-			new_insn.imm64 = insn.imm;
+			new_insn.imm64 = (__u64)insn.imm & 0xFFFFFFFF;
 			new_insn.off = insn.off;
 			new_insn.pos = pos;
 			if (pos + 1 < real_bb->end_pos &&
@@ -561,7 +561,8 @@ static struct ir_value get_src_value(struct bpf_ir_env *env,
 	__u8 code = insn.opcode;
 	if (BPF_SRC(code) == BPF_K) {
 		return (struct ir_value){ .type = IR_VALUE_CONSTANT,
-					  .data.constant_d = insn.imm };
+					  .data.constant_d = insn.imm,
+					  .const_type = IR_ALU_32 };
 	} else if (BPF_SRC(code) == BPF_X) {
 		return read_variable(env, tenv, insn.src_reg, bb);
 	} else {
@@ -674,7 +675,7 @@ static int transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 					// Mov a constant
 					// mov64 xx
 					// mov xx
-					v.const_type = alu_ty;
+					v.const_type = IR_ALU_32;
 				}
 				write_variable(tenv, insn.dst_reg, bb, v);
 			} else if (BPF_OP(code) == BPF_LSH) {

@@ -502,6 +502,7 @@ static void explicit_reg(struct ir_function *fun)
 					create_assign_insn_cg(insn,
 							      insn->values[0],
 							      INSERT_FRONT);
+				new_insn->alu_op = IR_ALU_64;
 				val_remove_user(insn->values[0], insn);
 				insn_cg(new_insn)->dst = fun->cg_info.regs[0];
 				insn->value_num = 0;
@@ -959,11 +960,15 @@ static void normalize(struct ir_function *fun)
 								 ->spilled *
 							8;
 					}
-					if (t0 == CONST && v0->const_type == IR_ALU_64) {
+					if (t0 == CONST &&
+					    v0->const_type == IR_ALU_64) {
 						// 64 imm load
-						insn->op = IR_INSN_LOADIMM_EXTRA;
-						insn->imm_extra_type = IR_LOADIMM_IMM64;
-						insn->imm64 = v0->data.constant_d;
+						insn->op =
+							IR_INSN_LOADIMM_EXTRA;
+						insn->imm_extra_type =
+							IR_LOADIMM_IMM64;
+						insn->imm64 =
+							v0->data.constant_d;
 					}
 				}
 			} else if (insn->op == IR_INSN_RET) {
@@ -1407,7 +1412,8 @@ static int check_need_spill(struct ir_function *fun)
 							create_assign_insn_cg(
 								insn, *v0,
 								INSERT_FRONT);
-						new_insn->values[0].const_type = IR_ALU_64;
+						new_insn->values[0].const_type =
+							IR_ALU_64;
 						insn_cg(new_insn)->dst =
 							fun->cg_info.regs[0];
 						v0->type = IR_VALUE_INSN;
@@ -1644,14 +1650,15 @@ static struct pre_ir_insn load_const_to_reg(__u8 dst, __s64 data,
 	// MOV dst imm
 	struct pre_ir_insn insn;
 	insn.dst_reg = dst;
-	if (type == IR_ALU_64) {
-		insn.it = IMM64;
-		insn.imm64 = data;
-		insn.opcode = BPF_MOV | BPF_K | BPF_ALU64;
-	} else {
+	if (type == IR_ALU_32) {
 		insn.it = IMM;
 		insn.imm = data;
 		insn.opcode = BPF_MOV | BPF_K | BPF_ALU;
+	} else {
+		// Default is imm64
+		insn.it = IMM64;
+		insn.imm64 = data;
+		insn.opcode = BPF_MOV | BPF_K | BPF_ALU64;
 	}
 	return insn;
 }
@@ -1947,12 +1954,14 @@ static void translate(struct ir_function *fun)
 					extra->translated[0] = alu_reg(
 						get_alloc_reg(dst_insn),
 						get_alloc_reg(v1.data.insn_d),
-						insn->alu_op, alu_code(insn->op));
-				} else if (t1 == CONST) {
-					extra->translated[0] = alu_imm(
-						get_alloc_reg(dst_insn),
-						v1.data.constant_d, insn->alu_op,
+						insn->alu_op,
 						alu_code(insn->op));
+				} else if (t1 == CONST) {
+					extra->translated[0] =
+						alu_imm(get_alloc_reg(dst_insn),
+							v1.data.constant_d,
+							insn->alu_op,
+							alu_code(insn->op));
 				} else {
 					CRITICAL("Error");
 				}
@@ -2012,7 +2021,8 @@ static void translate(struct ir_function *fun)
 					DBGASSERT(t1 == REG);
 					extra->translated[0] = cond_jmp_imm(
 						get_alloc_reg(v1.data.insn_d),
-						v0.data.constant_d, insn->alu_op,
+						v0.data.constant_d,
+						insn->alu_op,
 						jmp_code(insn->op));
 				}
 			} else {

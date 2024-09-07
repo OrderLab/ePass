@@ -524,6 +524,7 @@ struct ir_insn *create_assign_insn_base_cg(struct ir_basic_block *bb,
 	new_insn->values[0] = val;
 	new_insn->value_num = 1;
 	new_insn->vr_type = IR_VR_TYPE_UNKNOWN;
+	new_insn->alu_op = IR_ALU_UNKNOWN;
 	val_add_user(val, new_insn);
 	return new_insn;
 }
