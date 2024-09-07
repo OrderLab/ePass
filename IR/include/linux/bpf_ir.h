@@ -48,7 +48,7 @@ void bpf_ir_print_to_log(struct bpf_ir_env *env, char *fmt, ...);
 
 #else
 
-#define PRINT_DBG prink
+#define PRINT_DBG printk
 
 #define PRINT_LOG bpf_ir_print_to_log
 
