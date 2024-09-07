@@ -959,6 +959,12 @@ static void normalize(struct ir_function *fun)
 								 ->spilled *
 							8;
 					}
+					if (t0 == CONST && v0->alu_type == IR_ALU_64) {
+						// 64 imm load
+						insn->op = IR_INSN_LOADIMM_EXTRA;
+						insn->imm_extra_type = IR_LOADIMM_IMM64;
+						insn->imm64 = v0->data.constant_d;
+					}
 				}
 			} else if (insn->op == IR_INSN_RET) {
 				// OK
@@ -1395,14 +1401,13 @@ static int check_need_spill(struct ir_function *fun)
 					res = 1;
 				}
 				if (tdst == STACK && t0 == CONST) {
-					if (insn->vr_type == IR_VR_TYPE_64) {
+					if (v0->alu_type == IR_ALU_64) {
 						// First load to R0
 						struct ir_insn *new_insn =
 							create_assign_insn_cg(
 								insn, *v0,
 								INSERT_FRONT);
-						new_insn->vr_type =
-							insn->vr_type;
+						new_insn->values[0].alu_type = IR_ALU_64;
 						insn_cg(new_insn)->dst =
 							fun->cg_info.regs[0];
 						v0->type = IR_VALUE_INSN;
