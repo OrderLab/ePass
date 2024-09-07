@@ -31,7 +31,7 @@
 
 // A environment for communicating with external functions
 
-#define BPF_IR_LOG_SIZE 10000
+#define BPF_IR_LOG_SIZE 100000
 
 struct bpf_ir_env {
 	char log[BPF_IR_LOG_SIZE];
