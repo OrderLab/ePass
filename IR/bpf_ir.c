@@ -398,7 +398,7 @@ static struct ir_insn *create_insn(void)
 	}
 	INIT_ARRAY(&insn->users, struct ir_insn *);
 	// Setting the default values
-	insn->alu = IR_ALU_UNKNOWN;
+	insn->alu_op = IR_ALU_UNKNOWN;
 	insn->vr_type = IR_VR_TYPE_UNKNOWN;
 	insn->value_num = 0;
 	return insn;
@@ -572,14 +572,14 @@ static struct ir_value get_src_value(struct bpf_ir_env *env,
 static struct ir_insn *
 create_alu_bin(struct ir_basic_block *bb, struct ir_value val1,
 	       struct ir_value val2, enum ir_insn_type ty,
-	       struct ssa_transform_env *env, enum ir_alu_type alu_ty)
+	       struct ssa_transform_env *env, enum ir_alu_op_type alu_ty)
 {
 	struct ir_insn *new_insn = create_insn_back(bb);
 	new_insn->op = ty;
 	new_insn->values[0] = val1;
 	new_insn->values[1] = val2;
 	new_insn->value_num = 2;
-	new_insn->alu = alu_ty;
+	new_insn->alu_op = alu_ty;
 	add_user(env, new_insn, new_insn->values[0]);
 	add_user(env, new_insn, new_insn->values[1]);
 	return new_insn;
@@ -587,7 +587,7 @@ create_alu_bin(struct ir_basic_block *bb, struct ir_value val1,
 
 static void alu_write(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 		      enum ir_insn_type ty, struct pre_ir_insn insn,
-		      struct pre_ir_basic_block *bb, enum ir_alu_type alu_ty)
+		      struct pre_ir_basic_block *bb, enum ir_alu_op_type alu_ty)
 {
 	struct ir_insn *new_insn = create_alu_bin(
 		bb->ir_bb, read_variable(env, tenv, insn.dst_reg, bb),
@@ -602,14 +602,14 @@ static void create_cond_jmp(struct bpf_ir_env *env,
 			    struct ssa_transform_env *tenv,
 			    struct pre_ir_basic_block *bb,
 			    struct pre_ir_insn insn, enum ir_insn_type ty,
-			    enum ir_alu_type alu_ty)
+			    enum ir_alu_op_type alu_ty)
 {
 	struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
 	new_insn->op = ty;
 	new_insn->values[0] = read_variable(env, tenv, insn.dst_reg, bb);
 	new_insn->values[1] = get_src_value(env, tenv, bb, insn);
 	new_insn->value_num = 2;
-	new_insn->alu = alu_ty;
+	new_insn->alu_op = alu_ty;
 	add_user(tenv, new_insn, new_insn->values[0]);
 	add_user(tenv, new_insn, new_insn->values[1]);
 	size_t pos = insn.pos + insn.off + 1;
@@ -651,7 +651,7 @@ static int transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 		if (BPF_CLASS(code) == BPF_ALU ||
 		    BPF_CLASS(code) == BPF_ALU64) {
 			// ALU class
-			enum ir_alu_type alu_ty = IR_ALU_UNKNOWN;
+			enum ir_alu_op_type alu_ty = IR_ALU_UNKNOWN;
 			if (BPF_CLASS(code) == BPF_ALU) {
 				alu_ty = IR_ALU_32;
 			} else {
@@ -672,7 +672,9 @@ static int transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 					get_src_value(env, tenv, bb, insn);
 				if (BPF_SRC(code) == BPF_K) {
 					// Mov a constant
-					v.alu_type = alu_ty;
+					// mov64 xx
+					// mov xx
+					v.const_type = alu_ty;
 				}
 				write_variable(tenv, insn.dst_reg, bb, v);
 			} else if (BPF_OP(code) == BPF_LSH) {
@@ -682,10 +684,11 @@ static int transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 				// dst = (src != 0) ? (dst % src) : dst
 				alu_write(env, tenv, IR_INSN_MOD, insn, bb,
 					  alu_ty);
-			}
-
-			else {
+			} else {
 				// TODO
+				RAISE_ERROR("Not supported");
+			}
+			if (insn.off != 0) {
 				RAISE_ERROR("Not supported");
 			}
 
@@ -698,7 +701,7 @@ static int transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 				struct ir_value imm_val;
 				imm_val.type = IR_VALUE_CONSTANT;
 				imm_val.data.constant_d = insn.imm64;
-				imm_val.alu_type = IR_ALU_64;
+				imm_val.const_type = IR_ALU_64;
 				write_variable(tenv, insn.dst_reg, bb, imm_val);
 			} else if (insn.src_reg > 0 && insn.src_reg <= 0x06) {
 				// BPF MAP instructions
@@ -780,7 +783,7 @@ static int transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 			add_user(tenv, new_insn, new_insn->values[0]);
 		} else if (BPF_CLASS(code) == BPF_JMP ||
 			   BPF_CLASS(code) == BPF_JMP32) {
-			enum ir_alu_type alu_ty = IR_ALU_UNKNOWN;
+			enum ir_alu_op_type alu_ty = IR_ALU_UNKNOWN;
 			if (BPF_CLASS(code) == BPF_JMP) {
 				alu_ty = IR_ALU_64;
 			} else {
@@ -955,81 +958,10 @@ static int gen_function(struct ir_function *fun, struct ssa_transform_env *env)
 	return 0;
 }
 
-static void bpf_ir_fix_bb_succ(struct ir_function *fun)
-{
-	struct ir_basic_block **pos;
-	array_for(pos, fun->all_bbs)
-	{
-		struct ir_basic_block *bb = *pos;
-		struct ir_insn *insn = bpf_ir_get_last_insn(bb);
-		if (insn && is_cond_jmp(insn)) {
-			// Conditional jmp
-			if (bb->succs.num_elem != 2) {
-				CRITICAL(
-					"Conditional jmp with != 2 successors");
-			}
-			struct ir_basic_block **s1 = array_get(
-				&bb->succs, 0, struct ir_basic_block *);
-			struct ir_basic_block **s2 = array_get(
-				&bb->succs, 1, struct ir_basic_block *);
-			*s1 = insn->bb1;
-			*s2 = insn->bb2;
-		}
-	}
-}
-
-static void add_reach(struct bpf_ir_env *env, struct ir_function *fun,
-		      struct ir_basic_block *bb)
-{
-	if (bb->_visited) {
-		return;
-	}
-	bb->_visited = 1;
-	bpf_ir_array_push(&fun->reachable_bbs, &bb);
-
-	struct ir_basic_block **succ;
-	__u8 i = 0;
-	array_for(succ, bb->succs)
-	{
-		if (i == 0) {
-			i = 1;
-			// Check if visited
-			if ((*succ)->_visited) {
-				CRITICAL("Loop BB detected");
-			}
-		}
-		add_reach(env, fun, *succ);
-	}
-}
-
-static void gen_reachable_bbs(struct bpf_ir_env *env, struct ir_function *fun)
-{
-	bpf_ir_clean_visited(fun);
-	bpf_ir_array_clear(&fun->reachable_bbs);
-	add_reach(env, fun, fun->entry);
-}
-
-static void gen_end_bbs(struct ir_function *fun)
-{
-	struct ir_basic_block **pos;
-	bpf_ir_array_clear(&fun->end_bbs);
-	array_for(pos, fun->reachable_bbs)
-	{
-		struct ir_basic_block *bb = *pos;
-		if (bb->succs.num_elem == 0) {
-			bpf_ir_array_push(&fun->end_bbs, &bb);
-		}
-	}
-}
-
 static int run_passes(struct bpf_ir_env *env, struct ir_function *fun)
 {
-	bpf_ir_prog_check(env, fun);
 	for (size_t i = 0; i < sizeof(passes) / sizeof(passes[0]); ++i) {
-		bpf_ir_fix_bb_succ(fun);
-		bpf_ir_clean_metadata_all(fun);
-		gen_reachable_bbs(env, fun);
-		gen_end_bbs(fun);
+		bpf_ir_prog_check(env, fun);
 		PRINT_LOG(env,
 			  "\x1B[32m------ Running Pass: %s ------\x1B[0m\n",
 			  passes[i].name);
@@ -1038,10 +970,6 @@ static int run_passes(struct bpf_ir_env *env, struct ir_function *fun)
 		bpf_ir_prog_check(env, fun);
 		print_ir_prog(env, fun);
 	}
-	bpf_ir_fix_bb_succ(fun);
-	bpf_ir_clean_metadata_all(fun);
-	gen_reachable_bbs(env, fun);
-	gen_end_bbs(fun);
 	return 0;
 }
 
@@ -1101,6 +1029,8 @@ int bpf_ir_run(struct bpf_ir_env *env, const struct bpf_insn *insns, size_t len)
 	}
 
 	// Drop env
+
+	bpf_ir_prog_check(env, &fun);
 	print_ir_prog(env, &fun);
 	PRINT_LOG(env, "Starting IR Passes...\n");
 	// Start IR manipulation

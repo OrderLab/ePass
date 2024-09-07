@@ -118,7 +118,7 @@ int bpf_ir_array_clone(struct array *res, struct array *arr);
 
 #define RAISE_ERROR(str)                                              \
 	{                                                             \
-		PRINT_LOG(env, "%s:%d <%s> %s\n", __FILE__, __LINE__, \
+		PRINT_LOG(env, "\n--> %s:%d <%s> %s <--\n", __FILE__, __LINE__, \
 			  __FUNCTION__, str);                         \
 		return -ENOSYS;                                       \
 	}
@@ -126,6 +126,17 @@ int bpf_ir_array_clone(struct array *res, struct array *arr);
 #define DBGASSERT(cond)                       \
 	if (!(cond)) {                        \
 		CRITICAL("Assertion failed"); \
+	}
+
+#define CRITICAL_DUMP(env, str)            \
+	{                                  \
+		bpf_ir_print_log_dbg(env); \
+		CRITICAL(str)              \
+	}
+
+#define CRITICAL_ASSERT(env, cond)                      \
+	if (!(cond)) {                                  \
+		CRITICAL_DUMP(env, "Assertion failed"); \
 	}
 
 /* DBG Macro End */
@@ -168,7 +179,7 @@ struct pre_ir_insn {
 	size_t pos; // Original position
 };
 
-enum ir_alu_type {
+enum ir_alu_op_type {
 	IR_ALU_UNKNOWN, // To prevent from not manually setting this type
 	IR_ALU_32,
 	IR_ALU_64,
@@ -194,7 +205,7 @@ struct ir_value {
 		struct ir_insn *insn_d;
 	} data;
 	enum ir_value_type type;
-	enum ir_alu_type alu_type; // Used when type is a constant
+	enum ir_alu_op_type const_type; // Used when type is a constant
 };
 
 /**
@@ -214,7 +225,7 @@ struct phi_value {
 	struct ir_basic_block *bb;
 };
 
-int bpf_ir_valid_alu_type(enum ir_alu_type type);
+int bpf_ir_valid_alu_type(enum ir_alu_op_type type);
 
 /**
     Virtual Register Type
@@ -314,8 +325,8 @@ struct ir_insn {
 	// Used in RAW instructions
 	struct ir_address_value addr_val;
 
-	// ALU Type
-	enum ir_alu_type alu;
+	// ALU Operation Type
+	enum ir_alu_op_type alu_op;
 
 	// Used in JMP instructions
 	struct ir_basic_block *bb1;
@@ -647,12 +658,13 @@ struct ir_insn *create_load_insn_bb(struct ir_basic_block *bb,
 
 struct ir_insn *create_bin_insn(struct ir_insn *insn, struct ir_value val1,
 				struct ir_value val2, enum ir_insn_type ty,
-				enum ir_alu_type aluty,
+				enum ir_alu_op_type aluty,
 				enum insert_position pos);
 
 struct ir_insn *create_bin_insn_bb(struct ir_basic_block *bb,
 				   struct ir_value val1, struct ir_value val2,
-				   enum ir_insn_type ty, enum ir_alu_type aluty,
+				   enum ir_insn_type ty,
+				   enum ir_alu_op_type aluty,
 				   enum insert_position pos);
 
 struct ir_insn *create_ja_insn(struct ir_insn *insn,
@@ -663,18 +675,17 @@ struct ir_insn *create_ja_insn_bb(struct ir_basic_block *bb,
 				  struct ir_basic_block *to_bb,
 				  enum insert_position pos);
 
-struct ir_insn *create_jbin_insn(struct ir_insn *insn, struct ir_value val1,
-				 struct ir_value val2,
-				 struct ir_basic_block *to_bb1,
-				 struct ir_basic_block *to_bb2,
-				 enum ir_insn_type ty, enum ir_alu_type aluty,
-				 enum insert_position pos);
+struct ir_insn *
+create_jbin_insn(struct ir_insn *insn, struct ir_value val1,
+		 struct ir_value val2, struct ir_basic_block *to_bb1,
+		 struct ir_basic_block *to_bb2, enum ir_insn_type ty,
+		 enum ir_alu_op_type aluty, enum insert_position pos);
 
 struct ir_insn *
 create_jbin_insn_bb(struct ir_basic_block *bb, struct ir_value val1,
 		    struct ir_value val2, struct ir_basic_block *to_bb1,
 		    struct ir_basic_block *to_bb2, enum ir_insn_type ty,
-		    enum ir_alu_type aluty, enum insert_position pos);
+		    enum ir_alu_op_type aluty, enum insert_position pos);
 
 struct ir_insn *create_ret_insn(struct ir_insn *insn, struct ir_value val,
 				enum insert_position pos);

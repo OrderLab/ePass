@@ -435,7 +435,7 @@ static void conflict_analysis(struct ir_function *fun)
 	}
 }
 
-static enum ir_vr_type alu_to_vr_type(enum ir_alu_type ty)
+static enum ir_vr_type alu_to_vr_type(enum ir_alu_op_type ty)
 {
 	if (ty == IR_ALU_32) {
 		return IR_VR_TYPE_32;
@@ -875,7 +875,7 @@ static void normalize(struct ir_function *fun)
 							INSERT_FRONT);
 					insn_cg(new_insn)->dst = dst_insn;
 					new_insn->vr_type =
-						alu_to_vr_type(insn->alu);
+						alu_to_vr_type(insn->alu_op);
 					v0->type = IR_VALUE_INSN;
 					v0->data.insn_d = dst_insn;
 				} else if (t0 == REG && t1 == REG) {
@@ -959,7 +959,7 @@ static void normalize(struct ir_function *fun)
 								 ->spilled *
 							8;
 					}
-					if (t0 == CONST && v0->alu_type == IR_ALU_64) {
+					if (t0 == CONST && v0->const_type == IR_ALU_64) {
 						// 64 imm load
 						insn->op = IR_INSN_LOADIMM_EXTRA;
 						insn->imm_extra_type = IR_LOADIMM_IMM64;
@@ -1275,7 +1275,7 @@ static int check_need_spill(struct ir_function *fun)
 									.regs[0]),
 							INSERT_BACK);
 					tmp->vr_type =
-						alu_to_vr_type(insn->alu);
+						alu_to_vr_type(insn->alu_op);
 					insn_cg(tmp)->dst = dst_insn;
 					res = 1;
 				} else {
@@ -1319,7 +1319,7 @@ static int check_need_spill(struct ir_function *fun)
 									INSERT_FRONT);
 							new_insn->vr_type =
 								alu_to_vr_type(
-									insn->alu);
+									insn->alu_op);
 							v1->type =
 								IR_VALUE_INSN;
 							if (reg1 == reg2) {
@@ -1371,7 +1371,7 @@ static int check_need_spill(struct ir_function *fun)
 									INSERT_FRONT);
 							new_insn->vr_type =
 								alu_to_vr_type(
-									insn->alu);
+									insn->alu_op);
 							insn_cg(new_insn)->dst =
 								fun->cg_info.regs
 									[reg1];
@@ -1401,13 +1401,13 @@ static int check_need_spill(struct ir_function *fun)
 					res = 1;
 				}
 				if (tdst == STACK && t0 == CONST) {
-					if (v0->alu_type == IR_ALU_64) {
+					if (v0->const_type == IR_ALU_64) {
 						// First load to R0
 						struct ir_insn *new_insn =
 							create_assign_insn_cg(
 								insn, *v0,
 								INSERT_FRONT);
-						new_insn->values[0].alu_type = IR_ALU_64;
+						new_insn->values[0].const_type = IR_ALU_64;
 						insn_cg(new_insn)->dst =
 							fun->cg_info.regs[0];
 						v0->type = IR_VALUE_INSN;
@@ -1459,7 +1459,7 @@ static int check_need_spill(struct ir_function *fun)
 								INSERT_FRONT);
 						new_insn->vr_type =
 							alu_to_vr_type(
-								insn->alu);
+								insn->alu_op);
 						insn_cg(new_insn)->dst =
 							fun->cg_info.regs[reg2];
 						v1->type = IR_VALUE_INSN;
@@ -1479,7 +1479,7 @@ static int check_need_spill(struct ir_function *fun)
 								INSERT_FRONT);
 						new_insn->vr_type =
 							alu_to_vr_type(
-								insn->alu);
+								insn->alu_op);
 						v0->type = IR_VALUE_INSN;
 						v0->data.insn_d = new_insn;
 						res = 1;
@@ -1489,7 +1489,7 @@ static int check_need_spill(struct ir_function *fun)
 						load_stack_to_r0(
 							fun, insn, v0,
 							alu_to_vr_type(
-								insn->alu));
+								insn->alu_op));
 						res = 1;
 					}
 					// jmp stack1 stack2
@@ -1501,7 +1501,7 @@ static int check_need_spill(struct ir_function *fun)
 						load_stack_to_r0(
 							fun, insn, v0,
 							alu_to_vr_type(
-								insn->alu));
+								insn->alu_op));
 						res = 1;
 					}
 				}
@@ -1639,7 +1639,7 @@ static struct pre_ir_insn load_reg_to_reg(__u8 dst, __u8 src)
 }
 
 static struct pre_ir_insn load_const_to_reg(__u8 dst, __s64 data,
-					    enum ir_alu_type type)
+					    enum ir_alu_op_type type)
 {
 	// MOV dst imm
 	struct pre_ir_insn insn;
@@ -1765,7 +1765,7 @@ static int jmp_code(enum ir_insn_type insn)
 	}
 }
 
-static struct pre_ir_insn alu_reg(__u8 dst, __u8 src, enum ir_alu_type type,
+static struct pre_ir_insn alu_reg(__u8 dst, __u8 src, enum ir_alu_op_type type,
 				  int opcode)
 {
 	struct pre_ir_insn insn;
@@ -1776,7 +1776,7 @@ static struct pre_ir_insn alu_reg(__u8 dst, __u8 src, enum ir_alu_type type,
 	return insn;
 }
 
-static struct pre_ir_insn alu_imm(__u8 dst, __s64 src, enum ir_alu_type type,
+static struct pre_ir_insn alu_imm(__u8 dst, __s64 src, enum ir_alu_op_type type,
 				  int opcode)
 {
 	struct pre_ir_insn insn;
@@ -1795,7 +1795,7 @@ static struct pre_ir_insn alu_imm(__u8 dst, __s64 src, enum ir_alu_type type,
 }
 
 static struct pre_ir_insn cond_jmp_reg(__u8 dst, __u8 src,
-				       enum ir_alu_type type, int opcode)
+				       enum ir_alu_op_type type, int opcode)
 {
 	struct pre_ir_insn insn;
 	insn.dst_reg = dst;
@@ -1806,7 +1806,7 @@ static struct pre_ir_insn cond_jmp_reg(__u8 dst, __u8 src,
 }
 
 static struct pre_ir_insn cond_jmp_imm(__u8 dst, __s64 src,
-				       enum ir_alu_type type, int opcode)
+				       enum ir_alu_op_type type, int opcode)
 {
 	struct pre_ir_insn insn;
 	insn.dst_reg = dst;
@@ -1938,8 +1938,7 @@ static void translate(struct ir_function *fun)
 				} else {
 					CRITICAL("Error");
 				}
-			} else if (insn->op >= IR_INSN_ADD &&
-				   insn->op < IR_INSN_CALL) {
+			} else if (is_alu(insn)) {
 				DBGASSERT(tdst == REG);
 				DBGASSERT(t0 == REG);
 				DBGASSERT(get_alloc_reg(dst_insn) ==
@@ -1948,11 +1947,11 @@ static void translate(struct ir_function *fun)
 					extra->translated[0] = alu_reg(
 						get_alloc_reg(dst_insn),
 						get_alloc_reg(v1.data.insn_d),
-						insn->alu, alu_code(insn->op));
+						insn->alu_op, alu_code(insn->op));
 				} else if (t1 == CONST) {
 					extra->translated[0] = alu_imm(
 						get_alloc_reg(dst_insn),
-						v1.data.constant_d, insn->alu,
+						v1.data.constant_d, insn->alu_op,
 						alu_code(insn->op));
 				} else {
 					CRITICAL("Error");
@@ -1965,7 +1964,7 @@ static void translate(struct ir_function *fun)
 						load_const_to_reg(
 							get_alloc_reg(dst_insn),
 							v0.data.constant_d,
-							insn->alu);
+							insn->alu_op);
 				} else if (tdst == REG && t0 == REG) {
 					extra->translated[0] = load_reg_to_reg(
 						get_alloc_reg(dst_insn),
@@ -1995,7 +1994,7 @@ static void translate(struct ir_function *fun)
 								v0.data.insn_d),
 							get_alloc_reg(
 								v1.data.insn_d),
-							insn->alu,
+							insn->alu_op,
 							jmp_code(insn->op));
 					} else if (t1 == CONST) {
 						extra->translated
@@ -2003,7 +2002,7 @@ static void translate(struct ir_function *fun)
 							get_alloc_reg(
 								v0.data.insn_d),
 							v1.data.constant_d,
-							insn->alu,
+							insn->alu_op,
 							jmp_code(insn->op));
 					} else {
 						CRITICAL("Error");
@@ -2013,7 +2012,7 @@ static void translate(struct ir_function *fun)
 					DBGASSERT(t1 == REG);
 					extra->translated[0] = cond_jmp_imm(
 						get_alloc_reg(v1.data.insn_d),
-						v0.data.constant_d, insn->alu,
+						v0.data.constant_d, insn->alu_op,
 						jmp_code(insn->op));
 				}
 			} else {
