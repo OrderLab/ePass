@@ -452,6 +452,8 @@ struct ir_basic_block *bpf_ir_init_bb_raw(void);
 int bpf_ir_run(struct bpf_ir_env *env, const struct bpf_insn *insns,
 	       size_t len);
 
+void bpf_ir_print_bpf_insn(struct bpf_ir_env *env, const struct bpf_insn *insn);
+
 /* Fun Start */
 
 struct code_gen_info {

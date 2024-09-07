@@ -1045,24 +1045,27 @@ static int run_passes(struct bpf_ir_env *env, struct ir_function *fun)
 	return 0;
 }
 
-static void print_bpf_insn(struct bpf_ir_env *env, struct bpf_insn insn)
-{
-	if (insn.off < 0) {
-		PRINT_LOG(env, "%4x       %x       %x %8x -%8x\n", insn.code,
-			  insn.src_reg, insn.dst_reg, insn.imm, -insn.off);
-	} else {
-		PRINT_LOG(env, "%4x       %x       %x %8x  %8x\n", insn.code,
-			  insn.src_reg, insn.dst_reg, insn.imm, insn.off);
-	}
-}
+// static void print_bpf_insn_simple(struct bpf_ir_env *env, struct bpf_insn insn)
+// {
+// 	if (insn.off < 0) {
+// 		PRINT_LOG(env, "%4x       %x       %x %8x -%8x\n", insn.code,
+// 			  insn.src_reg, insn.dst_reg, insn.imm, -insn.off);
+// 	} else {
+// 		PRINT_LOG(env, "%4x       %x       %x %8x  %8x\n", insn.code,
+// 			  insn.src_reg, insn.dst_reg, insn.imm, insn.off);
+// 	}
+// }
 
 static void print_bpf_prog(struct bpf_ir_env *env, const struct bpf_insn *insns,
 			   size_t len)
 {
-	PRINT_LOG(env, "code src_reg dst_reg      imm       off\n");
 	for (size_t i = 0; i < len; ++i) {
-		struct bpf_insn insn = insns[i];
-		print_bpf_insn(env, insn);
+		const struct bpf_insn *insn = &insns[i];
+		if (insn->code == 0) {
+			continue;
+		}
+		PRINT_LOG(env, "[%zu] ", i);
+		bpf_ir_print_bpf_insn(env, insn);
 	}
 }
 

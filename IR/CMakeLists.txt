@@ -14,6 +14,7 @@ add_library(bpf_ir STATIC
     passes/add_constraint_pass.c
     passes/cut_bb_pass.c
     aux/prog_check.c
+    aux/disasm.c
     ir_code_gen.c
     lii.c
 )
