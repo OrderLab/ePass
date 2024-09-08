@@ -132,11 +132,10 @@ static void print_ir_prog_cg_alloc(struct bpf_ir_env *env,
 	print_ir_prog_advanced(env, fun, NULL, NULL, print_ir_alloc);
 }
 
-static int synthesize(struct ir_function *fun)
+static int synthesize(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	// The last step, synthesizes the program
-	SAFE_MALLOC(fun->cg_info.prog,
-		    fun->cg_info.prog_size * sizeof(struct bpf_insn));
+	SAFE_MALLOC(env->insns, env->insn_cnt * sizeof(struct bpf_insn));
 	struct ir_basic_block **pos = NULL;
 	array_for(pos, fun->reachable_bbs)
 	{
@@ -150,7 +149,7 @@ static int synthesize(struct ir_function *fun)
 				// PRINT_DBG("Writing to insn %zu\n",
 				// 	  translated_insn.pos);
 				struct bpf_insn *real_insn =
-					&fun->cg_info.prog[translated_insn.pos];
+					&env->insns[translated_insn.pos];
 				real_insn->code = translated_insn.opcode;
 				real_insn->dst_reg = translated_insn.dst_reg;
 				real_insn->src_reg = translated_insn.src_reg;
@@ -160,9 +159,8 @@ static int synthesize(struct ir_function *fun)
 				} else {
 					// Wide instruction
 					struct bpf_insn *real_insn2 =
-						&fun->cg_info.prog
-							 [translated_insn.pos +
-							  1];
+						&env->insns[translated_insn.pos +
+							    1];
 					real_insn->imm = translated_insn.imm64 &
 							 0xffffffff;
 					real_insn2->imm =
@@ -990,7 +988,7 @@ static void normalize(struct ir_function *fun)
 }
 
 // Relocate BB
-static void calc_pos(struct ir_function *fun)
+static void calc_pos(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	// Calculate the position of each instruction & BB
 	size_t ipos = 0; // Instruction position
@@ -1016,12 +1014,12 @@ static void calc_pos(struct ir_function *fun)
 			}
 		}
 	}
-	fun->cg_info.prog_size = ipos;
+	env->insn_cnt = ipos;
 }
 
-static void relocate(struct ir_function *fun)
+static void relocate(struct bpf_ir_env *env, struct ir_function *fun)
 {
-	calc_pos(fun);
+	calc_pos(env, fun);
 	struct ir_basic_block **pos;
 	array_for(pos, fun->reachable_bbs)
 	{
@@ -2124,10 +2122,10 @@ int bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 	translate(fun);
 
 	// Step 14: Relocation
-	relocate(fun);
+	relocate(env, fun);
 
 	// Step 15: Synthesize
-	synthesize(fun);
+	synthesize(env, fun);
 
 	// Free CG resources
 	free_cg_res(fun);

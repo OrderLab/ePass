@@ -16,9 +16,12 @@ int main(int argn, char **argv)
 	size_t sz = bpf_program__insn_cnt(prog);
 	const struct bpf_insn *insn = bpf_program__insns(prog);
 	// bpf_program__set_insns
-	struct bpf_ir_env *env = malloc_proto(sizeof(struct bpf_ir_env));
+	struct bpf_ir_env *env = bpr_ir_init_env();
+	if (!env) {
+		return 1;
+	}
 	bpf_ir_run(env, insn, sz);
 	bpf_ir_print_log_dbg(env);
-	free_proto(env);
+	bpr_ir_free_env(env);
 	bpf_object__close(obj);
 }

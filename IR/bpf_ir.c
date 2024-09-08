@@ -1,5 +1,6 @@
 #include <linux/bpf_common.h>
 #include <linux/bpf_ir.h>
+#include <time.h>
 
 // TODO: Change this to real function
 static const __u32 helper_func_arg_num[100] = { 1, 1, 1, 1, 1, 0, 2, 1, 1 };
@@ -922,9 +923,6 @@ static void free_function(struct ir_function *fun)
 	bpf_ir_array_free(&fun->reachable_bbs);
 	bpf_ir_array_free(&fun->end_bbs);
 	bpf_ir_array_free(&fun->cg_info.all_var);
-	if (fun->cg_info.prog) {
-		free_proto(fun->cg_info.prog);
-	}
 }
 
 static int gen_function(struct ir_function *fun, struct ssa_transform_env *env)
@@ -939,8 +937,6 @@ static int gen_function(struct ir_function *fun, struct ssa_transform_env *env)
 	INIT_ARRAY(&fun->reachable_bbs, struct ir_basic_block *);
 	INIT_ARRAY(&fun->end_bbs, struct ir_basic_block *);
 	INIT_ARRAY(&fun->cg_info.all_var, struct ir_insn *);
-	fun->cg_info.prog = NULL;
-	fun->cg_info.prog_size = 0;
 	for (size_t i = 0; i < MAX_BPF_REG; ++i) {
 		struct array *currentDef = &env->currentDef[i];
 		bpf_ir_array_free(currentDef);
@@ -1054,10 +1050,26 @@ int bpf_ir_run(struct bpf_ir_env *env, const struct bpf_insn *insns, size_t len)
 	PRINT_LOG(env, "--------------------\nOriginal Program:\n");
 	print_bpf_prog(env, insns, len);
 	PRINT_LOG(env, "--------------------\nRewritten Program %zu:\n",
-		  fun.cg_info.prog_size);
-	print_bpf_prog(env, fun.cg_info.prog, fun.cg_info.prog_size);
+		  env->insn_cnt);
+	print_bpf_prog(env, env->insns, env->insn_cnt);
 
 	// Free the memory
 	free_function(&fun);
 	return 0;
+}
+
+struct bpf_ir_env *bpr_ir_init_env(void)
+{
+	struct bpf_ir_env *bpf_ir_env = malloc_proto(sizeof(struct bpf_ir_env));
+	bpf_ir_env->insn_cnt = 0;
+	bpf_ir_env->insns = NULL;
+	bpf_ir_env->log_pos = 0;
+	return bpf_ir_env;
+}
+
+void bpr_ir_free_env(struct bpf_ir_env *env)
+{
+	free_proto(env->insns);
+	free_proto(env);
+	env = NULL;
 }

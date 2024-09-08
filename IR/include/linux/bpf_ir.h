@@ -35,6 +35,12 @@
 #define BPF_IR_LOG_SIZE 100000
 
 struct bpf_ir_env {
+	// Number of instructions
+	size_t insn_cnt;
+
+	// Instructions
+	struct bpf_insn *insns;
+
 	char log[BPF_IR_LOG_SIZE];
 	size_t log_pos;
 };
@@ -465,6 +471,10 @@ int bpf_ir_run(struct bpf_ir_env *env, const struct bpf_insn *insns,
 
 void bpf_ir_print_bpf_insn(struct bpf_ir_env *env, const struct bpf_insn *insn);
 
+void bpr_ir_free_env(struct bpf_ir_env *env);
+
+struct bpf_ir_env *bpr_ir_init_env(void);
+
 /* Fun Start */
 
 struct code_gen_info {
@@ -478,11 +488,6 @@ struct code_gen_info {
 	size_t callee_num;
 
 	__s16 stack_offset;
-
-	// Number of instructions
-	size_t prog_size;
-
-	struct bpf_insn *prog;
 
 	// Whether to spill callee saved registers
 	__u8 spill_callee;
