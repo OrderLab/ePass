@@ -471,9 +471,9 @@ int bpf_ir_run(struct bpf_ir_env *env, const struct bpf_insn *insns,
 
 void bpf_ir_print_bpf_insn(struct bpf_ir_env *env, const struct bpf_insn *insn);
 
-void bpr_ir_free_env(struct bpf_ir_env *env);
+void bpf_ir_free_env(struct bpf_ir_env *env);
 
-struct bpf_ir_env *bpr_ir_init_env(void);
+struct bpf_ir_env *bpf_ir_init_env(void);
 
 /* Fun Start */
 

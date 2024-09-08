@@ -15,7 +15,7 @@ int main(int argn, char **argv)
 	}
 	size_t sz = bpf_program__insn_cnt(prog);
 	const struct bpf_insn *insn = bpf_program__insns(prog);
-	struct bpf_ir_env *env = bpr_ir_init_env();
+	struct bpf_ir_env *env = bpf_ir_init_env();
 	if (!env) {
 		return 1;
 	}
@@ -24,6 +24,6 @@ int main(int argn, char **argv)
 	// To set the insns, you need to set the callback functions when loading
 	// See https://github.com/libbpf/libbpf/blob/master/src/libbpf.h
 	// bpf_program__set_insns(prog, env->insns, env->insn_cnt);
-	bpr_ir_free_env(env);
+	bpf_ir_free_env(env);
 	bpf_object__close(obj);
 }

@@ -1,6 +1,5 @@
 #include <linux/bpf_common.h>
 #include <linux/bpf_ir.h>
-#include <time.h>
 
 // TODO: Change this to real function
 static const __u32 helper_func_arg_num[100] = { 1, 1, 1, 1, 1, 0, 2, 1, 1 };
@@ -1058,7 +1057,7 @@ int bpf_ir_run(struct bpf_ir_env *env, const struct bpf_insn *insns, size_t len)
 	return 0;
 }
 
-struct bpf_ir_env *bpr_ir_init_env(void)
+struct bpf_ir_env *bpf_ir_init_env(void)
 {
 	struct bpf_ir_env *bpf_ir_env = malloc_proto(sizeof(struct bpf_ir_env));
 	bpf_ir_env->insn_cnt = 0;
@@ -1067,7 +1066,7 @@ struct bpf_ir_env *bpr_ir_init_env(void)
 	return bpf_ir_env;
 }
 
-void bpr_ir_free_env(struct bpf_ir_env *env)
+void bpf_ir_free_env(struct bpf_ir_env *env)
 {
 	free_proto(env->insns);
 	free_proto(env);
