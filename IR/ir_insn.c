@@ -335,7 +335,8 @@ struct ir_insn *create_bin_insn(struct ir_insn *insn, struct ir_value val1,
 
 struct ir_insn *create_bin_insn_bb(struct ir_basic_block *bb,
 				   struct ir_value val1, struct ir_value val2,
-				   enum ir_insn_type ty, enum ir_alu_op_type aluty,
+				   enum ir_insn_type ty,
+				   enum ir_alu_op_type aluty,
 				   enum insert_position pos)
 {
 	struct ir_insn *new_insn =
@@ -411,12 +412,11 @@ create_jbin_insn_base(struct ir_basic_block *bb, struct ir_value val1,
 	return new_insn;
 }
 
-struct ir_insn *create_jbin_insn(struct ir_insn *insn, struct ir_value val1,
-				 struct ir_value val2,
-				 struct ir_basic_block *to_bb1,
-				 struct ir_basic_block *to_bb2,
-				 enum ir_insn_type ty, enum ir_alu_op_type aluty,
-				 enum insert_position pos)
+struct ir_insn *
+create_jbin_insn(struct ir_insn *insn, struct ir_value val1,
+		 struct ir_value val2, struct ir_basic_block *to_bb1,
+		 struct ir_basic_block *to_bb2, enum ir_insn_type ty,
+		 enum ir_alu_op_type aluty, enum insert_position pos)
 {
 	struct ir_insn *new_insn = create_jbin_insn_base(
 		insn->parent_bb, val1, val2, to_bb1, to_bb2, ty, aluty);

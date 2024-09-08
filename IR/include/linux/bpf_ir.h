@@ -118,8 +118,8 @@ int bpf_ir_array_clone(struct array *res, struct array *arr);
 
 #define RAISE_ERROR(str)                                              \
 	{                                                             \
-		PRINT_LOG(env, "\n--> %s:%d <%s> %s <--\n", __FILE__, __LINE__, \
-			  __FUNCTION__, str);                         \
+		PRINT_LOG(env, "\n--> %s:%d <%s> %s <--\n", __FILE__, \
+			  __LINE__, __FUNCTION__, str);               \
 		return -ENOSYS;                                       \
 	}
 

@@ -249,8 +249,9 @@ void bpf_ir_print_bpf_insn(struct bpf_ir_env *env, const struct bpf_insn *insn)
 			// if (is_ptr && !allow_ptr_leaks)
 			// 	imm = 0;
 
-			PRINT_LOG(env, "(%02x) r%d = 0x%llx (imm64 ld)\n", insn->code,
-				  insn->dst_reg, imm, insn->imm, (insn + 1)->imm);
+			PRINT_LOG(env, "(%02x) r%d = 0x%llx (imm64 ld)\n",
+				  insn->code, insn->dst_reg, imm, insn->imm,
+				  (insn + 1)->imm);
 		} else {
 			PRINT_LOG(env, "BUG_ld_%02x\n", insn->code);
 			return;
