@@ -1,7 +1,5 @@
 #include "linux/bpf_ir.h"
-#include <stdio.h>
 #include <linux/bpf.h>
-#include <string.h>
 
 typedef _Bool bool;
 
@@ -16,13 +14,13 @@ typedef __u64 u64;
 
 // #include "disasm.h"
 
-const char *const bpf_class_string[8] = {
+static const char *const bpf_class_string[8] = {
 	[BPF_LD] = "ld",       [BPF_LDX] = "ldx",     [BPF_ST] = "st",
 	[BPF_STX] = "stx",     [BPF_ALU] = "alu",     [BPF_JMP] = "jmp",
 	[BPF_JMP32] = "jmp32", [BPF_ALU64] = "alu64",
 };
 
-const char *const bpf_alu_string[16] = {
+static const char *const bpf_alu_string[16] = {
 	[BPF_ADD >> 4] = "+=",	  [BPF_SUB >> 4] = "-=",
 	[BPF_MUL >> 4] = "*=",	  [BPF_DIV >> 4] = "/=",
 	[BPF_OR >> 4] = "|=",	  [BPF_AND >> 4] = "&=",
@@ -243,8 +241,8 @@ void bpf_ir_print_bpf_insn(struct bpf_ir_env *env, const struct bpf_insn *insn)
 			 * part of the ldimm64 insn is accessible.
 			 */
 			u64 imm = ((u64)(insn + 1)->imm << 32) | (u32)insn->imm;
-			bool is_ptr = insn->src_reg == BPF_PSEUDO_MAP_FD ||
-				      insn->src_reg == BPF_PSEUDO_MAP_VALUE;
+			// bool is_ptr = insn->src_reg == BPF_PSEUDO_MAP_FD ||
+			// 	      insn->src_reg == BPF_PSEUDO_MAP_VALUE;
 
 			// if (is_ptr && !allow_ptr_leaks)
 			// 	imm = 0;
