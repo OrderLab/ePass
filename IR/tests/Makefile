@@ -19,6 +19,17 @@ load: clean $(NAME).o
 loadnop: clean $(NAME).nop.o
 	sudo bpftool prog load $(NAME).nop.o /sys/fs/bpf/$(NAME)
 
-clean:
+attachxdp: load
+	sudo bpftool net attach xdp name prog dev wlp0s20f3
+
+detachxdp:
+	sudo bpftool net detach xdp dev wlp0s20f3
+
+log:
+	sudo cat /sys/kernel/debug/tracing/trace_pipe
+
+clean: detachxdp
 	rm -f $(NAME).o $(NAME).s
 	-sudo rm /sys/fs/bpf/$(NAME)
+
+.PHONY: clean load loadnop sobj attachxdp detachxdp log
