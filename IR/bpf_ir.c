@@ -1070,5 +1070,4 @@ void bpf_ir_free_env(struct bpf_ir_env *env)
 {
 	free_proto(env->insns);
 	free_proto(env);
-	env = NULL;
 }
