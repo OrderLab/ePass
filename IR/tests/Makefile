@@ -20,10 +20,10 @@ loadnop: clean $(NAME).nop.o
 	sudo bpftool prog load $(NAME).nop.o /sys/fs/bpf/$(NAME)
 
 attachxdp: load
-	sudo bpftool net attach xdp name prog dev enp1s0
+	sudo bpftool net attach xdp name prog dev $(CARD)
 
 detachxdp:
-	sudo bpftool net detach xdp dev enp1s0
+	sudo bpftool net detach xdp dev $(CARD)
 
 log:
 	sudo cat /sys/kernel/debug/tracing/trace_pipe

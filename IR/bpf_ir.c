@@ -2,7 +2,11 @@
 #include <linux/bpf_ir.h>
 
 // TODO: Change this to real function
-static const __u32 helper_func_arg_num[100] = { 1, 1, 1, 1, 1, 0, 2, 1, 1 };
+static const __u32 helper_func_arg_num[100] = {
+	[0] = 1, [1] = 1, [2] = 1, [3] = 1, [4] = 1, [5] = 0,
+	[6] = 0, // Variable length
+	[7] = 1, [8] = 1
+};
 
 // All function passes.
 static const struct function_pass passes[] = {
@@ -324,7 +328,7 @@ static int init_env(struct ssa_transform_env *tenv, struct bb_info info)
 		struct ir_value val;
 		val.type = IR_VALUE_INSN;
 		val.data.insn_d = tenv->function_arg[i];
-		write_variable(tenv, BPF_REG_1 + i, info.entry, val);
+		write_variable(tenv, BPF_REG_1 + i, NULL, val);
 	}
 	return 0;
 }
@@ -451,6 +455,20 @@ static struct ir_value read_variable_recursive(struct bpf_ir_env *env,
 	}
 	write_variable(tenv, reg, bb, val);
 	return val;
+}
+
+static bool is_variable_defined(struct ssa_transform_env *tenv, __u8 reg,
+				struct pre_ir_basic_block *bb)
+{
+	struct bb_val *pos;
+
+	array_for(pos, tenv->currentDef[reg])
+	{
+		if (pos->bb == bb) {
+			return true;
+		}
+	}
+	return false;
 }
 
 static struct ir_value read_variable(struct bpf_ir_env *env,
@@ -845,8 +863,28 @@ static int transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 						"Not supported function call\n");
 					new_insn->value_num = 0;
 				} else {
-					new_insn->value_num =
-						helper_func_arg_num[insn.imm];
+					if (insn.imm == 6) {
+						// Variable length, infer from previous instructions
+						new_insn->value_num = 0;
+						// used[x] means whether there exists a usage of register x + 1
+						for (__u8 j = 0;
+						     j < MAX_FUNC_ARG; ++j) {
+							if (is_variable_defined(
+								    tenv,
+								    j + BPF_REG_1,
+								    bb)) {
+								new_insn->value_num =
+									j +
+									BPF_REG_1;
+							} else {
+								break;
+							}
+						}
+					} else {
+						new_insn->value_num =
+							helper_func_arg_num
+								[insn.imm];
+					}
 					if (new_insn->value_num >
 					    MAX_FUNC_ARG) {
 						RAISE_ERROR(

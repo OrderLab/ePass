@@ -5,8 +5,8 @@ SEC("xdp")
 int prog(void *ctx)
 {
 	__u64 t = bpf_ktime_get_ns();
-	bpf_trace_printk("100", t % 3);
-	return 0;
+	bpf_trace_printk("%lld\n", 6, t);
+	return XDP_PASS;
 }
 
 char _license[] SEC("license") = "GPL";
