@@ -1858,6 +1858,8 @@ static void translate(struct ir_function *fun)
 				DBGASSERT(insn->imm_extra_type <= 0x6);
 				extra->translated[0].src_reg =
 					insn->imm_extra_type;
+				extra->translated[0].dst_reg =
+					get_alloc_reg(dst_insn);
 				// 0 2 6 needs next
 				if (insn->imm_extra_type == IR_LOADIMM_IMM64 ||
 				    insn->imm_extra_type ==
