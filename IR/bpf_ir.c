@@ -1,3 +1,4 @@
+#include <linux/bpf.h>
 #include <linux/bpf_common.h>
 #include <linux/bpf_ir.h>
 
@@ -488,6 +489,16 @@ static struct ir_value read_variable(struct bpf_ir_env *env,
 		if (bval->bb == bb) {
 			// Found
 			return bval->val;
+		}
+	}
+	if (bb == tenv->info.entry) {
+		// Entry block, has definitions for r1 to r5
+		if (reg > BPF_REG_0 && reg <= MAX_FUNC_ARG) {
+			return bpf_ir_value_insn(tenv->function_arg[reg - 1]);
+		} else {
+			// Invalid Program!
+			// Should throw an exception here
+			CRITICAL("Invalid program detected!");
 		}
 	}
 	// Not found
