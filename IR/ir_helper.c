@@ -201,6 +201,36 @@ void print_alu(struct bpf_ir_env *env, enum ir_alu_op_type ty, const char *str)
 	}
 }
 
+static void print_imm64ld_op(struct bpf_ir_env *env,
+			     enum ir_loadimm_extra_type ty)
+{
+	switch (ty) {
+	case IR_LOADIMM_IMM64:
+		PRINT_LOG(env, "imm64");
+		break;
+	case IR_LOADIMM_MAP_BY_FD:
+		PRINT_LOG(env, "map_fd");
+		break;
+	case IR_LOADIMM_MAP_VAL_FD:
+		PRINT_LOG(env, "map_val_fd");
+		break;
+	case IR_LOADIMM_VAR_ADDR:
+		PRINT_LOG(env, "var_addr");
+		break;
+	case IR_LOADIMM_CODE_ADDR:
+		PRINT_LOG(env, "code_addr");
+		break;
+	case IR_LOADIMM_MAP_BY_IDX:
+		PRINT_LOG(env, "map_idx");
+		break;
+	case IR_LOADIMM_MAP_VAL_IDX:
+		PRINT_LOG(env, "map_val_idx");
+		break;
+	default:
+		CRITICAL("Error");
+	}
+}
+
 /**
     Print the IR insn
  */
@@ -230,7 +260,9 @@ void print_ir_insn_full(struct bpf_ir_env *env, struct ir_insn *insn,
 		print_address_value_full(env, insn->addr_val, print_ir);
 		break;
 	case IR_INSN_LOADIMM_EXTRA:
-		PRINT_LOG(env, "loadimm(type%d) ", insn->imm_extra_type);
+		PRINT_LOG(env, "loadimm(", insn->imm_extra_type);
+		print_imm64ld_op(env, insn->imm_extra_type);
+		PRINT_LOG(env, ") 0x%llx", insn->imm64);
 		break;
 	case IR_INSN_STORERAW:
 		PRINT_LOG(env, "storeraw ");

@@ -1649,15 +1649,13 @@ static struct pre_ir_insn load_const_to_reg(__u8 dst, __s64 data,
 	struct pre_ir_insn insn;
 	insn.dst_reg = dst;
 	if (type == IR_ALU_32) {
-		insn.it = IMM;
-		insn.imm = data;
 		insn.opcode = BPF_MOV | BPF_K | BPF_ALU;
 	} else {
 		// Default is imm64
-		insn.it = IMM64;
-		insn.imm64 = data;
 		insn.opcode = BPF_MOV | BPF_K | BPF_ALU64;
 	}
+	insn.it = IMM;
+	insn.imm = data;
 	return insn;
 }
 
@@ -1788,13 +1786,8 @@ static struct pre_ir_insn alu_imm(__u8 dst, __s64 src, enum ir_alu_op_type type,
 	insn.dst_reg = dst;
 	insn.src_reg = src;
 	int alu_class = type == IR_ALU_64 ? BPF_ALU64 : BPF_ALU;
-	if (type == IR_ALU_64) {
-		insn.it = IMM64;
-		insn.imm64 = src;
-	} else {
-		insn.it = IMM;
-		insn.imm = src;
-	}
+	insn.it = IMM;
+	insn.imm = src;
 	insn.opcode = opcode | BPF_K | alu_class;
 	return insn;
 }
@@ -1817,13 +1810,8 @@ static struct pre_ir_insn cond_jmp_imm(__u8 dst, __s64 src,
 	insn.dst_reg = dst;
 	insn.src_reg = src;
 	int alu_class = type == IR_ALU_64 ? BPF_JMP : BPF_JMP32;
-	if (type == IR_ALU_64) {
-		insn.it = IMM64;
-		insn.imm64 = src;
-	} else {
-		insn.it = IMM;
-		insn.imm = src;
-	}
+	insn.it = IMM;
+	insn.imm = src;
 	insn.opcode = opcode | alu_class | BPF_K;
 	return insn;
 }
