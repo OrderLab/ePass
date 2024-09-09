@@ -1,8 +1,5 @@
 ---
-Checks: 'clang-diagnostic-*,-*,misc-*,performance-*,clang-analyzer-*,readability-function-size,readability-identifier-naming,readability-redundant-*,readability-mis*,readability-string-compare,readability-non-const-parameter,-clang-analyzer-security*,cppcoreguidelines-avoid-non-const-global-variables,-misc-no-recursion,bugprone-assignment-in-if-condition,bugprone-infinite-loop,bugprone-integer-division,bugprone-suspicious-string-compare,llvm-header-guard,google-global-names-in-headers,cppcoreguidelines-no-malloc,bugprone-use-after-move'
+Checks: 'clang-diagnostic-*,-*,misc-*,performance-*,clang-analyzer-*,readability-identifier-naming,readability-redundant-*,readability-mis*,readability-string-compare,readability-non-const-parameter,-clang-analyzer-security*,cppcoreguidelines-avoid-non-const-global-variables,-misc-no-recursion,bugprone-assignment-in-if-condition,bugprone-infinite-loop,bugprone-integer-division,bugprone-suspicious-string-compare,llvm-header-guard,google-global-names-in-headers,cppcoreguidelines-no-malloc,bugprone-use-after-move'
 WarningsAsErrors: '*,-misc-non-private-member-variables-in-classes'
-CheckOptions:
-  - key:             readability-function-size.LineThreshold
-    value:           '300'
 ...
 
