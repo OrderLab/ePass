@@ -820,7 +820,8 @@ static enum val_type vtype(struct ir_value val)
 {
 	if (val.type == IR_VALUE_INSN) {
 		return vtype_insn(val.data.insn_d);
-	} else if (val.type == IR_VALUE_CONSTANT) {
+	} else if (val.type == IR_VALUE_CONSTANT ||
+		   val.type == IR_VALUE_CONSTANT_RAWOFF) {
 		return CONST;
 	} else if (val.type == IR_VALUE_STACK_PTR) {
 		return REG;
@@ -925,6 +926,34 @@ static void normalize(struct ir_function *fun)
 							create_assign_insn_cg(
 								insn, *v0,
 								INSERT_FRONT);
+						insn_cg(new_insn)->dst =
+							dst_insn;
+						v0->type = IR_VALUE_INSN;
+						v0->data.insn_d = dst_insn;
+					}
+				} else if (t0 == CONST && t1 == CONST) {
+					DBGASSERT(v1->const_type == IR_ALU_32);
+					if (v0->const_type == IR_ALU_32) {
+						// Load to reg
+						struct ir_insn *new_insn =
+							create_assign_insn_cg(
+								insn, *v0,
+								INSERT_FRONT);
+						new_insn->alu_op = IR_ALU_64;
+						insn_cg(new_insn)->dst =
+							dst_insn;
+						v0->type = IR_VALUE_INSN;
+						v0->data.insn_d = dst_insn;
+					} else {
+						// ALU64
+						struct ir_insn *new_insn =
+							create_insn_base_cg(bb);
+						new_insn->op =
+							IR_INSN_LOADIMM_EXTRA;
+						new_insn->imm_extra_type =
+							IR_LOADIMM_IMM64;
+						new_insn->imm64 =
+							v0->data.constant_d;
 						insn_cg(new_insn)->dst =
 							dst_insn;
 						v0->type = IR_VALUE_INSN;
@@ -1045,6 +1074,16 @@ static void relocate(struct bpf_ir_env *env, struct ir_function *fun)
 	}
 }
 
+static void load_const64(struct ir_insn *insn, struct ir_value *val)
+{
+	struct ir_insn *new_insn =
+		create_assign_insn_cg(insn, *val, INSERT_FRONT);
+	new_insn->vr_type = IR_VR_TYPE_64;
+	new_insn->alu_op = IR_ALU_64;
+	val->type = IR_VALUE_INSN;
+	val->data.insn_d = new_insn;
+}
+
 static void load_stack_to_r0(struct ir_function *fun, struct ir_insn *insn,
 			     struct ir_value *val, enum ir_vr_type vtype)
 {
@@ -1129,7 +1168,7 @@ static void spill_callee(struct ir_function *fun)
 	}
 }
 
-static int check_need_spill(struct ir_function *fun)
+static int check_need_spill(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	// Check if all instruction values are OK for translating
 	int res = 0;
@@ -1141,6 +1180,7 @@ static int check_need_spill(struct ir_function *fun)
 		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
 			struct ir_value *v0 = &insn->values[0];
 			struct ir_value *v1 = &insn->values[1];
+			bpf_ir_print_log_dbg(env);
 			enum val_type t0 = insn->value_num >= 1 ? vtype(*v0) :
 								  UNDEF;
 			enum val_type t1 = insn->value_num >= 2 ? vtype(*v1) :
@@ -1282,11 +1322,13 @@ static int check_need_spill(struct ir_function *fun)
 					insn_cg(tmp)->dst = dst_insn;
 					res = 1;
 				} else {
+					bool switched = false;
 					if ((t0 != REG && t1 == REG) ||
 					    (t0 == CONST && t1 == STACK)) {
 						// reg = add !reg reg
 						// ==>
 						// reg = add reg !reg
+						switched = true;
 						struct ir_value tmp = *v0;
 						*v0 = *v1;
 						*v1 = tmp;
@@ -1297,7 +1339,14 @@ static int check_need_spill(struct ir_function *fun)
 					}
 					if (t0 == REG) {
 						// reg = add reg reg ==> OK
-						// reg = add reg const ==> OK
+						// reg = add reg const32 ==> OK
+						if (t1 == CONST &&
+						    v1->const_type ==
+							    IR_ALU_64) {
+							// Need to load to another reg
+							load_const64(insn, v1);
+							res = 1;
+						}
 
 						// reg1 = add reg2 stack
 						// ==>
@@ -1355,6 +1404,16 @@ static int check_need_spill(struct ir_function *fun)
 						// reg = c1
 						// reg = add reg c2
 						// OK
+						if (t0 == CONST &&
+						    t1 == CONST) {
+							if (v1->const_type ==
+							    IR_ALU_64) {
+								load_const64(
+									insn,
+									v1);
+								res = 1;
+							}
+						}
 
 						// reg = add stack stack
 						if (t0 == STACK &&
@@ -1389,6 +1448,24 @@ static int check_need_spill(struct ir_function *fun)
 						// ==>
 						// reg = stack
 						// reg = add reg const
+						if (t0 == STACK &&
+						    t1 == CONST) {
+							if (v1->const_type ==
+							    IR_ALU_64) {
+								load_const64(
+									insn,
+									v1);
+								res = 1;
+							}
+						}
+					}
+					if (switched) {
+						struct ir_value tmp = *v0;
+						*v0 = *v1;
+						*v1 = tmp;
+						enum val_type ttmp = t0;
+						t0 = t1;
+						t1 = ttmp;
 					}
 				}
 			} else if (insn->op == IR_INSN_ASSIGN) {
@@ -1448,6 +1525,11 @@ static int check_need_spill(struct ir_function *fun)
 				if (t0 == REG) {
 					// jmp reg reg ==> OK
 					// jmp reg const ==> OK
+					if (t1 == CONST &&
+					    v1->const_type == IR_ALU_64) {
+						load_const64(insn, v1);
+						res = 1;
+					}
 					// jmp reg stack
 					// ==>
 					// reg2 = stack
@@ -1484,6 +1566,7 @@ static int check_need_spill(struct ir_function *fun)
 						new_insn->vr_type =
 							alu_to_vr_type(
 								insn->alu_op);
+						new_insn->alu_op = insn->alu_op;
 						v0->type = IR_VALUE_INSN;
 						v0->data.insn_d = new_insn;
 						res = 1;
@@ -1980,8 +2063,7 @@ static void translate(struct ir_function *fun)
 				extra->translated[0].imm = insn->fid;
 			} else if (insn->op == IR_INSN_JA) {
 				extra->translated[0].opcode = BPF_JMP | BPF_JA;
-			} else if (insn->op >= IR_INSN_JEQ &&
-				   insn->op < IR_INSN_PHI) {
+			} else if (is_cond_jmp(insn)) {
 				DBGASSERT(t0 == REG || t1 == REG);
 				if (t0 == REG) {
 					if (t1 == REG) {
@@ -1994,6 +2076,10 @@ static void translate(struct ir_function *fun)
 							insn->alu_op,
 							jmp_code(insn->op));
 					} else if (t1 == CONST) {
+						if (v1.const_type ==
+						    IR_ALU_64) {
+							CRITICAL("TODO");
+						}
 						extra->translated
 							[0] = cond_jmp_imm(
 							get_alloc_reg(
@@ -2007,6 +2093,8 @@ static void translate(struct ir_function *fun)
 				} else {
 					DBGASSERT(t0 == CONST);
 					DBGASSERT(t1 == REG);
+					CRITICAL("TODO");
+					// Probably we could switch?
 					extra->translated[0] = cond_jmp_imm(
 						get_alloc_reg(v1.data.insn_d),
 						v0.data.constant_d,
@@ -2074,7 +2162,7 @@ int bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 		print_ir_prog_cg_alloc(env, fun, "After RA");
 
 		// Step 8: Check if need to spill and spill
-		need_spill = check_need_spill(fun);
+		need_spill = check_need_spill(env, fun);
 		// print_ir_prog_cg_dst(env, fun, "After Spilling");
 		if (need_spill) {
 			// Still need to spill

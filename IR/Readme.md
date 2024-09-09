@@ -19,6 +19,7 @@ One opinion, one benefit of designing the raw constraint from is that our runtim
 - [ ] Logging
 - [ ] Env
 - [ ] If ALU ops (including cond jmp) use 64 bits const, load it to register
+- [ ] Switch back for ALU spill
 
 # TODO
 

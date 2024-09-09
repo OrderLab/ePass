@@ -656,6 +656,9 @@ void bpf_ir_print_to_log(struct bpf_ir_env *env, char *fmt, ...)
 
 void bpf_ir_print_log_dbg(struct bpf_ir_env *env)
 {
+	if (env->log_pos == 0) {
+		return;
+	}
 	env->log[env->log_pos] = '\0';
 	PRINT_DBG("----- Begin of Log -----\n");
 	// PRINT_DBG("%s", env->log);
@@ -673,4 +676,5 @@ void bpf_ir_print_log_dbg(struct bpf_ir_env *env)
 		PRINT_DBG("%s", line);
 	}
 	PRINT_DBG("----- End of Log -----\nLog size: %zu\n", env->log_pos);
+	env->log_pos = 0;
 }
