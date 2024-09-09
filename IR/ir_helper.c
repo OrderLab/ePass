@@ -626,6 +626,19 @@ void bpf_ir_print_log_dbg(struct bpf_ir_env *env)
 {
 	env->log[env->log_pos] = '\0';
 	PRINT_DBG("----- Begin of Log -----\n");
-	PRINT_DBG("%s", env->log);
+	// PRINT_DBG("%s", env->log);
+	char line[1000];
+	int i = 0; // Global ptr
+	while (i < env->log_pos) {
+		int j = 0; // Line ptr
+		while (i < env->log_pos && j < 1000) {
+			line[j++] = env->log[i++];
+			if (env->log[i - 1] == '\n') {
+				break;
+			}
+		}
+		line[j] = '\0';
+		PRINT_DBG("%s", line);
+	}
 	PRINT_DBG("----- End of Log -----\nLog size: %zu\n", env->log_pos);
 }
