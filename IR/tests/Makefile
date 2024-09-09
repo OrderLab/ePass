@@ -28,7 +28,7 @@ detachxdp:
 log:
 	sudo cat /sys/kernel/debug/tracing/trace_pipe
 
-clean: detachxdp
+clean:
 	rm -f $(NAME).o $(NAME).s
 	-sudo rm /sys/fs/bpf/$(NAME)
 
