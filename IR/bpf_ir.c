@@ -1084,9 +1084,10 @@ int bpf_ir_run(struct bpf_ir_env *env, const struct bpf_insn *insns, size_t len)
 
 	// Got the bpf bytecode
 
-	PRINT_LOG(env, "--------------------\nOriginal Program:\n");
+	PRINT_LOG(env, "--------------------\nOriginal Program, size %zu:\n",
+		  len);
 	print_bpf_prog(env, insns, len);
-	PRINT_LOG(env, "--------------------\nRewritten Program %zu:\n",
+	PRINT_LOG(env, "--------------------\nRewritten Program, size %zu:\n",
 		  env->insn_cnt);
 	print_bpf_prog(env, env->insns, env->insn_cnt);
 
