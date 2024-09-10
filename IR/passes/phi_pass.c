@@ -1,6 +1,6 @@
 #include <linux/bpf_ir.h>
 
-void try_remove_trivial_phi(struct ir_insn *phi)
+void try_remove_trivial_phi(struct bpf_ir_env *env, struct ir_insn *phi)
 {
 	if (phi->op != IR_INSN_PHI) {
 		return;
@@ -29,12 +29,12 @@ void try_remove_trivial_phi(struct ir_insn *phi)
 	if (!same_has_value) {
 		same.type = IR_VALUE_UNDEF;
 	}
-	bpf_ir_replace_all_usage_except(phi, same, phi);
+	bpf_ir_replace_all_usage_except(env, phi, same, phi);
 
-	bpf_ir_erase_insn(phi);
+	bpf_ir_erase_insn(env, phi);
 }
 
-void remove_trivial_phi(struct ir_function *fun)
+void remove_trivial_phi(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	struct ir_basic_block **bpos;
 	array_for(bpos, fun->reachable_bbs)
@@ -43,7 +43,7 @@ void remove_trivial_phi(struct ir_function *fun)
 		struct ir_insn *pos, *tmp;
 		list_for_each_entry_safe(pos, tmp, &bb->ir_insn_head,
 					 list_ptr) {
-			try_remove_trivial_phi(pos);
+			try_remove_trivial_phi(env, pos);
 		}
 	}
 }

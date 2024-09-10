@@ -98,9 +98,9 @@ void print_bb_ptr(struct bpf_ir_env *env, struct ir_basic_block *insn)
 	PRINT_LOG(env, "b%zu", insn->_id);
 }
 
-static int print_ir_value_full(struct bpf_ir_env *env, struct ir_value v,
-			       void (*print_ir)(struct bpf_ir_env *env,
-						struct ir_insn *))
+static void print_ir_value_full(struct bpf_ir_env *env, struct ir_value v,
+				void (*print_ir)(struct bpf_ir_env *env,
+						 struct ir_insn *))
 {
 	switch (v.type) {
 	case IR_VALUE_INSN:
@@ -128,7 +128,6 @@ static int print_ir_value_full(struct bpf_ir_env *env, struct ir_value v,
 	default:
 		RAISE_ERROR("Unknown IR value type");
 	}
-	return 0;
 }
 
 void print_ir_value(struct bpf_ir_env *env, struct ir_value v)

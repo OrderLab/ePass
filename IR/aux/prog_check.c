@@ -8,7 +8,7 @@ static void check_insn_users_use_insn(struct bpf_ir_env *env,
 	{
 		struct ir_insn *user = *pos;
 		// Check if the user actually uses this instruction
-		struct array operands = bpf_ir_get_operands(user);
+		struct array operands = bpf_ir_get_operands(env, user);
 		struct ir_value **val;
 		int found = 0;
 		array_for(val, operands)
@@ -44,7 +44,7 @@ static void check_insn(struct bpf_ir_env *env, struct ir_function *fun)
 		struct ir_basic_block *bb = *pos;
 		struct ir_insn *insn;
 		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
-			struct array operands = bpf_ir_get_operands(insn);
+			struct array operands = bpf_ir_get_operands(env, insn);
 			struct ir_value **vpos;
 			if (insn->op == IR_INSN_LOADRAW ||
 			    insn->op == IR_INSN_ALLOC ||
@@ -129,7 +129,7 @@ static void check_insn(struct bpf_ir_env *env, struct ir_function *fun)
 
 static void check_insn_operand(struct bpf_ir_env *env, struct ir_insn *insn)
 {
-	struct array operands = bpf_ir_get_operands(insn);
+	struct array operands = bpf_ir_get_operands(env, insn);
 	struct ir_value **val;
 	array_for(val, operands)
 	{
@@ -387,7 +387,7 @@ static void add_reach(struct bpf_ir_env *env, struct ir_function *fun,
 		return;
 	}
 	bb->_visited = 1;
-	bpf_ir_array_push(&fun->reachable_bbs, &bb);
+	bpf_ir_array_push(env, &fun->reachable_bbs, &bb);
 
 	struct ir_basic_block **succ;
 	__u8 i = 0;
@@ -407,19 +407,19 @@ static void add_reach(struct bpf_ir_env *env, struct ir_function *fun,
 static void gen_reachable_bbs(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	bpf_ir_clean_visited(fun);
-	bpf_ir_array_clear(&fun->reachable_bbs);
+	bpf_ir_array_clear(env, &fun->reachable_bbs);
 	add_reach(env, fun, fun->entry);
 }
 
-static void gen_end_bbs(struct ir_function *fun)
+static void gen_end_bbs(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	struct ir_basic_block **pos;
-	bpf_ir_array_clear(&fun->end_bbs);
+	bpf_ir_array_clear(env, &fun->end_bbs);
 	array_for(pos, fun->reachable_bbs)
 	{
 		struct ir_basic_block *bb = *pos;
 		if (bb->succs.num_elem == 0) {
-			bpf_ir_array_push(&fun->end_bbs, &bb);
+			bpf_ir_array_push(env, &fun->end_bbs, &bb);
 		}
 	}
 }
@@ -432,11 +432,21 @@ void bpf_ir_prog_check(struct bpf_ir_env *env, struct ir_function *fun)
 	bpf_ir_fix_bb_succ(fun);
 	bpf_ir_clean_metadata_all(fun);
 	gen_reachable_bbs(env, fun);
-	gen_end_bbs(fun);
+	CHECK_ERR();
+
+	gen_end_bbs(env, fun);
+	CHECK_ERR();
+
 	print_ir_err_init(fun);
 
 	check_insn(env, fun);
+	CHECK_ERR();
+
 	check_phi(env, fun);
+	CHECK_ERR();
+
 	check_users(env, fun);
+	CHECK_ERR();
+
 	check_jumping(env, fun);
 }

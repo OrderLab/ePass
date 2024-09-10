@@ -32,20 +32,22 @@ struct ir_basic_block *bpf_ir_init_bb_raw(void)
 }
 
 // May have exception
-struct ir_basic_block *bpf_ir_create_bb(struct ir_function *fun)
+struct ir_basic_block *bpf_ir_create_bb(struct bpf_ir_env *env,
+					struct ir_function *fun)
 {
 	struct ir_basic_block *new_bb = bpf_ir_init_bb_raw();
 	if (!new_bb) {
 		return NULL;
 	}
-	bpf_ir_array_push(&fun->all_bbs, &new_bb);
+	bpf_ir_array_push(env, &fun->all_bbs, &new_bb);
 	return new_bb;
 }
 
-void bpf_ir_connect_bb(struct ir_basic_block *from, struct ir_basic_block *to)
+void bpf_ir_connect_bb(struct bpf_ir_env *env, struct ir_basic_block *from,
+		       struct ir_basic_block *to)
 {
-	bpf_ir_array_push_unique(&from->succs, &to);
-	bpf_ir_array_push_unique(&to->preds, &from);
+	bpf_ir_array_push_unique(env, &from->succs, &to);
+	bpf_ir_array_push_unique(env, &to->preds, &from);
 }
 
 void bpf_ir_disconnect_bb(struct ir_basic_block *from,
@@ -65,19 +67,21 @@ void bpf_ir_disconnect_bb(struct ir_basic_block *from,
 	}
 }
 
-struct ir_basic_block *bpf_ir_split_bb(struct ir_function *fun,
+struct ir_basic_block *bpf_ir_split_bb(struct bpf_ir_env *env,
+				       struct ir_function *fun,
 				       struct ir_insn *insn)
 {
 	struct ir_basic_block *bb = insn->parent_bb;
-	struct ir_basic_block *new_bb = bpf_ir_create_bb(fun);
+	struct ir_basic_block *new_bb = bpf_ir_create_bb(env, fun);
+	CHECK_ERR(NULL);
 	struct array old_succs = bb->succs;
 	INIT_ARRAY(&bb->succs, struct ir_basic_block *);
-	bpf_ir_connect_bb(bb, new_bb);
+	bpf_ir_connect_bb(env, bb, new_bb);
 	struct ir_basic_block **pos = NULL;
 	array_for(pos, old_succs)
 	{
 		bpf_ir_disconnect_bb(bb, *pos);
-		bpf_ir_connect_bb(new_bb, *pos);
+		bpf_ir_connect_bb(env, new_bb, *pos);
 	}
 	bpf_ir_array_free(&old_succs);
 	// Move all instructions after insn to new_bb
