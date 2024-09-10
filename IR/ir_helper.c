@@ -116,7 +116,9 @@ static void print_ir_value_full(struct bpf_ir_env *env, struct ir_value v,
 		} else if (v.const_type == IR_ALU_32) {
 			PRINT_LOG(env, "(32)");
 		} else {
-			RAISE_ERROR("Impossible");
+			PRINT_LOG(env, "(unknown)");
+			env->err = -1;
+			return;
 		}
 		break;
 	case IR_VALUE_CONSTANT_RAWOFF:
@@ -569,7 +571,7 @@ void print_ir_alloc(struct bpf_ir_env *env, struct ir_insn *insn)
 				PRINT_LOG(env, "r%u", extra->alloc_reg);
 			}
 		} else {
-			CRITICAL("Not allocated");
+			CRITICAL_DUMP(env, "Not allocated");
 		}
 	} else {
 		PRINT_LOG(env, "(NULL)");

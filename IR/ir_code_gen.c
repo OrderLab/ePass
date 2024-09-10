@@ -840,6 +840,28 @@ static enum val_type vtype(struct ir_value val)
 	}
 }
 
+static struct ir_insn *load_const(struct bpf_ir_env *env, struct ir_insn *insn,
+				  struct ir_value *val)
+{
+	if (val->const_type == IR_ALU_32) {
+		struct ir_insn *new_insn =
+			create_assign_insn_cg(env, insn, *val, INSERT_FRONT);
+		new_insn->alu_op = IR_ALU_64;
+		val->type = IR_VALUE_INSN;
+		val->data.insn_d = new_insn;
+		return new_insn;
+	} else {
+		struct ir_insn *new_insn =
+			create_insn_base_cg(env, insn->parent_bb);
+		new_insn->op = IR_INSN_LOADIMM_EXTRA;
+		new_insn->imm_extra_type = IR_LOADIMM_IMM64;
+		new_insn->imm64 = val->data.constant_d;
+		new_insn->vr_type = IR_VR_TYPE_64;
+		val->type = IR_VALUE_INSN;
+		val->data.insn_d = new_insn;
+		return new_insn;
+	}
+}
 // Normalization
 
 static void normalize(struct bpf_ir_env *env, struct ir_function *fun)
@@ -971,8 +993,19 @@ static void normalize(struct bpf_ir_env *env, struct ir_function *fun)
 						v0->type = IR_VALUE_INSN;
 						v0->data.insn_d = dst_insn;
 					}
+				} else if (t0 == CONST && t1 == REG) {
+					// reg1 = add const reg2
+					// ==>
+					// reg1 = const
+					// reg1 = add reg1 reg2
+					struct ir_insn *load_const_insn =
+						load_const(env, insn, v0);
+					insn_cg(load_const_insn)->dst =
+						dst_insn;
+					v0->data.insn_d = dst_insn;
+
 				} else {
-					CRITICAL("Error");
+					CRITICAL_DUMP(env, "Error");
 				}
 			} else if (insn->op == IR_INSN_ASSIGN) {
 				// stack = reg
@@ -1091,7 +1124,6 @@ static void load_const64(struct bpf_ir_env *env, struct ir_insn *insn,
 {
 	struct ir_insn *new_insn =
 		create_assign_insn_cg(env, insn, *val, INSERT_FRONT);
-	new_insn->vr_type = IR_VR_TYPE_64;
 	new_insn->alu_op = IR_ALU_64;
 	val->type = IR_VALUE_INSN;
 	val->data.insn_d = new_insn;
@@ -1197,7 +1229,6 @@ static int check_need_spill(struct bpf_ir_env *env, struct ir_function *fun)
 		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
 			struct ir_value *v0 = &insn->values[0];
 			struct ir_value *v1 = &insn->values[1];
-			bpf_ir_print_log_dbg(env);
 			enum val_type t0 = insn->value_num >= 1 ? vtype(*v0) :
 								  UNDEF;
 			enum val_type t1 = insn->value_num >= 2 ? vtype(*v1) :

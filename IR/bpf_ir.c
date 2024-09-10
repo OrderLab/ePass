@@ -205,11 +205,11 @@ static void gen_bb(struct bpf_ir_env *env, struct bb_info *ret,
 		((struct bb_entrance_info *)(bb_entrance.data));
 
 	// Print the BB
-	for (size_t i = 0; i < bb_entrance.num_elem; ++i) {
-		struct bb_entrance_info entry = all_bbs[i];
-		PRINT_LOG(env, "%ld: %ld\n", entry.entrance,
-			  entry.bb->preds.num_elem);
-	}
+	// for (size_t i = 0; i < bb_entrance.num_elem; ++i) {
+	// 	struct bb_entrance_info entry = all_bbs[i];
+	// PRINT_LOG(env, "%ld: %ld\n", entry.entrance,
+	// 	  entry.bb->preds.num_elem);
+	// }
 
 	// Init preds
 	for (size_t i = 0; i < bb_entrance.num_elem; ++i) {
