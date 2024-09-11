@@ -843,7 +843,6 @@ static enum val_type vtype(struct ir_value val)
 
 static bool is_vr_insn(struct ir_insn *insn)
 {
-	insn = insn_dst(insn);
 	if (insn == NULL || insn->user_data == NULL) {
 		// Void
 		return false;
@@ -851,11 +850,11 @@ static bool is_vr_insn(struct ir_insn *insn)
 	return !insn_cg(insn)->nonvr;
 }
 
+/* Test whether a value is a VR instruction */
 static bool is_vr(struct ir_value val)
 {
 	if (val.type == IR_VALUE_INSN) {
 		return is_vr_insn(val.data.insn_d);
-
 	} else {
 		return false;
 	}
@@ -1238,9 +1237,372 @@ static void spill_callee(struct bpf_ir_env *env, struct ir_function *fun)
 	}
 }
 
-static int check_need_spill(struct bpf_ir_env *env, struct ir_function *fun)
+static bool spill_store(struct ir_insn *insn, struct ir_value *v0,
+			struct ir_value *v1)
 {
-	int res = 0;
+	// store v0(dst) v1
+	// Eequivalent to `v0 = v1`
+	struct ir_insn_cg_extra *extra = insn_cg(insn);
+	insn->op = IR_INSN_ASSIGN;
+	DBGASSERT(v0->type ==
+		  IR_VALUE_INSN); // Should be guaranteed by prog_check
+	DBGASSERT(v0->data.insn_d->op == IR_INSN_ALLOC);
+	insn->vr_type = v0->data.insn_d->vr_type;
+	extra->dst = v0->data.insn_d;
+	insn->value_num = 1;
+	*v0 = *v1;
+	return true;
+}
+
+static bool spill_load(struct ir_insn *insn, struct ir_value *v0)
+{
+	// stack = load stack
+	// stack = load reg
+	// reg = load reg
+	// reg = load stack
+	insn->op = IR_INSN_ASSIGN;
+	DBGASSERT(v0->type ==
+		  IR_VALUE_INSN); // Should be guaranteed by prog_check
+	DBGASSERT(v0->data.insn_d->op == IR_INSN_ALLOC);
+	insn->vr_type = v0->data.insn_d->vr_type;
+	return true;
+}
+
+static bool spill_loadraw(struct bpf_ir_env *env, struct ir_function *fun,
+			  struct ir_insn *insn, enum val_type tdst)
+{
+	struct ir_insn_cg_extra *extra = insn_cg(insn);
+	// Load from memory
+	// reg = loadraw reg ==> OK
+	// reg = loadraw const ==> OK
+
+	// stack = loadraw addr
+	// ==>
+	// R0 = loadraw addr
+	// stack = R0
+
+	// stack = loadraw stack
+	// ==>
+	// R0 = stack
+	// R0 = loadraw R0
+	// stack = R0
+	if (tdst == STACK) {
+		extra->dst = fun->cg_info.regs[0];
+		struct ir_insn *tmp = create_assign_insn_cg(
+			env, insn, bpf_ir_value_insn(fun->cg_info.regs[0]),
+			INSERT_BACK);
+		insn_cg(tmp)->dst = insn_dst(insn);
+		tmp->vr_type = insn->vr_type;
+		return true;
+	}
+	if (vtype(insn->addr_val.value) == STACK) {
+		// Question: are all memory address 64 bits?
+		load_stack_to_r0(env, fun, insn, &insn->addr_val.value,
+				 IR_VR_TYPE_64);
+		return true;
+	}
+	return false;
+}
+
+static bool spill_loadrawextra(struct bpf_ir_env *env, struct ir_function *fun,
+			       struct ir_insn *insn, enum val_type tdst)
+{
+	struct ir_insn_cg_extra *extra = insn_cg(insn);
+	// IMM64 Map instructions, must load to register
+	if (tdst == STACK) {
+		// stack = loadimm
+		// ==>
+		// R0 = loadimm
+		// stack = R0
+		struct ir_insn *new_insn = create_assign_insn_cg(
+			env, insn, bpf_ir_value_insn(fun->cg_info.regs[0]),
+			INSERT_BACK);
+		insn_cg(new_insn)->dst = insn_dst(insn);
+		extra->dst = fun->cg_info.regs[0];
+		return true;
+	}
+	return false;
+}
+
+static bool spill_storeraw(struct bpf_ir_env *env, struct ir_function *fun,
+			   struct ir_insn *insn, enum val_type t0,
+			   struct ir_value *v0)
+{
+	// Store some value to memory
+	// store ptr reg ==> OK
+	// store ptr stack
+
+	// store stackptr stack
+	// ==> TODO!
+	if (t0 == STACK && vtype(insn->addr_val.value) == STACK) {
+		CRITICAL("TODO!");
+	}
+	if (t0 == CONST && insn->vr_type == IR_VR_TYPE_64) {
+		CRITICAL("Not supported");
+	}
+	// Question: are all memory address 64 bits?
+	if (t0 == STACK) {
+		load_stack_to_r0(env, fun, insn, v0, IR_VR_TYPE_64);
+		return true;
+	}
+	if (vtype(insn->addr_val.value) == CONST) {
+		CRITICAL("Not Supported");
+	}
+	if (vtype(insn->addr_val.value) == STACK) {
+		load_stack_to_r0(env, fun, insn, &insn->addr_val.value,
+				 IR_VR_TYPE_64);
+		return true;
+	}
+	return false;
+}
+
+static bool spill_alu(struct bpf_ir_env *env, struct ir_function *fun,
+		      struct ir_insn *insn, enum val_type t0,
+		      struct ir_value *v0, enum val_type t1,
+		      struct ir_value *v1, enum val_type tdst)
+{
+	struct ir_insn_cg_extra *extra = insn_cg(insn);
+	struct ir_insn *dst_insn = insn_dst(insn);
+	// Binary ALU
+	// reg = add reg reg
+	// reg = add reg const
+	// There should be NO stack
+	if (tdst == STACK) {
+		// stack = add ? ?
+		// ==>
+		// R0 = add ? ?
+		// stack = R0
+		extra->dst = fun->cg_info.regs[0];
+		struct ir_insn *tmp = create_assign_insn_cg(
+			env, insn, bpf_ir_value_insn(fun->cg_info.regs[0]),
+			INSERT_BACK);
+		tmp->vr_type = alu_to_vr_type(insn->alu_op);
+		insn_cg(tmp)->dst = dst_insn;
+		return true;
+	} else {
+		bool switched = false;
+		if ((t0 != REG && t1 == REG) || (t0 == CONST && t1 == STACK)) {
+			// reg = add !reg reg
+			// ==>
+			// reg = add reg !reg
+			switched = true;
+			struct ir_value tmp = *v0;
+			*v0 = *v1;
+			*v1 = tmp;
+			enum val_type ttmp = t0;
+			t0 = t1;
+			t1 = ttmp;
+			// No need to spill here
+		}
+		if (t0 == REG) {
+			// reg = add reg reg ==> OK
+			// reg = add reg const32 ==> OK
+			if (t1 == CONST && v1->const_type == IR_ALU_64) {
+				// Need to load to another reg
+				load_const64(env, insn, v1);
+				return true;
+			}
+
+			// reg1 = add reg2 stack
+			// ==>
+			// If reg1 != reg2,
+			//   reg1 = stack
+			//   reg1 = add reg2 reg1
+			// Else
+			//   Choose reg3 != reg1,
+			//   reg3 = stack
+			//   reg1 = add reg1 reg3
+			if (t1 == STACK) {
+				__u8 reg1 = insn_cg(dst_insn)->alloc_reg;
+				__u8 reg2 = insn_cg(v0->data.insn_d)->alloc_reg;
+				struct ir_insn *new_insn =
+					create_assign_insn_cg(env, insn, *v1,
+							      INSERT_FRONT);
+				new_insn->vr_type =
+					alu_to_vr_type(insn->alu_op);
+				v1->type = IR_VALUE_INSN;
+				if (reg1 == reg2) {
+					__u8 reg = reg1 == 0 ? 1 : 0;
+					insn_cg(new_insn)->dst =
+						fun->cg_info.regs[reg];
+					v1->data.insn_d =
+						fun->cg_info.regs[reg];
+				} else {
+					insn_cg(new_insn)->dst =
+						fun->cg_info.regs[reg1];
+					v1->data.insn_d =
+						fun->cg_info.regs[reg1];
+				}
+				return true;
+			}
+		} else {
+			// reg = add const const ==> OK
+			// reg = add c1 c2
+			// ==>
+			// reg = c1
+			// reg = add reg c2
+			// OK
+			if (t0 == CONST && t1 == CONST) {
+				if (v1->const_type == IR_ALU_64) {
+					load_const64(env, insn, v1);
+					return true;
+				}
+			}
+
+			// reg = add stack stack
+			if (t0 == STACK && t1 == STACK) {
+				// reg1 = add stack1 stack2
+				// ==>
+				// Found reg2 != reg1
+				// reg1 = stack1
+				// reg1 = add reg1 stack2
+				__u8 reg1 = insn_cg(dst_insn)->alloc_reg;
+				struct ir_insn *new_insn =
+					create_assign_insn_cg(env, insn, *v0,
+							      INSERT_FRONT);
+				new_insn->vr_type =
+					alu_to_vr_type(insn->alu_op);
+				insn_cg(new_insn)->dst =
+					fun->cg_info.regs[reg1];
+				v0->type = IR_VALUE_INSN;
+				v0->data.insn_d = fun->cg_info.regs[reg1];
+				return true;
+			}
+			// reg = add stack const ==> OK
+			// ==>
+			// reg = stack
+			// reg = add reg const
+			if (t0 == STACK && t1 == CONST) {
+				if (v1->const_type == IR_ALU_64) {
+					load_const64(env, insn, v1);
+					return true;
+				}
+			}
+		}
+		if (switched) {
+			struct ir_value tmp = *v0;
+			*v0 = *v1;
+			*v1 = tmp;
+			enum val_type ttmp = t0;
+			t0 = t1;
+			t1 = ttmp;
+		}
+	}
+	return false;
+}
+
+static bool spill_assign(struct bpf_ir_env *env, struct ir_function *fun,
+			 struct ir_insn *insn, enum val_type t0,
+			 struct ir_value *v0, enum val_type tdst)
+{
+	// stack = reg (sized)
+	// stack = const (sized)
+	// reg = const (alu)
+	// reg = stack (sized)
+	// reg = reg
+	if (tdst == STACK && t0 == STACK) {
+		// Both stack positions are managed by us
+		load_stack_to_r0(env, fun, insn, v0, IR_VR_TYPE_64);
+		return true;
+	}
+	if (tdst == STACK && t0 == CONST) {
+		if (v0->const_type == IR_ALU_64) {
+			// First load to R0
+			struct ir_insn *new_insn = create_assign_insn_cg(
+				env, insn, *v0, INSERT_FRONT);
+			new_insn->values[0].const_type = IR_ALU_64;
+			insn_cg(new_insn)->dst = fun->cg_info.regs[0];
+			v0->type = IR_VALUE_INSN;
+			v0->data.insn_d = fun->cg_info.regs[0];
+			return true;
+		}
+	}
+	return false;
+}
+
+static bool spill_cond_jump(struct bpf_ir_env *env, struct ir_function *fun,
+			    struct ir_insn *insn, enum val_type t0,
+			    struct ir_value *v0, enum val_type t1,
+			    struct ir_value *v1)
+{
+	// jmp reg const/reg
+	__u8 switched = 0;
+	if ((t0 != REG && t1 == REG) || (t0 == CONST && t1 == STACK)) {
+		switched = 1;
+		struct ir_value tmp = *v0;
+		*v0 = *v1;
+		*v1 = tmp;
+		enum val_type ttmp = t0;
+		t0 = t1;
+		t1 = ttmp;
+		// No need to spill here
+	}
+
+	if (t0 == REG) {
+		// jmp reg reg ==> OK
+		// jmp reg const ==> OK
+		if (t1 == CONST && v1->const_type == IR_ALU_64) {
+			load_const64(env, insn, v1);
+			return true;
+		}
+		// jmp reg stack
+		// ==>
+		// reg2 = stack
+		// jmp reg reg2
+		if (t1 == STACK) {
+			__u8 reg1 = insn_cg(v0->data.insn_d)->alloc_reg;
+			__u8 reg2 = reg1 == 0 ? 1 : 0;
+			struct ir_insn *new_insn = create_assign_insn_cg(
+				env, insn, *v1, INSERT_FRONT);
+			new_insn->vr_type = alu_to_vr_type(insn->alu_op);
+			insn_cg(new_insn)->dst = fun->cg_info.regs[reg2];
+			v1->type = IR_VALUE_INSN;
+			v1->data.insn_d = fun->cg_info.regs[reg2];
+			return true;
+		}
+	} else {
+		// jmp const1 const2
+		// ==>
+		// %tmp = const1
+		// jmp %tmp const2
+		if (t0 == CONST && t1 == CONST) {
+			struct ir_insn *new_insn = create_assign_insn_cg(
+				env, insn, *v0, INSERT_FRONT);
+			new_insn->vr_type = alu_to_vr_type(insn->alu_op);
+			new_insn->alu_op = insn->alu_op;
+			v0->type = IR_VALUE_INSN;
+			v0->data.insn_d = new_insn;
+			return true;
+		}
+		// jmp stack const
+		if (t0 == STACK && t1 == CONST) {
+			load_stack_to_r0(env, fun, insn, v0,
+					 alu_to_vr_type(insn->alu_op));
+			return true;
+		}
+		// jmp stack1 stack2
+		// ==>
+		// R0 = stack1
+		// R1 = stack2
+		// jmp R0 R1
+		if (t0 == STACK && t1 == STACK) {
+			load_stack_to_r0(env, fun, insn, v0,
+					 alu_to_vr_type(insn->alu_op));
+			return true;
+		}
+	}
+	if (switched) {
+		// Switch back
+		struct ir_value tmp = *v0;
+		*v0 = *v1;
+		*v1 = tmp;
+	}
+	return false;
+}
+
+static bool check_need_spill(struct bpf_ir_env *env, struct ir_function *fun)
+{
+	bool need_modify = false; // Need to modify the IR
 	// Check if all instruction values are OK for translating
 	struct ir_basic_block **pos;
 	array_for(pos, fun->reachable_bbs)
@@ -1255,322 +1617,30 @@ static int check_need_spill(struct bpf_ir_env *env, struct ir_function *fun)
 			enum val_type t1 = insn->value_num >= 2 ? vtype(*v1) :
 								  UNDEF;
 			enum val_type tdst = vtype_insn(insn);
-			struct ir_insn_cg_extra *extra = insn_cg(insn);
-			struct ir_insn *dst_insn = insn_dst(insn);
+			// struct ir_insn_cg_extra *extra = insn_cg(insn);
+			// struct ir_insn *dst_insn = insn_dst(insn);
 			if (insn->op == IR_INSN_ALLOC) {
 				// dst = alloc <size>
 				// Nothing to do
 			} else if (insn->op == IR_INSN_STORE) {
-				// store v0(dst) v1
-				// Eequivalent to `v0 = v1`
-				insn->op = IR_INSN_ASSIGN;
-				DBGASSERT(
-					v0->type ==
-					IR_VALUE_INSN); // Should be guaranteed by prog_check
-				DBGASSERT(v0->data.insn_d->op == IR_INSN_ALLOC);
-				insn->vr_type = v0->data.insn_d->vr_type;
-				extra->dst = v0->data.insn_d;
-				insn->value_num = 1;
-				*v0 = *v1;
-				res = 1;
+				need_modify = spill_store(insn, v0, v1);
 			} else if (insn->op == IR_INSN_LOAD) {
-				// stack = load stack
-				// stack = load reg
-				// reg = load reg
-				// reg = load stack
-				insn->op = IR_INSN_ASSIGN;
-				DBGASSERT(
-					v0->type ==
-					IR_VALUE_INSN); // Should be guaranteed by prog_check
-				DBGASSERT(v0->data.insn_d->op == IR_INSN_ALLOC);
-				insn->vr_type = v0->data.insn_d->vr_type;
-				res = 1;
+				need_modify = spill_load(insn, v0);
 			} else if (insn->op == IR_INSN_LOADRAW) {
-				// Load from memory
-				// reg = loadraw reg ==> OK
-				// reg = loadraw const ==> OK
-
-				// stack = loadraw addr
-				// ==>
-				// R0 = loadraw addr
-				// stack = R0
-
-				// stack = loadraw stack
-				// ==>
-				// R0 = stack
-				// R0 = loadraw R0
-				// stack = R0
-				if (tdst == STACK) {
-					extra->dst = fun->cg_info.regs[0];
-					struct ir_insn *tmp =
-						create_assign_insn_cg(
-							env, insn,
-							bpf_ir_value_insn(
-								fun->cg_info
-									.regs[0]),
-							INSERT_BACK);
-					insn_cg(tmp)->dst = dst_insn;
-					tmp->vr_type = insn->vr_type;
-					res = 1;
-				}
-				if (vtype(insn->addr_val.value) == STACK) {
-					// Question: are all memory address 64 bits?
-					load_stack_to_r0(env, fun, insn,
-							 &insn->addr_val.value,
-							 IR_VR_TYPE_64);
-					res = 1;
-				}
+				need_modify =
+					spill_loadraw(env, fun, insn, tdst);
 			} else if (insn->op == IR_INSN_LOADIMM_EXTRA) {
-				// IMM64 Map instructions, must load to register
-				if (tdst == STACK) {
-					// stack = loadimm
-					// ==>
-					// R0 = loadimm
-					// stack = R0
-					struct ir_insn *new_insn =
-						create_assign_insn_cg(
-							env, insn,
-							bpf_ir_value_insn(
-								fun->cg_info
-									.regs[0]),
-							INSERT_BACK);
-					insn_cg(new_insn)->dst = dst_insn;
-					extra->dst = fun->cg_info.regs[0];
-					res = 1;
-				}
+				need_modify = spill_loadrawextra(env, fun, insn,
+								 tdst);
 			} else if (insn->op == IR_INSN_STORERAW) {
-				// Store some value to memory
-				// store ptr reg ==> OK
-				// store ptr stack
-
-				// store stackptr stack
-				// ==> TODO!
-				if (t0 == STACK &&
-				    vtype(insn->addr_val.value) == STACK) {
-					CRITICAL("TODO!");
-				}
-				if (t0 == CONST &&
-				    insn->vr_type == IR_VR_TYPE_64) {
-					CRITICAL("Not supported");
-				}
-				// Question: are all memory address 64 bits?
-				if (t0 == STACK) {
-					load_stack_to_r0(env, fun, insn, v0,
-							 IR_VR_TYPE_64);
-					res = 1;
-				}
-				if (vtype(insn->addr_val.value) == CONST) {
-					CRITICAL("Not Supported");
-				}
-				if (vtype(insn->addr_val.value) == STACK) {
-					load_stack_to_r0(env, fun, insn,
-							 &insn->addr_val.value,
-							 IR_VR_TYPE_64);
-					res = 1;
-				}
+				need_modify =
+					spill_storeraw(env, fun, insn, t0, v0);
 			} else if (is_alu(insn)) {
-				// Binary ALU
-				// reg = add reg reg
-				// reg = add reg const
-				// There should be NO stack
-				if (tdst == STACK) {
-					// stack = add ? ?
-					// ==>
-					// R0 = add ? ?
-					// stack = R0
-					extra->dst = fun->cg_info.regs[0];
-					struct ir_insn *tmp =
-						create_assign_insn_cg(
-							env, insn,
-							bpf_ir_value_insn(
-								fun->cg_info
-									.regs[0]),
-							INSERT_BACK);
-					tmp->vr_type =
-						alu_to_vr_type(insn->alu_op);
-					insn_cg(tmp)->dst = dst_insn;
-					res = 1;
-				} else {
-					bool switched = false;
-					if ((t0 != REG && t1 == REG) ||
-					    (t0 == CONST && t1 == STACK)) {
-						// reg = add !reg reg
-						// ==>
-						// reg = add reg !reg
-						switched = true;
-						struct ir_value tmp = *v0;
-						*v0 = *v1;
-						*v1 = tmp;
-						enum val_type ttmp = t0;
-						t0 = t1;
-						t1 = ttmp;
-						// No need to spill here
-					}
-					if (t0 == REG) {
-						// reg = add reg reg ==> OK
-						// reg = add reg const32 ==> OK
-						if (t1 == CONST &&
-						    v1->const_type ==
-							    IR_ALU_64) {
-							// Need to load to another reg
-							load_const64(env, insn,
-								     v1);
-							res = 1;
-						}
-
-						// reg1 = add reg2 stack
-						// ==>
-						// If reg1 != reg2,
-						//   reg1 = stack
-						//   reg1 = add reg2 reg1
-						// Else
-						//   Choose reg3 != reg1,
-						//   reg3 = stack
-						//   reg1 = add reg1 reg3
-						if (t1 == STACK) {
-							__u8 reg1 =
-								insn_cg(dst_insn)
-									->alloc_reg;
-							__u8 reg2 =
-								insn_cg(v0->data.insn_d)
-									->alloc_reg;
-							struct ir_insn *new_insn =
-								create_assign_insn_cg(
-									env,
-									insn,
-									*v1,
-									INSERT_FRONT);
-							new_insn->vr_type =
-								alu_to_vr_type(
-									insn->alu_op);
-							v1->type =
-								IR_VALUE_INSN;
-							if (reg1 == reg2) {
-								__u8 reg =
-									reg1 == 0 ?
-										1 :
-										0;
-								insn_cg(new_insn)
-									->dst =
-									fun->cg_info
-										.regs[reg];
-								v1->data.insn_d =
-									fun->cg_info
-										.regs[reg];
-							} else {
-								insn_cg(new_insn)
-									->dst =
-									fun->cg_info
-										.regs[reg1];
-								v1->data.insn_d =
-									fun->cg_info
-										.regs[reg1];
-							}
-							res = 1;
-						}
-					} else {
-						// reg = add const const ==> OK
-						// reg = add c1 c2
-						// ==>
-						// reg = c1
-						// reg = add reg c2
-						// OK
-						if (t0 == CONST &&
-						    t1 == CONST) {
-							if (v1->const_type ==
-							    IR_ALU_64) {
-								load_const64(
-									env,
-									insn,
-									v1);
-								res = 1;
-							}
-						}
-
-						// reg = add stack stack
-						if (t0 == STACK &&
-						    t1 == STACK) {
-							// reg1 = add stack1 stack2
-							// ==>
-							// Found reg2 != reg1
-							// reg1 = stack1
-							// reg1 = add reg1 stack2
-							__u8 reg1 =
-								insn_cg(dst_insn)
-									->alloc_reg;
-							struct ir_insn *new_insn =
-								create_assign_insn_cg(
-									env,
-									insn,
-									*v0,
-									INSERT_FRONT);
-							new_insn->vr_type =
-								alu_to_vr_type(
-									insn->alu_op);
-							insn_cg(new_insn)->dst =
-								fun->cg_info.regs
-									[reg1];
-							v0->type =
-								IR_VALUE_INSN;
-							v0->data.insn_d =
-								fun->cg_info.regs
-									[reg1];
-							res = 1;
-						}
-						// reg = add stack const ==> OK
-						// ==>
-						// reg = stack
-						// reg = add reg const
-						if (t0 == STACK &&
-						    t1 == CONST) {
-							if (v1->const_type ==
-							    IR_ALU_64) {
-								load_const64(
-									env,
-									insn,
-									v1);
-								res = 1;
-							}
-						}
-					}
-					if (switched) {
-						struct ir_value tmp = *v0;
-						*v0 = *v1;
-						*v1 = tmp;
-						enum val_type ttmp = t0;
-						t0 = t1;
-						t1 = ttmp;
-					}
-				}
+				need_modify = spill_alu(env, fun, insn, t0, v0,
+							t1, v1, tdst);
 			} else if (insn->op == IR_INSN_ASSIGN) {
-				// stack = reg (sized)
-				// stack = const (sized)
-				// reg = const (alu)
-				// reg = stack (sized)
-				// reg = reg
-				if (tdst == STACK && t0 == STACK) {
-					// Both stack positions are managed by us
-					load_stack_to_r0(env, fun, insn, v0,
-							 IR_VR_TYPE_64);
-					res = 1;
-				}
-				if (tdst == STACK && t0 == CONST) {
-					if (v0->const_type == IR_ALU_64) {
-						// First load to R0
-						struct ir_insn *new_insn =
-							create_assign_insn_cg(
-								env, insn, *v0,
-								INSERT_FRONT);
-						new_insn->values[0].const_type =
-							IR_ALU_64;
-						insn_cg(new_insn)->dst =
-							fun->cg_info.regs[0];
-						v0->type = IR_VALUE_INSN;
-						v0->data.insn_d =
-							fun->cg_info.regs[0];
-						res = 1;
-					}
-				}
+				need_modify = spill_assign(env, fun, insn, t0,
+							   v0, tdst);
 			} else if (insn->op == IR_INSN_RET) {
 				// ret const/reg
 				// Done in explicit_reg pass
@@ -1582,102 +1652,14 @@ static int check_need_spill(struct bpf_ir_env *env, struct ir_function *fun)
 			} else if (insn->op == IR_INSN_JA) {
 				// OK
 			} else if (is_cond_jmp(insn)) {
-				// jmp reg const/reg
-				__u8 switched = 0;
-				if ((t0 != REG && t1 == REG) ||
-				    (t0 == CONST && t1 == STACK)) {
-					switched = 1;
-					struct ir_value tmp = *v0;
-					*v0 = *v1;
-					*v1 = tmp;
-					enum val_type ttmp = t0;
-					t0 = t1;
-					t1 = ttmp;
-					// No need to spill here
-				}
-
-				if (t0 == REG) {
-					// jmp reg reg ==> OK
-					// jmp reg const ==> OK
-					if (t1 == CONST &&
-					    v1->const_type == IR_ALU_64) {
-						load_const64(env, insn, v1);
-						res = 1;
-					}
-					// jmp reg stack
-					// ==>
-					// reg2 = stack
-					// jmp reg reg2
-					if (t1 == STACK) {
-						__u8 reg1 =
-							insn_cg(v0->data.insn_d)
-								->alloc_reg;
-						__u8 reg2 = reg1 == 0 ? 1 : 0;
-						struct ir_insn *new_insn =
-							create_assign_insn_cg(
-								env, insn, *v1,
-								INSERT_FRONT);
-						new_insn->vr_type =
-							alu_to_vr_type(
-								insn->alu_op);
-						insn_cg(new_insn)->dst =
-							fun->cg_info.regs[reg2];
-						v1->type = IR_VALUE_INSN;
-						v1->data.insn_d =
-							fun->cg_info.regs[reg2];
-						res = 1;
-					}
-				} else {
-					// jmp const1 const2
-					// ==>
-					// %tmp = const1
-					// jmp %tmp const2
-					if (t0 == CONST && t1 == CONST) {
-						struct ir_insn *new_insn =
-							create_assign_insn_cg(
-								env, insn, *v0,
-								INSERT_FRONT);
-						new_insn->vr_type =
-							alu_to_vr_type(
-								insn->alu_op);
-						new_insn->alu_op = insn->alu_op;
-						v0->type = IR_VALUE_INSN;
-						v0->data.insn_d = new_insn;
-						res = 1;
-					}
-					// jmp stack const
-					if (t0 == STACK && t1 == CONST) {
-						load_stack_to_r0(
-							env, fun, insn, v0,
-							alu_to_vr_type(
-								insn->alu_op));
-						res = 1;
-					}
-					// jmp stack1 stack2
-					// ==>
-					// R0 = stack1
-					// R1 = stack2
-					// jmp R0 R1
-					if (t0 == STACK && t1 == STACK) {
-						load_stack_to_r0(
-							env, fun, insn, v0,
-							alu_to_vr_type(
-								insn->alu_op));
-						res = 1;
-					}
-				}
-				if (switched) {
-					// Switch back
-					struct ir_value tmp = *v0;
-					*v0 = *v1;
-					*v1 = tmp;
-				}
+				need_modify = spill_cond_jump(env, fun, insn,
+							      t0, v0, t1, v1);
 			} else {
 				CRITICAL("No such instruction");
 			}
 		}
 	}
-	return res;
+	return need_modify;
 }
 
 static void calc_callee_num(struct ir_function *fun)
@@ -2218,7 +2200,7 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 
 	// print_ir_prog_reachable(fun);
 
-	int need_spill = 1;
+	bool need_spill = true;
 	int iterations = 0;
 
 	while (need_spill) {
