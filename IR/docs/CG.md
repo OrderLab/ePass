@@ -28,6 +28,8 @@ The stable phase of IR that no longer needs spilling new registers.
 
 Nothing to do. This is a pseudo instruction.
 
+OK.
+
 ### `store`
 
 `store v0 v1`
@@ -57,6 +59,13 @@ Case of `addr_val, v0`:
 - `REG, REG` ==> PASS
 - `REG, CONST32` ==> PASS
 - `CONST, *` ==> TODO
+
+In summary, CGIR-I have this form:
+
+```
+storeraw vt REG REG
+storeraw vt REG CONST32
+```
 
 ### `loadraw`
 
