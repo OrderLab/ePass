@@ -79,7 +79,12 @@ Cases of `dst, addr_val`:
     R0 = loadraw vr_type addr_val
     dst = R0
 - `STACK, STACK` ==>
-- `REG, STACK` ==> PASS
+    R0 = addr_val
+    R0 = loadraw vr_type R0
+    dst = R0
+- `REG, STACK` ==>
+    R0 = addr_val
+    dst = loadraw vr_type R0
 
 ### `loadrawextra`
 

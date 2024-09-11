@@ -1306,10 +1306,19 @@ static bool spill_loadraw(struct bpf_ir_env *env, struct ir_function *fun,
 			return true;
 		}
 		if (t0 == STACK) {
+			extra->dst = fun->cg_info.regs[0];
+			struct ir_insn *tmp = create_assign_insn_cg(
+				env, insn,
+				bpf_ir_value_insn(fun->cg_info.regs[0]),
+				INSERT_BACK);
+			insn_cg(tmp)->dst = dst_insn;
+			tmp->vr_type = insn->vr_type;
+			load_stack_to_reg(env, fun, insn, &insn->addr_val.value,
+					  IR_VR_TYPE_64, 0);
+			return true;
 		}
 	}
-	if (t0 == STACK) {
-		// Question: are all memory address 64 bits?
+	if (tdst == REG && t0 == STACK) {
 		load_stack_to_reg(env, fun, insn, &insn->addr_val.value,
 				  IR_VR_TYPE_64, 0);
 		return true;
