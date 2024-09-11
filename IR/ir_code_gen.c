@@ -1284,31 +1284,31 @@ static bool spill_loadraw(struct bpf_ir_env *env, struct ir_function *fun,
 			  struct ir_insn *insn)
 {
 	enum val_type tdst = vtype_insn(insn);
+	enum val_type t0 = vtype(insn->addr_val.value);
 	struct ir_insn_cg_extra *extra = insn_cg(insn);
+	struct ir_insn *dst_insn = insn_dst(insn);
 	// Load from memory
 	// reg = loadraw reg ==> OK
-	// reg = loadraw const ==> OK
-
-	// stack = loadraw addr
-	// ==>
-	// R0 = loadraw addr
-	// stack = R0
-
-	// stack = loadraw stack
-	// ==>
-	// R0 = stack
-	// R0 = loadraw R0
-	// stack = R0
-	if (tdst == STACK) {
-		extra->dst = fun->cg_info.regs[0];
-		struct ir_insn *tmp = create_assign_insn_cg(
-			env, insn, bpf_ir_value_insn(fun->cg_info.regs[0]),
-			INSERT_BACK);
-		insn_cg(tmp)->dst = insn_dst(insn);
-		tmp->vr_type = insn->vr_type;
-		return true;
+	// reg = loadraw const ==> TODO
+	if (t0 == CONST) {
+		CRITICAL("Not supported");
 	}
-	if (vtype(insn->addr_val.value) == STACK) {
+
+	if (tdst == STACK) {
+		if (t0 == REG) {
+			extra->dst = fun->cg_info.regs[0];
+			struct ir_insn *tmp = create_assign_insn_cg(
+				env, insn,
+				bpf_ir_value_insn(fun->cg_info.regs[0]),
+				INSERT_BACK);
+			insn_cg(tmp)->dst = dst_insn;
+			tmp->vr_type = insn->vr_type;
+			return true;
+		}
+		if (t0 == STACK) {
+		}
+	}
+	if (t0 == STACK) {
 		// Question: are all memory address 64 bits?
 		load_stack_to_reg(env, fun, insn, &insn->addr_val.value,
 				  IR_VR_TYPE_64, 0);
@@ -1322,6 +1322,7 @@ static bool spill_loadrawextra(struct bpf_ir_env *env, struct ir_function *fun,
 {
 	enum val_type tdst = vtype_insn(insn);
 	struct ir_insn_cg_extra *extra = insn_cg(insn);
+	struct ir_insn *dst_insn = insn_dst(insn);
 	// IMM64 Map instructions, must load to register
 	if (tdst == STACK) {
 		// stack = loadimm
@@ -1331,7 +1332,7 @@ static bool spill_loadrawextra(struct bpf_ir_env *env, struct ir_function *fun,
 		struct ir_insn *new_insn = create_assign_insn_cg(
 			env, insn, bpf_ir_value_insn(fun->cg_info.regs[0]),
 			INSERT_BACK);
-		insn_cg(new_insn)->dst = insn_dst(insn);
+		insn_cg(new_insn)->dst = dst_insn;
 		extra->dst = fun->cg_info.regs[0];
 		return true;
 	}

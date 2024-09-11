@@ -69,6 +69,16 @@ storeraw vt REG CONST32
 
 ### `loadraw`
 
+`dst = loadraw <vr_type> <addr_val>`
+
+Cases of `dst, addr_val`:
+
+- `REG, REG` ==> PASS
+- `*, CONST` ==> TODO
+- `STACK, REG` ==> PASS
+- `STACK, STACK` ==> PASS
+- `REG, STACK` ==> PASS
+
 ### `loadrawextra`
 
 ### ALU Binary Instructions
