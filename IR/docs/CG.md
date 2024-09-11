@@ -69,22 +69,28 @@ storeraw vt REG CONST32
 
 ### `loadraw`
 
-`dst = loadraw vr_type addr_val`
+`dst = loadraw vt addr_val`
 
 Cases of `dst, addr_val`:
 
 - `REG, REG` ==> PASS
 - `*, CONST` ==> TODO
 - `STACK, REG` ==>
-    R0 = loadraw vr_type addr_val
+    R0 = loadraw vt addr_val
     dst = R0
 - `STACK, STACK` ==>
     R0 = addr_val
-    R0 = loadraw vr_type R0
+    R0 = loadraw vt R0
     dst = R0
 - `REG, STACK` ==>
     R0 = addr_val
-    dst = loadraw vr_type R0
+    dst = loadraw vt R0
+
+In summary, this form is valid:
+
+```
+REG = loadraw vt REG
+```
 
 ### `loadrawextra`
 
