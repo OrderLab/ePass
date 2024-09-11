@@ -76,6 +76,8 @@ Example:
 store %1 200
 ```
 
+(Currently other vr type is not working. All alloc uses 64 bits reg/stack)
+
 ### `store`
 
 Syntax: `store <values[0]> <values[1]>`
