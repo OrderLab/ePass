@@ -1174,6 +1174,7 @@ static void add_stack_offset_vr(struct ir_function *fun, size_t num)
 	}
 }
 
+/* Spilling callee */
 static void spill_callee(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	// Spill Callee saved registers if used
@@ -1237,9 +1238,44 @@ static void spill_callee(struct bpf_ir_env *env, struct ir_function *fun)
 	}
 }
 
-static bool spill_store(struct ir_insn *insn, struct ir_value *v0,
-			struct ir_value *v1)
+/* Spill ASSIGN instruction */
+static bool spill_assign(struct bpf_ir_env *env, struct ir_function *fun,
+			 struct ir_insn *insn)
 {
+	struct ir_value *v0 = &insn->values[0];
+	enum val_type t0 = insn->value_num >= 1 ? vtype(*v0) : UNDEF;
+	enum val_type tdst = vtype_insn(insn);
+	// stack = reg (sized)
+	// stack = const (sized)
+	// reg = const (alu)
+	// reg = stack (sized)
+	// reg = reg
+	if (tdst == STACK && t0 == STACK) {
+		// Both stack positions are managed by us
+		load_stack_to_r0(env, fun, insn, v0, IR_VR_TYPE_64);
+		return true;
+	}
+	if (tdst == STACK && t0 == CONST) {
+		if (v0->const_type == IR_ALU_64) {
+			// First load to R0
+			struct ir_insn *new_insn = create_assign_insn_cg(
+				env, insn, *v0, INSERT_FRONT);
+			new_insn->values[0].const_type = IR_ALU_64;
+			insn_cg(new_insn)->dst = fun->cg_info.regs[0];
+			v0->type = IR_VALUE_INSN;
+			v0->data.insn_d = fun->cg_info.regs[0];
+			return true;
+		}
+	}
+	return false;
+}
+
+/* Spill STORE instructions */
+static bool spill_store(struct bpf_ir_env *env, struct ir_function *fun,
+			struct ir_insn *insn)
+{
+	struct ir_value *v0 = &insn->values[0];
+	struct ir_value *v1 = &insn->values[1];
 	// store v0(dst) v1
 	// Eequivalent to `v0 = v1`
 	struct ir_insn_cg_extra *extra = insn_cg(insn);
@@ -1251,11 +1287,13 @@ static bool spill_store(struct ir_insn *insn, struct ir_value *v0,
 	extra->dst = v0->data.insn_d;
 	insn->value_num = 1;
 	*v0 = *v1;
-	return true;
+	return spill_assign(env, fun, insn);
 }
 
-static bool spill_load(struct ir_insn *insn, struct ir_value *v0)
+static bool spill_load(struct bpf_ir_env *env, struct ir_function *fun,
+		       struct ir_insn *insn)
 {
+	struct ir_value *v0 = &insn->values[0];
 	// stack = load stack
 	// stack = load reg
 	// reg = load reg
@@ -1265,12 +1303,13 @@ static bool spill_load(struct ir_insn *insn, struct ir_value *v0)
 		  IR_VALUE_INSN); // Should be guaranteed by prog_check
 	DBGASSERT(v0->data.insn_d->op == IR_INSN_ALLOC);
 	insn->vr_type = v0->data.insn_d->vr_type;
-	return true;
+	return spill_assign(env, fun, insn);
 }
 
 static bool spill_loadraw(struct bpf_ir_env *env, struct ir_function *fun,
-			  struct ir_insn *insn, enum val_type tdst)
+			  struct ir_insn *insn)
 {
+	enum val_type tdst = vtype_insn(insn);
 	struct ir_insn_cg_extra *extra = insn_cg(insn);
 	// Load from memory
 	// reg = loadraw reg ==> OK
@@ -1305,8 +1344,9 @@ static bool spill_loadraw(struct bpf_ir_env *env, struct ir_function *fun,
 }
 
 static bool spill_loadrawextra(struct bpf_ir_env *env, struct ir_function *fun,
-			       struct ir_insn *insn, enum val_type tdst)
+			       struct ir_insn *insn)
 {
+	enum val_type tdst = vtype_insn(insn);
 	struct ir_insn_cg_extra *extra = insn_cg(insn);
 	// IMM64 Map instructions, must load to register
 	if (tdst == STACK) {
@@ -1325,9 +1365,10 @@ static bool spill_loadrawextra(struct bpf_ir_env *env, struct ir_function *fun,
 }
 
 static bool spill_storeraw(struct bpf_ir_env *env, struct ir_function *fun,
-			   struct ir_insn *insn, enum val_type t0,
-			   struct ir_value *v0)
+			   struct ir_insn *insn)
 {
+	struct ir_value *v0 = &insn->values[0];
+	enum val_type t0 = insn->value_num >= 1 ? vtype(*v0) : UNDEF;
 	// Store some value to memory
 	// store ptr reg ==> OK
 	// store ptr stack
@@ -1357,10 +1398,13 @@ static bool spill_storeraw(struct bpf_ir_env *env, struct ir_function *fun,
 }
 
 static bool spill_alu(struct bpf_ir_env *env, struct ir_function *fun,
-		      struct ir_insn *insn, enum val_type t0,
-		      struct ir_value *v0, enum val_type t1,
-		      struct ir_value *v1, enum val_type tdst)
+		      struct ir_insn *insn)
 {
+	struct ir_value *v0 = &insn->values[0];
+	struct ir_value *v1 = &insn->values[1];
+	enum val_type t0 = insn->value_num >= 1 ? vtype(*v0) : UNDEF;
+	enum val_type t1 = insn->value_num >= 2 ? vtype(*v1) : UNDEF;
+	enum val_type tdst = vtype_insn(insn);
 	struct ir_insn_cg_extra *extra = insn_cg(insn);
 	struct ir_insn *dst_insn = insn_dst(insn);
 	// Binary ALU
@@ -1491,40 +1535,13 @@ static bool spill_alu(struct bpf_ir_env *env, struct ir_function *fun,
 	return false;
 }
 
-static bool spill_assign(struct bpf_ir_env *env, struct ir_function *fun,
-			 struct ir_insn *insn, enum val_type t0,
-			 struct ir_value *v0, enum val_type tdst)
-{
-	// stack = reg (sized)
-	// stack = const (sized)
-	// reg = const (alu)
-	// reg = stack (sized)
-	// reg = reg
-	if (tdst == STACK && t0 == STACK) {
-		// Both stack positions are managed by us
-		load_stack_to_r0(env, fun, insn, v0, IR_VR_TYPE_64);
-		return true;
-	}
-	if (tdst == STACK && t0 == CONST) {
-		if (v0->const_type == IR_ALU_64) {
-			// First load to R0
-			struct ir_insn *new_insn = create_assign_insn_cg(
-				env, insn, *v0, INSERT_FRONT);
-			new_insn->values[0].const_type = IR_ALU_64;
-			insn_cg(new_insn)->dst = fun->cg_info.regs[0];
-			v0->type = IR_VALUE_INSN;
-			v0->data.insn_d = fun->cg_info.regs[0];
-			return true;
-		}
-	}
-	return false;
-}
-
 static bool spill_cond_jump(struct bpf_ir_env *env, struct ir_function *fun,
-			    struct ir_insn *insn, enum val_type t0,
-			    struct ir_value *v0, enum val_type t1,
-			    struct ir_value *v1)
+			    struct ir_insn *insn)
 {
+	struct ir_value *v0 = &insn->values[0];
+	struct ir_value *v1 = &insn->values[1];
+	enum val_type t0 = insn->value_num >= 1 ? vtype(*v0) : UNDEF;
+	enum val_type t1 = insn->value_num >= 2 ? vtype(*v1) : UNDEF;
 	// jmp reg const/reg
 	__u8 switched = 0;
 	if ((t0 != REG && t1 == REG) || (t0 == CONST && t1 == STACK)) {
@@ -1610,37 +1627,24 @@ static bool check_need_spill(struct bpf_ir_env *env, struct ir_function *fun)
 		struct ir_basic_block *bb = *pos;
 		struct ir_insn *insn;
 		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
-			struct ir_value *v0 = &insn->values[0];
-			struct ir_value *v1 = &insn->values[1];
-			enum val_type t0 = insn->value_num >= 1 ? vtype(*v0) :
-								  UNDEF;
-			enum val_type t1 = insn->value_num >= 2 ? vtype(*v1) :
-								  UNDEF;
-			enum val_type tdst = vtype_insn(insn);
-			// struct ir_insn_cg_extra *extra = insn_cg(insn);
-			// struct ir_insn *dst_insn = insn_dst(insn);
 			if (insn->op == IR_INSN_ALLOC) {
 				// dst = alloc <size>
 				// Nothing to do
 			} else if (insn->op == IR_INSN_STORE) {
-				need_modify = spill_store(insn, v0, v1);
+				need_modify = spill_store(env, fun, insn);
 			} else if (insn->op == IR_INSN_LOAD) {
-				need_modify = spill_load(insn, v0);
+				need_modify = spill_load(env, fun, insn);
 			} else if (insn->op == IR_INSN_LOADRAW) {
-				need_modify =
-					spill_loadraw(env, fun, insn, tdst);
+				need_modify = spill_loadraw(env, fun, insn);
 			} else if (insn->op == IR_INSN_LOADIMM_EXTRA) {
-				need_modify = spill_loadrawextra(env, fun, insn,
-								 tdst);
-			} else if (insn->op == IR_INSN_STORERAW) {
 				need_modify =
-					spill_storeraw(env, fun, insn, t0, v0);
+					spill_loadrawextra(env, fun, insn);
+			} else if (insn->op == IR_INSN_STORERAW) {
+				need_modify = spill_storeraw(env, fun, insn);
 			} else if (is_alu(insn)) {
-				need_modify = spill_alu(env, fun, insn, t0, v0,
-							t1, v1, tdst);
+				need_modify = spill_alu(env, fun, insn);
 			} else if (insn->op == IR_INSN_ASSIGN) {
-				need_modify = spill_assign(env, fun, insn, t0,
-							   v0, tdst);
+				need_modify = spill_assign(env, fun, insn);
 			} else if (insn->op == IR_INSN_RET) {
 				// ret const/reg
 				// Done in explicit_reg pass
@@ -1652,8 +1656,7 @@ static bool check_need_spill(struct bpf_ir_env *env, struct ir_function *fun)
 			} else if (insn->op == IR_INSN_JA) {
 				// OK
 			} else if (is_cond_jmp(insn)) {
-				need_modify = spill_cond_jump(env, fun, insn,
-							      t0, v0, t1, v1);
+				need_modify = spill_cond_jump(env, fun, insn);
 			} else {
 				CRITICAL("No such instruction");
 			}
