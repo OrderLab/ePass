@@ -42,6 +42,22 @@ Rewrite to `dst = v0`. (with vt info)
 
 ### `storeraw`
 
+`storeraw vt addr_val v0`
+
+Case of `addr_val, v0`:
+
+- `STACK, STACK` ==> TODO
+- `*, CONST64` ==> TODO
+- `STACK, REG/CONST32` ==>
+    Rx = addr_val
+    storeraw vt Rx v0
+- `REG, STACK` ==>
+    Rx = v0
+    storeraw vt addr_val Rx
+- `REG, REG` ==> PASS
+- `REG, CONST32` ==> PASS
+- `CONST, *` ==> TODO
+
 ### `loadraw`
 
 ### `loadrawextra`

@@ -1149,17 +1149,17 @@ static void load_const64(struct bpf_ir_env *env, struct ir_insn *insn,
 	val->data.insn_d = new_insn;
 }
 
-static void load_stack_to_r0(struct bpf_ir_env *env, struct ir_function *fun,
-			     struct ir_insn *insn, struct ir_value *val,
-			     enum ir_vr_type vtype)
+static void load_stack_to_reg(struct bpf_ir_env *env, struct ir_function *fun,
+			      struct ir_insn *insn, struct ir_value *val,
+			      enum ir_vr_type vtype, u8 reg)
 {
 	struct ir_insn *tmp =
 		create_assign_insn_cg(env, insn, *val, INSERT_FRONT);
 	tmp->vr_type = vtype;
-	insn_cg(tmp)->dst = fun->cg_info.regs[0];
+	insn_cg(tmp)->dst = fun->cg_info.regs[reg];
 
 	val->type = IR_VALUE_INSN;
-	val->data.insn_d = fun->cg_info.regs[0];
+	val->data.insn_d = fun->cg_info.regs[reg];
 }
 
 static void add_stack_offset_vr(struct ir_function *fun, size_t num)
@@ -1252,7 +1252,7 @@ static bool spill_assign(struct bpf_ir_env *env, struct ir_function *fun,
 	// reg = reg
 	if (tdst == STACK && t0 == STACK) {
 		// Both stack positions are managed by us
-		load_stack_to_r0(env, fun, insn, v0, IR_VR_TYPE_64);
+		load_stack_to_reg(env, fun, insn, v0, IR_VR_TYPE_64, 0);
 		return true;
 	}
 	if (tdst == STACK && t0 == CONST) {
@@ -1336,8 +1336,8 @@ static bool spill_loadraw(struct bpf_ir_env *env, struct ir_function *fun,
 	}
 	if (vtype(insn->addr_val.value) == STACK) {
 		// Question: are all memory address 64 bits?
-		load_stack_to_r0(env, fun, insn, &insn->addr_val.value,
-				 IR_VR_TYPE_64);
+		load_stack_to_reg(env, fun, insn, &insn->addr_val.value,
+				  IR_VR_TYPE_64, 0);
 		return true;
 	}
 	return false;
@@ -1375,23 +1375,34 @@ static bool spill_storeraw(struct bpf_ir_env *env, struct ir_function *fun,
 
 	// store stackptr stack
 	// ==> TODO!
-	if (t0 == STACK && vtype(insn->addr_val.value) == STACK) {
+	enum val_type addr_ty = vtype(insn->addr_val.value);
+	if (t0 == STACK && addr_ty == STACK) {
 		CRITICAL("TODO!");
 	}
-	if (t0 == CONST && insn->vr_type == IR_VR_TYPE_64) {
+	if (t0 == CONST && v0->const_type == IR_VR_TYPE_64) {
 		CRITICAL("Not supported");
 	}
 	// Question: are all memory address 64 bits?
 	if (t0 == STACK) {
-		load_stack_to_r0(env, fun, insn, v0, IR_VR_TYPE_64);
+		u8 reg = 0;
+		if (addr_ty == REG &&
+		    insn_cg(insn->addr_val.value.data.insn_d)->alloc_reg == 0) {
+			// Make sure the new register is not the same as the other register
+			reg = 1;
+		}
+		load_stack_to_reg(env, fun, insn, v0, IR_VR_TYPE_64, 0);
 		return true;
 	}
-	if (vtype(insn->addr_val.value) == CONST) {
+	if (addr_ty == CONST) {
 		CRITICAL("Not Supported");
 	}
-	if (vtype(insn->addr_val.value) == STACK) {
-		load_stack_to_r0(env, fun, insn, &insn->addr_val.value,
-				 IR_VR_TYPE_64);
+	if (addr_ty == STACK) {
+		u8 reg = 0;
+		if (t0 == REG && insn_cg(v0->data.insn_d)->alloc_reg == 0) {
+			reg = 1;
+		}
+		load_stack_to_reg(env, fun, insn, &insn->addr_val.value,
+				  IR_VR_TYPE_64, reg);
 		return true;
 	}
 	return false;
@@ -1593,8 +1604,8 @@ static bool spill_cond_jump(struct bpf_ir_env *env, struct ir_function *fun,
 		}
 		// jmp stack const
 		if (t0 == STACK && t1 == CONST) {
-			load_stack_to_r0(env, fun, insn, v0,
-					 alu_to_vr_type(insn->alu_op));
+			load_stack_to_reg(env, fun, insn, v0,
+					  alu_to_vr_type(insn->alu_op), 0);
 			return true;
 		}
 		// jmp stack1 stack2
@@ -1603,8 +1614,8 @@ static bool spill_cond_jump(struct bpf_ir_env *env, struct ir_function *fun,
 		// R1 = stack2
 		// jmp R0 R1
 		if (t0 == STACK && t1 == STACK) {
-			load_stack_to_r0(env, fun, insn, v0,
-					 alu_to_vr_type(insn->alu_op));
+			load_stack_to_reg(env, fun, insn, v0,
+					  alu_to_vr_type(insn->alu_op), 0);
 			return true;
 		}
 	}
