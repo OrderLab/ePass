@@ -35,6 +35,7 @@ static void init_cg(struct bpf_ir_env *env, struct ir_function *fun)
 		// Pre-colored registers are allocated
 		extra->allocated = 1;
 		extra->spilled = 0;
+		extra->nonvr = true;
 	}
 }
 
@@ -837,6 +838,26 @@ static enum val_type vtype(struct ir_value val)
 		return REG;
 	} else {
 		CRITICAL("No such value type for dst");
+	}
+}
+
+static bool is_vr_insn(struct ir_insn *insn)
+{
+	insn = insn_dst(insn);
+	if (insn == NULL || insn->user_data == NULL) {
+		// Void
+		return false;
+	}
+	return !insn_cg(insn)->nonvr;
+}
+
+static bool is_vr(struct ir_value val)
+{
+	if (val.type == IR_VALUE_INSN) {
+		return is_vr_insn(val.data.insn_d);
+
+	} else {
+		return false;
 	}
 }
 
@@ -2286,5 +2307,6 @@ void bpf_ir_init_insn_cg(struct bpf_ir_env *env, struct ir_insn *insn)
 	INIT_ARRAY(&extra->in, struct ir_insn *);
 	INIT_ARRAY(&extra->out, struct ir_insn *);
 	extra->translated_num = 0;
+	extra->nonvr = false;
 	insn->user_data = extra;
 }

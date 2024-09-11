@@ -839,6 +839,9 @@ struct ir_insn_cg_extra {
 	// Valid if spilled == 0 && allocated == 1
 	// Valid number: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
 	__u8 alloc_reg;
+
+	// Whether this instruction is a non-VR instruction, like a pre-colored register
+	bool nonvr;
 };
 
 enum val_type {
