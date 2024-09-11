@@ -86,7 +86,7 @@ Store a value `values[1]` in an address `values[0]`.
 
 ### `load`
 
-Syntax: `load <vr_type> <values[0]>`
+Syntax: `load <values[0]>`
 
 Requirement: `values[0]` is an `alloc` instruction.
 
@@ -103,6 +103,12 @@ Store a value `values[0]` in manually set `addr_val` with size `vr_type`.
 Syntax: `loadraw <vr_type> <addr_val>`
 
 Load a value `addr_val` with size `vr_type`.
+
+### `loadrawextra`
+
+Syntax: `loadrawextra <imm_extra_type> <imm64>`
+
+Extra instruction to load imm64.
 
 ### ALU Binary Instructions
 
