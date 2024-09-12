@@ -110,36 +110,63 @@ If dst is STACK, we first change it to REG.
 
 `REG = ALU v0 v1`
 
+if `v1` is REG and is the same with `dst`, first change it to another register.
+
 Cases of `v0, v1`:
 
 - `REG, CONST`
 - `REG, STACK`
-- `CONST, REG`
-- `CONST, CONST`
-- `STACK, CONST`
-- `CONST, STACK`
-- `STACK, STACK`
-- `STACK, REG`
+- `CONST64, REG` ✅
+- `CONST64, CONST` ✅
+- `CONST64, STACK` ✅
+- `CONST32, REG` ==> PASS
+- `CONST32, CONST64` ✅
+- `CONST32, CONST32` ==> PASS
+- `CONST32, STACK` ✅
+- `STACK, CONST` ✅
+- `STACK, STACK` ✅
+- `STACK, REG` ✅
 
 In summary, these are allowed:
 
 ```
-REG = ALU REG REG
+REG1 = ALU REG REG2
 REG = ALU REG CONST32
-REG = ALU CONST32 REG
+REG1 = ALU CONST32 REG2
 REG = ALU CONST32 CONST32
 REG = ALU STACK CONST32
 ```
 
 ### `call`
 
+PASS.
+
 ### `ret`
 
+PASS.
+
 ### `ja`
+
+PASS.
 
 ### Conditional Jump Instructions
 
 ### `phi`
+
+No PHI.
+
+### `assign`
+
+`dst = src`
+
+Cases of `dst, src`:
+
+- `STACK, STACK`
+- `STACK, REG`
+- `STACK, CONST`
+- `REG, CONST`
+- `REG, REG`
+- `REG, STACK`
 
 ## CGIR-II
 

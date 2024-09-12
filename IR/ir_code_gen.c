@@ -1116,9 +1116,20 @@ static void relocate(struct bpf_ir_env *env, struct ir_function *fun)
 	}
 }
 
-static void load_const64_to_reg(struct bpf_ir_env *env, struct ir_function *fun,
-				struct ir_insn *insn, struct ir_value *val,
-				u8 reg)
+static void load_const_to_reg(struct bpf_ir_env *env, struct ir_function *fun,
+			      struct ir_insn *insn, struct ir_value *val,
+			      u8 reg)
+{
+	struct ir_insn *new_insn =
+		create_assign_insn_cg(env, insn, *val, INSERT_FRONT);
+	new_insn->alu_op = IR_ALU_64;
+	insn_cg(new_insn)->dst = fun->cg_info.regs[reg];
+	val->type = IR_VALUE_INSN;
+	val->data.insn_d = fun->cg_info.regs[reg];
+}
+
+static void load_reg_to_reg(struct bpf_ir_env *env, struct ir_function *fun,
+			    struct ir_insn *insn, struct ir_value *val, u8 reg)
 {
 	struct ir_insn *new_insn =
 		create_assign_insn_cg(env, insn, *val, INSERT_FRONT);
@@ -1151,6 +1162,11 @@ static void add_stack_offset_vr(struct ir_function *fun, size_t num)
 			extra->spilled += num;
 		}
 	}
+}
+
+static u8 allocated_reg(struct ir_value val)
+{
+	return insn_cg(val.data.insn_d)->alloc_reg;
 }
 
 /* Spilling callee */
@@ -1428,97 +1444,58 @@ static bool spill_alu(struct bpf_ir_env *env, struct ir_function *fun,
 	// There are 8 cases
 	if (t0 == REG) {
 	} else {
+		if (t1 == REG && allocated_reg(*v0) == allocated_reg(*v1)) {
+			// r0 = ALU ? r0
+			// ==>
+			// R1 = r0
+			// r0 = ALU ? R1
+			u8 new_reg = allocated_reg(*v0) == 0 ? 1 : 0;
+			load_reg_to_reg(env, fun, insn, v1, new_reg);
+			spill_alu(env, fun, insn);
+			return true;
+		}
 		// Convert t0 to REG
 		if (t0 == STACK) {
+			u8 new_reg = 0;
+			if (t1 == REG && allocated_reg(*v1) == 0) {
+				new_reg = 1;
+			}
+			load_stack_to_reg(env, fun, insn, v0, IR_VR_TYPE_64,
+					  new_reg);
+			spill_alu(env, fun, insn);
+			return true;
 		}
 		if (t0 == CONST) {
 			if (v0->const_type == IR_ALU_64) {
-				load_const64_to_reg(env, fun, insn, v0, 0);
+				u8 new_reg = 0;
+				if (t1 == REG && allocated_reg(*v1) == 0) {
+					new_reg = 1;
+				}
+				load_const_to_reg(env, fun, insn, v0, new_reg);
+				spill_alu(env, fun, insn);
 				return true;
 			} else if (v0->const_type == IR_ALU_32) {
+				if (t1 == CONST &&
+				    v1->const_type == IR_ALU_64) {
+					// reg = ALU const32 const64
+					load_const_to_reg(env, fun, insn, v1,
+							  0);
+					spill_alu(env, fun, insn);
+					return true;
+				}
+				if (t1 == STACK) {
+					// reg = ALU const32 stack
+					load_stack_to_reg(env, fun, insn, v1,
+							  IR_VR_TYPE_64, 0);
+					spill_alu(env, fun, insn);
+					return true;
+				}
 			} else {
 				CRITICAL("IMPOSSIBLE ALU TYPE");
 			}
 		}
 	}
 
-	// if (t0 == REG) {
-	// 	// reg = ALU reg reg ==> OK
-	// 	// reg = ALU reg const32 ==> OK
-	// 	if (t1 == CONST && v1->const_type == IR_ALU_64) {
-	// 		// Need to load to another reg
-	// 		load_const64_to_reg(env, insn, v1);
-	// 		return true;
-	// 	}
-
-	// 	// reg1 = ALU reg2 stack
-	// 	// ==>
-	// 	// If reg1 != reg2,
-	// 	//   reg1 = stack
-	// 	//   reg1 = ALU reg2 reg1
-	// 	// Else
-	// 	//   Choose reg3 != reg1,
-	// 	//   reg3 = stack
-	// 	//   reg1 = ALU reg1 reg3
-	// 	if (t1 == STACK) {
-	// 		__u8 reg1 = insn_cg(dst_insn)->alloc_reg;
-	// 		__u8 reg2 = insn_cg(v0->data.insn_d)->alloc_reg;
-	// 		struct ir_insn *new_insn = create_assign_insn_cg(
-	// 			env, insn, *v1, INSERT_FRONT);
-	// 		new_insn->vr_type = alu_to_vr_type(insn->alu_op);
-	// 		v1->type = IR_VALUE_INSN;
-	// 		if (reg1 == reg2) {
-	// 			__u8 reg = reg1 == 0 ? 1 : 0;
-	// 			insn_cg(new_insn)->dst = fun->cg_info.regs[reg];
-	// 			v1->data.insn_d = fun->cg_info.regs[reg];
-	// 		} else {
-	// 			insn_cg(new_insn)->dst =
-	// 				fun->cg_info.regs[reg1];
-	// 			v1->data.insn_d = fun->cg_info.regs[reg1];
-	// 		}
-	// 		return true;
-	// 	}
-	// } else {
-	// 	// reg = ALU const const ==> OK
-	// 	// reg = ALU c1 c2
-	// 	// ==>
-	// 	// reg = c1
-	// 	// reg = ALU reg c2
-	// 	// OK
-	// 	if (t0 == CONST && t1 == CONST) {
-	// 		if (v1->const_type == IR_ALU_64) {
-	// 			load_const64_to_reg(env, insn, v1);
-	// 			return true;
-	// 		}
-	// 	}
-
-	// 	// reg = ALU stack stack
-	// 	if (t0 == STACK && t1 == STACK) {
-	// 		// reg1 = ALU stack1 stack2
-	// 		// ==>
-	// 		// Found reg2 != reg1
-	// 		// reg1 = stack1
-	// 		// reg1 = ALU reg1 stack2
-	// 		__u8 reg1 = insn_cg(dst_insn)->alloc_reg;
-	// 		struct ir_insn *new_insn = create_assign_insn_cg(
-	// 			env, insn, *v0, INSERT_FRONT);
-	// 		new_insn->vr_type = alu_to_vr_type(insn->alu_op);
-	// 		insn_cg(new_insn)->dst = fun->cg_info.regs[reg1];
-	// 		v0->type = IR_VALUE_INSN;
-	// 		v0->data.insn_d = fun->cg_info.regs[reg1];
-	// 		return true;
-	// 	}
-	// 	// reg = ALU stack const ==> OK
-	// 	// ==>
-	// 	// reg = stack
-	// 	// reg = ALU reg const
-	// 	if (t0 == STACK && t1 == CONST) {
-	// 		if (v1->const_type == IR_ALU_64) {
-	// 			load_const64_to_reg(env, insn, v1);
-	// 			return true;
-	// 		}
-	// 	}
-	// }
 	return false;
 }
 
@@ -1546,7 +1523,7 @@ static bool spill_cond_jump(struct bpf_ir_env *env, struct ir_function *fun,
 		// jmp reg reg ==> OK
 		// jmp reg const ==> OK
 		if (t1 == CONST && v1->const_type == IR_ALU_64) {
-			load_const64_to_reg(env, insn, v1);
+			load_const_to_reg(env, insn, v1);
 			return true;
 		}
 		// jmp reg stack
