@@ -619,6 +619,11 @@ void print_ir_err_init(struct ir_function *fun);
 
 void print_ir_insn_err(struct bpf_ir_env *env, struct ir_insn *insn, char *msg);
 
+void print_ir_insn_err_full(struct bpf_ir_env *env, struct ir_insn *insn,
+			    char *msg,
+			    void (*print_ir)(struct bpf_ir_env *env,
+					     struct ir_insn *));
+
 void print_ir_bb_err(struct bpf_ir_env *env, struct ir_basic_block *bb);
 
 /* IR Helper End */

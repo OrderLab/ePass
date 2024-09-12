@@ -588,7 +588,10 @@ void print_ir_prog_advanced(
 	print_ir_bb(env, fun->entry, post_bb, post_insn, print_insn_name);
 }
 
-void print_ir_insn_err(struct bpf_ir_env *env, struct ir_insn *insn, char *msg)
+void print_ir_insn_err_full(struct bpf_ir_env *env, struct ir_insn *insn,
+			    char *msg,
+			    void (*print_ir)(struct bpf_ir_env *env,
+					     struct ir_insn *))
 {
 	PRINT_LOG(env, "In BB %zu,\n", insn->parent_bb->_id);
 	struct ir_insn *prev = prev_insn(insn);
@@ -599,7 +602,7 @@ void print_ir_insn_err(struct bpf_ir_env *env, struct ir_insn *insn, char *msg)
 			PRINT_LOG(env, "%%%zu", prev->_insn_id);
 			PRINT_LOG(env, " = ");
 		}
-		print_ir_insn(env, prev);
+		print_ir_insn_full(env, prev, print_ir);
 		PRINT_LOG(env, "\n");
 	} else {
 		PRINT_LOG(env, "  (No instruction)\n");
@@ -609,7 +612,7 @@ void print_ir_insn_err(struct bpf_ir_env *env, struct ir_insn *insn, char *msg)
 		PRINT_LOG(env, "%%%zu", insn->_insn_id);
 		PRINT_LOG(env, " = ");
 	}
-	print_ir_insn(env, insn);
+	print_ir_insn_full(env, insn, print_ir);
 	PRINT_LOG(env, "         <--- ");
 	if (msg) {
 		PRINT_LOG(env, "%s\n", msg);
@@ -622,11 +625,16 @@ void print_ir_insn_err(struct bpf_ir_env *env, struct ir_insn *insn, char *msg)
 			PRINT_LOG(env, "%%%zu", next->_insn_id);
 			PRINT_LOG(env, " = ");
 		}
-		print_ir_insn(env, next);
+		print_ir_insn_full(env, next, print_ir);
 		PRINT_LOG(env, "\n");
 	} else {
 		PRINT_LOG(env, "  (No instruction)\n");
 	}
+}
+
+void print_ir_insn_err(struct bpf_ir_env *env, struct ir_insn *insn, char *msg)
+{
+	print_ir_insn_err_full(env, insn, msg, NULL);
 }
 
 void print_ir_err_init(struct ir_function *fun)

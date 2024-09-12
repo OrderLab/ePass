@@ -1630,6 +1630,7 @@ static bool spill_cond_jump(struct bpf_ir_env *env, struct ir_function *fun,
 static void check_cgir(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	// Sanity check of CGIR (the IR after `check_need_spill`)
+	print_ir_err_init(fun);
 	struct ir_basic_block **pos;
 	array_for(pos, fun->reachable_bbs)
 	{
@@ -1637,11 +1638,20 @@ static void check_cgir(struct bpf_ir_env *env, struct ir_function *fun)
 		struct ir_insn *insn;
 		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
 			// First check insn
-			if (insn_dst(insn) == NULL ||
-			    (insn_dst(insn) != insn_dst(insn_dst(insn)))) {
+			if (insn_dst(insn) == NULL) {
+				continue;
+			}
+			if (insn_dst(insn) != insn_dst(insn_dst(insn))) {
 				// dst(insn) != dst(dst(insn))
 				// dst is not final!
-				RAISE_ERROR("Dst is not final!");
+				print_ir_insn_err_full(env, insn_dst(insn),
+						       "Instruction's dst",
+						       print_ir_dst);
+				print_ir_insn_err_full(
+					env, insn,
+					"This instruction's dst is not final!",
+					print_ir_dst);
+				CRITICAL_DUMP(env, "Dst is not final!");
 			}
 			struct array operands = bpf_ir_get_operands(env, insn);
 			struct ir_value **vpos;
@@ -1651,10 +1661,31 @@ static void check_cgir(struct bpf_ir_env *env, struct ir_function *fun)
 				if (val->type == IR_VALUE_INSN) {
 					struct ir_insn *dst_insn =
 						val->data.insn_d;
-					if (insn_dst(dst_insn) == NULL ||
-					    (insn_dst(dst_insn) != dst_insn)) {
-						RAISE_ERROR(
-							"Instruction is not final!");
+					if (insn_dst(dst_insn) == NULL) {
+						print_ir_insn_err_full(
+							env, dst_insn,
+							"Operand's dst is NULL",
+							print_ir_dst);
+						print_ir_insn_err_full(
+							env, insn,
+							"This instruction's operand's dst is NULL",
+							print_ir_dst);
+						CRITICAL_DUMP(env, "NULL dst");
+					}
+					if (insn_dst(dst_insn) != dst_insn) {
+						print_ir_insn_err_full(
+							env, insn_dst(dst_insn),
+							"Operand's dst",
+							print_ir_dst);
+						print_ir_insn_err_full(
+							env, dst_insn,
+							"Operand",
+							print_ir_dst);
+						print_ir_insn_err_full(
+							env, insn,
+							"This instruction's operand's dst is NULL",
+							print_ir_dst);
+						CRITICAL_DUMP(env, "NULL dst");
 					}
 				}
 			}
