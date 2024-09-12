@@ -1810,11 +1810,13 @@ static void add_stack_offset_pre_cg(struct bpf_ir_env *env,
 				// Stack pointer as value
 				struct ir_value new_val;
 				new_val.type = IR_VALUE_CONSTANT_RAWOFF;
+				new_val.const_type = IR_ALU_32;
 				struct ir_insn *new_insn = create_bin_insn(
 					env, insn, *val, new_val, IR_INSN_ADD,
-					IR_ALU_32, INSERT_FRONT);
+					IR_ALU_64, INSERT_FRONT);
 				new_val.type = IR_VALUE_INSN;
 				new_val.data.insn_d = new_insn;
+				val_add_user(env, new_val, insn);
 				*val = new_val;
 			}
 		}

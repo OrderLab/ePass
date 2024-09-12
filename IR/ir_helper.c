@@ -128,9 +128,7 @@ static void print_ir_value_full(struct bpf_ir_env *env, struct ir_value v,
 		print_const(env, v);
 		break;
 	case IR_VALUE_CONSTANT_RAWOFF:
-		PRINT_LOG(env, "(hole:");
-		print_const(env, v);
-		PRINT_LOG(env, ")");
+		PRINT_LOG(env, "(hole)");
 		break;
 	case IR_VALUE_UNDEF:
 		PRINT_LOG(env, "undef");
