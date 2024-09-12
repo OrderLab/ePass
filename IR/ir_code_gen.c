@@ -1822,7 +1822,7 @@ static void add_stack_offset(struct bpf_ir_env *env, struct ir_function *fun,
 	}
 }
 
-static struct pre_ir_insn load_reg_to_reg(__u8 dst, __u8 src)
+static struct pre_ir_insn translate_reg_to_reg(__u8 dst, __u8 src)
 {
 	// MOV dst src
 	struct pre_ir_insn insn;
@@ -1832,8 +1832,8 @@ static struct pre_ir_insn load_reg_to_reg(__u8 dst, __u8 src)
 	return insn;
 }
 
-static struct pre_ir_insn load_const_to_reg(__u8 dst, __s64 data,
-					    enum ir_alu_op_type type)
+static struct pre_ir_insn translate_const_to_reg(__u8 dst, __s64 data,
+						 enum ir_alu_op_type type)
 {
 	// MOV dst imm
 	struct pre_ir_insn insn;
@@ -2121,11 +2121,11 @@ static void translate_assign(struct ir_insn *insn)
 	// reg = const (alu)
 	// reg = reg
 	if (tdst == REG && t0 == CONST) {
-		extra->translated[0] =
-			load_const_to_reg(get_alloc_reg(dst_insn),
-					  v0.data.constant_d, insn->alu_op);
+		extra->translated[0] = translate_const_to_reg(
+			get_alloc_reg(dst_insn), v0.data.constant_d,
+			insn->alu_op);
 	} else if (tdst == REG && t0 == REG) {
-		extra->translated[0] = load_reg_to_reg(
+		extra->translated[0] = translate_reg_to_reg(
 			get_alloc_reg(dst_insn), get_alloc_reg(v0.data.insn_d));
 	} else {
 		CRITICAL("Error");
