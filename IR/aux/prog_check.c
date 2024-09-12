@@ -388,7 +388,7 @@ static void add_reach(struct bpf_ir_env *env, struct ir_function *fun,
 	bool first = false;
 	array_for(succ, bb->succs)
 	{
-		if (!first) {
+		if (!first && bb->succs.num_elem > 1) {
 			first = true;
 			// Check if visited
 			if ((*succ)->_visited) {
