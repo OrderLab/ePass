@@ -24,7 +24,7 @@ One opinion, one benefit of designing the raw constraint from is that our runtim
 
 ## Bugs
 
-- `STACK_PTR` Change to R10 insn
+- `erase_insn_cg` Not working in the normalization. Should spilling use `safe` list iterations?
 
 # TODO
 

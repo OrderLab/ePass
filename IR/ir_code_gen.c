@@ -1156,6 +1156,10 @@ static void normalize_alu(struct bpf_ir_env *env, struct ir_function *fun,
 			v0->type = IR_VALUE_INSN;
 			v0->data.insn_d = dst_insn;
 		}
+		if (v1->data.constant_d == 0) {
+			// Remove this instruction!
+			erase_insn_cg(insn);
+		}
 	} else if (t0 == CONST && t1 == CONST) {
 		DBGASSERT(v1->const_type == IR_ALU_32);
 		// if (v0->const_type == IR_ALU_32) {
