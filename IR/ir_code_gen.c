@@ -1586,84 +1586,49 @@ static bool spill_cond_jump(struct bpf_ir_env *env, struct ir_function *fun,
 	struct ir_value *v1 = &insn->values[1];
 	enum val_type t0 = insn->value_num >= 1 ? vtype(*v0) : UNDEF;
 	enum val_type t1 = insn->value_num >= 2 ? vtype(*v1) : UNDEF;
-	// jmp reg const/reg
-	__u8 switched = 0;
-	if ((t0 != REG && t1 == REG) || (t0 == CONST && t1 == STACK)) {
-		switched = 1;
-		struct ir_value tmp = *v0;
-		*v0 = *v1;
-		*v1 = tmp;
-		enum val_type ttmp = t0;
-		t0 = t1;
-		t1 = ttmp;
-		// No need to spill here
-	}
-
 	if (t0 == REG) {
-		// jmp reg reg ==> OK
-		// jmp reg const ==> OK
-		if (t1 == CONST && v1->const_type == IR_ALU_64) {
-			cgir_load_const_to_reg(env, fun, insn, v1, 0);
+		// jmp reg ?
+		u8 reg = 0;
+		if (allocated_reg(*v0) == 0) {
+			reg = 1;
+		}
+		if (t1 == STACK) {
+			cgir_load_stack_to_reg(env, fun, insn, v1,
+					       IR_VR_TYPE_64, reg);
 			return true;
 		}
-		// jmp reg stack
-		// ==>
-		// reg2 = stack
-		// jmp reg reg2
-		if (t1 == STACK) {
-			__u8 reg1 = insn_cg(v0->data.insn_d)->alloc_reg;
-			__u8 reg2 = reg1 == 0 ? 1 : 0;
-			struct ir_insn *new_insn = create_assign_insn_cg(
-				env, insn, *v1, INSERT_FRONT);
-			new_insn->vr_type = alu_to_vr_type(insn->alu_op);
-			insn_cg(new_insn)->dst = fun->cg_info.regs[reg2];
-			v1->type = IR_VALUE_INSN;
-			v1->data.insn_d = fun->cg_info.regs[reg2];
+		if (t1 == CONST && v1->const_type == IR_ALU_64) {
+			cgir_load_const_to_reg(env, fun, insn, v1, reg);
 			return true;
 		}
 	} else {
-		// jmp const1 const2
-		// ==>
-		// %tmp = const1
-		// jmp %tmp const2
-		if (t0 == CONST && t1 == CONST) {
-			struct ir_insn *new_insn = create_assign_insn_cg(
-				env, insn, *v0, INSERT_FRONT);
-			new_insn->vr_type = alu_to_vr_type(insn->alu_op);
-			new_insn->alu_op = insn->alu_op;
-			v0->type = IR_VALUE_INSN;
-			v0->data.insn_d = new_insn;
-			return true;
+		u8 reg = 0;
+		if (t1 == REG && allocated_reg(*v1) == 0) {
+			reg = 1;
 		}
-		// jmp stack const
-		if (t0 == STACK && t1 == CONST) {
+		if (t0 == STACK) {
+			// First change t0 to REG
 			cgir_load_stack_to_reg(env, fun, insn, v0,
-					       alu_to_vr_type(insn->alu_op), 0);
+					       IR_VR_TYPE_64, reg);
+			spill_cond_jump(env, fun, insn);
+			return true;
+		} else {
+			// CONST
+			PRINT_LOG(
+				env,
+				"Warning: using const as the first operand of conditional jump may impact performance.");
+
+			cgir_load_const_to_reg(env, fun, insn, v0, reg);
+			spill_cond_jump(env, fun, insn);
 			return true;
 		}
-		// jmp stack1 stack2
-		// ==>
-		// R0 = stack1
-		// R1 = stack2
-		// jmp R0 R1
-		if (t0 == STACK && t1 == STACK) {
-			cgir_load_stack_to_reg(env, fun, insn, v0,
-					       alu_to_vr_type(insn->alu_op), 0);
-			return true;
-		}
-	}
-	if (switched) {
-		// Switch back
-		struct ir_value tmp = *v0;
-		*v0 = *v1;
-		*v1 = tmp;
 	}
 	return false;
 }
 
 static void check_cgir(struct bpf_ir_env *env, struct ir_function *fun)
 {
-	// Sanity check of CGIR-I (the IR after `check_need_spill`)
+	// Sanity check of CGIR (the IR after `check_need_spill`)
 	struct ir_basic_block **pos;
 	array_for(pos, fun->reachable_bbs)
 	{

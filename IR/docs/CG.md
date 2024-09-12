@@ -152,6 +152,24 @@ PASS.
 
 ### Conditional Jump Instructions
 
+`jmp v0 v1`
+
+Cases of `v0, v1`:
+
+- `STACK, *`
+- `REG, CONST64`
+- `REG, STACK`
+- `REG, REG`
+- `REG, CONST32`
+- `CONST, *` : emit a warning
+
+Possible output:
+
+```
+jmp REG REG
+jmp REG CONST32
+```
+
 ### `phi`
 
 No PHI.
