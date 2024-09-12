@@ -385,11 +385,11 @@ static void add_reach(struct bpf_ir_env *env, struct ir_function *fun,
 	bpf_ir_array_push(env, &fun->reachable_bbs, &bb);
 
 	struct ir_basic_block **succ;
-	u8 i = 0;
+	bool first = false;
 	array_for(succ, bb->succs)
 	{
-		if (i == 0) {
-			i = 1;
+		if (!first) {
+			first = true;
 			// Check if visited
 			if ((*succ)->_visited) {
 				RAISE_ERROR("Loop BB detected");

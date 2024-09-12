@@ -231,8 +231,8 @@ static void gen_bb(struct bpf_ir_env *env, struct bb_info *ret,
 	// Allocate instructions
 	for (size_t i = 0; i < bb_entrance.num_elem; ++i) {
 		struct pre_ir_basic_block *real_bb = all_bbs[i].bb;
-		PRINT_LOG(env, "BB Alloc, %zu %zu\n", real_bb->end_pos,
-			  real_bb->start_pos);
+		PRINT_LOG(env, "BB Alloc: [%zu, %zu)\n", real_bb->start_pos,
+			  real_bb->end_pos);
 		SAFE_MALLOC(real_bb->pre_insns,
 			    sizeof(struct pre_ir_insn) *
 				    (real_bb->end_pos - real_bb->start_pos));
