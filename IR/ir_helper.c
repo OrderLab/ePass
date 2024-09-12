@@ -121,9 +121,6 @@ static void print_ir_value_full(struct bpf_ir_env *env, struct ir_value v,
 	case IR_VALUE_INSN:
 		print_insn_ptr(env, v.data.insn_d, print_ir);
 		break;
-	case IR_VALUE_STACK_PTR:
-		PRINT_LOG(env, "SP");
-		break;
 	case IR_VALUE_CONSTANT:
 		print_const(env, v);
 		break;

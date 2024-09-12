@@ -1,3 +1,4 @@
+#include <linux/bpf.h>
 #include <linux/bpf_ir.h>
 
 static void init_cg(struct bpf_ir_env *env, struct ir_function *fun)
@@ -19,13 +20,22 @@ static void init_cg(struct bpf_ir_env *env, struct ir_function *fun)
 	}
 
 	for (u8 i = 0; i < MAX_BPF_REG; ++i) {
-		SAFE_MALLOC(fun->cg_info.regs[i], sizeof(struct ir_insn));
-		// Those should be read-only
-		struct ir_insn *insn = fun->cg_info.regs[i];
-		insn->op = IR_INSN_REG;
-		insn->parent_bb = NULL;
-		INIT_ARRAY(&insn->users, struct ir_insn *);
-		insn->value_num = 0;
+		struct ir_insn *insn;
+		if (i == BPF_REG_10) {
+			// Move SP from fun->sp to CG Info
+			insn = fun->sp;
+			fun->cg_info.regs[i] = insn;
+			fun->sp = NULL;
+		} else {
+			SAFE_MALLOC(fun->cg_info.regs[i],
+				    sizeof(struct ir_insn));
+			// Those should be read-only
+			insn = fun->cg_info.regs[i];
+			insn->op = IR_INSN_REG;
+			insn->parent_bb = NULL;
+			INIT_ARRAY(&insn->users, struct ir_insn *);
+			insn->value_num = 0;
+		}
 		bpf_ir_init_insn_cg(env, insn);
 		CHECK_ERR();
 
@@ -834,8 +844,6 @@ static enum val_type vtype(struct ir_value val)
 	} else if (val.type == IR_VALUE_CONSTANT ||
 		   val.type == IR_VALUE_CONSTANT_RAWOFF) {
 		return CONST;
-	} else if (val.type == IR_VALUE_STACK_PTR) {
-		return REG;
 	} else {
 		CRITICAL("No such value type for dst");
 	}
@@ -1015,9 +1023,8 @@ static void spill_callee(struct bpf_ir_env *env, struct ir_function *fun)
 			st->values[0] = bpf_ir_value_insn(fun->cg_info.regs[i]);
 			st->value_num = 1;
 			st->vr_type = IR_VR_TYPE_64;
-			struct ir_value val;
-			val.type = IR_VALUE_STACK_PTR;
-			st->addr_val.value = val;
+			st->addr_val.value = bpf_ir_value_insn(
+				fun->cg_info.regs[BPF_REG_10]);
 			st->addr_val.offset = -off * 8;
 			struct ir_insn_cg_extra *extra = insn_cg(st);
 			extra->dst = NULL;
@@ -1032,9 +1039,8 @@ static void spill_callee(struct bpf_ir_env *env, struct ir_function *fun)
 				ld->op = IR_INSN_LOADRAW;
 				ld->value_num = 0;
 				ld->vr_type = IR_VR_TYPE_64;
-				struct ir_value val;
-				val.type = IR_VALUE_STACK_PTR;
-				ld->addr_val.value = val;
+				ld->addr_val.value = bpf_ir_value_insn(
+					fun->cg_info.regs[BPF_REG_10]);
 				ld->addr_val.offset = -off * 8;
 
 				extra = insn_cg(ld);
@@ -1182,7 +1188,7 @@ static void normalize_alu(struct bpf_ir_env *env, struct ir_function *fun,
 	}
 }
 
-static void normalize_assign(struct ir_insn *insn)
+static void normalize_assign(struct ir_function *fun, struct ir_insn *insn)
 {
 	struct ir_value *v0 = &insn->values[0];
 	enum val_type t0 = insn->value_num >= 1 ? vtype(*v0) : UNDEF;
@@ -1198,13 +1204,13 @@ static void normalize_assign(struct ir_insn *insn)
 		DBGASSERT(t0 != STACK);
 		// Change to STORERAW
 		insn->op = IR_INSN_STORERAW;
-		insn->addr_val.value = bpf_ir_value_stack_ptr();
+		insn->addr_val.value = bpf_ir_value_stack_ptr(fun);
 		insn->addr_val.offset = -insn_cg(dst_insn)->spilled * 8;
 	} else {
 		if (t0 == STACK) {
 			// Change to LOADRAW
 			insn->op = IR_INSN_LOADRAW;
-			insn->addr_val.value = bpf_ir_value_stack_ptr();
+			insn->addr_val.value = bpf_ir_value_stack_ptr(fun);
 			insn->addr_val.offset =
 				-insn_cg(v0->data.insn_d)->spilled * 8;
 		}
@@ -1241,7 +1247,7 @@ static void normalize(struct bpf_ir_env *env, struct ir_function *fun)
 			} else if (is_alu(insn)) {
 				normalize_alu(env, fun, insn);
 			} else if (insn->op == IR_INSN_ASSIGN) {
-				normalize_assign(insn);
+				normalize_assign(fun, insn);
 			} else if (insn->op == IR_INSN_RET) {
 				// OK
 			} else if (insn->op == IR_INSN_CALL) {
@@ -1790,7 +1796,7 @@ static void add_stack_offset_pre_cg(struct bpf_ir_env *env,
 				    struct ir_function *fun)
 {
 	// Pre CG
-	struct array users = fun->sp_users;
+	struct array users = fun->cg_info.regs[BPF_REG_10]->users;
 	struct ir_insn **pos;
 	array_for(pos, users)
 	{
@@ -1807,7 +1813,8 @@ static void add_stack_offset_pre_cg(struct bpf_ir_env *env,
 		array_for(pos2, value_uses)
 		{
 			struct ir_value *val = *pos2;
-			if (val->type == IR_VALUE_STACK_PTR) {
+			if (val->type == IR_VALUE_INSN &&
+			    val->data.insn_d == fun->cg_info.regs[BPF_REG_10]) {
 				// Stack pointer as value
 				struct ir_value new_val;
 				new_val.type = IR_VALUE_CONSTANT_RAWOFF;
@@ -1828,7 +1835,7 @@ static void add_stack_offset_pre_cg(struct bpf_ir_env *env,
 static void add_stack_offset(struct bpf_ir_env *env, struct ir_function *fun,
 			     s16 offset)
 {
-	struct array users = fun->sp_users;
+	struct array users = fun->cg_info.regs[BPF_REG_10]->users;
 	struct ir_insn **pos;
 	array_for(pos, users)
 	{
@@ -1836,7 +1843,9 @@ static void add_stack_offset(struct bpf_ir_env *env, struct ir_function *fun,
 
 		if (insn->op == IR_INSN_LOADRAW ||
 		    insn->op == IR_INSN_STORERAW) {
-			if (insn->addr_val.value.type == IR_VALUE_STACK_PTR) {
+			if (insn->addr_val.value.type == IR_VALUE_INSN &&
+			    insn->addr_val.value.data.insn_d ==
+				    fun->cg_info.regs[BPF_REG_10]) {
 				insn->addr_val.offset += offset;
 				continue;
 			}
@@ -1846,7 +1855,6 @@ static void add_stack_offset(struct bpf_ir_env *env, struct ir_function *fun,
 		array_for(pos2, value_uses)
 		{
 			struct ir_value *val = *pos2;
-			DBGASSERT(val->type != IR_VALUE_STACK_PTR);
 			if (val->type == IR_VALUE_CONSTANT_RAWOFF) {
 				// Stack pointer as value
 				val->data.constant_d = offset;
@@ -1907,10 +1915,7 @@ static struct pre_ir_insn load_addr_to_reg(u8 dst, struct ir_address_value addr,
 	insn.dst_reg = dst;
 	insn.off = addr.offset;
 	int size = vr_type_to_size(type);
-	if (addr.value.type == IR_VALUE_STACK_PTR) {
-		insn.src_reg = BPF_REG_10;
-		insn.opcode = BPF_LDX | size | BPF_MEM;
-	} else if (addr.value.type == IR_VALUE_INSN) {
+	if (addr.value.type == IR_VALUE_INSN) {
 		// Must be REG
 		DBGASSERT(vtype(addr.value) == REG);
 		// Load reg (addr) to reg
@@ -2083,20 +2088,7 @@ static void translate_storeraw(struct ir_insn *insn)
 	enum val_type t0 = insn->value_num >= 1 ? vtype(v0) : UNDEF;
 	struct ir_insn_cg_extra *extra = insn_cg(insn);
 	// storeraw
-	if (insn->addr_val.value.type == IR_VALUE_STACK_PTR) {
-		// Store value in the stack
-		if (t0 == REG) {
-			extra->translated[0] = store_reg_to_reg_mem(
-				BPF_REG_10, get_alloc_reg(v0.data.insn_d),
-				insn->addr_val.offset, insn->vr_type);
-		} else if (t0 == CONST) {
-			extra->translated[0] = store_const_to_reg_mem(
-				BPF_REG_10, v0.data.constant_d,
-				insn->addr_val.offset, insn->vr_type);
-		} else {
-			CRITICAL("Error");
-		}
-	} else if (insn->addr_val.value.type == IR_VALUE_INSN) {
+	if (insn->addr_val.value.type == IR_VALUE_INSN) {
 		// Store value in (address in the value)
 		DBGASSERT(vtype(insn->addr_val.value) == REG);
 		// Store value in the stack

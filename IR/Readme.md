@@ -19,12 +19,11 @@ One opinion, one benefit of designing the raw constraint from is that our runtim
 - [x] Env
 - [x] If ALU ops (including cond jmp) use 64 bits const, load it to register
 - [x] Switch back for ALU spill
-- [ ] CGIR-I and CGIR-II formalization
 - [ ] Test adding counter & print some result
+- [x] CGIR-I and CGIR-II formalization
 
 ## Bugs
 
-- `loop2`: Loop BB detected
 - `STACK_PTR` Change to R10 insn
 
 # TODO

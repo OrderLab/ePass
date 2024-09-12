@@ -217,7 +217,6 @@ enum ir_value_type {
 	IR_VALUE_CONSTANT_RAWOFF, // A constant value in raw operations to be added during code
 	// generation
 	IR_VALUE_INSN,
-	IR_VALUE_STACK_PTR,
 	IR_VALUE_UNDEF,
 };
 
@@ -362,7 +361,11 @@ struct ir_insn {
 	// Array of phi_value
 	struct array phi;
 
-	s32 fid; // Function ID
+	union {
+		s32 fid; // Function ID
+		s32 fun_arg_id; // Function argument ID
+		s32 reg_id;
+	};
 
 	enum ir_loadimm_extra_type imm_extra_type; // For 64 imm load
 	s64 imm64; // H (next_imm:32)(imm:32) L
@@ -471,8 +474,9 @@ struct ssa_transform_env {
 	struct array currentDef[MAX_BPF_REG];
 	struct bb_info info;
 
-	// Stack pointer (r10) users
-	struct array sp_users;
+	// Stack Pointer
+	struct ir_insn *sp;
+
 	// Function argument
 	struct ir_insn *function_arg[MAX_FUNC_ARG];
 };
@@ -524,8 +528,10 @@ struct ir_function {
 	// BBs who has no successors
 	struct array end_bbs;
 
-	// Stack pointer (r10) users. Should be readonly. No more manual stack access should be allowed.
-	struct array sp_users;
+	// Stack pointer
+	// Only used in IR passes
+	// Will be moved to CG info in CG
+	struct ir_insn *sp;
 
 	// Function argument
 	struct ir_insn *function_arg[MAX_FUNC_ARG];
@@ -890,11 +896,11 @@ struct ir_constraint {
 
 /* IR Value Start */
 
-u8 bpf_ir_value_equal(struct ir_value a, struct ir_value b);
+bool bpf_ir_value_equal(struct ir_value a, struct ir_value b);
 
 struct ir_value bpf_ir_value_insn(struct ir_insn *);
 
-struct ir_value bpf_ir_value_stack_ptr(void);
+struct ir_value bpf_ir_value_stack_ptr(struct ir_function *fun);
 
 /* IR Value End */
 

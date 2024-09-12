@@ -27,8 +27,8 @@ static struct ir_insn *add_phi_operands(struct bpf_ir_env *env,
 					struct ssa_transform_env *tenv, u8 reg,
 					struct ir_insn *insn);
 
-static void add_user(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
-		     struct ir_insn *user, struct ir_value val);
+static void add_user(struct bpf_ir_env *env, struct ir_insn *user,
+		     struct ir_value val);
 
 static int compare_num(const void *a, const void *b)
 {
@@ -317,14 +317,22 @@ static void print_pre_ir_cfg(struct bpf_ir_env *env,
 	}
 }
 
-static void init_env(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
-		     struct bb_info info)
+static void init_tenv(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
+		      struct bb_info info)
 {
 	for (size_t i = 0; i < MAX_BPF_REG; ++i) {
 		INIT_ARRAY(&tenv->currentDef[i], struct bb_val);
 	}
 	tenv->info = info;
-	INIT_ARRAY(&tenv->sp_users, struct ir_insn *);
+	// Initialize SP
+	SAFE_MALLOC(tenv->sp, sizeof(struct ir_insn));
+	INIT_ARRAY(&tenv->sp->users, struct ir_insn *);
+	tenv->sp->op = IR_INSN_REG;
+	tenv->sp->value_num = 0;
+	tenv->sp->user_data = NULL;
+	tenv->sp->parent_bb = NULL;
+	write_variable(env, tenv, BPF_REG_10, NULL,
+		       bpf_ir_value_insn(tenv->sp));
 	// Initialize function argument
 	for (u8 i = 0; i < MAX_FUNC_ARG; ++i) {
 		SAFE_MALLOC(tenv->function_arg[i], sizeof(struct ir_insn));
@@ -332,8 +340,8 @@ static void init_env(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 		INIT_ARRAY(&tenv->function_arg[i]->users, struct ir_insn *);
 		tenv->function_arg[i]->op = IR_INSN_FUNCTIONARG;
 		tenv->function_arg[i]->fid = i;
-		tenv->function_arg[i]->value_num = 0;
 		tenv->function_arg[i]->user_data = NULL;
+		tenv->function_arg[i]->value_num = 0;
 		struct ir_value val;
 		val.type = IR_VALUE_INSN;
 		val.data.insn_d = tenv->function_arg[i];
@@ -357,10 +365,10 @@ static void write_variable(struct bpf_ir_env *env,
 			   struct ssa_transform_env *tenv, u8 reg,
 			   struct pre_ir_basic_block *bb, struct ir_value val)
 {
-	if (reg >= MAX_BPF_REG - 1) {
-		// Stack pointer is read-only
-		CRITICAL("Error");
-	}
+	// if (reg >= MAX_BPF_REG - 1) {
+	// 	// Stack pointer is read-only
+	// 	CRITICAL("Error");
+	// }
 	// Write a variable to a BB
 	struct array *currentDef = &tenv->currentDef[reg];
 	// Traverse the array to find if there exists a value in the same BB
@@ -396,7 +404,7 @@ static struct ir_insn *add_phi_operands(struct bpf_ir_env *env,
 		phi.value = read_variable(
 			env, tenv, reg,
 			(struct pre_ir_basic_block *)pred->user_data);
-		add_user(env, tenv, insn, phi.value);
+		add_user(env, insn, phi.value);
 		bpf_ir_array_push(env, &pred->users, &insn);
 		bpf_ir_array_push(env, &insn->phi, &phi);
 	}
@@ -487,9 +495,7 @@ static struct ir_value read_variable(struct bpf_ir_env *env,
 	// Read a variable from a BB
 	if (reg == BPF_REG_10) {
 		// Stack pointer
-		struct ir_value val;
-		val.type = IR_VALUE_STACK_PTR;
-		return val;
+		return bpf_ir_value_insn(tenv->sp);
 	}
 	struct array *currentDef = &tenv->currentDef[reg];
 	for (size_t i = 0; i < currentDef->num_elem; ++i) {
@@ -530,14 +536,11 @@ static enum ir_vr_type to_ir_ld_u(u8 size)
 }
 
 // User uses val
-static void add_user(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
-		     struct ir_insn *user, struct ir_value val)
+static void add_user(struct bpf_ir_env *env, struct ir_insn *user,
+		     struct ir_value val)
 {
 	if (val.type == IR_VALUE_INSN) {
 		bpf_ir_array_push_unique(env, &val.data.insn_d->users, &user);
-	}
-	if (val.type == IR_VALUE_STACK_PTR) {
-		bpf_ir_array_push_unique(env, &tenv->sp_users, &user);
 	}
 }
 
@@ -610,7 +613,7 @@ static struct ir_value get_src_value(struct bpf_ir_env *env,
 static struct ir_insn *
 create_alu_bin(struct bpf_ir_env *env, struct ir_basic_block *bb,
 	       struct ir_value val1, struct ir_value val2, enum ir_insn_type ty,
-	       struct ssa_transform_env *tenv, enum ir_alu_op_type alu_ty)
+	       enum ir_alu_op_type alu_ty)
 {
 	struct ir_insn *new_insn = create_insn_back(bb);
 	new_insn->op = ty;
@@ -618,8 +621,8 @@ create_alu_bin(struct bpf_ir_env *env, struct ir_basic_block *bb,
 	new_insn->values[1] = val2;
 	new_insn->value_num = 2;
 	new_insn->alu_op = alu_ty;
-	add_user(env, tenv, new_insn, new_insn->values[0]);
-	add_user(env, tenv, new_insn, new_insn->values[1]);
+	add_user(env, new_insn, new_insn->values[0]);
+	add_user(env, new_insn, new_insn->values[1]);
 	return new_insn;
 }
 
@@ -629,7 +632,7 @@ static void alu_write(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 {
 	struct ir_insn *new_insn = create_alu_bin(
 		env, bb->ir_bb, read_variable(env, tenv, insn.dst_reg, bb),
-		get_src_value(env, tenv, bb, insn), ty, tenv, alu_ty);
+		get_src_value(env, tenv, bb, insn), ty, alu_ty);
 	struct ir_value new_val;
 	new_val.type = IR_VALUE_INSN;
 	new_val.data.insn_d = new_insn;
@@ -648,8 +651,8 @@ static void create_cond_jmp(struct bpf_ir_env *env,
 	new_insn->values[1] = get_src_value(env, tenv, bb, insn);
 	new_insn->value_num = 2;
 	new_insn->alu_op = alu_ty;
-	add_user(env, tenv, new_insn, new_insn->values[0]);
-	add_user(env, tenv, new_insn, new_insn->values[1]);
+	add_user(env, new_insn, new_insn->values[0]);
+	add_user(env, new_insn, new_insn->values[1]);
 	size_t pos = insn.pos + insn.off + 1;
 	new_insn->bb1 = get_ir_bb_from_position(tenv, insn.pos + 1);
 	new_insn->bb2 = get_ir_bb_from_position(tenv, pos);
@@ -764,7 +767,7 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 			struct ir_address_value addr_val;
 			addr_val.value =
 				read_variable(env, tenv, insn.src_reg, bb);
-			add_user(env, tenv, new_insn, addr_val.value);
+			add_user(env, new_insn, addr_val.value);
 			addr_val.offset = insn.off;
 			new_insn->vr_type = to_ir_ld_u(BPF_SIZE(code));
 			new_insn->addr_val = addr_val;
@@ -782,7 +785,7 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 			struct ir_address_value addr_val;
 			addr_val.value =
 				read_variable(env, tenv, insn.src_reg, bb);
-			add_user(env, tenv, new_insn, addr_val.value);
+			add_user(env, new_insn, addr_val.value);
 			addr_val.offset = insn.off;
 			new_insn->vr_type = to_ir_ld_u(BPF_SIZE(code));
 			new_insn->addr_val = addr_val;
@@ -797,7 +800,7 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 			struct ir_address_value addr_val;
 			addr_val.value =
 				read_variable(env, tenv, insn.dst_reg, bb);
-			add_user(env, tenv, new_insn, addr_val.value);
+			add_user(env, new_insn, addr_val.value);
 			addr_val.offset = insn.off;
 			new_insn->vr_type = to_ir_ld_u(BPF_SIZE(code));
 			new_insn->addr_val = addr_val;
@@ -812,14 +815,14 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 			struct ir_address_value addr_val;
 			addr_val.value =
 				read_variable(env, tenv, insn.dst_reg, bb);
-			add_user(env, tenv, new_insn, addr_val.value);
+			add_user(env, new_insn, addr_val.value);
 			addr_val.offset = insn.off;
 			new_insn->vr_type = to_ir_ld_u(BPF_SIZE(code));
 			new_insn->addr_val = addr_val;
 			new_insn->values[0] =
 				read_variable(env, tenv, insn.src_reg, bb);
 			new_insn->value_num = 1;
-			add_user(env, tenv, new_insn, new_insn->values[0]);
+			add_user(env, new_insn, new_insn->values[0]);
 		} else if (BPF_CLASS(code) == BPF_JMP ||
 			   BPF_CLASS(code) == BPF_JMP32) {
 			enum ir_alu_op_type alu_ty = IR_ALU_UNKNOWN;
@@ -917,7 +920,7 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 								env, tenv,
 								BPF_REG_1 + j,
 								bb);
-						add_user(env, tenv, new_insn,
+						add_user(env, new_insn,
 							 new_insn->values[j]);
 					}
 				}
@@ -950,7 +953,6 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 
 static void free_function(struct ir_function *fun)
 {
-	bpf_ir_array_free(&fun->sp_users);
 	for (size_t i = 0; i < fun->all_bbs.num_elem; ++i) {
 		struct ir_basic_block *bb =
 			((struct ir_basic_block **)(fun->all_bbs.data))[i];
@@ -974,18 +976,22 @@ static void free_function(struct ir_function *fun)
 		bpf_ir_array_free(&fun->function_arg[i]->users);
 		free_proto(fun->function_arg[i]);
 	}
+	if (fun->sp) {
+		bpf_ir_array_free(&fun->sp->users);
+		free_proto(fun->sp);
+	}
 	bpf_ir_array_free(&fun->all_bbs);
 	bpf_ir_array_free(&fun->reachable_bbs);
 	bpf_ir_array_free(&fun->end_bbs);
 	bpf_ir_array_free(&fun->cg_info.all_var);
 }
 
-static void gen_function(struct bpf_ir_env *env, struct ir_function *fun,
-			 struct ssa_transform_env *tenv)
+static void init_function(struct bpf_ir_env *env, struct ir_function *fun,
+			  struct ssa_transform_env *tenv)
 {
 	fun->arg_num = 1;
 	fun->entry = tenv->info.entry->ir_bb;
-	fun->sp_users = tenv->sp_users;
+	fun->sp = tenv->sp;
 	for (u8 i = 0; i < MAX_FUNC_ARG; ++i) {
 		fun->function_arg[i] = tenv->function_arg[i];
 	}
@@ -1066,7 +1072,7 @@ void bpf_ir_run(struct bpf_ir_env *env, const struct bpf_insn *insns,
 
 	print_pre_ir_cfg(env, info.entry);
 	struct ssa_transform_env trans_env;
-	init_env(env, &trans_env, info);
+	init_tenv(env, &trans_env, info);
 	CHECK_ERR();
 
 	init_ir_bbs(env, &trans_env);
@@ -1076,7 +1082,7 @@ void bpf_ir_run(struct bpf_ir_env *env, const struct bpf_insn *insns,
 	CHECK_ERR();
 
 	struct ir_function fun;
-	gen_function(env, &fun, &trans_env);
+	init_function(env, &fun, &trans_env);
 
 	// Drop env
 
