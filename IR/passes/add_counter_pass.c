@@ -14,6 +14,7 @@ void add_counter(struct bpf_ir_env *env, struct ir_function *fun)
 
 	struct ir_basic_block *err_bb = bpf_ir_create_bb(env, fun);
 	val.data.constant_d = 1;
+	val.const_type = IR_ALU_32;
 	create_ret_insn_bb(env, err_bb, val, INSERT_BACK);
 
 	array_for(pos, fun->reachable_bbs)

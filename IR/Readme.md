@@ -22,6 +22,11 @@ One opinion, one benefit of designing the raw constraint from is that our runtim
 - [ ] CGIR-I and CGIR-II formalization
 - [ ] Test adding counter & print some result
 
+## Bugs
+
+- `loop2`: Loop BB detected
+- `STACK_PTR` Change to R10 insn
+
 # TODO
 
 - More instructions

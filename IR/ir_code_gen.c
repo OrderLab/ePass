@@ -976,6 +976,7 @@ static u8 allocated_reg_insn(struct ir_insn *insn)
 
 static u8 allocated_reg(struct ir_value val)
 {
+	// DBGASSERT(val.type == IR_VALUE_INSN);
 	return allocated_reg_insn(val.data.insn_d);
 }
 
