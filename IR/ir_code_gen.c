@@ -1188,8 +1188,9 @@ static void normalize_assign(struct ir_insn *insn)
 	enum val_type tdst = vtype_insn(insn);
 	struct ir_insn *dst_insn = insn_dst(insn);
 	// stack = reg
-	// stack = const
-	// reg = const
+	// stack = const32
+	// reg = const32
+	// reg = const64
 	// reg = stack
 	// reg = reg
 	if (tdst == STACK) {

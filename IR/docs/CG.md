@@ -200,3 +200,10 @@ STACK = CONST32
 ## CGIR-II
 
 The form that could be directly mapped to a bytecode instruction.
+
+### `assign`
+
+```
+REG = REG
+REG = CONST32
+```
