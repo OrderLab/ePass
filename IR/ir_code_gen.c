@@ -1403,13 +1403,13 @@ static bool spill_alu(struct bpf_ir_env *env, struct ir_function *fun,
 	struct ir_insn_cg_extra *extra = insn_cg(insn);
 	struct ir_insn *dst_insn = insn_dst(insn);
 	// Binary ALU
-	// reg = add reg reg
-	// reg = add reg const
+	// reg = ALU reg reg
+	// reg = ALU reg const
 	// There should be NO stack
 	if (tdst == STACK) {
-		// stack = add ? ?
+		// stack = ALU ? ?
 		// ==>
-		// R0 = add ? ?
+		// R0 = ALU ? ?
 		// stack = R0
 		extra->dst = fun->cg_info.regs[0];
 		struct ir_insn *tmp = create_assign_insn_cg(
@@ -1421,9 +1421,9 @@ static bool spill_alu(struct bpf_ir_env *env, struct ir_function *fun,
 	} else {
 		bool switched = false;
 		if ((t0 != REG && t1 == REG) || (t0 == CONST && t1 == STACK)) {
-			// reg = add !reg reg
+			// reg = ALU !reg reg
 			// ==>
-			// reg = add reg !reg
+			// reg = ALU reg !reg
 			switched = true;
 			struct ir_value tmp = *v0;
 			*v0 = *v1;
@@ -1434,23 +1434,23 @@ static bool spill_alu(struct bpf_ir_env *env, struct ir_function *fun,
 			// No need to spill here
 		}
 		if (t0 == REG) {
-			// reg = add reg reg ==> OK
-			// reg = add reg const32 ==> OK
+			// reg = ALU reg reg ==> OK
+			// reg = ALU reg const32 ==> OK
 			if (t1 == CONST && v1->const_type == IR_ALU_64) {
 				// Need to load to another reg
 				load_const64(env, insn, v1);
 				return true;
 			}
 
-			// reg1 = add reg2 stack
+			// reg1 = ALU reg2 stack
 			// ==>
 			// If reg1 != reg2,
 			//   reg1 = stack
-			//   reg1 = add reg2 reg1
+			//   reg1 = ALU reg2 reg1
 			// Else
 			//   Choose reg3 != reg1,
 			//   reg3 = stack
-			//   reg1 = add reg1 reg3
+			//   reg1 = ALU reg1 reg3
 			if (t1 == STACK) {
 				__u8 reg1 = insn_cg(dst_insn)->alloc_reg;
 				__u8 reg2 = insn_cg(v0->data.insn_d)->alloc_reg;
@@ -1475,11 +1475,11 @@ static bool spill_alu(struct bpf_ir_env *env, struct ir_function *fun,
 				return true;
 			}
 		} else {
-			// reg = add const const ==> OK
-			// reg = add c1 c2
+			// reg = ALU const const ==> OK
+			// reg = ALU c1 c2
 			// ==>
 			// reg = c1
-			// reg = add reg c2
+			// reg = ALU reg c2
 			// OK
 			if (t0 == CONST && t1 == CONST) {
 				if (v1->const_type == IR_ALU_64) {
@@ -1488,13 +1488,13 @@ static bool spill_alu(struct bpf_ir_env *env, struct ir_function *fun,
 				}
 			}
 
-			// reg = add stack stack
+			// reg = ALU stack stack
 			if (t0 == STACK && t1 == STACK) {
-				// reg1 = add stack1 stack2
+				// reg1 = ALU stack1 stack2
 				// ==>
 				// Found reg2 != reg1
 				// reg1 = stack1
-				// reg1 = add reg1 stack2
+				// reg1 = ALU reg1 stack2
 				__u8 reg1 = insn_cg(dst_insn)->alloc_reg;
 				struct ir_insn *new_insn =
 					create_assign_insn_cg(env, insn, *v0,
@@ -1507,10 +1507,10 @@ static bool spill_alu(struct bpf_ir_env *env, struct ir_function *fun,
 				v0->data.insn_d = fun->cg_info.regs[reg1];
 				return true;
 			}
-			// reg = add stack const ==> OK
+			// reg = ALU stack const ==> OK
 			// ==>
 			// reg = stack
-			// reg = add reg const
+			// reg = ALU reg const
 			if (t0 == STACK && t1 == CONST) {
 				if (v1->const_type == IR_ALU_64) {
 					load_const64(env, insn, v1);

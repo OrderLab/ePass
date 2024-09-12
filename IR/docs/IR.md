@@ -116,7 +116,7 @@ Extra instruction to load imm64.
 
 This includes `add`, `sub`, etc.
 
-Syntax: `INSN <values[0]> <values[1]`
+Syntax: `INSN <values[0]> <values[1]>`
 
 Do ALU binary computation.
 

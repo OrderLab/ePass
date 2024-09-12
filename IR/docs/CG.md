@@ -94,7 +94,28 @@ REG = loadraw vt REG
 
 ### `loadrawextra`
 
+`dst = loadrawextra imm_extra_type imm64`
+
+- `STACK` ==>
+    R0 = loadrawextra imm_extra_type imm64
+    dst = R0
+
+Allowed: `REG = ...`.
+
 ### ALU Binary Instructions
+
+`dst = ALU v0 v1`
+
+If dst is STACK, we first change it to REG.
+
+In summary, these are allowed:
+
+```
+REG = ALU REG REG
+REG = ALU REG CONST32
+REG = ALU CONST32 REG
+REG = ALU CONST32 CONST32
+```
 
 ### `call`
 
