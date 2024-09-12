@@ -12,7 +12,17 @@
 #include <stdarg.h>
 #include <stddef.h>
 
-#include "stdint.h"
+#include <stdbool.h>
+#include <stdint.h>
+
+typedef __s8 s8;
+typedef __u8 u8;
+typedef __s16 s16;
+typedef __u16 u16;
+typedef __s32 s32;
+typedef __u32 u32;
+typedef __s64 s64;
+typedef __u64 u64;
 
 #define SIZET_MAX SIZE_MAX
 
@@ -35,6 +45,14 @@
 #define BPF_IR_LOG_SIZE 100000
 
 struct bpf_ir_env {
+	int err;
+
+	// Number of instructions
+	size_t insn_cnt;
+
+	// Instructions
+	struct bpf_insn *insns;
+
 	char log[BPF_IR_LOG_SIZE];
 	size_t log_pos;
 };
@@ -55,6 +73,11 @@ void bpf_ir_print_to_log(struct bpf_ir_env *env, char *fmt, ...);
 
 #endif
 
+#define CHECK_ERR(x)      \
+	if (env->err) {   \
+		return x; \
+	}
+
 void bpf_ir_print_log_dbg(struct bpf_ir_env *env);
 
 /* IR Env End */
@@ -70,9 +93,10 @@ struct array {
 
 void bpf_ir_array_init(struct array *res, size_t size);
 
-int bpf_ir_array_push(struct array *, void *);
+void bpf_ir_array_push(struct bpf_ir_env *env, struct array *, void *);
 
-int bpf_ir_array_push_unique(struct array *arr, void *data);
+void bpf_ir_array_push_unique(struct bpf_ir_env *env, struct array *arr,
+			      void *data);
 
 void bpf_ir_array_free(struct array *);
 
@@ -84,9 +108,10 @@ void *bpf_ir_array_get_void(struct array *arr, size_t idx);
 
 #define array_get(arr, idx, type) ((type *)bpf_ir_array_get_void(arr, idx))
 
-int bpf_ir_array_clear(struct array *arr);
+void bpf_ir_array_clear(struct bpf_ir_env *env, struct array *arr);
 
-int bpf_ir_array_clone(struct array *res, struct array *arr);
+void bpf_ir_array_clone(struct bpf_ir_env *env, struct array *res,
+			struct array *arr);
 
 #define array_for(pos, arr)                   \
 	for (pos = ((typeof(pos))(arr.data)); \
@@ -118,14 +143,26 @@ int bpf_ir_array_clone(struct array *res, struct array *arr);
 
 #define RAISE_ERROR(str)                                              \
 	{                                                             \
-		PRINT_LOG(env, "%s:%d <%s> %s\n", __FILE__, __LINE__, \
-			  __FUNCTION__, str);                         \
-		return -ENOSYS;                                       \
+		PRINT_LOG(env, "\n--> %s:%d <%s> %s <--\n", __FILE__, \
+			  __LINE__, __FUNCTION__, str);               \
+		env->err = -ENOSYS;                                   \
+		return;                                               \
 	}
 
 #define DBGASSERT(cond)                       \
 	if (!(cond)) {                        \
 		CRITICAL("Assertion failed"); \
+	}
+
+#define CRITICAL_DUMP(env, str)            \
+	{                                  \
+		bpf_ir_print_log_dbg(env); \
+		CRITICAL(str)              \
+	}
+
+#define CRITICAL_ASSERT(env, cond)                      \
+	if (!(cond)) {                                  \
+		CRITICAL_DUMP(env, "Assertion failed"); \
 	}
 
 /* DBG Macro End */
@@ -143,7 +180,8 @@ void free_proto(void *ptr);
 		}                                         \
 		dst = malloc_proto(size);                 \
 		if (!dst) {                               \
-			return -ENOMEM;                   \
+			env->err = -ENOMEM;               \
+			return;                           \
 		}                                         \
 	}
 
@@ -155,20 +193,20 @@ enum imm_type { IMM, IMM64 };
     Pre-IR instructions, similar to `bpf_insn`
  */
 struct pre_ir_insn {
-	__u8 opcode;
+	u8 opcode;
 
-	__u8 dst_reg;
-	__u8 src_reg;
-	__s16 off;
+	u8 dst_reg;
+	u8 src_reg;
+	s16 off;
 
 	enum imm_type it;
-	__s32 imm;
-	__s64 imm64; // Immediate constant for 64-bit immediate
+	s32 imm;
+	s64 imm64; // Immediate constant for 64-bit immediate
 
 	size_t pos; // Original position
 };
 
-enum ir_alu_type {
+enum ir_alu_op_type {
 	IR_ALU_UNKNOWN, // To prevent from not manually setting this type
 	IR_ALU_32,
 	IR_ALU_64,
@@ -190,11 +228,11 @@ enum ir_value_type {
  */
 struct ir_value {
 	union {
-		__s64 constant_d;
+		s64 constant_d;
 		struct ir_insn *insn_d;
 	} data;
 	enum ir_value_type type;
-	enum ir_alu_type alu_type; // Used when type is a constant
+	enum ir_alu_op_type const_type; // Used when type is a constant
 };
 
 /**
@@ -203,7 +241,7 @@ struct ir_value {
 struct ir_address_value {
 	// The value might be stack pointer
 	struct ir_value value;
-	__s16 offset;
+	s16 offset;
 };
 
 /**
@@ -214,7 +252,7 @@ struct phi_value {
 	struct ir_basic_block *bb;
 };
 
-int bpf_ir_valid_alu_type(enum ir_alu_type type);
+int bpf_ir_valid_alu_type(enum ir_alu_op_type type);
 
 /**
     Virtual Register Type
@@ -306,7 +344,7 @@ enum ir_insn_type {
  */
 struct ir_insn {
 	struct ir_value values[MAX_FUNC_ARG];
-	__u8 value_num;
+	u8 value_num;
 
 	// Used in ALLOC and instructions
 	enum ir_vr_type vr_type;
@@ -314,8 +352,8 @@ struct ir_insn {
 	// Used in RAW instructions
 	struct ir_address_value addr_val;
 
-	// ALU Type
-	enum ir_alu_type alu;
+	// ALU Operation Type
+	enum ir_alu_op_type alu_op;
 
 	// Used in JMP instructions
 	struct ir_basic_block *bb1;
@@ -324,10 +362,10 @@ struct ir_insn {
 	// Array of phi_value
 	struct array phi;
 
-	__s32 fid; // Function ID
+	s32 fid; // Function ID
 
 	enum ir_loadimm_extra_type imm_extra_type; // For 64 imm load
-	__s64 imm64; // H (next_imm:32)(imm:32) L
+	s64 imm64; // H (next_imm:32)(imm:32) L
 
 	enum ir_insn_type op;
 
@@ -344,7 +382,7 @@ struct ir_insn {
 	// Used when generating the real code
 	size_t _insn_id;
 	void *user_data;
-	__u8 _visited;
+	u8 _visited;
 };
 
 /**
@@ -370,10 +408,10 @@ struct pre_ir_basic_block {
 	struct array preds;
 	struct array succs;
 
-	__u8 visited;
+	u8 visited;
 
-	__u8 sealed;
-	__u8 filled;
+	u8 sealed;
+	u8 filled;
 	struct ir_basic_block *ir_bb;
 	struct ir_insn *incompletePhis[MAX_BPF_REG];
 };
@@ -391,7 +429,7 @@ struct ir_basic_block {
 	struct array succs;
 
 	// Used for construction and debugging
-	__u8 _visited;
+	u8 _visited;
 	size_t _id;
 	void *user_data;
 
@@ -439,18 +477,19 @@ struct ssa_transform_env {
 	struct ir_insn *function_arg[MAX_FUNC_ARG];
 };
 
-struct error {
-	__u8 is_kernel_err : 1;
-	unsigned int errorno : 31;
-};
-
 // Helper functions
 
 struct ir_basic_block *bpf_ir_init_bb_raw(void);
 
 // Main interface
-int bpf_ir_run(struct bpf_ir_env *env, const struct bpf_insn *insns,
-	       size_t len);
+void bpf_ir_run(struct bpf_ir_env *env, const struct bpf_insn *insns,
+		size_t len);
+
+void bpf_ir_print_bpf_insn(struct bpf_ir_env *env, const struct bpf_insn *insn);
+
+void bpf_ir_free_env(struct bpf_ir_env *env);
+
+struct bpf_ir_env *bpf_ir_init_env(void);
 
 /* Fun Start */
 
@@ -464,15 +503,10 @@ struct code_gen_info {
 
 	size_t callee_num;
 
-	__s16 stack_offset;
-
-	// Number of instructions
-	size_t prog_size;
-
-	struct bpf_insn *prog;
+	s16 stack_offset;
 
 	// Whether to spill callee saved registers
-	__u8 spill_callee;
+	u8 spill_callee;
 };
 
 struct ir_function {
@@ -515,15 +549,18 @@ size_t bpf_ir_bb_len(struct ir_basic_block *);
 
 struct ir_bb_cg_extra *bpf_ir_bb_cg(struct ir_basic_block *bb);
 
-struct ir_basic_block *bpf_ir_create_bb(struct ir_function *fun);
+struct ir_basic_block *bpf_ir_create_bb(struct bpf_ir_env *env,
+					struct ir_function *fun);
 
-void bpf_ir_connect_bb(struct ir_basic_block *from, struct ir_basic_block *to);
+void bpf_ir_connect_bb(struct bpf_ir_env *env, struct ir_basic_block *from,
+		       struct ir_basic_block *to);
 
 void bpf_ir_disconnect_bb(struct ir_basic_block *from,
 			  struct ir_basic_block *to);
 
 /// Split a BB after an instruction
-struct ir_basic_block *bpf_ir_split_bb(struct ir_function *fun,
+struct ir_basic_block *bpf_ir_split_bb(struct bpf_ir_env *env,
+				       struct ir_function *fun,
 				       struct ir_insn *insn);
 
 struct ir_insn *bpf_ir_get_last_insn(struct ir_basic_block *bb);
@@ -539,6 +576,8 @@ int bpf_ir_bb_empty(struct ir_basic_block *bb);
 void bpf_ir_clean_metadata_all(struct ir_function *fun);
 
 void print_ir_prog(struct bpf_ir_env *env, struct ir_function *);
+
+void print_ir_prog_notag(struct bpf_ir_env *env, struct ir_function *fun);
 
 void print_ir_prog_reachable(struct bpf_ir_env *env, struct ir_function *fun);
 
@@ -582,6 +621,11 @@ void print_ir_err_init(struct ir_function *fun);
 
 void print_ir_insn_err(struct bpf_ir_env *env, struct ir_insn *insn, char *msg);
 
+void print_ir_insn_err_full(struct bpf_ir_env *env, struct ir_insn *insn,
+			    char *msg,
+			    void (*print_ir)(struct bpf_ir_env *env,
+					     struct ir_insn *));
+
 void print_ir_bb_err(struct bpf_ir_env *env, struct ir_basic_block *bb);
 
 /* IR Helper End */
@@ -597,14 +641,16 @@ enum insert_position {
 };
 
 // Return an array of struct ir_value*
-struct array bpf_ir_get_operands(struct ir_insn *insn);
+struct array bpf_ir_get_operands(struct bpf_ir_env *env, struct ir_insn *insn);
 
-void bpf_ir_replace_all_usage(struct ir_insn *insn, struct ir_value rep);
+void bpf_ir_replace_all_usage(struct bpf_ir_env *env, struct ir_insn *insn,
+			      struct ir_value rep);
 
-void bpf_ir_replace_all_usage_except(struct ir_insn *insn, struct ir_value rep,
+void bpf_ir_replace_all_usage_except(struct bpf_ir_env *env,
+				     struct ir_insn *insn, struct ir_value rep,
 				     struct ir_insn *except);
 
-void bpf_ir_erase_insn(struct ir_insn *insn);
+void bpf_ir_erase_insn(struct bpf_ir_env *env, struct ir_insn *insn);
 
 int bpf_ir_is_last_insn(struct ir_insn *insn);
 
@@ -627,64 +673,74 @@ struct ir_insn *create_alloc_insn_bb(struct ir_basic_block *bb,
 				     enum ir_vr_type type,
 				     enum insert_position pos);
 
-struct ir_insn *create_store_insn(struct ir_insn *insn, struct ir_insn *st_insn,
-				  struct ir_value val,
+struct ir_insn *create_store_insn(struct bpf_ir_env *env, struct ir_insn *insn,
+				  struct ir_insn *st_insn, struct ir_value val,
 				  enum insert_position pos);
 
-struct ir_insn *create_store_insn_bb(struct ir_basic_block *bb,
+struct ir_insn *create_store_insn_bb(struct bpf_ir_env *env,
+				     struct ir_basic_block *bb,
 				     struct ir_insn *st_insn,
 				     struct ir_value val,
 				     enum insert_position pos);
 
-struct ir_insn *create_load_insn(struct ir_insn *insn, struct ir_value val,
-				 enum insert_position pos);
+struct ir_insn *create_load_insn(struct bpf_ir_env *env, struct ir_insn *insn,
+				 struct ir_value val, enum insert_position pos);
 
-struct ir_insn *create_load_insn_bb(struct ir_basic_block *bb,
+struct ir_insn *create_load_insn_bb(struct bpf_ir_env *env,
+				    struct ir_basic_block *bb,
 				    struct ir_value val,
 				    enum insert_position pos);
 
-struct ir_insn *create_bin_insn(struct ir_insn *insn, struct ir_value val1,
-				struct ir_value val2, enum ir_insn_type ty,
-				enum ir_alu_type aluty,
+struct ir_insn *create_bin_insn(struct bpf_ir_env *env, struct ir_insn *insn,
+				struct ir_value val1, struct ir_value val2,
+				enum ir_insn_type ty, enum ir_alu_op_type aluty,
 				enum insert_position pos);
 
-struct ir_insn *create_bin_insn_bb(struct ir_basic_block *bb,
+struct ir_insn *create_bin_insn_bb(struct bpf_ir_env *env,
+				   struct ir_basic_block *bb,
 				   struct ir_value val1, struct ir_value val2,
-				   enum ir_insn_type ty, enum ir_alu_type aluty,
+				   enum ir_insn_type ty,
+				   enum ir_alu_op_type aluty,
 				   enum insert_position pos);
 
-struct ir_insn *create_ja_insn(struct ir_insn *insn,
+struct ir_insn *create_ja_insn(struct bpf_ir_env *env, struct ir_insn *insn,
 			       struct ir_basic_block *to_bb,
 			       enum insert_position pos);
 
-struct ir_insn *create_ja_insn_bb(struct ir_basic_block *bb,
+struct ir_insn *create_ja_insn_bb(struct bpf_ir_env *env,
+				  struct ir_basic_block *bb,
 				  struct ir_basic_block *to_bb,
 				  enum insert_position pos);
 
-struct ir_insn *create_jbin_insn(struct ir_insn *insn, struct ir_value val1,
-				 struct ir_value val2,
+struct ir_insn *create_jbin_insn(struct bpf_ir_env *env, struct ir_insn *insn,
+				 struct ir_value val1, struct ir_value val2,
 				 struct ir_basic_block *to_bb1,
 				 struct ir_basic_block *to_bb2,
-				 enum ir_insn_type ty, enum ir_alu_type aluty,
+				 enum ir_insn_type ty,
+				 enum ir_alu_op_type aluty,
 				 enum insert_position pos);
 
 struct ir_insn *
-create_jbin_insn_bb(struct ir_basic_block *bb, struct ir_value val1,
-		    struct ir_value val2, struct ir_basic_block *to_bb1,
+create_jbin_insn_bb(struct bpf_ir_env *env, struct ir_basic_block *bb,
+		    struct ir_value val1, struct ir_value val2,
+		    struct ir_basic_block *to_bb1,
 		    struct ir_basic_block *to_bb2, enum ir_insn_type ty,
-		    enum ir_alu_type aluty, enum insert_position pos);
+		    enum ir_alu_op_type aluty, enum insert_position pos);
 
-struct ir_insn *create_ret_insn(struct ir_insn *insn, struct ir_value val,
-				enum insert_position pos);
+struct ir_insn *create_ret_insn(struct bpf_ir_env *env, struct ir_insn *insn,
+				struct ir_value val, enum insert_position pos);
 
-struct ir_insn *create_ret_insn_bb(struct ir_basic_block *bb,
+struct ir_insn *create_ret_insn_bb(struct bpf_ir_env *env,
+				   struct ir_basic_block *bb,
 				   struct ir_value val,
 				   enum insert_position pos);
 
-struct ir_insn *create_assign_insn(struct ir_insn *insn, struct ir_value val,
+struct ir_insn *create_assign_insn(struct bpf_ir_env *env, struct ir_insn *insn,
+				   struct ir_value val,
 				   enum insert_position pos);
 
-struct ir_insn *create_assign_insn_bb(struct ir_basic_block *bb,
+struct ir_insn *create_assign_insn_bb(struct bpf_ir_env *env,
+				      struct ir_basic_block *bb,
 				      struct ir_value val,
 				      enum insert_position pos);
 
@@ -693,24 +749,28 @@ struct ir_insn *create_phi_insn(struct ir_insn *insn, enum insert_position pos);
 struct ir_insn *create_phi_insn_bb(struct ir_basic_block *bb,
 				   enum insert_position pos);
 
-void phi_add_operand(struct ir_insn *insn, struct ir_basic_block *bb,
-		     struct ir_value val);
+void phi_add_operand(struct bpf_ir_env *env, struct ir_insn *insn,
+		     struct ir_basic_block *bb, struct ir_value val);
 
-void val_add_user(struct ir_value val, struct ir_insn *user);
+void val_add_user(struct bpf_ir_env *env, struct ir_value val,
+		  struct ir_insn *user);
 
 void val_remove_user(struct ir_value val, struct ir_insn *user);
 
-struct ir_insn *create_assign_insn_cg(struct ir_insn *insn, struct ir_value val,
+struct ir_insn *create_assign_insn_cg(struct bpf_ir_env *env,
+				      struct ir_insn *insn, struct ir_value val,
 				      enum insert_position pos);
 
-struct ir_insn *create_assign_insn_bb_cg(struct ir_basic_block *bb,
+struct ir_insn *create_assign_insn_bb_cg(struct bpf_ir_env *env,
+					 struct ir_basic_block *bb,
 					 struct ir_value val,
 					 enum insert_position pos);
 
-void replace_operand(struct ir_insn *insn, struct ir_value v1,
-		     struct ir_value v2);
+void replace_operand(struct bpf_ir_env *env, struct ir_insn *insn,
+		     struct ir_value v1, struct ir_value v2);
 
-struct ir_insn *create_insn_base_cg(struct ir_basic_block *bb);
+struct ir_insn *create_insn_base_cg(struct bpf_ir_env *env,
+				    struct ir_basic_block *bb);
 
 struct ir_insn *create_insn_base(struct ir_basic_block *bb);
 
@@ -724,16 +784,16 @@ void insert_at_bb(struct ir_insn *new_insn, struct ir_basic_block *bb,
 
 /* Passes Start */
 
-void remove_trivial_phi(struct ir_function *fun);
+void remove_trivial_phi(struct bpf_ir_env *env, struct ir_function *fun);
 
-void cut_bb(struct ir_function *fun);
+void cut_bb(struct bpf_ir_env *env, struct ir_function *fun);
 
-void add_counter(struct ir_function *fun);
+void add_counter(struct bpf_ir_env *env, struct ir_function *fun);
 
-void add_constraint(struct ir_function *fun);
+void add_constraint(struct bpf_ir_env *env, struct ir_function *fun);
 
 struct function_pass {
-	void (*pass)(struct ir_function *);
+	void (*pass)(struct bpf_ir_env *env, struct ir_function *);
 	char name[30];
 };
 
@@ -743,9 +803,9 @@ struct function_pass {
 
 /* Code Gen Start */
 
-int bpf_ir_init_insn_cg(struct ir_insn *insn);
+void bpf_ir_init_insn_cg(struct bpf_ir_env *env, struct ir_insn *insn);
 
-int bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun);
+void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun);
 
 // Extra information needed for code gen
 struct ir_bb_cg_extra {
@@ -771,11 +831,11 @@ struct ir_insn_cg_extra {
 	struct pre_ir_insn translated[2];
 
 	// Translated number
-	__u8 translated_num;
+	u8 translated_num;
 
 	// Whether the VR is allocated with a real register
 	// If it's a pre-colored register, it's also 1
-	__u8 allocated;
+	u8 allocated;
 
 	// When allocating register, whether dst will be spilled
 	// 0: Not spilled
@@ -785,7 +845,10 @@ struct ir_insn_cg_extra {
 
 	// Valid if spilled == 0 && allocated == 1
 	// Valid number: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
-	__u8 alloc_reg;
+	u8 alloc_reg;
+
+	// Whether this instruction is a non-VR instruction, like a pre-colored register
+	bool nonvr;
 };
 
 enum val_type {
@@ -827,7 +890,7 @@ struct ir_constraint {
 
 /* IR Value Start */
 
-__u8 bpf_ir_value_equal(struct ir_value a, struct ir_value b);
+u8 bpf_ir_value_equal(struct ir_value a, struct ir_value b);
 
 struct ir_value bpf_ir_value_insn(struct ir_insn *);
 

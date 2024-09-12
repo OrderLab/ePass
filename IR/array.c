@@ -18,7 +18,7 @@ struct array bpf_ir_array_null(void)
 	return res;
 }
 
-int bpf_ir_array_push(struct array *arr, void *data)
+void bpf_ir_array_push(struct bpf_ir_env *env, struct array *arr, void *data)
 {
 	if (arr->data == NULL) {
 		SAFE_MALLOC(arr->data, arr->elem_size * 2)
@@ -37,18 +37,18 @@ int bpf_ir_array_push(struct array *arr, void *data)
 	memcpy((char *)(arr->data) + arr->elem_size * arr->num_elem, data,
 	       arr->elem_size);
 	arr->num_elem++;
-	return 0;
 }
 
-int bpf_ir_array_push_unique(struct array *arr, void *data)
+void bpf_ir_array_push_unique(struct bpf_ir_env *env, struct array *arr,
+			      void *data)
 {
 	for (size_t i = 0; i < arr->num_elem; ++i) {
 		if (memcmp((char *)(arr->data) + arr->elem_size * i, data,
 			   arr->elem_size) == 0) {
-			return 0;
+			return;
 		}
 	}
-	return bpf_ir_array_push(arr, data);
+	bpf_ir_array_push(env, arr, data);
 }
 
 void bpf_ir_array_erase(struct array *arr, size_t idx)
@@ -65,27 +65,26 @@ void bpf_ir_array_erase(struct array *arr, size_t idx)
 	arr->num_elem--;
 }
 
-int bpf_ir_array_clear(struct array *arr)
+void bpf_ir_array_clear(struct bpf_ir_env *env, struct array *arr)
 {
 	free_proto(arr->data);
 	SAFE_MALLOC(arr->data, arr->elem_size * 4);
 	arr->max_elem = 4;
 	arr->num_elem = 0;
-	return 0;
 }
 
-int bpf_ir_array_clone(struct array *res, struct array *arr)
+void bpf_ir_array_clone(struct bpf_ir_env *env, struct array *res,
+			struct array *arr)
 {
 	res->num_elem = arr->num_elem;
 	res->max_elem = arr->max_elem;
 	res->elem_size = arr->elem_size;
 	if (arr->num_elem == 0) {
 		res->data = NULL;
-		return 0;
+		return;
 	}
 	SAFE_MALLOC(res->data, arr->max_elem * arr->elem_size);
 	memcpy(res->data, arr->data, arr->num_elem * arr->elem_size);
-	return 0;
 }
 
 void bpf_ir_array_free(struct array *arr)

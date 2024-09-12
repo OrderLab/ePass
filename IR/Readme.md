@@ -15,9 +15,17 @@ One opinion, one benefit of designing the raw constraint from is that our runtim
 - [x] Fix: stack offset should be changed before CG
 - [x] VR type & Constant type (inference)
 - [x] Translation
-- [ ] Add "use result" flag to some functions that may have exceptions
-- [ ] Logging
-- [ ] Env
+- [x] Logging
+- [x] Env
+- [x] If ALU ops (including cond jmp) use 64 bits const, load it to register
+- [x] Switch back for ALU spill
+- [ ] CGIR-I and CGIR-II formalization
+- [ ] Test adding counter & print some result
+
+## Bugs
+
+- `loop2`: Loop BB detected
+- `STACK_PTR` Change to R10 insn
 
 # TODO
 

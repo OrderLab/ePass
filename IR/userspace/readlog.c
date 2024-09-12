@@ -30,17 +30,20 @@ int main(int argc, char **argv)
 			printf("No `:` found\n");
 			return 1;
 		}
-		__u64 s = strtoull(line + found + 1, NULL, 10);
+		u64 s = strtoull(line + found + 1, NULL, 10);
 		// printf("%llu\n", s);
 		memcpy(&insns[index], &s, sizeof(struct bpf_insn));
 		index++;
 	}
 
 	printf("Loaded program of size %zu\n", index);
-	struct bpf_ir_env *env = malloc_proto(sizeof(struct bpf_ir_env));
+	struct bpf_ir_env *env = bpf_ir_init_env();
+	if (!env) {
+		return 1;
+	}
 	bpf_ir_run(env, insns, index);
 	bpf_ir_print_log_dbg(env);
-	free_proto(env);
+	bpf_ir_free_env(env);
 
 	fclose(fp);
 	return 0;

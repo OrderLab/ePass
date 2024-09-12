@@ -4,8 +4,8 @@
 SEC("xdp")
 int prog(void *ctx)
 {
-	bpf_trace_printk("abcd", 2);
-	return 0;
+	bpf_trace_printk("hello\n", 7);
+	return XDP_DROP;
 }
 
 char _license[] SEC("license") = "GPL";

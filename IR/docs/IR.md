@@ -5,7 +5,7 @@
 ```c
 struct ir_insn {
     struct ir_value values[MAX_FUNC_ARG];
-    __u8            value_num;
+    u8            value_num;
 
     // Used in ALLOC instructions
     enum ir_vr_type vr_type;
@@ -20,8 +20,8 @@ struct ir_insn {
     // Array of phi_value
     struct array phi;
 
-    __s32             fid;
-    __u32             f_arg_num;
+    s32             fid;
+    u32             f_arg_num;
     enum ir_insn_type op;
 
     // Linked list
@@ -41,7 +41,7 @@ struct ir_insn {
     // Used when generating the real code
     size_t _insn_id;
     void  *user_data;
-    __u8   _visited;
+    u8   _visited;
 };
 ```
 
@@ -76,6 +76,8 @@ Example:
 store %1 200
 ```
 
+(Currently other vr type is not working. All alloc uses 64 bits reg/stack)
+
 ### `store`
 
 Syntax: `store <values[0]> <values[1]>`
@@ -86,7 +88,7 @@ Store a value `values[1]` in an address `values[0]`.
 
 ### `load`
 
-Syntax: `load <vr_type> <values[0]>`
+Syntax: `load <values[0]>`
 
 Requirement: `values[0]` is an `alloc` instruction.
 
@@ -104,11 +106,17 @@ Syntax: `loadraw <vr_type> <addr_val>`
 
 Load a value `addr_val` with size `vr_type`.
 
+### `loadrawextra`
+
+Syntax: `loadrawextra <imm_extra_type> <imm64>`
+
+Extra instruction to load imm64.
+
 ### ALU Binary Instructions
 
 This includes `add`, `sub`, etc.
 
-Syntax: `INSN <values[0]> <values[1]`
+Syntax: `INSN <values[0]> <values[1]>`
 
 Do ALU binary computation.
 
