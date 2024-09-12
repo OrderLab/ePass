@@ -1265,11 +1265,26 @@ static bool spill_assign(struct bpf_ir_env *env, struct ir_function *fun,
 	struct ir_value *v0 = &insn->values[0];
 	enum val_type t0 = insn->value_num >= 1 ? vtype(*v0) : UNDEF;
 	enum val_type tdst = vtype_insn(insn);
-	// stack = reg (sized)
-	// stack = const (sized)
-	// reg = const (alu)
-	// reg = stack (sized)
-	// reg = reg
+
+	// `dst = src`
+
+	// Cases of `dst, src`:
+
+	// - `STACK, STACK`
+	// - `STACK, REG`
+	// - `STACK, CONST`
+	// - `REG, CONST`
+	// - `REG, REG`
+	// - `REG, STACK`
+
+	// Possible result:
+
+	// REG = REG
+	// REG = CONST
+	// REG = STACK
+	// STACK = REG
+	// STACK = CONST32
+
 	if (tdst == STACK && t0 == STACK) {
 		// Both stack positions are managed by us
 		cgir_load_stack_to_reg(env, fun, insn, v0, IR_VR_TYPE_64, 0);
@@ -1278,12 +1293,7 @@ static bool spill_assign(struct bpf_ir_env *env, struct ir_function *fun,
 	if (tdst == STACK && t0 == CONST) {
 		if (v0->const_type == IR_ALU_64) {
 			// First load to R0
-			struct ir_insn *new_insn = create_assign_insn_cg(
-				env, insn, *v0, INSERT_FRONT);
-			new_insn->values[0].const_type = IR_ALU_64;
-			insn_cg(new_insn)->dst = fun->cg_info.regs[0];
-			v0->type = IR_VALUE_INSN;
-			v0->data.insn_d = fun->cg_info.regs[0];
+			cgir_load_const_to_reg(env, fun, insn, v0, 0);
 			return true;
 		}
 	}

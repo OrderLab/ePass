@@ -169,6 +169,16 @@ Cases of `dst, src`:
 - `REG, REG`
 - `REG, STACK`
 
+Possible result:
+
+```
+REG = REG
+REG = CONST
+REG = STACK
+STACK = REG
+STACK = CONST32
+```
+
 ## CGIR-II
 
 The form that could be directly mapped to a bytecode instruction.
