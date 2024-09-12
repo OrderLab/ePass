@@ -3,7 +3,7 @@
 
 int print(const struct bpf_insn *insns, size_t len)
 {
-	for (__u32 i = 0; i < len; ++i) {
+	for (int i = 0; i < len; ++i) {
 		const struct bpf_insn *insn = &insns[i];
 		// printf("insn[%d]: code=%x, dst_reg=%x, src_reg=%x, off=%x, imm=%x\n",
 		//        i, insn->code, insn->dst_reg, insn->src_reg, insn->off,

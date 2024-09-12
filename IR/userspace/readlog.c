@@ -30,7 +30,7 @@ int main(int argc, char **argv)
 			printf("No `:` found\n");
 			return 1;
 		}
-		__u64 s = strtoull(line + found + 1, NULL, 10);
+		u64 s = strtoull(line + found + 1, NULL, 10);
 		// printf("%llu\n", s);
 		memcpy(&insns[index], &s, sizeof(struct bpf_insn));
 		index++;

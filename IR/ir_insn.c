@@ -102,7 +102,7 @@ struct array bpf_ir_get_operands(struct bpf_ir_env *env, struct ir_insn *insn)
 	INIT_ARRAY(&uses, struct ir_value *);
 	struct ir_value *pos;
 
-	for (__u8 j = 0; j < insn->value_num; ++j) {
+	for (u8 j = 0; j < insn->value_num; ++j) {
 		pos = &insn->values[j];
 		bpf_ir_array_push(env, &uses, &pos);
 	}

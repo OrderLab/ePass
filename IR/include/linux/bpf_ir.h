@@ -193,15 +193,15 @@ enum imm_type { IMM, IMM64 };
     Pre-IR instructions, similar to `bpf_insn`
  */
 struct pre_ir_insn {
-	__u8 opcode;
+	u8 opcode;
 
-	__u8 dst_reg;
-	__u8 src_reg;
-	__s16 off;
+	u8 dst_reg;
+	u8 src_reg;
+	s16 off;
 
 	enum imm_type it;
-	__s32 imm;
-	__s64 imm64; // Immediate constant for 64-bit immediate
+	s32 imm;
+	s64 imm64; // Immediate constant for 64-bit immediate
 
 	size_t pos; // Original position
 };
@@ -228,7 +228,7 @@ enum ir_value_type {
  */
 struct ir_value {
 	union {
-		__s64 constant_d;
+		s64 constant_d;
 		struct ir_insn *insn_d;
 	} data;
 	enum ir_value_type type;
@@ -241,7 +241,7 @@ struct ir_value {
 struct ir_address_value {
 	// The value might be stack pointer
 	struct ir_value value;
-	__s16 offset;
+	s16 offset;
 };
 
 /**
@@ -344,7 +344,7 @@ enum ir_insn_type {
  */
 struct ir_insn {
 	struct ir_value values[MAX_FUNC_ARG];
-	__u8 value_num;
+	u8 value_num;
 
 	// Used in ALLOC and instructions
 	enum ir_vr_type vr_type;
@@ -362,10 +362,10 @@ struct ir_insn {
 	// Array of phi_value
 	struct array phi;
 
-	__s32 fid; // Function ID
+	s32 fid; // Function ID
 
 	enum ir_loadimm_extra_type imm_extra_type; // For 64 imm load
-	__s64 imm64; // H (next_imm:32)(imm:32) L
+	s64 imm64; // H (next_imm:32)(imm:32) L
 
 	enum ir_insn_type op;
 
@@ -382,7 +382,7 @@ struct ir_insn {
 	// Used when generating the real code
 	size_t _insn_id;
 	void *user_data;
-	__u8 _visited;
+	u8 _visited;
 };
 
 /**
@@ -408,10 +408,10 @@ struct pre_ir_basic_block {
 	struct array preds;
 	struct array succs;
 
-	__u8 visited;
+	u8 visited;
 
-	__u8 sealed;
-	__u8 filled;
+	u8 sealed;
+	u8 filled;
 	struct ir_basic_block *ir_bb;
 	struct ir_insn *incompletePhis[MAX_BPF_REG];
 };
@@ -429,7 +429,7 @@ struct ir_basic_block {
 	struct array succs;
 
 	// Used for construction and debugging
-	__u8 _visited;
+	u8 _visited;
 	size_t _id;
 	void *user_data;
 
@@ -503,10 +503,10 @@ struct code_gen_info {
 
 	size_t callee_num;
 
-	__s16 stack_offset;
+	s16 stack_offset;
 
 	// Whether to spill callee saved registers
-	__u8 spill_callee;
+	u8 spill_callee;
 };
 
 struct ir_function {
@@ -824,11 +824,11 @@ struct ir_insn_cg_extra {
 	struct pre_ir_insn translated[2];
 
 	// Translated number
-	__u8 translated_num;
+	u8 translated_num;
 
 	// Whether the VR is allocated with a real register
 	// If it's a pre-colored register, it's also 1
-	__u8 allocated;
+	u8 allocated;
 
 	// When allocating register, whether dst will be spilled
 	// 0: Not spilled
@@ -838,7 +838,7 @@ struct ir_insn_cg_extra {
 
 	// Valid if spilled == 0 && allocated == 1
 	// Valid number: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
-	__u8 alloc_reg;
+	u8 alloc_reg;
 
 	// Whether this instruction is a non-VR instruction, like a pre-colored register
 	bool nonvr;
@@ -883,7 +883,7 @@ struct ir_constraint {
 
 /* IR Value Start */
 
-__u8 bpf_ir_value_equal(struct ir_value a, struct ir_value b);
+u8 bpf_ir_value_equal(struct ir_value a, struct ir_value b);
 
 struct ir_value bpf_ir_value_insn(struct ir_insn *);
 

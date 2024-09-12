@@ -3,7 +3,7 @@
 #include <linux/bpf_ir.h>
 
 // TODO: Change this to real function
-static const __u32 helper_func_arg_num[100] = {
+static const u32 helper_func_arg_num[100] = {
 	[0] = 1, [1] = 1, [2] = 1, [3] = 1, [4] = 1, [5] = 0,
 	[6] = 0, // Variable length
 	[7] = 1, [8] = 1
@@ -16,16 +16,16 @@ static const struct function_pass passes[] = {
 };
 
 static void write_variable(struct bpf_ir_env *env,
-			   struct ssa_transform_env *tenv, __u8 reg,
+			   struct ssa_transform_env *tenv, u8 reg,
 			   struct pre_ir_basic_block *bb, struct ir_value val);
 
 static struct ir_value read_variable(struct bpf_ir_env *env,
-				     struct ssa_transform_env *tenv, __u8 reg,
+				     struct ssa_transform_env *tenv, u8 reg,
 				     struct pre_ir_basic_block *bb);
 
 static struct ir_insn *add_phi_operands(struct bpf_ir_env *env,
-					struct ssa_transform_env *tenv,
-					__u8 reg, struct ir_insn *insn);
+					struct ssa_transform_env *tenv, u8 reg,
+					struct ir_insn *insn);
 
 static void add_user(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 		     struct ir_insn *user, struct ir_value val);
@@ -63,7 +63,7 @@ static void add_entrance_info(struct bpf_ir_env *env,
 	struct array preds;
 	INIT_ARRAY(&preds, size_t);
 	size_t last_pos = entrance_pos - 1;
-	__u8 code = insns[last_pos].code;
+	u8 code = insns[last_pos].code;
 	if (!(BPF_OP(code) == BPF_JA || BPF_OP(code) == BPF_EXIT)) {
 		// BPF_EXIT
 		bpf_ir_array_push_unique(env, &preds, &last_pos);
@@ -124,15 +124,15 @@ static void init_ir_bb(struct bpf_ir_env *env, struct pre_ir_basic_block *bb)
 	}
 	bb->ir_bb->_visited = 0;
 	bb->ir_bb->user_data = bb;
-	for (__u8 i = 0; i < MAX_BPF_REG; ++i) {
+	for (u8 i = 0; i < MAX_BPF_REG; ++i) {
 		bb->incompletePhis[i] = NULL;
 	}
 }
 
-static __s64 to_s64(__s32 imm, __s32 next_imm)
+static s64 to_s64(s32 imm, s32 next_imm)
 {
-	__u64 imml = (__u64)imm & 0xFFFFFFFF;
-	return ((__s64)next_imm << 32) | imml;
+	u64 imml = (u64)imm & 0xFFFFFFFF;
+	return ((s64)next_imm << 32) | imml;
 }
 
 static void gen_bb(struct bpf_ir_env *env, struct bb_info *ret,
@@ -143,7 +143,7 @@ static void gen_bb(struct bpf_ir_env *env, struct bb_info *ret,
 	// First, scan the code to find all the BB entrances
 	for (size_t i = 0; i < len; ++i) {
 		struct bpf_insn insn = insns[i];
-		__u8 code = insn.code;
+		u8 code = insn.code;
 		if (BPF_CLASS(code) == BPF_JMP ||
 		    BPF_CLASS(code) == BPF_JMP32) {
 			if (BPF_OP(code) == BPF_JA) {
@@ -152,7 +152,7 @@ static void gen_bb(struct bpf_ir_env *env, struct bb_info *ret,
 				if (BPF_CLASS(code) == BPF_JMP) {
 					// JMP class (64 bits)
 					// Add offset
-					pos = (__s16)i + insn.off + 1;
+					pos = (s16)i + insn.off + 1;
 				} else {
 					// Impossible by spec
 					RAISE_ERROR(
@@ -169,7 +169,7 @@ static void gen_bb(struct bpf_ir_env *env, struct bb_info *ret,
 			    (BPF_OP(code) >= BPF_JLT &&
 			     BPF_OP(code) <= BPF_JSLE)) {
 				// Add offset
-				size_t pos = (__s16)i + insn.off + 1;
+				size_t pos = (s16)i + insn.off + 1;
 				add_entrance_info(env, insns, &bb_entrance, pos,
 						  i);
 				CHECK_ERR();
@@ -246,7 +246,7 @@ static void gen_bb(struct bpf_ir_env *env, struct bb_info *ret,
 			new_insn.dst_reg = insn.dst_reg;
 			new_insn.imm = insn.imm;
 			new_insn.it = IMM;
-			new_insn.imm64 = (__u64)insn.imm & 0xFFFFFFFF;
+			new_insn.imm64 = (u64)insn.imm & 0xFFFFFFFF;
 			new_insn.off = insn.off;
 			new_insn.pos = pos;
 			if (pos + 1 < real_bb->end_pos &&
@@ -326,7 +326,7 @@ static void init_env(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 	tenv->info = info;
 	INIT_ARRAY(&tenv->sp_users, struct ir_insn *);
 	// Initialize function argument
-	for (__u8 i = 0; i < MAX_FUNC_ARG; ++i) {
+	for (u8 i = 0; i < MAX_FUNC_ARG; ++i) {
 		SAFE_MALLOC(tenv->function_arg[i], sizeof(struct ir_insn));
 
 		INIT_ARRAY(&tenv->function_arg[i]->users, struct ir_insn *);
@@ -345,7 +345,7 @@ static void seal_block(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 		       struct pre_ir_basic_block *bb)
 {
 	// Seal a BB
-	for (__u8 i = 0; i < MAX_BPF_REG; ++i) {
+	for (u8 i = 0; i < MAX_BPF_REG; ++i) {
 		if (bb->incompletePhis[i]) {
 			add_phi_operands(env, tenv, i, bb->incompletePhis[i]);
 		}
@@ -354,7 +354,7 @@ static void seal_block(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 }
 
 static void write_variable(struct bpf_ir_env *env,
-			   struct ssa_transform_env *tenv, __u8 reg,
+			   struct ssa_transform_env *tenv, u8 reg,
 			   struct pre_ir_basic_block *bb, struct ir_value val)
 {
 	if (reg >= MAX_BPF_REG - 1) {
@@ -380,8 +380,8 @@ static void write_variable(struct bpf_ir_env *env,
 }
 
 static struct ir_insn *add_phi_operands(struct bpf_ir_env *env,
-					struct ssa_transform_env *tenv,
-					__u8 reg, struct ir_insn *insn)
+					struct ssa_transform_env *tenv, u8 reg,
+					struct ir_insn *insn)
 {
 	// insn must be a (initialized) PHI instruction
 	if (insn->op != IR_INSN_PHI) {
@@ -435,7 +435,7 @@ static struct ir_insn *create_insn_front(struct ir_basic_block *bb)
 
 static struct ir_value read_variable_recursive(struct bpf_ir_env *env,
 					       struct ssa_transform_env *tenv,
-					       __u8 reg,
+					       u8 reg,
 					       struct pre_ir_basic_block *bb)
 {
 	struct ir_value val;
@@ -466,7 +466,7 @@ static struct ir_value read_variable_recursive(struct bpf_ir_env *env,
 	return val;
 }
 
-static bool is_variable_defined(struct ssa_transform_env *tenv, __u8 reg,
+static bool is_variable_defined(struct ssa_transform_env *tenv, u8 reg,
 				struct pre_ir_basic_block *bb)
 {
 	struct bb_val *pos;
@@ -481,7 +481,7 @@ static bool is_variable_defined(struct ssa_transform_env *tenv, __u8 reg,
 }
 
 static struct ir_value read_variable(struct bpf_ir_env *env,
-				     struct ssa_transform_env *tenv, __u8 reg,
+				     struct ssa_transform_env *tenv, u8 reg,
 				     struct pre_ir_basic_block *bb)
 {
 	// Read a variable from a BB
@@ -513,7 +513,7 @@ static struct ir_value read_variable(struct bpf_ir_env *env,
 	return read_variable_recursive(env, tenv, reg, bb);
 }
 
-static enum ir_vr_type to_ir_ld_u(__u8 size)
+static enum ir_vr_type to_ir_ld_u(u8 size)
 {
 	switch (size) {
 	case BPF_W:
@@ -595,7 +595,7 @@ static struct ir_value get_src_value(struct bpf_ir_env *env,
 				     struct pre_ir_basic_block *bb,
 				     struct pre_ir_insn insn)
 {
-	__u8 code = insn.opcode;
+	u8 code = insn.opcode;
 	if (BPF_SRC(code) == BPF_K) {
 		return (struct ir_value){ .type = IR_VALUE_CONSTANT,
 					  .data.constant_d = insn.imm,
@@ -665,7 +665,7 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 		return;
 	}
 	// Try sealing a BB
-	__u8 pred_all_filled = 1;
+	u8 pred_all_filled = 1;
 	for (size_t i = 0; i < bb->preds.num_elem; ++i) {
 		struct pre_ir_basic_block *pred =
 			((struct pre_ir_basic_block **)(bb->preds.data))[i];
@@ -685,7 +685,7 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 	// Fill the BB
 	for (size_t i = 0; i < bb->len; ++i) {
 		struct pre_ir_insn insn = bb->pre_insns[i];
-		__u8 code = insn.opcode;
+		u8 code = insn.opcode;
 		if (BPF_CLASS(code) == BPF_ALU ||
 		    BPF_CLASS(code) == BPF_ALU64) {
 			// ALU class
@@ -887,8 +887,8 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 						// Variable length, infer from previous instructions
 						new_insn->value_num = 0;
 						// used[x] means whether there exists a usage of register x + 1
-						for (__u8 j = 0;
-						     j < MAX_FUNC_ARG; ++j) {
+						for (u8 j = 0; j < MAX_FUNC_ARG;
+						     ++j) {
 							if (is_variable_defined(
 								    tenv,
 								    j + BPF_REG_1,
@@ -970,7 +970,7 @@ static void free_function(struct ir_function *fun)
 		}
 		free_proto(bb);
 	}
-	for (__u8 i = 0; i < MAX_FUNC_ARG; ++i) {
+	for (u8 i = 0; i < MAX_FUNC_ARG; ++i) {
 		bpf_ir_array_free(&fun->function_arg[i]->users);
 		free_proto(fun->function_arg[i]);
 	}
@@ -986,7 +986,7 @@ static void gen_function(struct bpf_ir_env *env, struct ir_function *fun,
 	fun->arg_num = 1;
 	fun->entry = tenv->info.entry->ir_bb;
 	fun->sp_users = tenv->sp_users;
-	for (__u8 i = 0; i < MAX_FUNC_ARG; ++i) {
+	for (u8 i = 0; i < MAX_FUNC_ARG; ++i) {
 		fun->function_arg[i] = tenv->function_arg[i];
 	}
 	INIT_ARRAY(&fun->all_bbs, struct ir_basic_block *);

@@ -18,7 +18,7 @@ static void init_cg(struct bpf_ir_env *env, struct ir_function *fun)
 		}
 	}
 
-	for (__u8 i = 0; i < MAX_BPF_REG; ++i) {
+	for (u8 i = 0; i < MAX_BPF_REG; ++i) {
 		SAFE_MALLOC(fun->cg_info.regs[i], sizeof(struct ir_insn));
 		// Those should be read-only
 		struct ir_insn *insn = fun->cg_info.regs[i];
@@ -66,7 +66,7 @@ static void free_cg_res(struct ir_function *fun)
 		}
 	}
 
-	for (__u8 i = 0; i < MAX_BPF_REG; ++i) {
+	for (u8 i = 0; i < MAX_BPF_REG; ++i) {
 		struct ir_insn *insn = fun->cg_info.regs[i];
 		bpf_ir_array_free(&insn->users);
 		free_insn_cg(insn);
@@ -100,7 +100,7 @@ static void clean_cg(struct bpf_ir_env *env, struct ir_function *fun)
 		}
 	}
 
-	for (__u8 i = 0; i < MAX_BPF_REG; ++i) {
+	for (u8 i = 0; i < MAX_BPF_REG; ++i) {
 		struct ir_insn *insn = fun->cg_info.regs[i];
 		clean_insn_cg(env, insn);
 	}
@@ -139,7 +139,7 @@ static void synthesize(struct bpf_ir_env *env, struct ir_function *fun)
 		struct ir_insn *insn = NULL;
 		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
 			struct ir_insn_cg_extra *extra = insn_cg(insn);
-			for (__u8 i = 0; i < extra->translated_num; ++i) {
+			for (u8 i = 0; i < extra->translated_num; ++i) {
 				struct pre_ir_insn translated_insn =
 					extra->translated[i];
 				// PRINT_DBG("Writing to insn %zu\n",
@@ -368,7 +368,7 @@ static void bpf_ir_print_interference_graph(struct bpf_ir_env *env,
 static void caller_constraint(struct bpf_ir_env *env, struct ir_function *fun,
 			      struct ir_insn *insn)
 {
-	for (__u8 i = BPF_REG_0; i < BPF_REG_6; ++i) {
+	for (u8 i = BPF_REG_0; i < BPF_REG_6; ++i) {
 		// R0-R5 are caller saved register
 		DBGASSERT(fun->cg_info.regs[i] ==
 			  insn_dst(fun->cg_info.regs[i]));
@@ -466,7 +466,7 @@ static void explicit_reg(struct bpf_ir_env *env, struct ir_function *fun)
 		struct ir_insn *insn;
 		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
 			if (insn->op == IR_INSN_CALL) {
-				for (__u8 i = 0; i < insn->value_num; ++i) {
+				for (u8 i = 0; i < insn->value_num; ++i) {
 					struct ir_value val = insn->values[i];
 					struct ir_insn *new_insn =
 						create_assign_insn_cg(
@@ -507,7 +507,7 @@ static void explicit_reg(struct bpf_ir_env *env, struct ir_function *fun)
 		}
 	}
 	// Arg
-	for (__u8 i = 0; i < MAX_FUNC_ARG; ++i) {
+	for (u8 i = 0; i < MAX_FUNC_ARG; ++i) {
 		if (fun->function_arg[i]->users.num_elem > 0) {
 			// Insert ASSIGN arg[i] at the beginning of the function
 			struct ir_insn *new_insn = create_assign_insn_bb_cg(
@@ -565,8 +565,8 @@ static void graph_coloring(struct bpf_ir_env *env, struct ir_function *fun)
 				}
 			}
 		}
-		__u8 need_spill = 1;
-		for (__u8 i = 0; i < MAX_BPF_REG; i++) {
+		u8 need_spill = 1;
+		for (u8 i = 0; i < MAX_BPF_REG; i++) {
 			if (!used_reg[i]) {
 				extra->allocated = 1;
 				PRINT_LOG(env, "Allocate r%u for %%%zu\n", i,
@@ -579,7 +579,7 @@ static void graph_coloring(struct bpf_ir_env *env, struct ir_function *fun)
 		if (need_spill) {
 			size_t sp = 1;
 			while (1) {
-				__u8 found = 1;
+				u8 found = 1;
 				size_t *pos3;
 				array_for(pos3, used_spill)
 				{
@@ -874,7 +874,7 @@ static void calc_pos(struct bpf_ir_env *env, struct ir_function *fun)
 		struct ir_insn *insn;
 		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
 			struct ir_insn_cg_extra *insn_extra = insn_cg(insn);
-			for (__u8 i = 0; i < insn_extra->translated_num; ++i) {
+			for (u8 i = 0; i < insn_extra->translated_num; ++i) {
 				struct pre_ir_insn *translated_insn =
 					&insn_extra->translated[i];
 				// Pos
@@ -983,7 +983,7 @@ static u8 allocated_reg(struct ir_value val)
 static void spill_callee(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	// Spill Callee saved registers if used
-	__u8 reg_used[MAX_BPF_REG] = { 0 };
+	u8 reg_used[MAX_BPF_REG] = { 0 };
 
 	struct ir_insn **pos;
 	array_for(pos, fun->cg_info.all_var)
@@ -992,7 +992,7 @@ static void spill_callee(struct bpf_ir_env *env, struct ir_function *fun)
 		reg_used[extra->alloc_reg] = 1;
 	}
 	size_t off = 0;
-	for (__u8 i = BPF_REG_6; i < BPF_REG_10; ++i) {
+	for (u8 i = BPF_REG_6; i < BPF_REG_10; ++i) {
 		if (reg_used[i]) {
 			off++;
 		}
@@ -1000,7 +1000,7 @@ static void spill_callee(struct bpf_ir_env *env, struct ir_function *fun)
 	DBGASSERT(off == fun->cg_info.callee_num);
 	add_stack_offset_vr(fun, off);
 	off = 0;
-	for (__u8 i = BPF_REG_6; i < BPF_REG_10; ++i) {
+	for (u8 i = BPF_REG_6; i < BPF_REG_10; ++i) {
 		// All callee saved registers
 		if (reg_used[i]) {
 			off++;
@@ -1116,8 +1116,8 @@ static void normalize_alu(struct bpf_ir_env *env, struct ir_function *fun,
 		v0->data.insn_d = dst_insn;
 	} else if (t0 == REG && t1 == REG) {
 		// reg1 = add reg2 reg3
-		__u8 reg1 = insn_cg(dst_insn)->alloc_reg;
-		__u8 reg2 = insn_cg(v0->data.insn_d)->alloc_reg;
+		u8 reg1 = insn_cg(dst_insn)->alloc_reg;
+		u8 reg2 = insn_cg(v0->data.insn_d)->alloc_reg;
 		if (reg1 != reg2) {
 			// reg1 = add reg2 reg3
 			// ==>
@@ -1713,7 +1713,7 @@ static bool check_need_spill(struct bpf_ir_env *env, struct ir_function *fun)
 
 static void calc_callee_num(struct ir_function *fun)
 {
-	__u8 reg_used[MAX_BPF_REG] = { 0 };
+	u8 reg_used[MAX_BPF_REG] = { 0 };
 
 	struct ir_insn **pos;
 	array_for(pos, fun->cg_info.all_var)
@@ -1722,7 +1722,7 @@ static void calc_callee_num(struct ir_function *fun)
 		reg_used[extra->alloc_reg] = 1;
 	}
 	size_t off = 0;
-	for (__u8 i = BPF_REG_6; i < BPF_REG_10; ++i) {
+	for (u8 i = BPF_REG_6; i < BPF_REG_10; ++i) {
 		if (reg_used[i]) {
 			off++;
 		}
@@ -1792,7 +1792,7 @@ static void add_stack_offset_pre_cg(struct bpf_ir_env *env,
 }
 
 static void add_stack_offset(struct bpf_ir_env *env, struct ir_function *fun,
-			     __s16 offset)
+			     s16 offset)
 {
 	struct array users = fun->sp_users;
 	struct ir_insn **pos;
@@ -1822,7 +1822,7 @@ static void add_stack_offset(struct bpf_ir_env *env, struct ir_function *fun,
 	}
 }
 
-static struct pre_ir_insn translate_reg_to_reg(__u8 dst, __u8 src)
+static struct pre_ir_insn translate_reg_to_reg(u8 dst, u8 src)
 {
 	// MOV dst src
 	struct pre_ir_insn insn;
@@ -1832,7 +1832,7 @@ static struct pre_ir_insn translate_reg_to_reg(__u8 dst, __u8 src)
 	return insn;
 }
 
-static struct pre_ir_insn translate_const_to_reg(__u8 dst, __s64 data,
+static struct pre_ir_insn translate_const_to_reg(u8 dst, s64 data,
 						 enum ir_alu_op_type type)
 {
 	// MOV dst imm
@@ -1865,8 +1865,8 @@ static int vr_type_to_size(enum ir_vr_type type)
 	}
 }
 
-static struct pre_ir_insn
-load_addr_to_reg(__u8 dst, struct ir_address_value addr, enum ir_vr_type type)
+static struct pre_ir_insn load_addr_to_reg(u8 dst, struct ir_address_value addr,
+					   enum ir_vr_type type)
 {
 	// MOV dst src
 	struct pre_ir_insn insn;
@@ -1893,7 +1893,7 @@ load_addr_to_reg(__u8 dst, struct ir_address_value addr, enum ir_vr_type type)
 	return insn;
 }
 
-static struct pre_ir_insn store_reg_to_reg_mem(__u8 dst, __u8 src, __s16 offset,
+static struct pre_ir_insn store_reg_to_reg_mem(u8 dst, u8 src, s16 offset,
 					       enum ir_vr_type type)
 {
 	struct pre_ir_insn insn;
@@ -1905,8 +1905,8 @@ static struct pre_ir_insn store_reg_to_reg_mem(__u8 dst, __u8 src, __s16 offset,
 	return insn;
 }
 
-static struct pre_ir_insn
-store_const_to_reg_mem(__u8 dst, __s64 val, __s16 offset, enum ir_vr_type type)
+static struct pre_ir_insn store_const_to_reg_mem(u8 dst, s64 val, s16 offset,
+						 enum ir_vr_type type)
 {
 	struct pre_ir_insn insn;
 	int size = vr_type_to_size(type);
@@ -1958,7 +1958,7 @@ static int jmp_code(enum ir_insn_type insn)
 	}
 }
 
-static struct pre_ir_insn alu_reg(__u8 dst, __u8 src, enum ir_alu_op_type type,
+static struct pre_ir_insn alu_reg(u8 dst, u8 src, enum ir_alu_op_type type,
 				  int opcode)
 {
 	struct pre_ir_insn insn;
@@ -1969,7 +1969,7 @@ static struct pre_ir_insn alu_reg(__u8 dst, __u8 src, enum ir_alu_op_type type,
 	return insn;
 }
 
-static struct pre_ir_insn alu_imm(__u8 dst, __s64 src, enum ir_alu_op_type type,
+static struct pre_ir_insn alu_imm(u8 dst, s64 src, enum ir_alu_op_type type,
 				  int opcode)
 {
 	struct pre_ir_insn insn;
@@ -1982,8 +1982,8 @@ static struct pre_ir_insn alu_imm(__u8 dst, __s64 src, enum ir_alu_op_type type,
 	return insn;
 }
 
-static struct pre_ir_insn cond_jmp_reg(__u8 dst, __u8 src,
-				       enum ir_alu_op_type type, int opcode)
+static struct pre_ir_insn cond_jmp_reg(u8 dst, u8 src, enum ir_alu_op_type type,
+				       int opcode)
 {
 	struct pre_ir_insn insn;
 	insn.dst_reg = dst;
@@ -1993,7 +1993,7 @@ static struct pre_ir_insn cond_jmp_reg(__u8 dst, __u8 src,
 	return insn;
 }
 
-static struct pre_ir_insn cond_jmp_imm(__u8 dst, __s64 src,
+static struct pre_ir_insn cond_jmp_imm(u8 dst, s64 src,
 				       enum ir_alu_op_type type, int opcode)
 {
 	struct pre_ir_insn insn;
@@ -2006,7 +2006,7 @@ static struct pre_ir_insn cond_jmp_imm(__u8 dst, __s64 src,
 	return insn;
 }
 
-static __u8 get_alloc_reg(struct ir_insn *insn)
+static u8 get_alloc_reg(struct ir_insn *insn)
 {
 	return insn_cg(insn)->alloc_reg;
 }

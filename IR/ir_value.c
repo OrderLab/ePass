@@ -1,6 +1,6 @@
 #include <linux/bpf_ir.h>
 
-__u8 bpf_ir_value_equal(struct ir_value a, struct ir_value b)
+u8 bpf_ir_value_equal(struct ir_value a, struct ir_value b)
 {
 	if (a.type != b.type) {
 		return 0;

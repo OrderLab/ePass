@@ -5,7 +5,7 @@
 ```c
 struct ir_insn {
     struct ir_value values[MAX_FUNC_ARG];
-    __u8            value_num;
+    u8            value_num;
 
     // Used in ALLOC instructions
     enum ir_vr_type vr_type;
@@ -20,8 +20,8 @@ struct ir_insn {
     // Array of phi_value
     struct array phi;
 
-    __s32             fid;
-    __u32             f_arg_num;
+    s32             fid;
+    u32             f_arg_num;
     enum ir_insn_type op;
 
     // Linked list
@@ -41,7 +41,7 @@ struct ir_insn {
     // Used when generating the real code
     size_t _insn_id;
     void  *user_data;
-    __u8   _visited;
+    u8   _visited;
 };
 ```
 

@@ -7,7 +7,7 @@ void try_remove_trivial_phi(struct bpf_ir_env *env, struct ir_insn *phi)
 	}
 	// print_raw_ir_insn(phi);
 	struct ir_value same;
-	__u8 same_has_value = 0;
+	u8 same_has_value = 0;
 	struct phi_value *pv_pos;
 	array_for(pv_pos, phi->phi)
 	{

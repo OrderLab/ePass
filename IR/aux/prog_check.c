@@ -167,7 +167,7 @@ static void check_insn_operand(struct bpf_ir_env *env, struct ir_insn *insn)
 static void check_users(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	// Check FunctionCallArgument Instructions
-	for (__u8 i = 0; i < MAX_FUNC_ARG; ++i) {
+	for (u8 i = 0; i < MAX_FUNC_ARG; ++i) {
 		struct ir_insn *insn = fun->function_arg[i];
 		check_insn_users_use_insn(env, insn);
 	}
@@ -390,7 +390,7 @@ static void add_reach(struct bpf_ir_env *env, struct ir_function *fun,
 	bpf_ir_array_push(env, &fun->reachable_bbs, &bb);
 
 	struct ir_basic_block **succ;
-	__u8 i = 0;
+	u8 i = 0;
 	array_for(succ, bb->succs)
 	{
 		if (i == 0) {
