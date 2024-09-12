@@ -114,8 +114,8 @@ if `v1` is REG and is the same with `dst`, first change it to another register.
 
 Cases of `v0, v1`:
 
-- `REG, CONST`
-- `REG, STACK`
+- `REG, CONST` ✅
+- `REG, STACK` ✅
 - `CONST64, REG` ✅
 - `CONST64, CONST` ✅
 - `CONST64, STACK` ✅
