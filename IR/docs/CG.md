@@ -108,6 +108,19 @@ Allowed: `REG = ...`.
 
 If dst is STACK, we first change it to REG.
 
+`REG = ALU v0 v1`
+
+Cases of `v0, v1`:
+
+- `REG, CONST`
+- `REG, STACK`
+- `CONST, REG`
+- `CONST, CONST`
+- `STACK, CONST`
+- `CONST, STACK`
+- `STACK, STACK`
+- `STACK, REG`
+
 In summary, these are allowed:
 
 ```
@@ -115,6 +128,7 @@ REG = ALU REG REG
 REG = ALU REG CONST32
 REG = ALU CONST32 REG
 REG = ALU CONST32 CONST32
+REG = ALU STACK CONST32
 ```
 
 ### `call`
