@@ -577,6 +577,8 @@ void bpf_ir_clean_metadata_all(struct ir_function *fun);
 
 void print_ir_prog(struct bpf_ir_env *env, struct ir_function *);
 
+void print_ir_prog_notag(struct bpf_ir_env *env, struct ir_function *fun);
+
 void print_ir_prog_reachable(struct bpf_ir_env *env, struct ir_function *fun);
 
 void print_ir_prog_advanced(struct bpf_ir_env *env, struct ir_function *,

@@ -2270,11 +2270,15 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 
 	// Step 1: Flag all raw stack access
 	add_stack_offset_pre_cg(env, fun);
+	CHECK_ERR();
 	bpf_ir_prog_check(env, fun);
+	CHECK_ERR();
 
 	// Step 2: Eliminate SSA
 	to_cssa(env, fun);
+	CHECK_ERR();
 	bpf_ir_prog_check(env, fun);
+	CHECK_ERR();
 
 	print_ir_prog_pre_cg(env, fun, "To CSSA");
 
@@ -2287,11 +2291,13 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 
 	// Step 3: Use explicit real registers
 	explicit_reg(env, fun); // Still in SSA form, users are available
+	CHECK_ERR();
 	print_ir_prog_cg_dst(env, fun, "Explicit REG");
 
 	// Step 4: SSA Destruction
 	// users not available from now on
 	remove_phi(env, fun);
+	CHECK_ERR();
 	print_ir_prog_cg_dst(env, fun, "PHI Removal");
 
 	// print_ir_prog_reachable(fun);
@@ -2303,15 +2309,19 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 		iterations++;
 		// Step 5: Liveness Analysis
 		liveness_analysis(env, fun);
+		CHECK_ERR();
 
 		// Step 6: Conflict Analysis
 		conflict_analysis(env, fun);
+		CHECK_ERR();
 		PRINT_LOG(env, "Conflicting graph:\n");
 		bpf_ir_print_interference_graph(env, fun);
 
 		// Step 7: Graph coloring
 		graph_coloring(env, fun);
+		CHECK_ERR();
 		coaleasing(fun);
+		CHECK_ERR();
 		PRINT_LOG(env, "Conflicting graph (after coloring):\n");
 		bpf_ir_print_interference_graph(env, fun);
 		print_ir_prog_cg_alloc(env, fun, "After RA");
@@ -2343,16 +2353,19 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 
 	// Step 10: Shift raw stack operations
 	add_stack_offset(env, fun, fun->cg_info.stack_offset);
+	CHECK_ERR();
 	print_ir_prog_cg_alloc(env, fun, "Shifting stack access");
 
 	// Step 11: Spill callee saved registers
 	if (fun->cg_info.spill_callee) {
 		spill_callee(env, fun);
+		CHECK_ERR();
 		print_ir_prog_cg_alloc(env, fun, "Spilling callee-saved regs");
 	}
 
 	// Step 12: Normalize
 	normalize(env, fun);
+	CHECK_ERR();
 	print_ir_prog_cg_alloc(env, fun, "Normalization");
 	check_cgir(env, fun);
 	CHECK_ERR();
@@ -2362,9 +2375,11 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 
 	// Step 14: Relocation
 	relocate(env, fun);
+	CHECK_ERR();
 
 	// Step 15: Synthesize
 	synthesize(env, fun);
+	CHECK_ERR();
 
 	// Free CG resources
 	free_cg_res(fun);

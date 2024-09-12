@@ -98,6 +98,21 @@ void print_bb_ptr(struct bpf_ir_env *env, struct ir_basic_block *insn)
 	PRINT_LOG(env, "b%zu", insn->_id);
 }
 
+static void print_const(struct bpf_ir_env *env, struct ir_value v)
+{
+	if (v.const_type == IR_ALU_64) {
+		PRINT_LOG(env, "0x%llx", v.data.constant_d);
+		PRINT_LOG(env, "(64)");
+	} else if (v.const_type == IR_ALU_32) {
+		PRINT_LOG(env, "0x%x", v.data.constant_d & 0xFFFFFFFF);
+		PRINT_LOG(env, "(32)");
+	} else {
+		PRINT_LOG(env, "(unknown)");
+		env->err = -1;
+		return;
+	}
+}
+
 static void print_ir_value_full(struct bpf_ir_env *env, struct ir_value v,
 				void (*print_ir)(struct bpf_ir_env *env,
 						 struct ir_insn *))
@@ -110,19 +125,12 @@ static void print_ir_value_full(struct bpf_ir_env *env, struct ir_value v,
 		PRINT_LOG(env, "SP");
 		break;
 	case IR_VALUE_CONSTANT:
-		PRINT_LOG(env, "0x%llx", v.data.constant_d);
-		if (v.const_type == IR_ALU_64) {
-			PRINT_LOG(env, "(64)");
-		} else if (v.const_type == IR_ALU_32) {
-			PRINT_LOG(env, "(32)");
-		} else {
-			PRINT_LOG(env, "(unknown)");
-			env->err = -1;
-			return;
-		}
+		print_const(env, v);
 		break;
 	case IR_VALUE_CONSTANT_RAWOFF:
-		PRINT_LOG(env, "(hole)");
+		PRINT_LOG(env, "(hole:");
+		print_const(env, v);
+		PRINT_LOG(env, ")");
 		break;
 	case IR_VALUE_UNDEF:
 		PRINT_LOG(env, "undef");
@@ -546,6 +554,11 @@ void print_bb_succ(struct bpf_ir_env *env, struct ir_basic_block *bb)
 void print_ir_prog(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	tag_ir(fun);
+	print_ir_bb(env, fun->entry, NULL, NULL, NULL);
+}
+
+void print_ir_prog_notag(struct bpf_ir_env *env, struct ir_function *fun)
+{
 	print_ir_bb(env, fun->entry, NULL, NULL, NULL);
 }
 

@@ -27,7 +27,7 @@ static void check_insn_users_use_insn(struct bpf_ir_env *env,
 			print_ir_insn_err(env, insn, "The instruction");
 			print_ir_insn_err(env, user,
 					  "The user of that instruction");
-			CRITICAL_DUMP(env, "User does not use the instruction");
+			RAISE_ERROR("User does not use the instruction");
 		}
 	}
 }
@@ -51,8 +51,8 @@ static void check_insn(struct bpf_ir_env *env, struct ir_function *fun)
 			    insn->op == IR_INSN_JA || insn->op == IR_INSN_PHI) {
 				if (!(insn->value_num == 0)) {
 					print_ir_insn_err(env, insn, NULL);
-					CRITICAL_DUMP(
-						env,
+					RAISE_ERROR(
+
 						"Instruction should have no value");
 				}
 			}
@@ -61,8 +61,8 @@ static void check_insn(struct bpf_ir_env *env, struct ir_function *fun)
 			    insn->op == IR_INSN_RET) {
 				if (!(insn->value_num == 1)) {
 					print_ir_insn_err(env, insn, NULL);
-					CRITICAL_DUMP(
-						env,
+					RAISE_ERROR(
+
 						"Instruction should have 1 values");
 				}
 			}
@@ -71,8 +71,8 @@ static void check_insn(struct bpf_ir_env *env, struct ir_function *fun)
 			    (is_cond_jmp(insn))) {
 				if (!(insn->value_num == 2)) {
 					print_ir_insn_err(env, insn, NULL);
-					CRITICAL_DUMP(
-						env,
+					RAISE_ERROR(
+
 						"Instruction should have 2 values");
 				}
 			}
@@ -83,8 +83,8 @@ static void check_insn(struct bpf_ir_env *env, struct ir_function *fun)
 				      insn->values[0].data.insn_d->op ==
 					      IR_INSN_ALLOC)) {
 					print_ir_insn_err(env, insn, NULL);
-					CRITICAL_DUMP(
-						env,
+					RAISE_ERROR(
+
 						"Value[0] should be an alloc instruction");
 				}
 			}
@@ -95,8 +95,7 @@ static void check_insn(struct bpf_ir_env *env, struct ir_function *fun)
 				// Binary ALU
 				if (!bpf_ir_valid_alu_type(insn->alu_op)) {
 					print_ir_insn_err(env, insn, NULL);
-					CRITICAL_DUMP(env,
-						      "Binary ALU type error!");
+					RAISE_ERROR("Binary ALU type error!");
 				}
 			}
 
@@ -105,7 +104,7 @@ static void check_insn(struct bpf_ir_env *env, struct ir_function *fun)
 			    insn->op == IR_INSN_STORERAW) {
 				if (!bpf_ir_valid_vr_type(insn->vr_type)) {
 					print_ir_insn_err(env, insn, NULL);
-					CRITICAL_DUMP(env, "Invalid VR type");
+					RAISE_ERROR("Invalid VR type");
 				}
 			}
 			array_for(vpos, operands)
@@ -116,8 +115,7 @@ static void check_insn(struct bpf_ir_env *env, struct ir_function *fun)
 						    val->const_type)) {
 						print_ir_insn_err(env, insn,
 								  NULL);
-						CRITICAL_DUMP(
-							env,
+						RAISE_ERROR(
 							"Invalid Constant type");
 					}
 				}
@@ -154,8 +152,7 @@ static void check_insn_operand(struct bpf_ir_env *env, struct ir_insn *insn)
 				print_ir_insn_err(
 					env, insn,
 					"Instruction that uses the operand");
-				CRITICAL_DUMP(
-					env,
+				RAISE_ERROR(
 					"Instruction not found in the operand's users");
 			}
 		}
@@ -212,7 +209,7 @@ static void check_jumping(struct bpf_ir_env *env, struct ir_function *fun)
 				// Error
 				print_ir_bb_err(env, bb);
 				PRINT_LOG(env, "Pred: %zu\n", pred_bb->_id);
-				CRITICAL_DUMP(env, "BB not a succ of its pred");
+				RAISE_ERROR("BB not a succ of its pred");
 			}
 		}
 
@@ -233,7 +230,7 @@ static void check_jumping(struct bpf_ir_env *env, struct ir_function *fun)
 			if (!found) {
 				// Error
 				print_ir_bb_err(env, bb);
-				CRITICAL_DUMP(env, "BB not a pred of its succ");
+				RAISE_ERROR("BB not a pred of its succ");
 			}
 		}
 
@@ -246,8 +243,7 @@ static void check_jumping(struct bpf_ir_env *env, struct ir_function *fun)
 					// Error
 
 					print_ir_insn_err(env, insn, NULL);
-					CRITICAL_DUMP(
-						env,
+					RAISE_ERROR(
 						"Jump statement not at the end of a BB");
 				} else {
 					if (insn->op == IR_INSN_RET) {
@@ -257,8 +253,7 @@ static void check_jumping(struct bpf_ir_env *env, struct ir_function *fun)
 							print_ir_insn_err(env,
 									  insn,
 									  NULL);
-							CRITICAL_DUMP(
-								env,
+							RAISE_ERROR(
 								"successor exists even after return statement");
 						}
 						continue;
@@ -272,8 +267,8 @@ static void check_jumping(struct bpf_ir_env *env, struct ir_function *fun)
 							insn->bb2;
 						// Check if the two basic blocks are successors of the current BB
 						if (bb->succs.num_elem != 2) {
-							CRITICAL_DUMP(
-								env,
+							RAISE_ERROR(
+
 								"BB succs error");
 						}
 						if (*array_get(
@@ -285,8 +280,8 @@ static void check_jumping(struct bpf_ir_env *env, struct ir_function *fun)
 							    struct ir_basic_block
 								    *) != bb2) {
 							// Error
-							CRITICAL_DUMP(
-								env,
+							RAISE_ERROR(
+
 								"Conditional jump statement with operands that are not successors "
 								"of the current BB");
 						}
@@ -298,8 +293,8 @@ static void check_jumping(struct bpf_ir_env *env, struct ir_function *fun)
 							print_ir_insn_err(env,
 									  insn,
 									  NULL);
-							CRITICAL_DUMP(
-								env,
+							RAISE_ERROR(
+
 								"Unconditional jump statement with more than one successor");
 						}
 						// Check if the jump operand is the only successor of BB
@@ -313,8 +308,8 @@ static void check_jumping(struct bpf_ir_env *env, struct ir_function *fun)
 							print_ir_insn_err(env,
 									  insn,
 									  NULL);
-							CRITICAL_DUMP(
-								env,
+							RAISE_ERROR(
+
 								"The jump operand is not the only successor of BB");
 						}
 					}
@@ -326,7 +321,7 @@ static void check_jumping(struct bpf_ir_env *env, struct ir_function *fun)
 			if (bb->succs.num_elem != 1) {
 				// Error
 				print_ir_bb_err(env, bb);
-				CRITICAL_DUMP(env, "Succ num error");
+				RAISE_ERROR("Succ num error");
 			}
 		}
 	}
@@ -346,8 +341,8 @@ static void check_phi(struct bpf_ir_env *env, struct ir_function *fun)
 				if (!all_phi) {
 					// Error!
 					print_ir_insn_err(env, insn, NULL);
-					CRITICAL_DUMP(
-						env,
+					RAISE_ERROR(
+
 						"Phi node not at the beginning of a BB");
 				}
 			} else {
@@ -397,7 +392,7 @@ static void add_reach(struct bpf_ir_env *env, struct ir_function *fun,
 			i = 1;
 			// Check if visited
 			if ((*succ)->_visited) {
-				CRITICAL_DUMP(env, "Loop BB detected");
+				RAISE_ERROR("Loop BB detected");
 			}
 		}
 		add_reach(env, fun, *succ);
@@ -426,6 +421,19 @@ static void gen_end_bbs(struct bpf_ir_env *env, struct ir_function *fun)
 
 // Interface Implementation
 
+static void check_err_and_print(struct bpf_ir_env *env, struct ir_function *fun)
+{
+	if (env->err) {
+		PRINT_LOG(env, "----- DUMP IR START -----\n");
+		print_ir_prog_notag(env, fun);
+		PRINT_LOG(env, "----- DUMP IR END -----\n");
+	}
+}
+
+#define CHECK_DUMP()                   \
+	check_err_and_print(env, fun); \
+	CHECK_ERR();
+
 // Check that the program is valid and able to be compiled
 void bpf_ir_prog_check(struct bpf_ir_env *env, struct ir_function *fun)
 {
@@ -440,13 +448,13 @@ void bpf_ir_prog_check(struct bpf_ir_env *env, struct ir_function *fun)
 	print_ir_err_init(fun);
 
 	check_insn(env, fun);
-	CHECK_ERR();
+	CHECK_DUMP();
 
 	check_phi(env, fun);
-	CHECK_ERR();
+	CHECK_DUMP();
 
 	check_users(env, fun);
-	CHECK_ERR();
+	CHECK_DUMP();
 
 	check_jumping(env, fun);
 }
