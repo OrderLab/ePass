@@ -12,7 +12,7 @@ static const u32 helper_func_arg_num[100] = {
 // All function passes.
 static const struct function_pass passes[] = {
 	DEF_FUNC_PASS(remove_trivial_phi, "Remove the trival Phi"),
-	DEF_FUNC_PASS(add_counter, "Adding counter"),
+	// DEF_FUNC_PASS(add_counter, "Adding counter"),
 };
 
 static void write_variable(struct bpf_ir_env *env,
@@ -331,6 +331,7 @@ static void init_tenv(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 	tenv->sp->value_num = 0;
 	tenv->sp->user_data = NULL;
 	tenv->sp->parent_bb = NULL;
+	tenv->sp->reg_id = BPF_REG_10;
 	write_variable(env, tenv, BPF_REG_10, NULL,
 		       bpf_ir_value_insn(tenv->sp));
 	// Initialize function argument
@@ -339,7 +340,7 @@ static void init_tenv(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 
 		INIT_ARRAY(&tenv->function_arg[i]->users, struct ir_insn *);
 		tenv->function_arg[i]->op = IR_INSN_FUNCTIONARG;
-		tenv->function_arg[i]->fid = i;
+		tenv->function_arg[i]->fun_arg_id = i;
 		tenv->function_arg[i]->user_data = NULL;
 		tenv->function_arg[i]->value_num = 0;
 		struct ir_value val;

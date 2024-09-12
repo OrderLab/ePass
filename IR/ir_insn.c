@@ -128,7 +128,6 @@ int bpf_ir_is_last_insn(struct ir_insn *insn)
 
 void bpf_ir_erase_insn(struct bpf_ir_env *env, struct ir_insn *insn)
 {
-	// TODO: remove users
 	struct array operands = bpf_ir_get_operands(env, insn);
 	CHECK_ERR();
 	struct ir_value **pos2;
@@ -138,6 +137,7 @@ void bpf_ir_erase_insn(struct bpf_ir_env *env, struct ir_insn *insn)
 	}
 	bpf_ir_array_free(&operands);
 	list_del(&insn->list_ptr);
+	bpf_ir_array_free(&insn->users);
 	free_proto(insn);
 }
 

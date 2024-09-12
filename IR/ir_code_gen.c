@@ -36,6 +36,7 @@ static void init_cg(struct bpf_ir_env *env, struct ir_function *fun)
 			INIT_ARRAY(&insn->users, struct ir_insn *);
 			insn->value_num = 0;
 		}
+		insn->reg_id = i;
 		bpf_ir_init_insn_cg(env, insn);
 		CHECK_ERR();
 
@@ -92,6 +93,14 @@ static void clean_insn_cg(struct bpf_ir_env *env, struct ir_insn *insn)
 	bpf_ir_array_clear(env, &extra->kill);
 	bpf_ir_array_clear(env, &extra->in);
 	bpf_ir_array_clear(env, &extra->out);
+}
+
+static void erase_insn_cg(struct ir_insn *insn)
+{
+	list_del(&insn->list_ptr);
+	free_insn_cg(insn);
+	bpf_ir_array_free(&insn->users);
+	free_proto(insn);
 }
 
 static void clean_cg(struct bpf_ir_env *env, struct ir_function *fun)
@@ -275,34 +284,27 @@ static void remove_phi(struct bpf_ir_env *env, struct ir_function *fun)
 	bpf_ir_array_free(&phi_insns);
 }
 
-// Erase an instruction without checking the users
-static void bpf_ir_erase_insn_raw(struct ir_insn *insn)
-{
-	list_del(&insn->list_ptr);
-	free_proto(insn);
-}
-
-static void coaleasing(struct ir_function *fun)
+static void coaleasing(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	struct ir_basic_block **pos;
 	// For each BB
 	array_for(pos, fun->reachable_bbs)
 	{
 		struct ir_basic_block *bb = *pos;
-		struct ir_insn *pos2, *tmp;
+		struct ir_insn *insn, *tmp;
 		// For each operation
-		list_for_each_entry_safe(pos2, tmp, &bb->ir_insn_head,
+		list_for_each_entry_safe(insn, tmp, &bb->ir_insn_head,
 					 list_ptr) {
-			struct ir_insn *insn_dst = insn_dst(pos2);
-			if (pos2->op == IR_INSN_ASSIGN) {
-				if (pos2->values[0].type == IR_VALUE_INSN) {
+			struct ir_insn *insn_dst = insn_dst(insn);
+			if (insn->op == IR_INSN_ASSIGN) {
+				if (insn->values[0].type == IR_VALUE_INSN) {
 					struct ir_insn *src =
-						pos2->values[0].data.insn_d;
+						insn->values[0].data.insn_d;
 					DBGASSERT(src == insn_dst(src));
 					if (insn_cg(src)->alloc_reg ==
 					    insn_cg(insn_dst)->alloc_reg) {
 						// Remove
-						bpf_ir_erase_insn_raw(pos2);
+						bpf_ir_erase_insn(env, insn);
 					}
 				}
 			}
@@ -1110,6 +1112,11 @@ static void normalize_alu(struct bpf_ir_env *env, struct ir_function *fun,
 		// new_insn->vr_type = alu_to_vr_type(insn->alu_op);
 		v0->type = IR_VALUE_INSN;
 		v0->data.insn_d = dst_insn;
+
+		if (v1->data.constant_d == 0) {
+			// Remove this instruction!
+			erase_insn_cg(insn);
+		}
 	} else if (t0 == STACK && t1 == REG) {
 		// reg1 = add stack reg2
 		// ==>
@@ -1229,8 +1236,9 @@ static void normalize(struct bpf_ir_env *env, struct ir_function *fun)
 	array_for(pos, fun->reachable_bbs)
 	{
 		struct ir_basic_block *bb = *pos;
-		struct ir_insn *insn;
-		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
+		struct ir_insn *insn, *tmp;
+		list_for_each_entry_safe(insn, tmp, &bb->ir_insn_head,
+					 list_ptr) {
 			if (insn->op == IR_INSN_ALLOC) {
 				// OK
 			} else if (insn->op == IR_INSN_STORE) {
@@ -1796,7 +1804,8 @@ static void add_stack_offset_pre_cg(struct bpf_ir_env *env,
 				    struct ir_function *fun)
 {
 	// Pre CG
-	struct array users = fun->cg_info.regs[BPF_REG_10]->users;
+	struct array users = fun->sp->users;
+	PRINT_LOG(env, "Found %d SP users\n", users.num_elem);
 	struct ir_insn **pos;
 	array_for(pos, users)
 	{
@@ -1814,7 +1823,7 @@ static void add_stack_offset_pre_cg(struct bpf_ir_env *env,
 		{
 			struct ir_value *val = *pos2;
 			if (val->type == IR_VALUE_INSN &&
-			    val->data.insn_d == fun->cg_info.regs[BPF_REG_10]) {
+			    val->data.insn_d == fun->sp) {
 				// Stack pointer as value
 				struct ir_value new_val;
 				new_val.type = IR_VALUE_CONSTANT_RAWOFF;
@@ -2315,7 +2324,7 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 		// Step 7: Graph coloring
 		graph_coloring(env, fun);
 		CHECK_ERR();
-		coaleasing(fun);
+		coaleasing(env, fun);
 		CHECK_ERR();
 		PRINT_LOG(env, "Conflicting graph (after coloring):\n");
 		bpf_ir_print_interference_graph(env, fun);

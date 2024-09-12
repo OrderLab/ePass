@@ -64,11 +64,11 @@ void bpf_ir_clean_id(struct ir_function *fun)
 void print_insn_ptr_base(struct bpf_ir_env *env, struct ir_insn *insn)
 {
 	if (insn->op == IR_INSN_REG) {
-		PRINT_LOG(env, "R%u", insn_cg(insn)->alloc_reg);
+		PRINT_LOG(env, "R%u", insn->reg_id);
 		return;
 	}
 	if (insn->op == IR_INSN_FUNCTIONARG) {
-		PRINT_LOG(env, "arg%u", insn->fid);
+		PRINT_LOG(env, "arg%u", insn->fun_arg_id);
 		return;
 	}
 	if (insn->_insn_id == SIZET_MAX) {
