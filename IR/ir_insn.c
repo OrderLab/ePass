@@ -128,6 +128,9 @@ int bpf_ir_is_last_insn(struct ir_insn *insn)
 
 void bpf_ir_erase_insn(struct bpf_ir_env *env, struct ir_insn *insn)
 {
+	if (insn->users.num_elem > 0) {
+		CRITICAL("Cannot erase a instruction that has users");
+	}
 	struct array operands = bpf_ir_get_operands(env, insn);
 	CHECK_ERR();
 	struct ir_value **pos2;

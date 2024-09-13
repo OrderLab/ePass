@@ -95,14 +95,6 @@ static void clean_insn_cg(struct bpf_ir_env *env, struct ir_insn *insn)
 	bpf_ir_array_clear(env, &extra->out);
 }
 
-static void erase_insn_cg(struct ir_insn *insn)
-{
-	list_del(&insn->list_ptr);
-	free_insn_cg(insn);
-	bpf_ir_array_free(&insn->users);
-	free_proto(insn);
-}
-
 static void clean_cg(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	struct ir_basic_block **pos = NULL;
@@ -1112,11 +1104,6 @@ static void normalize_alu(struct bpf_ir_env *env, struct ir_function *fun,
 		// new_insn->vr_type = alu_to_vr_type(insn->alu_op);
 		v0->type = IR_VALUE_INSN;
 		v0->data.insn_d = dst_insn;
-
-		if (v1->data.constant_d == 0) {
-			// Remove this instruction!
-			erase_insn_cg(insn);
-		}
 	} else if (t0 == STACK && t1 == REG) {
 		// reg1 = add stack reg2
 		// ==>
@@ -1156,30 +1143,8 @@ static void normalize_alu(struct bpf_ir_env *env, struct ir_function *fun,
 			v0->type = IR_VALUE_INSN;
 			v0->data.insn_d = dst_insn;
 		}
-		if (v1->data.constant_d == 0) {
-			// Remove this instruction!
-			erase_insn_cg(insn);
-		}
 	} else if (t0 == CONST && t1 == CONST) {
 		DBGASSERT(v1->const_type == IR_ALU_32);
-		// if (v0->const_type == IR_ALU_32) {
-		// 	// Load to reg
-		// 	struct ir_insn *new_insn = create_assign_insn_cg(
-		// 		env, insn, *v0, INSERT_FRONT);
-		// 	new_insn->alu_op = IR_ALU_64;
-		// 	insn_cg(new_insn)->dst = dst_insn;
-		// 	v0->type = IR_VALUE_INSN;
-		// 	v0->data.insn_d = dst_insn;
-		// } else {
-		// 	// ALU64
-		// 	struct ir_insn *new_insn = create_insn_base_cg(env, bb);
-		// 	new_insn->op = IR_INSN_LOADIMM_EXTRA;
-		// 	new_insn->imm_extra_type = IR_LOADIMM_IMM64;
-		// 	new_insn->imm64 = v0->data.constant_d;
-		// 	insn_cg(new_insn)->dst = dst_insn;
-		// 	v0->type = IR_VALUE_INSN;
-		// 	v0->data.insn_d = dst_insn;
-		// }
 		struct ir_insn *load_const_insn =
 			normalize_load_const(env, insn, v0);
 		insn_cg(load_const_insn)->dst = dst_insn;
