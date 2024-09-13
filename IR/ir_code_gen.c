@@ -2106,6 +2106,11 @@ static void translate_alu(struct ir_insn *insn)
 					       insn->alu_op,
 					       alu_code(insn->op));
 	} else if (t1 == CONST) {
+		// Remove the instruction in some special cases
+		if (insn->op == IR_INSN_ADD && v1.data.constant_d == 0) {
+			extra->translated_num = 0;
+			return;
+		}
 		extra->translated[0] = alu_imm(get_alloc_reg(dst_insn),
 					       v1.data.constant_d, insn->alu_op,
 					       alu_code(insn->op));
