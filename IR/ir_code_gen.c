@@ -19,23 +19,16 @@ static void init_cg(struct bpf_ir_env *env, struct ir_function *fun)
 		}
 	}
 
-	for (u8 i = 0; i < MAX_BPF_REG; ++i) {
+	for (u8 i = 0; i < BPF_REG_10; ++i) {
 		struct ir_insn *insn;
-		if (i == BPF_REG_10) {
-			// Move SP from fun->sp to CG Info
-			insn = fun->sp;
-			fun->cg_info.regs[i] = insn;
-			fun->sp = NULL;
-		} else {
-			SAFE_MALLOC(fun->cg_info.regs[i],
-				    sizeof(struct ir_insn));
-			// Those should be read-only
-			insn = fun->cg_info.regs[i];
-			insn->op = IR_INSN_REG;
-			insn->parent_bb = NULL;
-			INIT_ARRAY(&insn->users, struct ir_insn *);
-			insn->value_num = 0;
-		}
+		SAFE_MALLOC(fun->cg_info.regs[i], sizeof(struct ir_insn));
+		// Those should be read-only
+		insn = fun->cg_info.regs[i];
+		insn->op = IR_INSN_REG;
+		insn->parent_bb = NULL;
+		INIT_ARRAY(&insn->users, struct ir_insn *);
+		insn->value_num = 0;
+
 		insn->reg_id = i;
 		bpf_ir_init_insn_cg(env, insn);
 		CHECK_ERR();
@@ -49,6 +42,14 @@ static void init_cg(struct bpf_ir_env *env, struct ir_function *fun)
 		extra->spilled_size = 0;
 		extra->nonvr = true;
 	}
+	bpf_ir_init_insn_cg(env, fun->sp);
+	struct ir_insn_cg_extra *extra = insn_cg(fun->sp);
+	extra->alloc_reg = 10;
+	extra->dst = fun->sp;
+	extra->allocated = 1;
+	extra->spilled = 0;
+	extra->spilled_size = 0;
+	extra->nonvr = true;
 }
 
 static void free_insn_cg(struct ir_insn *insn)
@@ -78,12 +79,13 @@ static void free_cg_res(struct ir_function *fun)
 		}
 	}
 
-	for (u8 i = 0; i < MAX_BPF_REG; ++i) {
+	for (u8 i = 0; i < BPF_REG_10; ++i) {
 		struct ir_insn *insn = fun->cg_info.regs[i];
 		bpf_ir_array_free(&insn->users);
 		free_insn_cg(insn);
 		free_proto(insn);
 	}
+	free_insn_cg(fun->sp);
 }
 
 static void clean_insn_cg(struct bpf_ir_env *env, struct ir_insn *insn)
@@ -113,10 +115,11 @@ static void clean_cg(struct bpf_ir_env *env, struct ir_function *fun)
 		}
 	}
 
-	for (u8 i = 0; i < MAX_BPF_REG; ++i) {
+	for (u8 i = 0; i < BPF_REG_10; ++i) {
 		struct ir_insn *insn = fun->cg_info.regs[i];
 		clean_insn_cg(env, insn);
 	}
+	clean_insn_cg(env, fun->sp); // But should have no effect I guess?
 	bpf_ir_array_clear(env, &fun->cg_info.all_var);
 }
 
@@ -1033,8 +1036,7 @@ static void spill_callee(struct bpf_ir_env *env, struct ir_function *fun)
 			st->values[0] = bpf_ir_value_insn(fun->cg_info.regs[i]);
 			st->value_num = 1;
 			st->vr_type = IR_VR_TYPE_64;
-			st->addr_val.value = bpf_ir_value_insn(
-				fun->cg_info.regs[BPF_REG_10]);
+			st->addr_val.value = bpf_ir_value_stack_ptr(fun);
 			st->addr_val.offset = -off * 8;
 			struct ir_insn_cg_extra *extra = insn_cg(st);
 			extra->dst = NULL;
@@ -1050,8 +1052,8 @@ static void spill_callee(struct bpf_ir_env *env, struct ir_function *fun)
 				ld->op = IR_INSN_LOADRAW;
 				ld->value_num = 0;
 				ld->vr_type = IR_VR_TYPE_64;
-				ld->addr_val.value = bpf_ir_value_insn(
-					fun->cg_info.regs[BPF_REG_10]);
+				ld->addr_val.value =
+					bpf_ir_value_stack_ptr(fun);
 				ld->addr_val.offset = -off * 8;
 
 				extra = insn_cg(ld);
@@ -1831,7 +1833,7 @@ static void add_stack_offset_pre_cg(struct bpf_ir_env *env,
 static void add_stack_offset(struct bpf_ir_env *env, struct ir_function *fun,
 			     s16 offset)
 {
-	struct array users = fun->cg_info.regs[BPF_REG_10]->users;
+	struct array users = fun->sp->users;
 	struct ir_insn **pos;
 	array_for(pos, users)
 	{
@@ -1840,8 +1842,7 @@ static void add_stack_offset(struct bpf_ir_env *env, struct ir_function *fun,
 		if (insn->op == IR_INSN_LOADRAW ||
 		    insn->op == IR_INSN_STORERAW) {
 			if (insn->addr_val.value.type == IR_VALUE_INSN &&
-			    insn->addr_val.value.data.insn_d ==
-				    fun->cg_info.regs[BPF_REG_10]) {
+			    insn->addr_val.value.data.insn_d == fun->sp) {
 				insn->addr_val.offset += offset;
 				continue;
 			}

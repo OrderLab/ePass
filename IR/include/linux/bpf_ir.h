@@ -505,7 +505,7 @@ struct code_gen_info {
 	struct array all_var;
 
 	// BPF Register Virtual Instruction (used as dst)
-	struct ir_insn *regs[MAX_BPF_REG];
+	struct ir_insn *regs[BPF_REG_10]; // Only use R0-R9
 
 	size_t callee_num;
 
@@ -531,8 +531,6 @@ struct ir_function {
 	struct array end_bbs;
 
 	// Stack pointer
-	// Only used in IR passes
-	// Will be moved to CG info in CG
 	struct ir_insn *sp;
 
 	// Function argument

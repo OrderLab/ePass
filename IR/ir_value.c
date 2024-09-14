@@ -21,5 +21,5 @@ struct ir_value bpf_ir_value_insn(struct ir_insn *insn)
 
 struct ir_value bpf_ir_value_stack_ptr(struct ir_function *fun)
 {
-	return bpf_ir_value_insn(fun->cg_info.regs[BPF_REG_10]);
+	return bpf_ir_value_insn(fun->sp);
 }
