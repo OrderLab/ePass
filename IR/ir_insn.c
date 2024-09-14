@@ -335,15 +335,15 @@ static struct ir_insn *create_allocarray_insn_base(struct bpf_ir_env *env,
 static struct ir_insn *create_getelemptr_insn_base(struct bpf_ir_env *env,
 						   struct ir_basic_block *bb,
 						   struct ir_insn *alloca_insn,
-						   s32 offset)
+						   struct ir_value offset)
 {
 	struct ir_insn *new_insn = bpf_ir_create_insn_base(env, bb);
 	new_insn->op = IR_INSN_GETELEMPTR;
-	new_insn->addr_val.offset = offset;
-	new_insn->addr_val.value.type = IR_VALUE_INSN;
-	new_insn->addr_val.value.data.insn_d = alloca_insn;
-	new_insn->value_num = 0;
-	bpf_ir_val_add_user(env, new_insn->addr_val.value, new_insn);
+	new_insn->values[0] = bpf_ir_value_insn(alloca_insn);
+	new_insn->values[1] = offset;
+	new_insn->value_num = 2;
+	bpf_ir_val_add_user(env, new_insn->values[0], new_insn);
+	bpf_ir_val_add_user(env, new_insn->values[1], new_insn);
 	return new_insn;
 }
 

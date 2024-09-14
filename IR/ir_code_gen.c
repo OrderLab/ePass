@@ -1630,6 +1630,39 @@ static bool spill_cond_jump(struct bpf_ir_env *env, struct ir_function *fun,
 	return false;
 }
 
+static bool spill_getelemptr(struct bpf_ir_env *env, struct ir_function *fun,
+			     struct ir_insn *insn)
+{
+	struct ir_value *v0 = &insn->values[0];
+	struct ir_value *v1 = &insn->values[1];
+	enum val_type t0 = insn->value_num >= 1 ? vtype(*v0) : UNDEF;
+	enum val_type t1 = insn->value_num >= 2 ? vtype(*v1) : UNDEF;
+	enum val_type tdst = vtype_insn(insn);
+	struct ir_insn_cg_extra *extra = insn_cg(insn);
+	struct ir_insn *dst_insn = insn_dst(insn);
+	DBGASSERT(t0 == STACK);
+	DBGASSERT(v0->type == IR_VALUE_INSN);
+	DBGASSERT(v0->data.insn_d->op == IR_INSN_ALLOCARRAY);
+	if (tdst == STACK) {
+		extra->dst = fun->cg_info.regs[0];
+		struct ir_insn *tmp = bpf_ir_create_assign_insn_cg(
+			env, insn, bpf_ir_value_insn(fun->cg_info.regs[0]),
+			INSERT_BACK);
+		insn_cg(tmp)->dst = dst_insn;
+		spill_getelemptr(env, fun, insn);
+		return true;
+	}
+	if (t1 == STACK) {
+		cgir_load_stack_to_reg(env, fun, insn, v1, IR_VR_TYPE_64, 0);
+		return true;
+	}
+	if (t1 == CONST && v1->const_type == IR_ALU_64) {
+		cgir_load_const_to_reg(env, fun, insn, v1, 0);
+		return true;
+	}
+	return false;
+}
+
 static void check_cgir(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	// Sanity check of CGIR (the IR after `check_need_spill`)
@@ -1710,6 +1743,10 @@ static bool check_need_spill(struct bpf_ir_env *env, struct ir_function *fun)
 			if (insn->op == IR_INSN_ALLOC) {
 				// dst = alloc <size>
 				// Nothing to do
+			} else if (insn->op == IR_INSN_ALLOCARRAY) {
+				// Nothing to do
+			} else if (insn->op == IR_INSN_GETELEMPTR) {
+				need_modify = spill_getelemptr(env, fun, insn);
 			} else if (insn->op == IR_INSN_STORE) {
 				need_modify = spill_store(env, fun, insn);
 			} else if (insn->op == IR_INSN_LOAD) {

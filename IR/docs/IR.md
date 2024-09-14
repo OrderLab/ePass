@@ -88,11 +88,11 @@ Users could load or store values to it by using `storeraw` and `loadraw`.
 
 ### `getelemptr`
 
-Syntax: `getelemptr <addr_val>`
+Syntax: `getelemptr <values[0]> <values[1]>`
 
 Get a pointer to the element in an array.
 
-The value in `addr_val` should point to a `allocarray` instruction.
+`values[0]` should point to a `allocarray` instruction.
 
 ### `store`
 
