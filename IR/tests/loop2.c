@@ -4,7 +4,7 @@
 SEC("xdp")
 int prog(void *ctx)
 {
-	bpf_ktime_get_ns();
+	// bpf_ktime_get_ns();
 	for (__u64 i = 0; i < 1000; ++i) {
 		bpf_ktime_get_ns();
 	}
