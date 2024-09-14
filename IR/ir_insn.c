@@ -434,4 +434,168 @@ static struct ir_insn *create_phi_insn_base(struct bpf_ir_env *env,
 
 /* Generated Constructors */
 
+struct ir_insn *create_alloc_insn(struct bpf_ir_env *env,
+				  struct ir_insn *pos_insn,
+				  enum ir_vr_type type,
+				  enum insert_position pos)
+{
+	struct ir_insn *new_insn =
+		create_alloc_insn_base(env, pos_insn->parent_bb, type);
+	bpf_ir_insert_at(new_insn, pos_insn, pos);
+	return new_insn;
+}
+
+struct ir_insn *create_alloc_insn_bb(struct bpf_ir_env *env,
+				     struct ir_basic_block *pos_bb,
+				     enum ir_vr_type type,
+				     enum insert_position pos)
+{
+	struct ir_insn *new_insn = create_alloc_insn_base(env, pos_bb, type);
+	bpf_ir_insert_at_bb(new_insn, pos_bb, pos);
+	return new_insn;
+}
+
+struct ir_insn *create_store_insn(struct bpf_ir_env *env,
+				  struct ir_insn *pos_insn,
+				  struct ir_insn *insn, struct ir_value val,
+				  enum insert_position pos)
+{
+	struct ir_insn *new_insn =
+		create_store_insn_base(env, pos_insn->parent_bb, insn, val);
+	bpf_ir_insert_at(new_insn, pos_insn, pos);
+	return new_insn;
+}
+
+struct ir_insn *create_store_insn_bb(struct bpf_ir_env *env,
+				     struct ir_basic_block *pos_bb,
+				     struct ir_insn *insn, struct ir_value val,
+				     enum insert_position pos)
+{
+	struct ir_insn *new_insn =
+		create_store_insn_base(env, pos_bb, insn, val);
+	bpf_ir_insert_at_bb(new_insn, pos_bb, pos);
+	return new_insn;
+}
+
+struct ir_insn *create_load_insn(struct bpf_ir_env *env,
+				 struct ir_insn *pos_insn, struct ir_value val,
+				 enum insert_position pos)
+{
+	struct ir_insn *new_insn =
+		create_load_insn_base(env, pos_insn->parent_bb, val);
+	bpf_ir_insert_at(new_insn, pos_insn, pos);
+	return new_insn;
+}
+
+struct ir_insn *create_load_insn_bb(struct bpf_ir_env *env,
+				    struct ir_basic_block *pos_bb,
+				    struct ir_value val,
+				    enum insert_position pos)
+{
+	struct ir_insn *new_insn = create_load_insn_base(env, pos_bb, val);
+	bpf_ir_insert_at_bb(new_insn, pos_bb, pos);
+	return new_insn;
+}
+
+struct ir_insn *create_ja_insn(struct bpf_ir_env *env, struct ir_insn *pos_insn,
+			       struct ir_basic_block *to_bb,
+			       enum insert_position pos)
+{
+	struct ir_insn *new_insn =
+		create_ja_insn_base(env, pos_insn->parent_bb, to_bb);
+	bpf_ir_insert_at(new_insn, pos_insn, pos);
+	return new_insn;
+}
+
+struct ir_insn *create_ja_insn_bb(struct bpf_ir_env *env,
+				  struct ir_basic_block *pos_bb,
+				  struct ir_basic_block *to_bb,
+				  enum insert_position pos)
+{
+	struct ir_insn *new_insn = create_ja_insn_base(env, pos_bb, to_bb);
+	bpf_ir_insert_at_bb(new_insn, pos_bb, pos);
+	return new_insn;
+}
+
+struct ir_insn *create_ret_insn(struct bpf_ir_env *env,
+				struct ir_insn *pos_insn, struct ir_value val,
+				enum insert_position pos)
+{
+	struct ir_insn *new_insn =
+		create_ret_insn_base(env, pos_insn->parent_bb, val);
+	bpf_ir_insert_at(new_insn, pos_insn, pos);
+	return new_insn;
+}
+
+struct ir_insn *create_ret_insn_bb(struct bpf_ir_env *env,
+				   struct ir_basic_block *pos_bb,
+				   struct ir_value val,
+				   enum insert_position pos)
+{
+	struct ir_insn *new_insn = create_ret_insn_base(env, pos_bb, val);
+	bpf_ir_insert_at_bb(new_insn, pos_bb, pos);
+	return new_insn;
+}
+
+struct ir_insn *create_assign_insn(struct bpf_ir_env *env,
+				   struct ir_insn *pos_insn,
+				   struct ir_value val,
+				   enum insert_position pos)
+{
+	struct ir_insn *new_insn =
+		create_assign_insn_base(env, pos_insn->parent_bb, val);
+	bpf_ir_insert_at(new_insn, pos_insn, pos);
+	return new_insn;
+}
+
+struct ir_insn *create_assign_insn_bb(struct bpf_ir_env *env,
+				      struct ir_basic_block *pos_bb,
+				      struct ir_value val,
+				      enum insert_position pos)
+{
+	struct ir_insn *new_insn = create_assign_insn_base(env, pos_bb, val);
+	bpf_ir_insert_at_bb(new_insn, pos_bb, pos);
+	return new_insn;
+}
+
+struct ir_insn *create_assign_insn_cg(struct bpf_ir_env *env,
+				      struct ir_insn *pos_insn,
+				      struct ir_value val,
+				      enum insert_position pos)
+{
+	struct ir_insn *new_insn =
+		create_assign_insn_base_cg(env, pos_insn->parent_bb, val);
+	bpf_ir_insert_at(new_insn, pos_insn, pos);
+	return new_insn;
+}
+
+struct ir_insn *create_assign_insn_bb_cg(struct bpf_ir_env *env,
+					 struct ir_basic_block *pos_bb,
+					 struct ir_value val,
+					 enum insert_position pos)
+{
+	struct ir_insn *new_insn = create_assign_insn_base_cg(env, pos_bb, val);
+	bpf_ir_insert_at_bb(new_insn, pos_bb, pos);
+	return new_insn;
+}
+
+struct ir_insn *create_phi_insn(struct bpf_ir_env *env,
+				struct ir_insn *pos_insn,
+				enum insert_position pos)
+{
+	struct ir_insn *new_insn =
+		create_phi_insn_base(env, pos_insn->parent_bb);
+	bpf_ir_insert_at(new_insn, pos_insn, pos);
+	return new_insn;
+}
+
+struct ir_insn *create_phi_insn_bb(struct bpf_ir_env *env,
+				   struct ir_basic_block *pos_bb,
+				   enum insert_position pos)
+{
+	struct ir_insn *new_insn = create_phi_insn_base(env, pos_bb);
+	bpf_ir_insert_at_bb(new_insn, pos_bb, pos);
+	return new_insn;
+}
+
 /* Generated Constructors */

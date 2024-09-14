@@ -2,7 +2,11 @@
 format:
 	./scripts/format.sh
 
-build: format
+genctor:
+	./scripts/gen_insn_ctor.py
+	./scripts/format.sh
+
+build: genctor
 	cmake --build build
 
 kernel: build

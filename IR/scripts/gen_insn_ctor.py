@@ -39,7 +39,7 @@ def handle_ir(matches, header, src):
 struct ir_insn *{insn}{extra}(struct bpf_ir_env *env, struct ir_insn *pos_insn, {pargs} enum insert_position pos)
 {{
 	struct ir_insn *new_insn =
-		{insn}_base{extra}(pos_insn->parent_bb {cargs});
+		{insn}_base{extra}(env, pos_insn->parent_bb {cargs});
 	bpf_ir_insert_at(new_insn, pos_insn, pos);
 	return new_insn;
 }}
@@ -47,7 +47,7 @@ struct ir_insn *{insn}{extra}(struct bpf_ir_env *env, struct ir_insn *pos_insn, 
 struct ir_insn *{insn}_bb{extra}(struct bpf_ir_env *env, struct ir_basic_block *pos_bb, {pargs} enum insert_position pos)
 {{
 	struct ir_insn *new_insn =
-		{insn}_base{extra}(pos_bb {cargs});
+		{insn}_base{extra}(env, pos_bb {cargs});
 	bpf_ir_insert_at_bb(new_insn, pos_bb, pos);
 	return new_insn;
 }}
@@ -67,18 +67,18 @@ def insert(header, src):
         srcfile = f.read().split("/* Generated Constructors */")
     with open("ir_insn.c", "w") as f:
         f.write(srcfile[0])
-        f.write("/* Generated Constructors */")
+        f.write("/* Generated Constructors */\n")
         f.write(src)
-        f.write("/* Generated Constructors */")
+        f.write("\n/* Generated Constructors */")
         f.write(srcfile[2])
     headerfile = ""
     with open("include/linux/bpf_ir.h") as f:
         headerfile = f.read().split("/* Instruction Constructors */")
     with open("include/linux/bpf_ir.h", "w") as f:
         f.write(headerfile[0])
-        f.write("/* Instruction Constructors */")
+        f.write("/* Instruction Constructors */\n")
         f.write(header)
-        f.write("/* Instruction Constructors */")
+        f.write("\n/* Instruction Constructors */")
         f.write(headerfile[2])
 
 
