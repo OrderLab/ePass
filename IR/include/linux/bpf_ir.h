@@ -214,8 +214,8 @@ enum ir_alu_op_type {
 
 enum ir_value_type {
 	IR_VALUE_CONSTANT,
-	IR_VALUE_CONSTANT_RAWOFF, // A constant value in raw operations to be added during code
-	// generation
+	// A constant value in raw operations to be added during code generation
+	IR_VALUE_CONSTANT_RAWOFF,
 	IR_VALUE_INSN,
 	IR_VALUE_UNDEF,
 };
@@ -278,6 +278,7 @@ int bpf_ir_valid_vr_type(enum ir_vr_type type);
 
 enum ir_insn_type {
 	IR_INSN_ALLOC,
+	IR_INSN_ALLOCARRAY,
 	IR_INSN_STORE,
 	IR_INSN_LOAD,
 	IR_INSN_LOADIMM_EXTRA,
@@ -364,7 +365,8 @@ struct ir_insn {
 	union {
 		s32 fid; // Function ID
 		s32 fun_arg_id; // Function argument ID
-		s32 reg_id;
+		s32 reg_id; // Register ID
+		u32 array_num; // Array number
 	};
 
 	enum ir_loadimm_extra_type imm_extra_type; // For 64 imm load
