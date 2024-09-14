@@ -520,7 +520,8 @@ struct code_gen_info {
 
 	size_t callee_num;
 
-	s16 stack_offset;
+	// The stack offset
+	s32 stack_offset;
 
 	// Whether to spill callee saved registers
 	u8 spill_callee;
@@ -905,7 +906,7 @@ struct ir_insn_cg_extra {
 
 	// Whether the VR is allocated with a real register
 	// If it's a pre-colored register, it's also 1
-	u8 allocated;
+	bool allocated;
 
 	// When allocating register, whether dst will be spilled
 	// 0: Not spilled

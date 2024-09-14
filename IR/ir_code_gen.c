@@ -37,7 +37,7 @@ static void init_cg(struct bpf_ir_env *env, struct ir_function *fun)
 		extra->alloc_reg = i;
 		extra->dst = insn;
 		// Pre-colored registers are allocated
-		extra->allocated = 1;
+		extra->allocated = true;
 		extra->spilled = 0;
 		extra->spilled_size = 0;
 		extra->nonvr = true;
@@ -46,7 +46,7 @@ static void init_cg(struct bpf_ir_env *env, struct ir_function *fun)
 	struct ir_insn_cg_extra *extra = insn_cg(fun->sp);
 	extra->alloc_reg = 10;
 	extra->dst = fun->sp;
-	extra->allocated = 1;
+	extra->allocated = true;
 	extra->spilled = 0;
 	extra->spilled_size = 0;
 	extra->nonvr = true;
@@ -108,10 +108,12 @@ static void clean_cg(struct bpf_ir_env *env, struct ir_function *fun)
 		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
 			clean_insn_cg(env, insn);
 			struct ir_insn_cg_extra *extra = insn_cg(insn);
-			extra->allocated = 0;
-			extra->spilled = 0;
-			extra->spilled_size = 0;
-			extra->alloc_reg = 0;
+			if (insn->op != IR_INSN_ALLOCARRAY) {
+				extra->allocated = false;
+				extra->spilled = 0;
+				extra->spilled_size = 0;
+				extra->alloc_reg = 0;
+			}
 		}
 	}
 
@@ -585,7 +587,7 @@ static void graph_coloring(struct bpf_ir_env *env, struct ir_function *fun)
 		bool need_spill = true;
 		for (u8 i = 0; i < MAX_BPF_REG; i++) {
 			if (!used_reg[i]) {
-				extra->allocated = 1;
+				extra->allocated = true;
 				PRINT_LOG(env, "Allocate r%u for %%%zu\n", i,
 					  insn->_insn_id);
 				extra->alloc_reg = i;
@@ -607,7 +609,7 @@ static void graph_coloring(struct bpf_ir_env *env, struct ir_function *fun)
 					}
 				}
 				if (found) {
-					extra->allocated = 1;
+					extra->allocated = true;
 					extra->spilled = sp;
 					extra->spilled_size =
 						8; // Default size for VR
@@ -1255,7 +1257,7 @@ static void normalize(struct bpf_ir_env *env, struct ir_function *fun)
 				// jmp const/reg reg
 				// OK
 			} else {
-				CRITICAL("No such instruction");
+				RAISE_ERROR("No such instruction");
 			}
 		}
 	}
@@ -2262,6 +2264,50 @@ static void translate(struct bpf_ir_env *env, struct ir_function *fun)
 	}
 }
 
+static u32 sizeof_vr_type(enum ir_vr_type type)
+{
+	switch (type) {
+	case IR_VR_TYPE_32:
+		return 4;
+	case IR_VR_TYPE_16:
+		return 2;
+	case IR_VR_TYPE_8:
+		return 1;
+	case IR_VR_TYPE_64:
+		return 8;
+	default:
+		CRITICAL("Error");
+	}
+}
+
+// Spill all `allocarray` instructions
+static void spill_array(struct bpf_ir_env *env, struct ir_function *fun)
+{
+	u32 offset = 0;
+	struct ir_basic_block **pos;
+	array_for(pos, fun->reachable_bbs)
+	{
+		struct ir_basic_block *bb = *pos;
+		struct ir_insn *insn, *tmp;
+		list_for_each_entry_safe(insn, tmp, &bb->ir_insn_head,
+					 list_ptr) {
+			if (insn->op == IR_INSN_ALLOCARRAY) {
+				struct ir_insn_cg_extra *extra = insn_cg(insn);
+				extra->allocated = true;
+				// Calculate the offset
+				u32 size = insn->array_num *
+					   sizeof_vr_type(insn->vr_type);
+				if (size == 0) {
+					RAISE_ERROR("Array size is 0");
+				}
+				offset -= (((size - 1) / 8) + 1) * 8;
+				extra->spilled = offset;
+				extra->spilled_size = size;
+			}
+		}
+	}
+}
+
 // Interface Implementation
 
 void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
@@ -2288,6 +2334,10 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 
 	// Debugging settings
 	fun->cg_info.spill_callee = 0;
+
+	spill_array(env, fun);
+	CHECK_ERR();
+	print_ir_prog_cg_dst(env, fun, "Spilling Arrays");
 
 	// Step 3: Use explicit real registers
 	explicit_reg(env, fun); // Still in SSA form, users are available
@@ -2397,7 +2447,7 @@ void bpf_ir_init_insn_cg(struct bpf_ir_env *env, struct ir_insn *insn)
 		extra->dst = insn;
 	}
 	INIT_ARRAY(&extra->adj, struct ir_insn *);
-	extra->allocated = 0;
+	extra->allocated = false;
 	extra->spilled = 0;
 	extra->alloc_reg = 0;
 	INIT_ARRAY(&extra->gen, struct ir_insn *);
