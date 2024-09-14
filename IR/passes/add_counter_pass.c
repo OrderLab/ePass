@@ -16,11 +16,22 @@ void add_counter(struct bpf_ir_env *env, struct ir_function *fun)
 	val.data.constant_d = 1;
 	val.const_type = IR_ALU_32;
 	bpf_ir_create_ret_insn_bb(env, err_bb, val, INSERT_BACK);
+
 	// Create an 8 bytes array to store the error message "exit"
-	struct ir_insn *alloc_array = bpf_ir_create_allocarray_insn_bb(
-		env, err_bb, IR_VR_TYPE_64, 1, INSERT_FRONT);
-	struct ir_insn *getelemptr = bpf_ir_create_getelemptr_insn(
-		env, alloc_array, alloc_array, -4, INSERT_BACK);
+	struct ir_insn *insn;
+	insn = bpf_ir_create_allocarray_insn_bb(env, err_bb, IR_VR_TYPE_64, 1,
+						INSERT_FRONT);
+	struct ir_insn *elemptr =
+		bpf_ir_create_getelemptr_insn(env, insn, insn, -4, INSERT_BACK);
+
+	insn = bpf_ir_create_call_insn(env, elemptr, 6,
+				       INSERT_BACK); // A printk call
+
+	bpf_ir_phi_add_call_arg(env, insn, bpf_ir_value_insn(elemptr));
+	val.type = IR_VALUE_CONSTANT;
+	val.data.constant_d = 5;
+
+	bpf_ir_phi_add_call_arg(env, insn, val);
 
 	array_for(pos, fun->reachable_bbs)
 	{
