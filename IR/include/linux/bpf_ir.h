@@ -674,9 +674,9 @@ struct ir_insn *bpf_ir_prev_insn(struct ir_insn *insn);
 
 struct ir_insn *bpf_ir_next_insn(struct ir_insn *insn);
 
-/* Instruction Constructors Start */
+/* Instruction Constructors */
 
-/* Instruction Constructors End */
+/* Instruction Constructors */
 
 void bpf_ir_phi_add_operand(struct bpf_ir_env *env, struct ir_insn *insn,
 			    struct ir_basic_block *bb, struct ir_value val);

@@ -40,7 +40,7 @@ struct ir_insn *{insn}{extra}(struct bpf_ir_env *env, struct ir_insn *pos_insn, 
 {{
 	struct ir_insn *new_insn =
 		{insn}_base{extra}(pos_insn->parent_bb {cargs});
-	insert_at(new_insn, pos_insn, pos);
+	bpf_ir_insert_at(new_insn, pos_insn, pos);
 	return new_insn;
 }}
 
@@ -48,7 +48,7 @@ struct ir_insn *{insn}_bb{extra}(struct bpf_ir_env *env, struct ir_basic_block *
 {{
 	struct ir_insn *new_insn =
 		{insn}_base{extra}(pos_bb {cargs});
-	insert_at_bb(new_insn, pos_bb, pos);
+	bpf_ir_insert_at_bb(new_insn, pos_bb, pos);
 	return new_insn;
 }}
 """
@@ -64,14 +64,23 @@ struct ir_insn *{insn}_bb{extra}(struct bpf_ir_env *env, struct ir_basic_block *
 def insert(header, src):
     srcfile = ""
     with open("ir_insn.c") as f:
-        srcfile = f.read().split("/* Generated Constructors End */")
-    print(srcfile)
+        srcfile = f.read().split("/* Generated Constructors */")
     with open("ir_insn.c", "w") as f:
         f.write(srcfile[0])
-        f.write("/* Generated Constructors Start */")
-        # f.write(header)
-        # f.write(src)
-        f.write("/* Generated Constructors End */")
+        f.write("/* Generated Constructors */")
+        f.write(src)
+        f.write("/* Generated Constructors */")
+        f.write(srcfile[2])
+    headerfile = ""
+    with open("include/linux/bpf_ir.h") as f:
+        headerfile = f.read().split("/* Instruction Constructors */")
+    with open("include/linux/bpf_ir.h", "w") as f:
+        f.write(headerfile[0])
+        f.write("/* Instruction Constructors */")
+        f.write(header)
+        f.write("/* Instruction Constructors */")
+        f.write(headerfile[2])
+
 
 def main():
     header = []

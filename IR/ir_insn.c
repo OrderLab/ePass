@@ -432,6 +432,6 @@ static struct ir_insn *create_phi_insn_base(struct bpf_ir_env *env,
 	return new_insn;
 }
 
-/* Generated Constructors Start */
+/* Generated Constructors */
 
-/* Generated Constructors End */
+/* Generated Constructors */
