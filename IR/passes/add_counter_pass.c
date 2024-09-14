@@ -16,6 +16,7 @@ void add_counter(struct bpf_ir_env *env, struct ir_function *fun)
 	val.data.constant_d = 1;
 	val.const_type = IR_ALU_32;
 	bpf_ir_create_ret_insn_bb(env, err_bb, val, INSERT_BACK);
+	// Create an 8 bytes
 
 	array_for(pos, fun->reachable_bbs)
 	{

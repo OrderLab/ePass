@@ -279,6 +279,7 @@ int bpf_ir_valid_vr_type(enum ir_vr_type type);
 enum ir_insn_type {
 	IR_INSN_ALLOC,
 	IR_INSN_ALLOCARRAY,
+	IR_INSN_GETELEMPTR,
 	IR_INSN_STORE,
 	IR_INSN_LOAD,
 	IR_INSN_LOADIMM_EXTRA,
@@ -312,11 +313,13 @@ enum ir_insn_type {
 
 /**
     INSN =
-          ALLOC <ir_vr_type>
+          ALLOC <vr_type>
         | STORE <value:ptr>, <value>
         | LOAD <value:ptr>
-        | STORERAW <ir_vr_type> <ir_address_value>, <value>
-        | LOADRAW <ir_vr_type> <ir_address_value>
+		| IR_INSN_ALLOCARRAY <vr_type> <array_num>
+		| IR_INSN_GETELEMPTR <ir_address_value>
+        | STORERAW <vr_type> <ir_address_value>, <value>
+        | LOADRAW <vr_type> <ir_address_value>
 
         | ADD <value>, <value>
         | SUB <value>, <value>
@@ -692,6 +695,18 @@ struct ir_insn *bpf_ir_create_allocarray_insn(struct bpf_ir_env *env,
 struct ir_insn *bpf_ir_create_allocarray_insn_bb(struct bpf_ir_env *env,
 						 struct ir_basic_block *pos_bb,
 						 enum ir_vr_type type, u32 num,
+						 enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_getelemptr_insn(struct bpf_ir_env *env,
+					      struct ir_insn *pos_insn,
+					      struct ir_insn *alloca_insn,
+					      s32 offset,
+					      enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_getelemptr_insn_bb(struct bpf_ir_env *env,
+						 struct ir_basic_block *pos_bb,
+						 struct ir_insn *alloca_insn,
+						 s32 offset,
 						 enum insert_position pos);
 
 struct ir_insn *bpf_ir_create_store_insn(struct bpf_ir_env *env,

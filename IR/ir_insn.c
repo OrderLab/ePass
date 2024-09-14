@@ -322,6 +322,20 @@ static struct ir_insn *create_allocarray_insn_base(struct bpf_ir_env *env,
 	return new_insn;
 }
 
+static struct ir_insn *create_getelemptr_insn_base(struct bpf_ir_env *env,
+						   struct ir_basic_block *bb,
+						   struct ir_insn *alloca_insn,
+						   s32 offset)
+{
+	struct ir_insn *new_insn = bpf_ir_create_insn_base(env, bb);
+	new_insn->op = IR_INSN_GETELEMPTR;
+	new_insn->addr_val.offset = offset;
+	new_insn->addr_val.value.type = IR_VALUE_INSN;
+	new_insn->addr_val.value.data.insn_d = alloca_insn;
+	new_insn->value_num = 0;
+	return new_insn;
+}
+
 static struct ir_insn *create_store_insn_base(struct bpf_ir_env *env,
 					      struct ir_basic_block *bb,
 					      struct ir_insn *insn,
@@ -487,6 +501,30 @@ struct ir_insn *bpf_ir_create_allocarray_insn_bb(struct bpf_ir_env *env,
 {
 	struct ir_insn *new_insn =
 		create_allocarray_insn_base(env, pos_bb, type, num);
+	bpf_ir_insert_at_bb(new_insn, pos_bb, pos);
+	return new_insn;
+}
+
+struct ir_insn *bpf_ir_create_getelemptr_insn(struct bpf_ir_env *env,
+					      struct ir_insn *pos_insn,
+					      struct ir_insn *alloca_insn,
+					      s32 offset,
+					      enum insert_position pos)
+{
+	struct ir_insn *new_insn = create_getelemptr_insn_base(
+		env, pos_insn->parent_bb, alloca_insn, offset);
+	bpf_ir_insert_at(new_insn, pos_insn, pos);
+	return new_insn;
+}
+
+struct ir_insn *bpf_ir_create_getelemptr_insn_bb(struct bpf_ir_env *env,
+						 struct ir_basic_block *pos_bb,
+						 struct ir_insn *alloca_insn,
+						 s32 offset,
+						 enum insert_position pos)
+{
+	struct ir_insn *new_insn =
+		create_getelemptr_insn_base(env, pos_bb, alloca_insn, offset);
 	bpf_ir_insert_at_bb(new_insn, pos_bb, pos);
 	return new_insn;
 }
