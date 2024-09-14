@@ -30,5 +30,6 @@ fn main() {
         let env = bpf_ir_init_env();
         bpf_ir_run(env, prog.insns().as_ptr(), prog.insns().len() as c_ulong);
         bpf_ir_print_log_dbg(env);
+        bpf_ir_free_env(env);
     }
 }
