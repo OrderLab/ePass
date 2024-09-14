@@ -10,7 +10,6 @@ pub struct BpfIrEnv {
     log_pos: c_ulong,
 }
 
-#[link(name = "bpf_ir")]
 extern "C" {
     pub fn bpf_ir_print_log_dbg(env: *mut BpfIrEnv);
     pub fn bpf_ir_init_env() -> *mut BpfIrEnv;
@@ -27,9 +26,6 @@ fn main() {
         .progs()
         .find(|map| map.name() == "prog")
         .expect("Failed to find program");
-    // prog.insns().iter().for_each(|insn| {
-    //     println!("{:?}", insn);
-    // });
     unsafe {
         let env = bpf_ir_init_env();
         bpf_ir_run(env, prog.insns().as_ptr(), prog.insns().len() as c_ulong);

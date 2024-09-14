@@ -3,14 +3,14 @@
 
 int print(const struct bpf_insn *insns, size_t len)
 {
-	for (int i = 0; i < len; ++i) {
+	for (size_t i = 0; i < len; ++i) {
 		const struct bpf_insn *insn = &insns[i];
 		// printf("insn[%d]: code=%x, dst_reg=%x, src_reg=%x, off=%x, imm=%x\n",
 		//        i, insn->code, insn->dst_reg, insn->src_reg, insn->off,
 		//        insn->imm);
 		__u64 data;
 		memcpy(&data, insn, sizeof(struct bpf_insn));
-		printf("insn[%d]: %llu\n", i, data);
+		printf("insn[%zu]: %llu\n", i, data);
 	}
 	return 0;
 }

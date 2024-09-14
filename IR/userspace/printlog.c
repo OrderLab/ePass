@@ -5,9 +5,9 @@
 
 int print(const struct bpf_insn *insns, size_t len)
 {
-	for (int i = 0; i < len; ++i) {
+	for (size_t i = 0; i < len; ++i) {
 		const struct bpf_insn *insn = &insns[i];
-		printf("insn[%d]: code=%x, dst_reg=%x, src_reg=%x, off=%x, imm=%x\n",
+		printf("insn[%zu]: code=%x, dst_reg=%x, src_reg=%x, off=%x, imm=%x\n",
 		       i, insn->code, insn->dst_reg, insn->src_reg, insn->off,
 		       insn->imm);
 		// u64 data;

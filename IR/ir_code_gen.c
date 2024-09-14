@@ -436,17 +436,6 @@ static void conflict_analysis(struct bpf_ir_env *env, struct ir_function *fun)
 	}
 }
 
-static enum ir_vr_type alu_to_vr_type(enum ir_alu_op_type ty)
-{
-	if (ty == IR_ALU_32) {
-		return IR_VR_TYPE_32;
-	} else if (ty == IR_ALU_64) {
-		return IR_VR_TYPE_64;
-	} else {
-		CRITICAL("Error");
-	}
-}
-
 // Make register usage explicit
 // Example:
 // %x = add %y, %arg1
@@ -843,24 +832,25 @@ static enum val_type vtype(struct ir_value val)
 	}
 }
 
-static bool is_vr_insn(struct ir_insn *insn)
-{
-	if (insn == NULL || insn->user_data == NULL) {
-		// Void
-		return false;
-	}
-	return !insn_cg(insn)->nonvr;
-}
+/* Test whether an instruction is a VR instruction */
+// static bool is_vr_insn(struct ir_insn *insn)
+// {
+// 	if (insn == NULL || insn->user_data == NULL) {
+// 		// Void
+// 		return false;
+// 	}
+// 	return !insn_cg(insn)->nonvr;
+// }
 
 /* Test whether a value is a VR instruction */
-static bool is_vr(struct ir_value val)
-{
-	if (val.type == IR_VALUE_INSN) {
-		return is_vr_insn(val.data.insn_d);
-	} else {
-		return false;
-	}
-}
+// static bool is_vr(struct ir_value val)
+// {
+// 	if (val.type == IR_VALUE_INSN) {
+// 		return is_vr_insn(val.data.insn_d);
+// 	} else {
+// 		return false;
+// 	}
+// }
 
 // Relocate BB
 static void calc_pos(struct bpf_ir_env *env, struct ir_function *fun)
@@ -1101,7 +1091,6 @@ static void normalize_alu(struct bpf_ir_env *env, struct ir_function *fun,
 		struct ir_insn *new_insn =
 			create_assign_insn_cg(env, insn, *v0, INSERT_FRONT);
 		insn_cg(new_insn)->dst = dst_insn;
-		// new_insn->vr_type = alu_to_vr_type(insn->alu_op);
 		v0->type = IR_VALUE_INSN;
 		v0->data.insn_d = dst_insn;
 	} else if (t0 == STACK && t1 == REG) {
@@ -1405,7 +1394,7 @@ static bool spill_storeraw(struct bpf_ir_env *env, struct ir_function *fun,
 	if (t0 == STACK && addr_ty == STACK) {
 		CRITICAL("TODO!");
 	}
-	if (t0 == CONST && v0->const_type == IR_VR_TYPE_64) {
+	if (t0 == CONST && v0->const_type == IR_ALU_64) {
 		CRITICAL("Not supported");
 	}
 	// Question: are all memory address 64 bits?
@@ -1416,7 +1405,7 @@ static bool spill_storeraw(struct bpf_ir_env *env, struct ir_function *fun,
 			// Make sure the new register is not the same as the other register
 			reg = 1;
 		}
-		cgir_load_stack_to_reg(env, fun, insn, v0, IR_VR_TYPE_64, 0);
+		cgir_load_stack_to_reg(env, fun, insn, v0, IR_VR_TYPE_64, reg);
 		return true;
 	}
 	if (addr_ty == CONST) {
@@ -1457,7 +1446,6 @@ static bool spill_alu(struct bpf_ir_env *env, struct ir_function *fun,
 		struct ir_insn *tmp = create_assign_insn_cg(
 			env, insn, bpf_ir_value_insn(fun->cg_info.regs[0]),
 			INSERT_BACK);
-		// tmp->vr_type = alu_to_vr_type(insn->alu_op);
 		insn_cg(tmp)->dst = dst_insn;
 		spill_alu(env, fun, insn);
 		return true;

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 project(bpf_ir)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror -Wstrict-prototypes -Wunused-variable -O3")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror -Wstrict-prototypes -Wenum-compare -Wunused-variable -Wunused-but-set-variable -Wsign-compare -O3")
 
 add_library(bpf_ir STATIC 
     bpf_ir.c
