@@ -207,11 +207,11 @@ static void to_cssa(struct bpf_ir_env *env, struct ir_function *fun)
 		struct ir_insn *insn = *pos2;
 		// Create the moved PHI insn
 		struct ir_insn *new_phi =
-			create_phi_insn(env, insn, INSERT_FRONT);
+			bpf_ir_create_phi_insn(env, insn, INSERT_FRONT);
 		struct phi_value *pos3;
 		array_for(pos3, insn->phi)
 		{
-			struct ir_insn *new_insn = create_assign_insn_bb(
+			struct ir_insn *new_insn = bpf_ir_create_assign_insn_bb(
 				env, pos3->bb, pos3->value,
 				INSERT_BACK_BEFORE_JMP);
 			// Remove use
@@ -465,7 +465,7 @@ static void explicit_reg(struct bpf_ir_env *env, struct ir_function *fun)
 				for (u8 i = 0; i < insn->value_num; ++i) {
 					struct ir_value val = insn->values[i];
 					struct ir_insn *new_insn =
-						create_assign_insn_cg(
+						bpf_ir_create_assign_insn_cg(
 							env, insn, val,
 							INSERT_FRONT);
 					insn_cg(new_insn)->dst =
@@ -478,10 +478,12 @@ static void explicit_reg(struct bpf_ir_env *env, struct ir_function *fun)
 				if (insn->users.num_elem == 0) {
 					continue;
 				}
-				struct ir_insn *new_insn = create_assign_insn_cg(
-					env, insn,
-					bpf_ir_value_insn(fun->cg_info.regs[0]),
-					INSERT_BACK);
+				struct ir_insn *new_insn =
+					bpf_ir_create_assign_insn_cg(
+						env, insn,
+						bpf_ir_value_insn(
+							fun->cg_info.regs[0]),
+						INSERT_BACK);
 				bpf_ir_replace_all_usage(
 					env, insn, bpf_ir_value_insn(new_insn));
 			}
@@ -492,9 +494,9 @@ static void explicit_reg(struct bpf_ir_env *env, struct ir_function *fun)
 				// R0 = x
 				// ret
 				struct ir_insn *new_insn =
-					create_assign_insn_cg(env, insn,
-							      insn->values[0],
-							      INSERT_FRONT);
+					bpf_ir_create_assign_insn_cg(
+						env, insn, insn->values[0],
+						INSERT_FRONT);
 				new_insn->alu_op = IR_ALU_64;
 				bpf_ir_val_remove_user(insn->values[0], insn);
 				insn_cg(new_insn)->dst = fun->cg_info.regs[0];
@@ -506,10 +508,12 @@ static void explicit_reg(struct bpf_ir_env *env, struct ir_function *fun)
 	for (u8 i = 0; i < MAX_FUNC_ARG; ++i) {
 		if (fun->function_arg[i]->users.num_elem > 0) {
 			// Insert ASSIGN arg[i] at the beginning of the function
-			struct ir_insn *new_insn = create_assign_insn_bb_cg(
-				env, fun->entry,
-				bpf_ir_value_insn(fun->cg_info.regs[i + 1]),
-				INSERT_FRONT_AFTER_PHI);
+			struct ir_insn *new_insn =
+				bpf_ir_create_assign_insn_bb_cg(
+					env, fun->entry,
+					bpf_ir_value_insn(
+						fun->cg_info.regs[i + 1]),
+					INSERT_FRONT_AFTER_PHI);
 			bpf_ir_replace_all_usage(env, fun->function_arg[i],
 						 bpf_ir_value_insn(new_insn));
 		}
@@ -935,7 +939,7 @@ static void cgir_load_const_to_reg(struct bpf_ir_env *env,
 				   u8 reg)
 {
 	struct ir_insn *new_insn =
-		create_assign_insn_cg(env, insn, *val, INSERT_FRONT);
+		bpf_ir_create_assign_insn_cg(env, insn, *val, INSERT_FRONT);
 	new_insn->alu_op = IR_ALU_64;
 	insn_cg(new_insn)->dst = fun->cg_info.regs[reg];
 	val->type = IR_VALUE_INSN;
@@ -947,7 +951,7 @@ static void cgir_load_reg_to_reg(struct bpf_ir_env *env,
 				 struct ir_value *val, u8 reg)
 {
 	struct ir_insn *new_insn =
-		create_assign_insn_cg(env, insn, *val, INSERT_FRONT);
+		bpf_ir_create_assign_insn_cg(env, insn, *val, INSERT_FRONT);
 	new_insn->alu_op = IR_ALU_64;
 	insn_cg(new_insn)->dst = fun->cg_info.regs[reg];
 	val->type = IR_VALUE_INSN;
@@ -960,7 +964,7 @@ static void cgir_load_stack_to_reg(struct bpf_ir_env *env,
 				   enum ir_vr_type vtype, u8 reg)
 {
 	struct ir_insn *tmp =
-		create_assign_insn_cg(env, insn, *val, INSERT_FRONT);
+		bpf_ir_create_assign_insn_cg(env, insn, *val, INSERT_FRONT);
 	tmp->vr_type = vtype;
 	insn_cg(tmp)->dst = fun->cg_info.regs[reg];
 
@@ -1065,8 +1069,8 @@ static struct ir_insn *normalize_load_const(struct bpf_ir_env *env,
 					    struct ir_value *val)
 {
 	if (val->const_type == IR_ALU_32) {
-		struct ir_insn *new_insn =
-			create_assign_insn_cg(env, insn, *val, INSERT_FRONT);
+		struct ir_insn *new_insn = bpf_ir_create_assign_insn_cg(
+			env, insn, *val, INSERT_FRONT);
 		new_insn->alu_op = IR_ALU_64;
 		val->type = IR_VALUE_INSN;
 		val->data.insn_d = new_insn;
@@ -1111,8 +1115,8 @@ static void normalize_alu(struct bpf_ir_env *env, struct ir_function *fun,
 		// ==>
 		// reg1 = stack
 		// reg1 = add reg1 const
-		struct ir_insn *new_insn =
-			create_assign_insn_cg(env, insn, *v0, INSERT_FRONT);
+		struct ir_insn *new_insn = bpf_ir_create_assign_insn_cg(
+			env, insn, *v0, INSERT_FRONT);
 		insn_cg(new_insn)->dst = dst_insn;
 		v0->type = IR_VALUE_INSN;
 		v0->data.insn_d = dst_insn;
@@ -1121,8 +1125,8 @@ static void normalize_alu(struct bpf_ir_env *env, struct ir_function *fun,
 		// ==>
 		// reg1 = stack
 		// reg1 = add reg1 reg2
-		struct ir_insn *new_insn =
-			create_assign_insn_cg(env, insn, *v0, INSERT_FRONT);
+		struct ir_insn *new_insn = bpf_ir_create_assign_insn_cg(
+			env, insn, *v0, INSERT_FRONT);
 		insn_cg(new_insn)->dst = dst_insn;
 
 		v0->type = IR_VALUE_INSN;
@@ -1136,7 +1140,7 @@ static void normalize_alu(struct bpf_ir_env *env, struct ir_function *fun,
 			// ==>
 			// reg1 = reg2
 			// reg1 = add reg1 reg3
-			struct ir_insn *new_insn = create_assign_insn_cg(
+			struct ir_insn *new_insn = bpf_ir_create_assign_insn_cg(
 				env, insn, *v0, INSERT_FRONT);
 			DBGASSERT(dst_insn == fun->cg_info.regs[reg1]);
 			insn_cg(new_insn)->dst = dst_insn;
@@ -1149,7 +1153,7 @@ static void normalize_alu(struct bpf_ir_env *env, struct ir_function *fun,
 			// ==>
 			// reg1 = reg2
 			// reg1 = add reg1 const
-			struct ir_insn *new_insn = create_assign_insn_cg(
+			struct ir_insn *new_insn = bpf_ir_create_assign_insn_cg(
 				env, insn, *v0, INSERT_FRONT);
 			insn_cg(new_insn)->dst = dst_insn;
 			v0->type = IR_VALUE_INSN;
@@ -1350,7 +1354,7 @@ static bool spill_loadraw(struct bpf_ir_env *env, struct ir_function *fun,
 	if (tdst == STACK) {
 		if (t0 == REG) {
 			extra->dst = fun->cg_info.regs[0];
-			struct ir_insn *tmp = create_assign_insn_cg(
+			struct ir_insn *tmp = bpf_ir_create_assign_insn_cg(
 				env, insn,
 				bpf_ir_value_insn(fun->cg_info.regs[0]),
 				INSERT_BACK);
@@ -1360,7 +1364,7 @@ static bool spill_loadraw(struct bpf_ir_env *env, struct ir_function *fun,
 		}
 		if (t0 == STACK) {
 			extra->dst = fun->cg_info.regs[0];
-			struct ir_insn *tmp = create_assign_insn_cg(
+			struct ir_insn *tmp = bpf_ir_create_assign_insn_cg(
 				env, insn,
 				bpf_ir_value_insn(fun->cg_info.regs[0]),
 				INSERT_BACK);
@@ -1392,7 +1396,7 @@ static bool spill_loadrawextra(struct bpf_ir_env *env, struct ir_function *fun,
 		// ==>
 		// R0 = loadimm
 		// stack = R0
-		struct ir_insn *new_insn = create_assign_insn_cg(
+		struct ir_insn *new_insn = bpf_ir_create_assign_insn_cg(
 			env, insn, bpf_ir_value_insn(fun->cg_info.regs[0]),
 			INSERT_BACK);
 		insn_cg(new_insn)->dst = dst_insn;
@@ -1466,7 +1470,7 @@ static bool spill_alu(struct bpf_ir_env *env, struct ir_function *fun,
 		// R0 = ALU ? ?
 		// stack = R0
 		extra->dst = fun->cg_info.regs[0];
-		struct ir_insn *tmp = create_assign_insn_cg(
+		struct ir_insn *tmp = bpf_ir_create_assign_insn_cg(
 			env, insn, bpf_ir_value_insn(fun->cg_info.regs[0]),
 			INSERT_BACK);
 		insn_cg(tmp)->dst = dst_insn;
@@ -1808,9 +1812,12 @@ static void add_stack_offset_pre_cg(struct bpf_ir_env *env,
 				struct ir_value new_val;
 				new_val.type = IR_VALUE_CONSTANT_RAWOFF;
 				new_val.const_type = IR_ALU_32;
-				struct ir_insn *new_insn = create_bin_insn(
-					env, insn, *val, new_val, IR_INSN_ADD,
-					IR_ALU_64, INSERT_FRONT);
+				struct ir_insn *new_insn =
+					bpf_ir_create_bin_insn(env, insn, *val,
+							       new_val,
+							       IR_INSN_ADD,
+							       IR_ALU_64,
+							       INSERT_FRONT);
 				new_val.type = IR_VALUE_INSN;
 				new_val.data.insn_d = new_insn;
 				bpf_ir_val_add_user(env, new_val, insn);

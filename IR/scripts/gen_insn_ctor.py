@@ -36,7 +36,7 @@ def handle_ir(matches, header, src):
         if len(cargs) > 0:
             cargs = "," +cargs 
         ir_fun = f"""
-struct ir_insn *{insn}{extra}(struct bpf_ir_env *env, struct ir_insn *pos_insn, {pargs} enum insert_position pos)
+struct ir_insn *bpf_ir_{insn}{extra}(struct bpf_ir_env *env, struct ir_insn *pos_insn, {pargs} enum insert_position pos)
 {{
 	struct ir_insn *new_insn =
 		{insn}_base{extra}(env, pos_insn->parent_bb {cargs});
@@ -44,7 +44,7 @@ struct ir_insn *{insn}{extra}(struct bpf_ir_env *env, struct ir_insn *pos_insn, 
 	return new_insn;
 }}
 
-struct ir_insn *{insn}_bb{extra}(struct bpf_ir_env *env, struct ir_basic_block *pos_bb, {pargs} enum insert_position pos)
+struct ir_insn *bpf_ir_{insn}_bb{extra}(struct bpf_ir_env *env, struct ir_basic_block *pos_bb, {pargs} enum insert_position pos)
 {{
 	struct ir_insn *new_insn =
 		{insn}_base{extra}(env, pos_bb {cargs});
@@ -55,9 +55,9 @@ struct ir_insn *{insn}_bb{extra}(struct bpf_ir_env *env, struct ir_basic_block *
         src.append(ir_fun)
 
         ir_fun_h = f"""
-struct ir_insn *{insn}{extra}(struct bpf_ir_env *env, struct ir_insn *pos_insn, {pargs} enum insert_position pos);
+struct ir_insn *bpf_ir_{insn}{extra}(struct bpf_ir_env *env, struct ir_insn *pos_insn, {pargs} enum insert_position pos);
 
-struct ir_insn *{insn}_bb{extra}(struct bpf_ir_env *env, struct ir_basic_block *pos_bb, {pargs} enum insert_position pos);
+struct ir_insn *bpf_ir_{insn}_bb{extra}(struct bpf_ir_env *env, struct ir_basic_block *pos_bb, {pargs} enum insert_position pos);
 """
         header.append(ir_fun_h)
 
