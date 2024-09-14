@@ -149,6 +149,14 @@ void bpf_ir_array_clone(struct bpf_ir_env *env, struct array *res,
 		return;                                               \
 	}
 
+#define RAISE_ERROR_RET(str, ret)                                     \
+	{                                                             \
+		PRINT_LOG(env, "\e[1;31mError: %s:%d <%s> %s\e[0m\n", \
+			  __FILE__, __LINE__, __FUNCTION__, str);     \
+		env->err = -ENOSYS;                                   \
+		return ret;                                           \
+	}
+
 #define DBGASSERT(cond)                       \
 	if (!(cond)) {                        \
 		CRITICAL("Assertion failed"); \

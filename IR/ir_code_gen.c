@@ -1736,7 +1736,7 @@ static bool check_need_spill(struct bpf_ir_env *env, struct ir_function *fun)
 			} else if (bpf_ir_is_cond_jmp(insn)) {
 				need_modify = spill_cond_jump(env, fun, insn);
 			} else {
-				CRITICAL("No such instruction");
+				RAISE_ERROR_RET("No such instruction", false);
 			}
 		}
 	}
@@ -2220,7 +2220,7 @@ static void translate_cond_jmp(struct ir_insn *insn)
 	}
 }
 
-static void translate(struct ir_function *fun)
+static void translate(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	struct ir_basic_block **pos;
 	array_for(pos, fun->reachable_bbs)
@@ -2256,7 +2256,7 @@ static void translate(struct ir_function *fun)
 			} else if (bpf_ir_is_cond_jmp(insn)) {
 				translate_cond_jmp(insn);
 			} else {
-				CRITICAL("No such instruction");
+				RAISE_ERROR("No such instruction");
 			}
 		}
 	}
@@ -2371,7 +2371,8 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 	CHECK_ERR();
 
 	// Step 13: Direct Translation
-	translate(fun);
+	translate(env, fun);
+	CHECK_ERR();
 
 	// Step 14: Relocation
 	relocate(env, fun);
