@@ -109,6 +109,7 @@ struct array bpf_ir_get_operands(struct bpf_ir_env *env, struct ir_insn *insn)
 		pos = &insn->values[j];
 		bpf_ir_array_push(env, &uses, &pos);
 	}
+	// Phi value
 	if (insn->op == IR_INSN_PHI) {
 		struct phi_value *pv_pos2;
 		array_for(pv_pos2, insn->phi)
@@ -117,7 +118,9 @@ struct array bpf_ir_get_operands(struct bpf_ir_env *env, struct ir_insn *insn)
 			bpf_ir_array_push(env, &uses, &pos);
 		}
 	}
-	if (insn->op == IR_INSN_LOADRAW || insn->op == IR_INSN_STORERAW) {
+	// Address value
+	if (insn->op == IR_INSN_LOADRAW || insn->op == IR_INSN_STORERAW ||
+	    insn->op == IR_INSN_GETELEMPTR) {
 		pos = &insn->addr_val.value;
 		bpf_ir_array_push(env, &uses, &pos);
 	}
