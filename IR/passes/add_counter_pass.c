@@ -36,10 +36,10 @@ void add_counter(struct bpf_ir_env *env, struct ir_function *fun)
 	array_for(pos, fun->reachable_bbs)
 	{
 		struct ir_basic_block *bb = *pos;
-		if (bb->preds.num_elem <= 1) {
-			// Skip Non-loop BBs
-			continue;
-		}
+		// if (bb->preds.num_elem <= 1) {
+		// 	// Skip Non-loop BBs
+		// 	continue;
+		// }
 		size_t len = bpf_ir_bb_len(bb);
 		struct ir_insn *last = bpf_ir_get_last_insn(bb);
 		if (!last) {

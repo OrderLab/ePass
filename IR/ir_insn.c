@@ -343,6 +343,7 @@ static struct ir_insn *create_getelemptr_insn_base(struct bpf_ir_env *env,
 	new_insn->addr_val.value.type = IR_VALUE_INSN;
 	new_insn->addr_val.value.data.insn_d = alloca_insn;
 	new_insn->value_num = 0;
+	bpf_ir_val_add_user(env, new_insn->addr_val.value, new_insn);
 	return new_insn;
 }
 
