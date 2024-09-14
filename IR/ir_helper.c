@@ -247,6 +247,11 @@ void print_ir_insn_full(struct bpf_ir_env *env, struct ir_insn *insn,
 		PRINT_LOG(env, "alloc ");
 		print_vr_type(env, insn->vr_type);
 		break;
+	case IR_INSN_ALLOCARRAY:
+		PRINT_LOG(env, "allocarray <");
+		print_vr_type(env, insn->vr_type);
+		PRINT_LOG(env, " x %u>", insn->array_num);
+		break;
 	case IR_INSN_STORE:
 		PRINT_LOG(env, "store ");
 		print_ir_value_full(env, insn->values[0], print_ir);
@@ -275,6 +280,10 @@ void print_ir_insn_full(struct bpf_ir_env *env, struct ir_insn *insn,
 		print_address_value_full(env, insn->addr_val, print_ir);
 		PRINT_LOG(env, " ");
 		print_ir_value_full(env, insn->values[0], print_ir);
+		break;
+	case IR_INSN_GETELEMPTR:
+		PRINT_LOG(env, "getelemptr ");
+		print_address_value_full(env, insn->addr_val, print_ir);
 		break;
 	case IR_INSN_ADD:
 		print_alu(env, insn->alu_op, "add");
