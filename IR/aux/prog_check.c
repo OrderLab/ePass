@@ -47,8 +47,7 @@ static void check_insn(struct bpf_ir_env *env, struct ir_function *fun)
 			if (insn->op == IR_INSN_LOADRAW ||
 			    insn->op == IR_INSN_ALLOC ||
 			    insn->op == IR_INSN_JA || insn->op == IR_INSN_PHI ||
-			    insn->op == IR_INSN_ALLOCARRAY ||
-			    insn->op == IR_INSN_GETELEMPTR) {
+			    insn->op == IR_INSN_ALLOCARRAY) {
 				if (!(insn->value_num == 0)) {
 					print_ir_insn_err(env, insn, NULL);
 					RAISE_ERROR(
@@ -69,7 +68,8 @@ static void check_insn(struct bpf_ir_env *env, struct ir_function *fun)
 
 			if (insn->op == IR_INSN_STORE ||
 			    (bpf_ir_is_alu(insn)) ||
-			    (bpf_ir_is_cond_jmp(insn))) {
+			    (bpf_ir_is_cond_jmp(insn)) ||
+			    insn->op == IR_INSN_GETELEMPTR) {
 				if (!(insn->value_num == 2)) {
 					print_ir_insn_err(env, insn, NULL);
 					RAISE_ERROR(
@@ -91,9 +91,8 @@ static void check_insn(struct bpf_ir_env *env, struct ir_function *fun)
 			}
 
 			if (insn->op == IR_INSN_GETELEMPTR) {
-				if (!(insn->addr_val.value.type ==
-					      IR_VALUE_INSN &&
-				      insn->addr_val.value.data.insn_d->op ==
+				if (!(insn->values[0].type == IR_VALUE_INSN &&
+				      insn->values[0].data.insn_d->op ==
 					      IR_INSN_ALLOCARRAY)) {
 					print_ir_insn_err(env, insn, NULL);
 					RAISE_ERROR(
@@ -131,6 +130,12 @@ static void check_insn(struct bpf_ir_env *env, struct ir_function *fun)
 						    val->const_type)) {
 						print_ir_insn_err(env, insn,
 								  NULL);
+
+						PRINT_LOG(
+							env,
+							"Constant type: %d, operand number: %d\n",
+							val->const_type,
+							operands.num_elem);
 						RAISE_ERROR(
 							"Invalid Constant type");
 					}

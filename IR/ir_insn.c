@@ -119,8 +119,7 @@ struct array bpf_ir_get_operands(struct bpf_ir_env *env, struct ir_insn *insn)
 		}
 	}
 	// Address value
-	if (insn->op == IR_INSN_LOADRAW || insn->op == IR_INSN_STORERAW ||
-	    insn->op == IR_INSN_GETELEMPTR) {
+	if (insn->op == IR_INSN_LOADRAW || insn->op == IR_INSN_STORERAW) {
 		pos = &insn->addr_val.value;
 		bpf_ir_array_push(env, &uses, &pos);
 	}
