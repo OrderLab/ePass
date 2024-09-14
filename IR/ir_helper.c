@@ -583,7 +583,7 @@ void print_ir_alloc(struct bpf_ir_env *env, struct ir_insn *insn)
 		struct ir_insn_cg_extra *extra = insn_cg(insn);
 		if (extra->allocated) {
 			if (extra->spilled) {
-				PRINT_LOG(env, "sp+%zu", extra->spilled);
+				PRINT_LOG(env, "sp+%d", extra->spilled);
 			} else {
 				PRINT_LOG(env, "r%u", extra->alloc_reg);
 			}

@@ -352,7 +352,7 @@ static void bpf_ir_print_interference_graph(struct bpf_ir_env *env,
 			// Allocated VR
 			PRINT_LOG(env, "%%%zu(", insn->_insn_id);
 			if (extra->spilled) {
-				PRINT_LOG(env, "sp+%zu", extra->spilled);
+				PRINT_LOG(env, "sp+%d", extra->spilled);
 			} else {
 				PRINT_LOG(env, "r%u", extra->alloc_reg);
 			}

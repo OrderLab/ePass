@@ -22,7 +22,7 @@ void add_counter(struct bpf_ir_env *env, struct ir_function *fun)
 	insn = bpf_ir_create_allocarray_insn_bb(env, err_bb, IR_VR_TYPE_64, 1,
 						INSERT_FRONT);
 	struct ir_insn *elemptr =
-		bpf_ir_create_getelemptr_insn(env, insn, insn, -4, INSERT_BACK);
+		bpf_ir_create_getelemptr_insn(env, insn, insn, 4, INSERT_BACK);
 
 	insn = bpf_ir_create_call_insn(env, elemptr, 6,
 				       INSERT_BACK); // A printk call
