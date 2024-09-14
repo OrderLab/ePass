@@ -32,6 +32,7 @@ void try_remove_trivial_phi(struct bpf_ir_env *env, struct ir_insn *phi)
 	bpf_ir_replace_all_usage_except(env, phi, same, phi);
 
 	bpf_ir_erase_insn(env, phi);
+	CHECK_ERR();
 }
 
 void remove_trivial_phi(struct bpf_ir_env *env, struct ir_function *fun)
@@ -44,6 +45,7 @@ void remove_trivial_phi(struct bpf_ir_env *env, struct ir_function *fun)
 		list_for_each_entry_safe(pos, tmp, &bb->ir_insn_head,
 					 list_ptr) {
 			try_remove_trivial_phi(env, pos);
+			CHECK_ERR();
 		}
 	}
 }

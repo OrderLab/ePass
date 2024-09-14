@@ -671,6 +671,7 @@ void bpf_ir_print_to_log(struct bpf_ir_env *env, char *fmt, ...)
 	va_end(args);
 }
 
+/* Dump env->log */
 void bpf_ir_print_log_dbg(struct bpf_ir_env *env)
 {
 	if (env->log_pos == 0) {

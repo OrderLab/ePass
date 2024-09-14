@@ -143,8 +143,8 @@ void bpf_ir_array_clone(struct bpf_ir_env *env, struct array *res,
 
 #define RAISE_ERROR(str)                                              \
 	{                                                             \
-		PRINT_LOG(env, "\n--> %s:%d <%s> %s <--\n", __FILE__, \
-			  __LINE__, __FUNCTION__, str);               \
+		PRINT_LOG(env, "\e[1;31mError: %s:%d <%s> %s\e[0m\n", \
+			  __FILE__, __LINE__, __FUNCTION__, str);     \
 		env->err = -ENOSYS;                                   \
 		return;                                               \
 	}
