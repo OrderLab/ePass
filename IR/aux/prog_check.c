@@ -44,11 +44,11 @@ static void check_insn(struct bpf_ir_env *env, struct ir_function *fun)
 		struct ir_basic_block *bb = *pos;
 		struct ir_insn *insn;
 		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
-			struct array operands = bpf_ir_get_operands(env, insn);
-			struct ir_value **vpos;
 			if (insn->op == IR_INSN_LOADRAW ||
 			    insn->op == IR_INSN_ALLOC ||
-			    insn->op == IR_INSN_JA || insn->op == IR_INSN_PHI) {
+			    insn->op == IR_INSN_JA || insn->op == IR_INSN_PHI ||
+			    insn->op == IR_INSN_ALLOCARRAY ||
+			    insn->op == IR_INSN_GETELEMPTR) {
 				if (!(insn->value_num == 0)) {
 					print_ir_insn_err(env, insn, NULL);
 					RAISE_ERROR(
@@ -90,6 +90,17 @@ static void check_insn(struct bpf_ir_env *env, struct ir_function *fun)
 				}
 			}
 
+			if (insn->op == IR_INSN_GETELEMPTR) {
+				if (!(insn->addr_val.value.type ==
+					      IR_VALUE_INSN &&
+				      insn->addr_val.value.data.insn_d->op ==
+					      IR_INSN_ALLOCARRAY)) {
+					print_ir_insn_err(env, insn, NULL);
+					RAISE_ERROR(
+						"Value should be an allocarray instruction");
+				}
+			}
+
 			// TODO: Check: users of alloc instructions must be STORE/LOAD
 
 			if (bpf_ir_is_alu(insn) || bpf_ir_is_cond_jmp(insn)) {
@@ -100,6 +111,8 @@ static void check_insn(struct bpf_ir_env *env, struct ir_function *fun)
 				}
 			}
 
+			struct array operands = bpf_ir_get_operands(env, insn);
+			struct ir_value **vpos;
 			if (insn->op == IR_INSN_ALLOC ||
 			    insn->op == IR_INSN_LOADRAW ||
 			    insn->op == IR_INSN_STORERAW) {
@@ -108,6 +121,8 @@ static void check_insn(struct bpf_ir_env *env, struct ir_function *fun)
 					RAISE_ERROR("Invalid VR type");
 				}
 			}
+
+			// Checking operands
 			array_for(vpos, operands)
 			{
 				struct ir_value *val = *vpos;
