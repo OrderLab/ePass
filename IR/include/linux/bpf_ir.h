@@ -845,9 +845,12 @@ struct ir_insn_cg_extra {
 
 	// When allocating register, whether dst will be spilled
 	// 0: Not spilled
-	// 1: Spilled on stack position 1
+	// -8: Spilled on SP-8
 	// etc.
-	size_t spilled;
+	s32 spilled;
+
+	// The size of the spilled register
+	u32 spilled_size;
 
 	// Valid if spilled == 0 && allocated == 1
 	// Valid number: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
