@@ -46,6 +46,7 @@ static void init_cg(struct bpf_ir_env *env, struct ir_function *fun)
 		// Pre-colored registers are allocated
 		extra->allocated = 1;
 		extra->spilled = 0;
+		extra->spilled_size = 0;
 		extra->nonvr = true;
 	}
 }
@@ -107,6 +108,7 @@ static void clean_cg(struct bpf_ir_env *env, struct ir_function *fun)
 			struct ir_insn_cg_extra *extra = insn_cg(insn);
 			extra->allocated = 0;
 			extra->spilled = 0;
+			extra->spilled_size = 0;
 			extra->alloc_reg = 0;
 		}
 	}
@@ -344,7 +346,7 @@ static void bpf_ir_print_interference_graph(struct bpf_ir_env *env,
 			// Allocated VR
 			PRINT_LOG(env, "%%%zu(", insn->_insn_id);
 			if (extra->spilled) {
-				PRINT_LOG(env, "sp-%zu", extra->spilled * 8);
+				PRINT_LOG(env, "sp+%zu", extra->spilled);
 			} else {
 				PRINT_LOG(env, "r%u", extra->alloc_reg);
 			}
@@ -539,52 +541,68 @@ static void graph_coloring(struct bpf_ir_env *env, struct ir_function *fun)
 				"Pre-colored register should not be in all_var");
 		}
 		struct ir_insn_cg_extra *extra = insn_cg(insn);
+		if (extra->allocated) {
+			// Already allocated
+			continue;
+		}
 		struct ir_insn **pos2;
 
 		int used_reg[MAX_BPF_REG] = { 0 };
 		struct array used_spill;
-		INIT_ARRAY(&used_spill, size_t);
+		INIT_ARRAY(&used_spill, s32);
 		array_for(pos2, extra->adj)
 		{
 			struct ir_insn *insn2 = *pos2; // Adj instruction
 			struct ir_insn_cg_extra *extra2 = insn_cg(insn2);
 			if (extra2->allocated) {
 				if (extra2->spilled) {
-					bpf_ir_array_push_unique(
-						env, &used_spill,
-						&extra2->spilled);
+					if (extra2->spilled_size == 0) {
+						RAISE_ERROR(
+							"Found a spilling a register that has 0 size");
+					}
+					u32 spill_number =
+						(extra2->spilled_size - 1) / 8 +
+						1;
+					for (u32 i = 0; i < spill_number; i++) {
+						bpf_ir_array_push_unique(
+							env, &used_spill,
+							&extra2->spilled -
+								i * 8);
+					}
 				} else {
 					used_reg[extra2->alloc_reg] = 1;
 				}
 			}
 		}
-		u8 need_spill = 1;
+		bool need_spill = true;
 		for (u8 i = 0; i < MAX_BPF_REG; i++) {
 			if (!used_reg[i]) {
 				extra->allocated = 1;
 				PRINT_LOG(env, "Allocate r%u for %%%zu\n", i,
 					  insn->_insn_id);
 				extra->alloc_reg = i;
-				need_spill = 0;
+				need_spill = false;
 				break;
 			}
 		}
 		if (need_spill) {
-			size_t sp = 1;
+			s32 sp = -8;
 			while (1) {
-				u8 found = 1;
-				size_t *pos3;
+				bool found = true;
+				s32 *pos3;
 				array_for(pos3, used_spill)
 				{
 					if (*pos3 == sp) {
-						sp++;
-						found = 0;
+						sp -= 8;
+						found = false;
 						break;
 					}
 				}
 				if (found) {
 					extra->allocated = 1;
 					extra->spilled = sp;
+					extra->spilled_size =
+						8; // Default size for VR
 					break;
 				}
 			}
@@ -955,8 +973,8 @@ static void add_stack_offset_vr(struct ir_function *fun, size_t num)
 	array_for(pos, fun->cg_info.all_var)
 	{
 		struct ir_insn_cg_extra *extra = insn_cg(*pos);
-		if (extra->spilled > 0) {
-			extra->spilled += num;
+		if (extra->spilled) {
+			extra->spilled -= num * 8;
 		}
 	}
 }
@@ -982,7 +1000,10 @@ static void spill_callee(struct bpf_ir_env *env, struct ir_function *fun)
 	array_for(pos, fun->cg_info.all_var)
 	{
 		struct ir_insn_cg_extra *extra = insn_cg(*pos);
-		reg_used[extra->alloc_reg] = 1;
+		DBGASSERT(extra->allocated);
+		if (extra->spilled == 0) {
+			reg_used[extra->alloc_reg] = 1;
+		}
 	}
 	size_t off = 0;
 	for (u8 i = BPF_REG_6; i < BPF_REG_10; ++i) {
@@ -1170,14 +1191,14 @@ static void normalize_assign(struct ir_function *fun, struct ir_insn *insn)
 		// Change to STORERAW
 		insn->op = IR_INSN_STORERAW;
 		insn->addr_val.value = bpf_ir_value_stack_ptr(fun);
-		insn->addr_val.offset = -insn_cg(dst_insn)->spilled * 8;
+		insn->addr_val.offset = insn_cg(dst_insn)->spilled;
 	} else {
 		if (t0 == STACK) {
 			// Change to LOADRAW
 			insn->op = IR_INSN_LOADRAW;
 			insn->addr_val.value = bpf_ir_value_stack_ptr(fun);
 			insn->addr_val.offset =
-				-insn_cg(v0->data.insn_d)->spilled * 8;
+				insn_cg(v0->data.insn_d)->spilled;
 		}
 		if (t0 == CONST && v0->const_type == IR_ALU_64) {
 			// 64 imm load
@@ -1736,24 +1757,24 @@ static void calc_callee_num(struct ir_function *fun)
 static void calc_stack_size(struct ir_function *fun)
 {
 	// Check callee
-	size_t off = 0;
+	s32 off = 0;
 	if (fun->cg_info.spill_callee) {
-		off += fun->cg_info.callee_num * 8;
+		off -= fun->cg_info.callee_num * 8;
 	}
 	// Check all VR
-	size_t max = 0;
+	s32 max = 0;
 	struct ir_insn **pos;
 	array_for(pos, fun->cg_info.all_var)
 	{
 		struct ir_insn_cg_extra *extra = insn_cg(*pos);
-		if (extra->spilled > 0) {
+		if (extra->spilled) {
 			// Spilled!
-			if (extra->spilled > max) {
+			if (extra->spilled < max) {
 				max = extra->spilled;
 			}
 		}
 	}
-	fun->cg_info.stack_offset = -(off + max * 8);
+	fun->cg_info.stack_offset = off + max;
 	PRINT_DBG("Stack size: %d\n", fun->cg_info.stack_offset);
 }
 
