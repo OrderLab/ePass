@@ -305,6 +305,20 @@ static struct ir_insn *create_alloc_insn_base(struct bpf_ir_env *env,
 	struct ir_insn *new_insn = bpf_ir_create_insn_base(env, bb);
 	new_insn->op = IR_INSN_ALLOC;
 	new_insn->vr_type = type;
+	new_insn->value_num = 0;
+	return new_insn;
+}
+
+static struct ir_insn *create_allocarray_insn_base(struct bpf_ir_env *env,
+						   struct ir_basic_block *bb,
+						   enum ir_vr_type type,
+						   u32 num)
+{
+	struct ir_insn *new_insn = bpf_ir_create_insn_base(env, bb);
+	new_insn->op = IR_INSN_ALLOCARRAY;
+	new_insn->vr_type = type;
+	new_insn->array_num = num;
+	new_insn->value_num = 0;
 	return new_insn;
 }
 
@@ -451,6 +465,28 @@ struct ir_insn *bpf_ir_create_alloc_insn_bb(struct bpf_ir_env *env,
 					    enum insert_position pos)
 {
 	struct ir_insn *new_insn = create_alloc_insn_base(env, pos_bb, type);
+	bpf_ir_insert_at_bb(new_insn, pos_bb, pos);
+	return new_insn;
+}
+
+struct ir_insn *bpf_ir_create_allocarray_insn(struct bpf_ir_env *env,
+					      struct ir_insn *pos_insn,
+					      enum ir_vr_type type, u32 num,
+					      enum insert_position pos)
+{
+	struct ir_insn *new_insn = create_allocarray_insn_base(
+		env, pos_insn->parent_bb, type, num);
+	bpf_ir_insert_at(new_insn, pos_insn, pos);
+	return new_insn;
+}
+
+struct ir_insn *bpf_ir_create_allocarray_insn_bb(struct bpf_ir_env *env,
+						 struct ir_basic_block *pos_bb,
+						 enum ir_vr_type type, u32 num,
+						 enum insert_position pos)
+{
+	struct ir_insn *new_insn =
+		create_allocarray_insn_base(env, pos_bb, type, num);
 	bpf_ir_insert_at_bb(new_insn, pos_bb, pos);
 	return new_insn;
 }

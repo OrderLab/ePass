@@ -686,6 +686,16 @@ struct ir_insn *bpf_ir_create_alloc_insn_bb(struct bpf_ir_env *env,
 					    enum ir_vr_type type,
 					    enum insert_position pos);
 
+struct ir_insn *bpf_ir_create_allocarray_insn(struct bpf_ir_env *env,
+					      struct ir_insn *pos_insn,
+					      enum ir_vr_type type, u32 num,
+					      enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_allocarray_insn_bb(struct bpf_ir_env *env,
+						 struct ir_basic_block *pos_bb,
+						 enum ir_vr_type type, u32 num,
+						 enum insert_position pos);
+
 struct ir_insn *bpf_ir_create_store_insn(struct bpf_ir_env *env,
 					 struct ir_insn *pos_insn,
 					 struct ir_insn *insn,
