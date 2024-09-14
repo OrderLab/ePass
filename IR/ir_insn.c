@@ -130,12 +130,23 @@ void bpf_ir_erase_insn(struct bpf_ir_env *env, struct ir_insn *insn)
 {
 	if (insn->users.num_elem > 0) {
 		struct ir_insn **pos;
+		bool fail = false;
 		array_for(pos, insn->users)
 		{
-			print_ir_insn_err(env, *pos, "User");
+			if (*pos != insn) {
+				fail = true;
+				break;
+			}
 		}
-		print_ir_insn_err(env, insn, "Has users");
-		RAISE_ERROR("Cannot erase a instruction that has users");
+		if (fail) {
+			array_for(pos, insn->users)
+			{
+				print_ir_insn_err(env, *pos, "User");
+			}
+			print_ir_insn_err(env, insn, "Has users");
+			RAISE_ERROR(
+				"Cannot erase a instruction that has (non-self) users");
+		}
 	}
 	struct array operands = bpf_ir_get_operands(env, insn);
 	CHECK_ERR();
