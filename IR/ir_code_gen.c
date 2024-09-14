@@ -282,7 +282,7 @@ static void remove_phi(struct bpf_ir_env *env, struct ir_function *fun)
 	bpf_ir_array_free(&phi_insns);
 }
 
-static void coaleasing(struct bpf_ir_env *env, struct ir_function *fun)
+static void coalescing(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	struct ir_basic_block **pos;
 	// For each BB
@@ -775,7 +775,7 @@ static void in_out(struct bpf_ir_env *env, struct ir_function *fun)
 				if (!equal_set(&insn_cg->in, &old_in)) {
 					change = 1;
 				}
-				// Collect grabage
+				// Collect garbage
 				bpf_ir_array_free(&out_kill_delta);
 				bpf_ir_array_free(&old_in);
 			}
@@ -1310,7 +1310,7 @@ static bool spill_store(struct bpf_ir_env *env, struct ir_function *fun,
 	struct ir_value *v0 = &insn->values[0];
 	struct ir_value *v1 = &insn->values[1];
 	// store v0(dst) v1
-	// Eequivalent to `v0 = v1`
+	// Equivalent to `v0 = v1`
 	struct ir_insn_cg_extra *extra = insn_cg(insn);
 	insn->op = IR_INSN_ASSIGN;
 	DBGASSERT(v0->type ==
@@ -2320,7 +2320,7 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 		// Step 7: Graph coloring
 		graph_coloring(env, fun);
 		CHECK_ERR();
-		coaleasing(env, fun);
+		coalescing(env, fun);
 		CHECK_ERR();
 		PRINT_LOG(env, "Conflicting graph (after coloring):\n");
 		bpf_ir_print_interference_graph(env, fun);
@@ -2341,7 +2341,7 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 	}
 
 	// Register allocation finished (All registers are fixed)
-	PRINT_LOG(env, "Register allocation finished in %d iteratinos\n",
+	PRINT_LOG(env, "Register allocation finished in %d iterations\n",
 		  iterations);
 	print_ir_prog_cg_alloc(env, fun, "After RA & Spilling");
 

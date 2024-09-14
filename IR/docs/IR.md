@@ -86,6 +86,14 @@ Allocate a continuous array on stack with size `sizeof(vr_type)*array_num`.
 
 Users could load or store values to it by using `storeraw` and `loadraw`.
 
+### `getelemptr`
+
+Syntax: `getelemptr <addr_val>`
+
+Get a pointer to the element in an array.
+
+The value in `addr_val` should point to a `allocarray` instruction.
+
 ### `store`
 
 Syntax: `store <values[0]> <values[1]>`

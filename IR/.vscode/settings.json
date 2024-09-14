@@ -1,0 +1,33 @@
+{
+    "cSpell.words": [
+        "ALLOC",
+        "ALLOCARRAY",
+        "cgir",
+        "CSSA",
+        "DBGASSERT",
+        "dsts",
+        "FUNCTIONARG",
+        "GETELEMPTR",
+        "insn",
+        "ipos",
+        "jbin",
+        "loadimm",
+        "LOADRAW",
+        "loadrawextra",
+        "newbb",
+        "nonvr",
+        "notag",
+        "preds",
+        "printk",
+        "RAWOFF",
+        "repr",
+        "SIZET",
+        "stackptr",
+        "STORERAW",
+        "struct",
+        "succs",
+        "tdst",
+        "TSSA",
+        "vpos"
+    ]
+}
