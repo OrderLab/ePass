@@ -433,7 +433,7 @@ void print_ir_bb_no_rec(
 	struct list_head *p = NULL;
 	list_for_each(p, &bb->ir_insn_head) {
 		struct ir_insn *insn = list_entry(p, struct ir_insn, list_ptr);
-		if (is_void(insn)) {
+		if (bpf_ir_is_void(insn)) {
 			PRINT_LOG(env, "  ");
 		} else {
 			PRINT_LOG(env, "  ");
@@ -513,7 +513,7 @@ void assign_id(struct ir_basic_block *bb, size_t *cnt, size_t *bb_cnt)
 	struct list_head *p = NULL;
 	list_for_each(p, &bb->ir_insn_head) {
 		struct ir_insn *insn = list_entry(p, struct ir_insn, list_ptr);
-		if (!is_void(insn)) {
+		if (!bpf_ir_is_void(insn)) {
 			insn->_insn_id = (*cnt)++;
 		}
 	}
@@ -602,11 +602,11 @@ void print_ir_insn_err_full(struct bpf_ir_env *env, struct ir_insn *insn,
 					     struct ir_insn *))
 {
 	PRINT_LOG(env, "In BB %zu,\n", insn->parent_bb->_id);
-	struct ir_insn *prev = prev_insn(insn);
-	struct ir_insn *next = next_insn(insn);
+	struct ir_insn *prev = bpf_ir_prev_insn(insn);
+	struct ir_insn *next = bpf_ir_next_insn(insn);
 	if (prev) {
 		PRINT_LOG(env, "  ");
-		if (!is_void(prev)) {
+		if (!bpf_ir_is_void(prev)) {
 			PRINT_LOG(env, "%%%zu", prev->_insn_id);
 			PRINT_LOG(env, " = ");
 		}
@@ -616,7 +616,7 @@ void print_ir_insn_err_full(struct bpf_ir_env *env, struct ir_insn *insn,
 		PRINT_LOG(env, "  (No instruction)\n");
 	}
 	PRINT_LOG(env, "  ");
-	if (!is_void(insn)) {
+	if (!bpf_ir_is_void(insn)) {
 		PRINT_LOG(env, "%%%zu", insn->_insn_id);
 		PRINT_LOG(env, " = ");
 	}
@@ -629,7 +629,7 @@ void print_ir_insn_err_full(struct bpf_ir_env *env, struct ir_insn *insn,
 	}
 	if (next) {
 		PRINT_LOG(env, "  ");
-		if (!is_void(next)) {
+		if (!bpf_ir_is_void(next)) {
 			PRINT_LOG(env, "%%%zu", next->_insn_id);
 			PRINT_LOG(env, " = ");
 		}

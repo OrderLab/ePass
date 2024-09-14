@@ -214,9 +214,9 @@ static void to_cssa(struct bpf_ir_env *env, struct ir_function *fun)
 				env, pos3->bb, pos3->value,
 				INSERT_BACK_BEFORE_JMP);
 			// Remove use
-			val_remove_user(pos3->value, insn);
-			phi_add_operand(env, new_phi, pos3->bb,
-					bpf_ir_value_insn(new_insn));
+			bpf_ir_val_remove_user(pos3->value, insn);
+			bpf_ir_phi_add_operand(env, new_phi, pos3->bb,
+					       bpf_ir_value_insn(new_insn));
 		}
 
 		bpf_ir_array_free(&insn->phi);
@@ -224,7 +224,7 @@ static void to_cssa(struct bpf_ir_env *env, struct ir_function *fun)
 		struct ir_value val = bpf_ir_value_insn(new_phi);
 		insn->values[0] = val;
 		insn->value_num = 1;
-		val_add_user(env, val, insn);
+		bpf_ir_val_add_user(env, val, insn);
 	}
 
 	bpf_ir_array_free(&phi_insns);
@@ -469,7 +469,7 @@ static void explicit_reg(struct bpf_ir_env *env, struct ir_function *fun)
 							INSERT_FRONT);
 					insn_cg(new_insn)->dst =
 						fun->cg_info.regs[i + 1];
-					val_remove_user(val, insn);
+					bpf_ir_val_remove_user(val, insn);
 				}
 				insn->value_num = 0; // Remove all operands
 				struct ir_insn_cg_extra *extra = insn_cg(insn);
@@ -495,7 +495,7 @@ static void explicit_reg(struct bpf_ir_env *env, struct ir_function *fun)
 							      insn->values[0],
 							      INSERT_FRONT);
 				new_insn->alu_op = IR_ALU_64;
-				val_remove_user(insn->values[0], insn);
+				bpf_ir_val_remove_user(insn->values[0], insn);
 				insn_cg(new_insn)->dst = fun->cg_info.regs[0];
 				insn->value_num = 0;
 			}
@@ -625,7 +625,7 @@ static void gen_kill(struct bpf_ir_env *env, struct ir_function *fun)
 		list_for_each_entry(pos2, &bb->ir_insn_head, list_ptr) {
 			struct ir_insn *insn_dst = insn_dst(pos2);
 			struct ir_insn_cg_extra *insn_cg = pos2->user_data;
-			if (!is_void(pos2) && insn_dst) {
+			if (!bpf_ir_is_void(pos2) && insn_dst) {
 				bpf_ir_array_push_unique(env, &insn_cg->kill,
 							 &insn_dst);
 			}
@@ -917,7 +917,7 @@ static void relocate(struct bpf_ir_env *env, struct ir_function *fun)
 					target - insn_extra->translated[0].pos -
 					1;
 			}
-			if (is_cond_jmp(insn)) {
+			if (bpf_ir_is_cond_jmp(insn)) {
 				DBGASSERT(insn_extra->translated_num == 1);
 				size_t target = bpf_ir_bb_cg(insn->bb2)->pos;
 				insn_extra->translated[0].off =
@@ -1022,8 +1022,8 @@ static void spill_callee(struct bpf_ir_env *env, struct ir_function *fun)
 			// struct ir_insn *st = create_assign_insn_bb_cg(env,
 			//     fun->entry, ir_value_insn(fun->cg_info.regs[i]), INSERT_FRONT);
 			struct ir_insn *st =
-				create_insn_base_cg(env, fun->entry);
-			insert_at_bb(st, fun->entry, INSERT_FRONT);
+				bpf_ir_create_insn_base_cg(env, fun->entry);
+			bpf_ir_insert_at_bb(st, fun->entry, INSERT_FRONT);
 			st->op = IR_INSN_STORERAW;
 			st->values[0] = bpf_ir_value_insn(fun->cg_info.regs[i]);
 			st->value_num = 1;
@@ -1039,8 +1039,9 @@ static void spill_callee(struct bpf_ir_env *env, struct ir_function *fun)
 			{
 				struct ir_basic_block *bb = *pos2;
 				struct ir_insn *ld =
-					create_insn_base_cg(env, bb);
-				insert_at_bb(ld, bb, INSERT_BACK_BEFORE_JMP);
+					bpf_ir_create_insn_base_cg(env, bb);
+				bpf_ir_insert_at_bb(ld, bb,
+						    INSERT_BACK_BEFORE_JMP);
 				ld->op = IR_INSN_LOADRAW;
 				ld->value_num = 0;
 				ld->vr_type = IR_VR_TYPE_64;
@@ -1071,7 +1072,7 @@ static struct ir_insn *normalize_load_const(struct bpf_ir_env *env,
 		return new_insn;
 	} else {
 		struct ir_insn *new_insn =
-			create_insn_base_cg(env, insn->parent_bb);
+			bpf_ir_create_insn_base_cg(env, insn->parent_bb);
 		new_insn->op = IR_INSN_LOADIMM_EXTRA;
 		new_insn->imm_extra_type = IR_LOADIMM_IMM64;
 		new_insn->imm64 = val->data.constant_d;
@@ -1231,7 +1232,7 @@ static void normalize(struct bpf_ir_env *env, struct ir_function *fun)
 				// OK
 			} else if (insn->op == IR_INSN_STORERAW) {
 				// OK
-			} else if (is_alu(insn)) {
+			} else if (bpf_ir_is_alu(insn)) {
 				normalize_alu(env, fun, insn);
 			} else if (insn->op == IR_INSN_ASSIGN) {
 				normalize_assign(fun, insn);
@@ -1241,7 +1242,7 @@ static void normalize(struct bpf_ir_env *env, struct ir_function *fun)
 				// OK
 			} else if (insn->op == IR_INSN_JA) {
 				// OK
-			} else if (is_cond_jmp(insn)) {
+			} else if (bpf_ir_is_cond_jmp(insn)) {
 				// jmp reg const/reg
 				// or
 				// jmp const/reg reg
@@ -1711,7 +1712,7 @@ static bool check_need_spill(struct bpf_ir_env *env, struct ir_function *fun)
 					spill_loadrawextra(env, fun, insn);
 			} else if (insn->op == IR_INSN_STORERAW) {
 				need_modify = spill_storeraw(env, fun, insn);
-			} else if (is_alu(insn)) {
+			} else if (bpf_ir_is_alu(insn)) {
 				need_modify = spill_alu(env, fun, insn);
 			} else if (insn->op == IR_INSN_ASSIGN) {
 				need_modify = spill_assign(env, fun, insn);
@@ -1725,7 +1726,7 @@ static bool check_need_spill(struct bpf_ir_env *env, struct ir_function *fun)
 				DBGASSERT(insn->value_num == 0);
 			} else if (insn->op == IR_INSN_JA) {
 				// OK
-			} else if (is_cond_jmp(insn)) {
+			} else if (bpf_ir_is_cond_jmp(insn)) {
 				need_modify = spill_cond_jump(env, fun, insn);
 			} else {
 				CRITICAL("No such instruction");
@@ -1811,7 +1812,7 @@ static void add_stack_offset_pre_cg(struct bpf_ir_env *env,
 					IR_ALU_64, INSERT_FRONT);
 				new_val.type = IR_VALUE_INSN;
 				new_val.data.insn_d = new_insn;
-				val_add_user(env, new_val, insn);
+				bpf_ir_val_add_user(env, new_val, insn);
 				*val = new_val;
 			}
 		}
@@ -2230,7 +2231,7 @@ static void translate(struct ir_function *fun)
 				translate_loadimm_extra(insn);
 			} else if (insn->op == IR_INSN_STORERAW) {
 				translate_storeraw(insn);
-			} else if (is_alu(insn)) {
+			} else if (bpf_ir_is_alu(insn)) {
 				translate_alu(insn);
 			} else if (insn->op == IR_INSN_ASSIGN) {
 				translate_assign(insn);
@@ -2240,7 +2241,7 @@ static void translate(struct ir_function *fun)
 				translate_call(insn);
 			} else if (insn->op == IR_INSN_JA) {
 				translate_ja(insn);
-			} else if (is_cond_jmp(insn)) {
+			} else if (bpf_ir_is_cond_jmp(insn)) {
 				translate_cond_jmp(insn);
 			} else {
 				CRITICAL("No such instruction");
@@ -2377,7 +2378,7 @@ void bpf_ir_init_insn_cg(struct bpf_ir_env *env, struct ir_insn *insn)
 	struct ir_insn_cg_extra *extra = NULL;
 	SAFE_MALLOC(extra, sizeof(struct ir_insn_cg_extra));
 	// When init, the destination is itself
-	if (is_void(insn)) {
+	if (bpf_ir_is_void(insn)) {
 		extra->dst = NULL;
 	} else {
 		extra->dst = insn;

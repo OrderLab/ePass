@@ -1,7 +1,7 @@
 #include <linux/bpf_ir.h>
 
 // May have exception
-struct ir_insn *create_insn_base(struct ir_basic_block *bb)
+struct ir_insn *bpf_ir_create_insn_base(struct ir_basic_block *bb)
 {
 	struct ir_insn *new_insn = malloc_proto(sizeof(struct ir_insn));
 	if (!new_insn) {
@@ -14,10 +14,10 @@ struct ir_insn *create_insn_base(struct ir_basic_block *bb)
 }
 
 // May have exception
-struct ir_insn *create_insn_base_cg(struct bpf_ir_env *env,
-				    struct ir_basic_block *bb)
+struct ir_insn *bpf_ir_create_insn_base_cg(struct bpf_ir_env *env,
+					   struct ir_basic_block *bb)
 {
-	struct ir_insn *new_insn = create_insn_base(bb);
+	struct ir_insn *new_insn = bpf_ir_create_insn_base(bb);
 	if (!new_insn) {
 		return NULL;
 	}
@@ -28,16 +28,16 @@ struct ir_insn *create_insn_base_cg(struct bpf_ir_env *env,
 	return new_insn;
 }
 
-void replace_operand(struct bpf_ir_env *env, struct ir_insn *insn,
-		     struct ir_value v1, struct ir_value v2)
+void bpf_ir_replace_operand(struct bpf_ir_env *env, struct ir_insn *insn,
+			    struct ir_value v1, struct ir_value v2)
 {
 	// Replace v1 with v2 in insn
 	if (v1.type == IR_VALUE_INSN) {
 		// Remove user from v1
-		val_remove_user(v1, insn);
+		bpf_ir_val_remove_user(v1, insn);
 	}
 	if (v2.type == IR_VALUE_INSN) {
-		val_add_user(env, v2, insn);
+		bpf_ir_val_add_user(env, v2, insn);
 	}
 }
 
@@ -58,7 +58,7 @@ void bpf_ir_replace_all_usage(struct bpf_ir_env *env, struct ir_insn *insn,
 			    (*pos2)->data.insn_d == insn) {
 				// Match, replace
 				**pos2 = rep;
-				val_add_user(env, rep, user);
+				bpf_ir_val_add_user(env, rep, user);
 			}
 		}
 		bpf_ir_array_free(&operands);
@@ -88,7 +88,7 @@ void bpf_ir_replace_all_usage_except(struct bpf_ir_env *env,
 			    (*pos2)->data.insn_d == insn) {
 				// Match, replace
 				**pos2 = rep;
-				val_add_user(env, rep, user);
+				bpf_ir_val_add_user(env, rep, user);
 			}
 		}
 		bpf_ir_array_free(&operands);
@@ -153,7 +153,7 @@ void bpf_ir_erase_insn(struct bpf_ir_env *env, struct ir_insn *insn)
 	struct ir_value **pos2;
 	array_for(pos2, operands)
 	{
-		val_remove_user((**pos2), insn);
+		bpf_ir_val_remove_user((**pos2), insn);
 	}
 	bpf_ir_array_free(&operands);
 	list_del(&insn->list_ptr);
@@ -161,8 +161,8 @@ void bpf_ir_erase_insn(struct bpf_ir_env *env, struct ir_insn *insn)
 	free_proto(insn);
 }
 
-void insert_at(struct ir_insn *new_insn, struct ir_insn *insn,
-	       enum insert_position pos)
+void bpf_ir_insert_at(struct ir_insn *new_insn, struct ir_insn *insn,
+		      enum insert_position pos)
 {
 	if (pos == INSERT_BACK) {
 		list_add(&new_insn->list_ptr, &insn->list_ptr);
@@ -173,8 +173,8 @@ void insert_at(struct ir_insn *new_insn, struct ir_insn *insn,
 	}
 }
 
-void insert_at_bb(struct ir_insn *new_insn, struct ir_basic_block *bb,
-		  enum insert_position pos)
+void bpf_ir_insert_at_bb(struct ir_insn *new_insn, struct ir_basic_block *bb,
+			 enum insert_position pos)
 {
 	if (pos == INSERT_BACK) {
 		list_add_tail(&new_insn->list_ptr, &bb->ir_insn_head);
@@ -185,7 +185,7 @@ void insert_at_bb(struct ir_insn *new_insn, struct ir_basic_block *bb,
 		// 2. If there is a JMP at the end, insert before it
 		struct ir_insn *last_insn = bpf_ir_get_last_insn(bb);
 		if (last_insn) {
-			if (is_jmp(last_insn)) {
+			if (bpf_ir_is_jmp(last_insn)) {
 				// Insert before this insn
 				list_add_tail(&new_insn->list_ptr,
 					      &last_insn->list_ptr);
@@ -219,7 +219,7 @@ void insert_at_bb(struct ir_insn *new_insn, struct ir_basic_block *bb,
 struct ir_insn *create_alloc_insn_base(struct ir_basic_block *bb,
 				       enum ir_vr_type type)
 {
-	struct ir_insn *new_insn = create_insn_base(bb);
+	struct ir_insn *new_insn = bpf_ir_create_insn_base(bb);
 	new_insn->op = IR_INSN_ALLOC;
 	new_insn->vr_type = type;
 	return new_insn;
@@ -230,7 +230,7 @@ struct ir_insn *create_alloc_insn(struct ir_insn *insn, enum ir_vr_type type,
 {
 	struct ir_insn *new_insn =
 		create_alloc_insn_base(insn->parent_bb, type);
-	insert_at(new_insn, insn, pos);
+	bpf_ir_insert_at(new_insn, insn, pos);
 	return new_insn;
 }
 
@@ -239,11 +239,11 @@ struct ir_insn *create_alloc_insn_bb(struct ir_basic_block *bb,
 				     enum insert_position pos)
 {
 	struct ir_insn *new_insn = create_alloc_insn_base(bb, type);
-	insert_at_bb(new_insn, bb, pos);
+	bpf_ir_insert_at_bb(new_insn, bb, pos);
 	return new_insn;
 }
 
-void val_remove_user(struct ir_value val, struct ir_insn *user)
+void bpf_ir_val_remove_user(struct ir_value val, struct ir_insn *user)
 {
 	if (val.type != IR_VALUE_INSN) {
 		return;
@@ -259,8 +259,8 @@ void val_remove_user(struct ir_value val, struct ir_insn *user)
 	PRINT_DBG("Warning: User not found in the users\n");
 }
 
-void val_add_user(struct bpf_ir_env *env, struct ir_value val,
-		  struct ir_insn *user)
+void bpf_ir_val_add_user(struct bpf_ir_env *env, struct ir_value val,
+			 struct ir_insn *user)
 {
 	if (val.type != IR_VALUE_INSN) {
 		return;
@@ -273,14 +273,14 @@ struct ir_insn *create_store_insn_base(struct bpf_ir_env *env,
 				       struct ir_insn *insn,
 				       struct ir_value val)
 {
-	struct ir_insn *new_insn = create_insn_base(bb);
+	struct ir_insn *new_insn = bpf_ir_create_insn_base(bb);
 	new_insn->op = IR_INSN_STORE;
 	struct ir_value nv = bpf_ir_value_insn(insn);
 	new_insn->values[0] = nv;
 	new_insn->values[1] = val;
 	new_insn->value_num = 2;
-	val_add_user(env, nv, new_insn);
-	val_add_user(env, val, new_insn);
+	bpf_ir_val_add_user(env, nv, new_insn);
+	bpf_ir_val_add_user(env, val, new_insn);
 	return new_insn;
 }
 
@@ -290,7 +290,7 @@ struct ir_insn *create_store_insn(struct bpf_ir_env *env, struct ir_insn *insn,
 {
 	struct ir_insn *new_insn =
 		create_store_insn_base(env, insn->parent_bb, st_insn, val);
-	insert_at(new_insn, insn, pos);
+	bpf_ir_insert_at(new_insn, insn, pos);
 	return new_insn;
 }
 
@@ -302,7 +302,7 @@ struct ir_insn *create_store_insn_bb(struct bpf_ir_env *env,
 {
 	struct ir_insn *new_insn =
 		create_store_insn_base(env, bb, st_insn, val);
-	insert_at_bb(new_insn, bb, pos);
+	bpf_ir_insert_at_bb(new_insn, bb, pos);
 	return new_insn;
 }
 
@@ -310,10 +310,10 @@ struct ir_insn *create_load_insn_base(struct bpf_ir_env *env,
 				      struct ir_basic_block *bb,
 				      struct ir_value val)
 {
-	struct ir_insn *new_insn = create_insn_base(bb);
+	struct ir_insn *new_insn = bpf_ir_create_insn_base(bb);
 	new_insn->op = IR_INSN_LOAD;
 	new_insn->values[0] = val;
-	val_add_user(env, val, new_insn);
+	bpf_ir_val_add_user(env, val, new_insn);
 	new_insn->value_num = 1;
 	return new_insn;
 }
@@ -323,7 +323,7 @@ struct ir_insn *create_load_insn(struct bpf_ir_env *env, struct ir_insn *insn,
 {
 	struct ir_insn *new_insn =
 		create_load_insn_base(env, insn->parent_bb, val);
-	insert_at(new_insn, insn, pos);
+	bpf_ir_insert_at(new_insn, insn, pos);
 	return new_insn;
 }
 
@@ -333,7 +333,7 @@ struct ir_insn *create_load_insn_bb(struct bpf_ir_env *env,
 				    enum insert_position pos)
 {
 	struct ir_insn *new_insn = create_load_insn_base(env, bb, val);
-	insert_at_bb(new_insn, bb, pos);
+	bpf_ir_insert_at_bb(new_insn, bb, pos);
 	return new_insn;
 }
 
@@ -343,13 +343,13 @@ struct ir_insn *create_bin_insn_base(struct bpf_ir_env *env,
 				     enum ir_insn_type ty,
 				     enum ir_alu_op_type aluty)
 {
-	struct ir_insn *new_insn = create_insn_base(bb);
+	struct ir_insn *new_insn = bpf_ir_create_insn_base(bb);
 	new_insn->op = ty;
 	new_insn->values[0] = val1;
 	new_insn->values[1] = val2;
 	new_insn->alu_op = aluty;
-	val_add_user(env, val1, new_insn);
-	val_add_user(env, val2, new_insn);
+	bpf_ir_val_add_user(env, val1, new_insn);
+	bpf_ir_val_add_user(env, val2, new_insn);
 	new_insn->value_num = 2;
 	return new_insn;
 }
@@ -361,7 +361,7 @@ struct ir_insn *create_bin_insn(struct bpf_ir_env *env, struct ir_insn *insn,
 {
 	struct ir_insn *new_insn = create_bin_insn_base(env, insn->parent_bb,
 							val1, val2, ty, aluty);
-	insert_at(new_insn, insn, pos);
+	bpf_ir_insert_at(new_insn, insn, pos);
 	return new_insn;
 }
 
@@ -374,11 +374,11 @@ struct ir_insn *create_bin_insn_bb(struct bpf_ir_env *env,
 {
 	struct ir_insn *new_insn =
 		create_bin_insn_base(env, bb, val1, val2, ty, aluty);
-	insert_at_bb(new_insn, bb, pos);
+	bpf_ir_insert_at_bb(new_insn, bb, pos);
 	return new_insn;
 }
 
-struct ir_insn *prev_insn(struct ir_insn *insn)
+struct ir_insn *bpf_ir_prev_insn(struct ir_insn *insn)
 {
 	struct list_head *prev = insn->list_ptr.prev;
 	if (prev == &insn->parent_bb->ir_insn_head) {
@@ -387,7 +387,7 @@ struct ir_insn *prev_insn(struct ir_insn *insn)
 	return list_entry(prev, struct ir_insn, list_ptr);
 }
 
-struct ir_insn *next_insn(struct ir_insn *insn)
+struct ir_insn *bpf_ir_next_insn(struct ir_insn *insn)
 {
 	struct list_head *next = insn->list_ptr.next;
 	if (next == &insn->parent_bb->ir_insn_head) {
@@ -400,7 +400,7 @@ struct ir_insn *create_ja_insn_base(struct bpf_ir_env *env,
 				    struct ir_basic_block *bb,
 				    struct ir_basic_block *to_bb)
 {
-	struct ir_insn *new_insn = create_insn_base(bb);
+	struct ir_insn *new_insn = bpf_ir_create_insn_base(bb);
 	new_insn->op = IR_INSN_JA;
 	new_insn->bb1 = to_bb;
 	bpf_ir_array_push(env, &to_bb->users, &new_insn);
@@ -413,7 +413,7 @@ struct ir_insn *create_ja_insn(struct bpf_ir_env *env, struct ir_insn *insn,
 {
 	struct ir_insn *new_insn =
 		create_ja_insn_base(env, insn->parent_bb, to_bb);
-	insert_at(new_insn, insn, pos);
+	bpf_ir_insert_at(new_insn, insn, pos);
 	return new_insn;
 }
 
@@ -423,7 +423,7 @@ struct ir_insn *create_ja_insn_bb(struct bpf_ir_env *env,
 				  enum insert_position pos)
 {
 	struct ir_insn *new_insn = create_ja_insn_base(env, bb, to_bb);
-	insert_at_bb(new_insn, bb, pos);
+	bpf_ir_insert_at_bb(new_insn, bb, pos);
 	return new_insn;
 }
 
@@ -434,15 +434,15 @@ create_jbin_insn_base(struct bpf_ir_env *env, struct ir_basic_block *bb,
 		      struct ir_basic_block *to_bb2, enum ir_insn_type ty,
 		      enum ir_alu_op_type aluty)
 {
-	struct ir_insn *new_insn = create_insn_base(bb);
+	struct ir_insn *new_insn = bpf_ir_create_insn_base(bb);
 	new_insn->op = ty;
 	new_insn->values[0] = val1;
 	new_insn->values[1] = val2;
 	new_insn->bb1 = to_bb1;
 	new_insn->bb2 = to_bb2;
 	new_insn->alu_op = aluty;
-	val_add_user(env, val1, new_insn);
-	val_add_user(env, val2, new_insn);
+	bpf_ir_val_add_user(env, val1, new_insn);
+	bpf_ir_val_add_user(env, val2, new_insn);
 	bpf_ir_array_push(env, &to_bb1->users, &new_insn);
 	bpf_ir_array_push(env, &to_bb2->users, &new_insn);
 	new_insn->value_num = 2;
@@ -459,7 +459,7 @@ struct ir_insn *create_jbin_insn(struct bpf_ir_env *env, struct ir_insn *insn,
 {
 	struct ir_insn *new_insn = create_jbin_insn_base(
 		env, insn->parent_bb, val1, val2, to_bb1, to_bb2, ty, aluty);
-	insert_at(new_insn, insn, pos);
+	bpf_ir_insert_at(new_insn, insn, pos);
 	return new_insn;
 }
 
@@ -472,7 +472,7 @@ create_jbin_insn_bb(struct bpf_ir_env *env, struct ir_basic_block *bb,
 {
 	struct ir_insn *new_insn = create_jbin_insn_base(
 		env, bb, val1, val2, to_bb1, to_bb2, ty, aluty);
-	insert_at_bb(new_insn, bb, pos);
+	bpf_ir_insert_at_bb(new_insn, bb, pos);
 	return new_insn;
 }
 
@@ -480,11 +480,11 @@ struct ir_insn *create_ret_insn_base(struct bpf_ir_env *env,
 				     struct ir_basic_block *bb,
 				     struct ir_value val)
 {
-	struct ir_insn *new_insn = create_insn_base(bb);
+	struct ir_insn *new_insn = bpf_ir_create_insn_base(bb);
 	new_insn->op = IR_INSN_RET;
 	new_insn->values[0] = val;
 	new_insn->value_num = 1;
-	val_add_user(env, val, new_insn);
+	bpf_ir_val_add_user(env, val, new_insn);
 	return new_insn;
 }
 
@@ -493,7 +493,7 @@ struct ir_insn *create_ret_insn(struct bpf_ir_env *env, struct ir_insn *insn,
 {
 	struct ir_insn *new_insn =
 		create_ret_insn_base(env, insn->parent_bb, val);
-	insert_at(new_insn, insn, pos);
+	bpf_ir_insert_at(new_insn, insn, pos);
 	return new_insn;
 }
 
@@ -503,30 +503,30 @@ struct ir_insn *create_ret_insn_bb(struct bpf_ir_env *env,
 				   enum insert_position pos)
 {
 	struct ir_insn *new_insn = create_ret_insn_base(env, bb, val);
-	insert_at_bb(new_insn, bb, pos);
+	bpf_ir_insert_at_bb(new_insn, bb, pos);
 	return new_insn;
 }
 
 // Note. This includes ret instruction
-int is_jmp(struct ir_insn *insn)
+int bpf_ir_is_jmp(struct ir_insn *insn)
 {
 	return (insn->op >= IR_INSN_JA && insn->op <= IR_INSN_JNE) ||
 	       insn->op == IR_INSN_RET;
 }
 
-int is_cond_jmp(struct ir_insn *insn)
+int bpf_ir_is_cond_jmp(struct ir_insn *insn)
 {
 	return (insn->op >= IR_INSN_JEQ && insn->op < IR_INSN_PHI);
 }
 
-int is_alu(struct ir_insn *insn)
+int bpf_ir_is_alu(struct ir_insn *insn)
 {
 	return insn->op >= IR_INSN_ADD && insn->op < IR_INSN_CALL;
 }
 
-int is_void(struct ir_insn *insn)
+int bpf_ir_is_void(struct ir_insn *insn)
 {
-	return is_jmp(insn) || insn->op == IR_INSN_STORERAW ||
+	return bpf_ir_is_jmp(insn) || insn->op == IR_INSN_STORERAW ||
 	       insn->op == IR_INSN_STORE;
 }
 
@@ -534,11 +534,11 @@ struct ir_insn *create_assign_insn_base(struct bpf_ir_env *env,
 					struct ir_basic_block *bb,
 					struct ir_value val)
 {
-	struct ir_insn *new_insn = create_insn_base(bb);
+	struct ir_insn *new_insn = bpf_ir_create_insn_base(bb);
 	new_insn->op = IR_INSN_ASSIGN;
 	new_insn->values[0] = val;
 	new_insn->value_num = 1;
-	val_add_user(env, val, new_insn);
+	bpf_ir_val_add_user(env, val, new_insn);
 	return new_insn;
 }
 
@@ -548,7 +548,7 @@ struct ir_insn *create_assign_insn(struct bpf_ir_env *env, struct ir_insn *insn,
 {
 	struct ir_insn *new_insn =
 		create_assign_insn_base(env, insn->parent_bb, val);
-	insert_at(new_insn, insn, pos);
+	bpf_ir_insert_at(new_insn, insn, pos);
 	return new_insn;
 }
 
@@ -558,7 +558,7 @@ struct ir_insn *create_assign_insn_bb(struct bpf_ir_env *env,
 				      enum insert_position pos)
 {
 	struct ir_insn *new_insn = create_assign_insn_base(env, bb, val);
-	insert_at_bb(new_insn, bb, pos);
+	bpf_ir_insert_at_bb(new_insn, bb, pos);
 	return new_insn;
 }
 
@@ -566,13 +566,13 @@ struct ir_insn *create_assign_insn_base_cg(struct bpf_ir_env *env,
 					   struct ir_basic_block *bb,
 					   struct ir_value val)
 {
-	struct ir_insn *new_insn = create_insn_base_cg(env, bb);
+	struct ir_insn *new_insn = bpf_ir_create_insn_base_cg(env, bb);
 	new_insn->op = IR_INSN_ASSIGN;
 	new_insn->values[0] = val;
 	new_insn->value_num = 1;
 	new_insn->vr_type = IR_VR_TYPE_UNKNOWN;
 	new_insn->alu_op = IR_ALU_UNKNOWN;
-	val_add_user(env, val, new_insn);
+	bpf_ir_val_add_user(env, val, new_insn);
 	return new_insn;
 }
 
@@ -582,7 +582,7 @@ struct ir_insn *create_assign_insn_cg(struct bpf_ir_env *env,
 {
 	struct ir_insn *new_insn =
 		create_assign_insn_base_cg(env, insn->parent_bb, val);
-	insert_at(new_insn, insn, pos);
+	bpf_ir_insert_at(new_insn, insn, pos);
 	return new_insn;
 }
 
@@ -592,13 +592,13 @@ struct ir_insn *create_assign_insn_bb_cg(struct bpf_ir_env *env,
 					 enum insert_position pos)
 {
 	struct ir_insn *new_insn = create_assign_insn_base_cg(env, bb, val);
-	insert_at_bb(new_insn, bb, pos);
+	bpf_ir_insert_at_bb(new_insn, bb, pos);
 	return new_insn;
 }
 
 struct ir_insn *create_phi_insn_base(struct ir_basic_block *bb)
 {
-	struct ir_insn *new_insn = create_insn_base(bb);
+	struct ir_insn *new_insn = bpf_ir_create_insn_base(bb);
 	new_insn->op = IR_INSN_PHI;
 	INIT_ARRAY(&new_insn->phi, struct phi_value);
 	return new_insn;
@@ -607,7 +607,7 @@ struct ir_insn *create_phi_insn_base(struct ir_basic_block *bb)
 struct ir_insn *create_phi_insn(struct ir_insn *insn, enum insert_position pos)
 {
 	struct ir_insn *new_insn = create_phi_insn_base(insn->parent_bb);
-	insert_at(new_insn, insn, pos);
+	bpf_ir_insert_at(new_insn, insn, pos);
 	return new_insn;
 }
 
@@ -615,17 +615,17 @@ struct ir_insn *create_phi_insn_bb(struct ir_basic_block *bb,
 				   enum insert_position pos)
 {
 	struct ir_insn *new_insn = create_phi_insn_base(bb);
-	insert_at_bb(new_insn, bb, pos);
+	bpf_ir_insert_at_bb(new_insn, bb, pos);
 	return new_insn;
 }
 
-void phi_add_operand(struct bpf_ir_env *env, struct ir_insn *insn,
-		     struct ir_basic_block *bb, struct ir_value val)
+void bpf_ir_phi_add_operand(struct bpf_ir_env *env, struct ir_insn *insn,
+			    struct ir_basic_block *bb, struct ir_value val)
 {
 	// Make sure that bb is a pred of insn parent BB
 	struct phi_value pv;
 	pv.value = val;
 	pv.bb = bb;
 	bpf_ir_array_push(env, &insn->phi, &pv);
-	val_add_user(env, val, insn);
+	bpf_ir_val_add_user(env, val, insn);
 }

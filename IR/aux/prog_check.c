@@ -67,8 +67,9 @@ static void check_insn(struct bpf_ir_env *env, struct ir_function *fun)
 				}
 			}
 
-			if (insn->op == IR_INSN_STORE || (is_alu(insn)) ||
-			    (is_cond_jmp(insn))) {
+			if (insn->op == IR_INSN_STORE ||
+			    (bpf_ir_is_alu(insn)) ||
+			    (bpf_ir_is_cond_jmp(insn))) {
 				if (!(insn->value_num == 2)) {
 					print_ir_insn_err(env, insn, NULL);
 					RAISE_ERROR(
@@ -91,7 +92,7 @@ static void check_insn(struct bpf_ir_env *env, struct ir_function *fun)
 
 			// TODO: Check: users of alloc instructions must be STORE/LOAD
 
-			if (is_alu(insn) || is_cond_jmp(insn)) {
+			if (bpf_ir_is_alu(insn) || bpf_ir_is_cond_jmp(insn)) {
 				// Binary ALU
 				if (!bpf_ir_valid_alu_type(insn->alu_op)) {
 					print_ir_insn_err(env, insn, NULL);
@@ -237,7 +238,7 @@ static void check_jumping(struct bpf_ir_env *env, struct ir_function *fun)
 		struct ir_insn *insn;
 		int jmp_exists = 0;
 		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
-			if (is_jmp(insn)) {
+			if (bpf_ir_is_jmp(insn)) {
 				jmp_exists = 1;
 				if (!bpf_ir_is_last_insn(insn)) {
 					// Error
@@ -259,7 +260,7 @@ static void check_jumping(struct bpf_ir_env *env, struct ir_function *fun)
 						continue;
 					}
 					// For conditional jumps, both BB1 and BB2 should be successors
-					if (is_cond_jmp(insn)) {
+					if (bpf_ir_is_cond_jmp(insn)) {
 						// Get the two basic blocks that the conditional jump statement jumps to
 						struct ir_basic_block *bb1 =
 							insn->bb1;
@@ -359,7 +360,7 @@ static void bpf_ir_fix_bb_succ(struct ir_function *fun)
 	{
 		struct ir_basic_block *bb = *pos;
 		struct ir_insn *insn = bpf_ir_get_last_insn(bb);
-		if (insn && is_cond_jmp(insn)) {
+		if (insn && bpf_ir_is_cond_jmp(insn)) {
 			// Conditional jmp
 			if (bb->succs.num_elem != 2) {
 				CRITICAL(
