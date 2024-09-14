@@ -4,7 +4,7 @@ void add_counter(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	struct ir_basic_block *entry = fun->entry;
 	struct ir_insn *alloc_insn =
-		create_alloc_insn_bb(entry, IR_VR_TYPE_64, INSERT_FRONT);
+		create_alloc_insn_bb(env, entry, IR_VR_TYPE_64, INSERT_FRONT);
 	struct ir_value val;
 	val.type = IR_VALUE_CONSTANT;
 	val.data.constant_d = 0;

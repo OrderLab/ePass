@@ -206,7 +206,8 @@ static void to_cssa(struct bpf_ir_env *env, struct ir_function *fun)
 	{
 		struct ir_insn *insn = *pos2;
 		// Create the moved PHI insn
-		struct ir_insn *new_phi = create_phi_insn(insn, INSERT_FRONT);
+		struct ir_insn *new_phi =
+			create_phi_insn(env, insn, INSERT_FRONT);
 		struct phi_value *pos3;
 		array_for(pos3, insn->phi)
 		{

@@ -363,7 +363,7 @@ static struct ir_insn *create_ja_insn_base(struct bpf_ir_env *env,
 	return new_insn;
 }
 
-struct ir_insn *
+static struct ir_insn *
 create_jbin_insn_base(struct bpf_ir_env *env, struct ir_basic_block *bb,
 		      struct ir_value val1, struct ir_value val2,
 		      struct ir_basic_block *to_bb1,
@@ -497,6 +497,31 @@ struct ir_insn *create_load_insn_bb(struct bpf_ir_env *env,
 	return new_insn;
 }
 
+struct ir_insn *create_bin_insn(struct bpf_ir_env *env,
+				struct ir_insn *pos_insn, struct ir_value val1,
+				struct ir_value val2, enum ir_insn_type ty,
+				enum ir_alu_op_type aluty,
+				enum insert_position pos)
+{
+	struct ir_insn *new_insn = create_bin_insn_base(
+		env, pos_insn->parent_bb, val1, val2, ty, aluty);
+	bpf_ir_insert_at(new_insn, pos_insn, pos);
+	return new_insn;
+}
+
+struct ir_insn *create_bin_insn_bb(struct bpf_ir_env *env,
+				   struct ir_basic_block *pos_bb,
+				   struct ir_value val1, struct ir_value val2,
+				   enum ir_insn_type ty,
+				   enum ir_alu_op_type aluty,
+				   enum insert_position pos)
+{
+	struct ir_insn *new_insn =
+		create_bin_insn_base(env, pos_bb, val1, val2, ty, aluty);
+	bpf_ir_insert_at_bb(new_insn, pos_bb, pos);
+	return new_insn;
+}
+
 struct ir_insn *create_ja_insn(struct bpf_ir_env *env, struct ir_insn *pos_insn,
 			       struct ir_basic_block *to_bb,
 			       enum insert_position pos)
@@ -513,6 +538,33 @@ struct ir_insn *create_ja_insn_bb(struct bpf_ir_env *env,
 				  enum insert_position pos)
 {
 	struct ir_insn *new_insn = create_ja_insn_base(env, pos_bb, to_bb);
+	bpf_ir_insert_at_bb(new_insn, pos_bb, pos);
+	return new_insn;
+}
+
+struct ir_insn *
+create_jbin_insn(struct bpf_ir_env *env, struct ir_insn *pos_insn,
+		 struct ir_value val1, struct ir_value val2,
+		 struct ir_basic_block *to_bb1, struct ir_basic_block *to_bb2,
+		 enum ir_insn_type ty, enum ir_alu_op_type aluty,
+		 enum insert_position pos)
+{
+	struct ir_insn *new_insn =
+		create_jbin_insn_base(env, pos_insn->parent_bb, val1, val2,
+				      to_bb1, to_bb2, ty, aluty);
+	bpf_ir_insert_at(new_insn, pos_insn, pos);
+	return new_insn;
+}
+
+struct ir_insn *
+create_jbin_insn_bb(struct bpf_ir_env *env, struct ir_basic_block *pos_bb,
+		    struct ir_value val1, struct ir_value val2,
+		    struct ir_basic_block *to_bb1,
+		    struct ir_basic_block *to_bb2, enum ir_insn_type ty,
+		    enum ir_alu_op_type aluty, enum insert_position pos)
+{
+	struct ir_insn *new_insn = create_jbin_insn_base(
+		env, pos_bb, val1, val2, to_bb1, to_bb2, ty, aluty);
 	bpf_ir_insert_at_bb(new_insn, pos_bb, pos);
 	return new_insn;
 }

@@ -88,7 +88,7 @@ def main():
     proto = ""
     with open("ir_insn.c") as f:
         proto = f.read()
-    regc = r"static struct ir_insn \*(create_.*?_insn)_base(.*?)\(([\s\S]*?)\)"
+    regc = r"static struct ir_insn[\*\s]*?(create_.*?_insn)_base(.*?)\(([\s\S]*?)\)"
     regc = re.compile(regc)
     all_matches = regc.findall(proto)
     handle_ir(all_matches, header, src)
