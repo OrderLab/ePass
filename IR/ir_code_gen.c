@@ -1921,7 +1921,10 @@ static struct pre_ir_insn load_addr_to_reg(u8 dst, struct ir_address_value addr,
 		// Must be U64
 		insn.it = IMM64;
 		insn.imm64 = addr.value.data.constant_d;
-		insn.opcode = BPF_IMM | size | BPF_LD;
+		insn.opcode = size;
+		// Simplify the opcode to reduce compiler warning, the real opcode is as follows
+		// (but BPF_MM and BPF_LD are all 0)
+		// insn.opcode = BPF_IMM | size | BPF_LD;
 	} else {
 		CRITICAL("Error");
 	}
