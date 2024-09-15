@@ -44,6 +44,14 @@ typedef __u64 u64;
 
 #define BPF_IR_LOG_SIZE 100000
 
+struct ir_opts {
+	u8 debug;
+	enum {
+		BPF_IR_PRINT_BPF,
+		BPF_IR_PRINT_DETAIL,
+	} print_mode;
+};
+
 struct bpf_ir_env {
 	int err;
 
@@ -55,6 +63,8 @@ struct bpf_ir_env {
 
 	char log[BPF_IR_LOG_SIZE];
 	size_t log_pos;
+
+	struct ir_opts opts;
 };
 
 void bpf_ir_print_to_log(struct bpf_ir_env *env, char *fmt, ...);
@@ -511,7 +521,7 @@ void bpf_ir_print_bpf_insn(struct bpf_ir_env *env, const struct bpf_insn *insn);
 
 void bpf_ir_free_env(struct bpf_ir_env *env);
 
-struct bpf_ir_env *bpf_ir_init_env(void);
+struct bpf_ir_env *bpf_ir_init_env(struct ir_opts);
 
 /* Fun Start */
 

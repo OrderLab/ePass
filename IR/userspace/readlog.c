@@ -37,7 +37,11 @@ int main(int argc, char **argv)
 	}
 
 	printf("Loaded program of size %zu\n", index);
-	struct bpf_ir_env *env = bpf_ir_init_env();
+	struct ir_opts opts = {
+		.debug = 1,
+		.print_mode = BPF_IR_PRINT_BPF,
+	};
+	struct bpf_ir_env *env = bpf_ir_init_env(opts);
 	if (!env) {
 		return 1;
 	}

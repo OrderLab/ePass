@@ -1054,27 +1054,35 @@ static void run_passes(struct bpf_ir_env *env, struct ir_function *fun)
 	}
 }
 
-// static void print_bpf_insn_simple(struct bpf_ir_env *env, struct bpf_insn insn)
-// {
-// 	if (insn.off < 0) {
-// 		PRINT_LOG(env, "%4x       %x       %x %8x -%8x\n", insn.code,
-// 			  insn.src_reg, insn.dst_reg, insn.imm, -insn.off);
-// 	} else {
-// 		PRINT_LOG(env, "%4x       %x       %x %8x  %8x\n", insn.code,
-// 			  insn.src_reg, insn.dst_reg, insn.imm, insn.off);
-// 	}
-// }
+static void print_bpf_insn_simple(struct bpf_ir_env *env,
+				  const struct bpf_insn *insn)
+{
+	if (insn->off < 0) {
+		PRINT_LOG(env, "%4x       %x       %x %8x -%8x\n", insn->code,
+			  insn->src_reg, insn->dst_reg, insn->imm, -insn->off);
+	} else {
+		PRINT_LOG(env, "%4x       %x       %x %8x  %8x\n", insn->code,
+			  insn->src_reg, insn->dst_reg, insn->imm, insn->off);
+	}
+}
 
 static void print_bpf_prog(struct bpf_ir_env *env, const struct bpf_insn *insns,
 			   size_t len)
 {
+	if (env->opts.print_mode == BPF_IR_PRINT_DETAIL) {
+		PRINT_LOG(env, "      op     src     dst      imm       off\n");
+	}
 	for (size_t i = 0; i < len; ++i) {
 		const struct bpf_insn *insn = &insns[i];
 		if (insn->code == 0) {
 			continue;
 		}
 		PRINT_LOG(env, "[%zu] ", i);
-		bpf_ir_print_bpf_insn(env, insn);
+		if (env->opts.print_mode == BPF_IR_PRINT_DETAIL) {
+			print_bpf_insn_simple(env, insn);
+		} else if (env->opts.print_mode == BPF_IR_PRINT_BPF) {
+			bpf_ir_print_bpf_insn(env, insn);
+		}
 	}
 }
 
@@ -1131,13 +1139,14 @@ void bpf_ir_run(struct bpf_ir_env *env, const struct bpf_insn *insns,
 	free_function(&fun);
 }
 
-struct bpf_ir_env *bpf_ir_init_env(void)
+struct bpf_ir_env *bpf_ir_init_env(struct ir_opts opts)
 {
 	struct bpf_ir_env *bpf_ir_env = malloc_proto(sizeof(struct bpf_ir_env));
 	bpf_ir_env->insn_cnt = 0;
 	bpf_ir_env->insns = NULL;
 	bpf_ir_env->log_pos = 0;
 	bpf_ir_env->err = 0;
+	bpf_ir_env->opts = opts;
 	return bpf_ir_env;
 }
 

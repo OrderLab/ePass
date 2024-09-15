@@ -2003,10 +2003,11 @@ static void add_stack_offset(struct bpf_ir_env *env, struct ir_function *fun,
 static struct pre_ir_insn translate_reg_to_reg(u8 dst, u8 src)
 {
 	// MOV dst src
-	struct pre_ir_insn insn;
+	struct pre_ir_insn insn = { 0 };
 	insn.opcode = BPF_MOV | BPF_X | BPF_ALU64;
 	insn.dst_reg = dst;
 	insn.src_reg = src;
+	insn.imm = 0;
 	return insn;
 }
 
@@ -2014,7 +2015,7 @@ static struct pre_ir_insn translate_const_to_reg(u8 dst, s64 data,
 						 enum ir_alu_op_type type)
 {
 	// MOV dst imm
-	struct pre_ir_insn insn;
+	struct pre_ir_insn insn = { 0 };
 	insn.dst_reg = dst;
 	if (type == IR_ALU_32) {
 		insn.opcode = BPF_MOV | BPF_K | BPF_ALU;
@@ -2022,7 +2023,6 @@ static struct pre_ir_insn translate_const_to_reg(u8 dst, s64 data,
 		// Default is imm64
 		insn.opcode = BPF_MOV | BPF_K | BPF_ALU64;
 	}
-	insn.it = IMM;
 	insn.imm = data;
 	return insn;
 }
@@ -2047,7 +2047,7 @@ static struct pre_ir_insn load_addr_to_reg(u8 dst, struct ir_address_value addr,
 					   enum ir_vr_type type)
 {
 	// MOV dst src
-	struct pre_ir_insn insn;
+	struct pre_ir_insn insn = { 0 };
 	insn.dst_reg = dst;
 	insn.off = addr.offset;
 	int size = vr_type_to_size(type);
@@ -2074,7 +2074,7 @@ static struct pre_ir_insn load_addr_to_reg(u8 dst, struct ir_address_value addr,
 static struct pre_ir_insn store_reg_to_reg_mem(u8 dst, u8 src, s16 offset,
 					       enum ir_vr_type type)
 {
-	struct pre_ir_insn insn;
+	struct pre_ir_insn insn = { 0 };
 	int size = vr_type_to_size(type);
 	insn.src_reg = src;
 	insn.off = offset;
@@ -2086,7 +2086,7 @@ static struct pre_ir_insn store_reg_to_reg_mem(u8 dst, u8 src, s16 offset,
 static struct pre_ir_insn store_const_to_reg_mem(u8 dst, s64 val, s16 offset,
 						 enum ir_vr_type type)
 {
-	struct pre_ir_insn insn;
+	struct pre_ir_insn insn = { 0 };
 	int size = vr_type_to_size(type);
 	insn.it = IMM;
 	insn.imm = val;
@@ -2139,7 +2139,7 @@ static int jmp_code(enum ir_insn_type insn)
 static struct pre_ir_insn alu_reg(u8 dst, u8 src, enum ir_alu_op_type type,
 				  int opcode)
 {
-	struct pre_ir_insn insn;
+	struct pre_ir_insn insn = { 0 };
 	insn.dst_reg = dst;
 	insn.src_reg = src;
 	int alu_class = type == IR_ALU_64 ? BPF_ALU64 : BPF_ALU;
@@ -2150,7 +2150,7 @@ static struct pre_ir_insn alu_reg(u8 dst, u8 src, enum ir_alu_op_type type,
 static struct pre_ir_insn alu_imm(u8 dst, s64 src, enum ir_alu_op_type type,
 				  int opcode)
 {
-	struct pre_ir_insn insn;
+	struct pre_ir_insn insn = { 0 };
 	insn.dst_reg = dst;
 	insn.src_reg = src;
 	int alu_class = type == IR_ALU_64 ? BPF_ALU64 : BPF_ALU;
@@ -2163,7 +2163,7 @@ static struct pre_ir_insn alu_imm(u8 dst, s64 src, enum ir_alu_op_type type,
 static struct pre_ir_insn cond_jmp_reg(u8 dst, u8 src, enum ir_alu_op_type type,
 				       int opcode)
 {
-	struct pre_ir_insn insn;
+	struct pre_ir_insn insn = { 0 };
 	insn.dst_reg = dst;
 	insn.src_reg = src;
 	int alu_class = type == IR_ALU_64 ? BPF_JMP : BPF_JMP32;
@@ -2174,7 +2174,7 @@ static struct pre_ir_insn cond_jmp_reg(u8 dst, u8 src, enum ir_alu_op_type type,
 static struct pre_ir_insn cond_jmp_imm(u8 dst, s64 src,
 				       enum ir_alu_op_type type, int opcode)
 {
-	struct pre_ir_insn insn;
+	struct pre_ir_insn insn = { 0 };
 	insn.dst_reg = dst;
 	insn.src_reg = src;
 	int alu_class = type == IR_ALU_64 ? BPF_JMP : BPF_JMP32;
