@@ -32,8 +32,7 @@ void add_counter(struct bpf_ir_env *env, struct ir_function *fun)
 		bpf_ir_value_const32(0x74697865), INSERT_BACK);
 
 	struct ir_insn *elemptr = bpf_ir_create_getelemptr_insn(
-		env, straw2, alloc_array, bpf_ir_value_const32(0),
-		INSERT_BACK);
+		env, straw2, alloc_array, bpf_ir_value_const32(0), INSERT_BACK);
 
 	struct ir_insn *call_insn =
 		bpf_ir_create_call_insn(env, elemptr, 6,

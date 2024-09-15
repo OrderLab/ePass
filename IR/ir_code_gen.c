@@ -1288,7 +1288,7 @@ static void normalize_assign(struct ir_function *fun, struct ir_insn *insn)
 	}
 }
 
-static void normalize_storeraw(struct ir_function *fun, struct ir_insn *insn)
+static void normalize_stackoff(struct ir_function *fun, struct ir_insn *insn)
 {
 	// Stack already shifted
 	struct ir_value addrval = insn->addr_val.value;
@@ -1323,11 +1323,11 @@ static void normalize(struct bpf_ir_env *env, struct ir_function *fun)
 			} else if (insn->op == IR_INSN_LOAD) {
 				CRITICAL("Error");
 			} else if (insn->op == IR_INSN_LOADRAW) {
-				// OK
+				normalize_stackoff(fun, insn);
 			} else if (insn->op == IR_INSN_LOADIMM_EXTRA) {
 				// OK
 			} else if (insn->op == IR_INSN_STORERAW) {
-				normalize_storeraw(fun, insn);
+				normalize_stackoff(fun, insn);
 			} else if (bpf_ir_is_alu(insn)) {
 				normalize_alu(env, fun, insn);
 			} else if (insn->op == IR_INSN_ASSIGN) {
