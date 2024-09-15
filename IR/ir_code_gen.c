@@ -454,7 +454,6 @@ static void change_fun_arg(struct bpf_ir_env *env, struct ir_function *fun)
 static void change_ret(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	struct ir_basic_block **pos;
-	// Maximum number of functions: MAX_FUNC_ARG
 	array_for(pos, fun->reachable_bbs)
 	{
 		struct ir_basic_block *bb = *pos;
@@ -2472,6 +2471,13 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 	// Debugging settings
 	fun->cg_info.spill_callee = 0;
 
+	// Step 4: SSA Destruction
+	remove_phi(env, fun);
+	CHECK_ERR();
+	print_ir_prog_cg_dst(env, fun, "PHI Removal");
+
+	// No more users, SSA structure is destroyed
+
 	change_ret(env, fun);
 	CHECK_ERR();
 
@@ -2484,12 +2490,6 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 	CHECK_ERR();
 	print_ir_prog_cg_dst(env, fun, "Spilling Arrays");
 	CHECK_ERR();
-
-	// Step 4: SSA Destruction
-	remove_phi(env, fun);
-	CHECK_ERR();
-	print_ir_prog_cg_dst(env, fun, "PHI Removal");
-
 	// print_ir_prog_reachable(fun);
 
 	bool need_spill = true;
@@ -2586,7 +2586,6 @@ void bpf_ir_init_insn_cg(struct bpf_ir_env *env, struct ir_insn *insn)
 	} else {
 		extra->dst = insn;
 	}
-	bpf_ir_array_free(&insn->users);
 
 	INIT_ARRAY(&extra->adj, struct ir_insn *);
 	extra->allocated = false;
