@@ -12,7 +12,7 @@ static const u32 helper_func_arg_num[100] = {
 // All function passes.
 static const struct function_pass passes[] = {
 	DEF_FUNC_PASS(remove_trivial_phi, "Removing the trival Phi"),
-	DEF_FUNC_PASS(add_counter, "Adding counter"),
+	// DEF_FUNC_PASS(add_counter, "Adding counter"),
 };
 
 static void write_variable(struct bpf_ir_env *env,
