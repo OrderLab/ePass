@@ -57,6 +57,7 @@ static void check_insn(struct bpf_ir_env *env, struct ir_function *fun)
 			}
 			if (insn->op == IR_INSN_STORERAW ||
 			    insn->op == IR_INSN_LOAD ||
+			    insn->op == IR_INSN_LOADELEM ||
 			    insn->op == IR_INSN_RET) {
 				if (!(insn->value_num == 1)) {
 					print_ir_insn_err(env, insn, NULL);
@@ -67,6 +68,7 @@ static void check_insn(struct bpf_ir_env *env, struct ir_function *fun)
 			}
 
 			if (insn->op == IR_INSN_STORE ||
+			    insn->op == IR_INSN_STOREELEM ||
 			    (bpf_ir_is_alu(insn)) ||
 			    (bpf_ir_is_cond_jmp(insn)) ||
 			    insn->op == IR_INSN_GETELEMPTR) {
@@ -87,6 +89,17 @@ static void check_insn(struct bpf_ir_env *env, struct ir_function *fun)
 					RAISE_ERROR(
 
 						"Value[0] should be an alloc instruction");
+				}
+			}
+
+			if (insn->op == IR_INSN_STOREELEM ||
+			    insn->op == IR_INSN_LOADELEM) {
+				if (!(insn->values[0].type == IR_VALUE_INSN &&
+				      insn->values[0].data.insn_d->op ==
+					      IR_INSN_GETELEMPTR)) {
+					print_ir_insn_err(env, insn, NULL);
+					RAISE_ERROR(
+						"Value[0] should be an getelemptr instruction");
 				}
 			}
 

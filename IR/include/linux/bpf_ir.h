@@ -298,8 +298,8 @@ enum ir_insn_type {
 	IR_INSN_LOADIMM_EXTRA,
 	IR_INSN_STORERAW,
 	IR_INSN_LOADRAW,
-	IR_INSN_STOREARRAY,
-	IR_INSN_LOADARRAY,
+	IR_INSN_STOREELEM,
+	IR_INSN_LOADELEM,
 	// ALU
 	IR_INSN_ADD,
 	IR_INSN_SUB,
@@ -335,8 +335,8 @@ enum ir_insn_type {
 		| GETELEMPTR <ir_address_value>
         | STORERAW <vr_type> <ir_address_value> <value>
         | LOADRAW <vr_type> <ir_address_value>
-		| STOREARRAY <vr_type> <value:ptr> <value>
-		| LOADARRAY <vr_type> <value:ptr>
+		| STOREELEM <vr_type> <value:ptr> <value>
+		| LOADELEM <vr_type> <value:ptr>
 
         | ADD <value>, <value>
         | SUB <value>, <value>
