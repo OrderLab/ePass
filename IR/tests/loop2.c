@@ -8,7 +8,9 @@ int prog(void *ctx)
 	for (__u64 i = 0; i < 1000; ++i) {
 		bpf_ktime_get_ns();
 	}
-	return 0;
+	static char msg[] = "finished";
+	bpf_trace_printk(msg, sizeof(msg));
+	return XDP_PASS;
 }
 
 char _license[] SEC("license") = "GPL";
