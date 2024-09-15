@@ -24,7 +24,7 @@ void add_counter(struct bpf_ir_env *env, struct ir_function *fun)
 
 	val.type = IR_VALUE_CONSTANT;
 	val.const_type = IR_ALU_32;
-	val.data.constant_d = 4;
+	val.data.constant_d = 0;
 	struct ir_insn *elemptr = bpf_ir_create_getelemptr_insn(
 		env, insn, insn, val, INSERT_BACK);
 
