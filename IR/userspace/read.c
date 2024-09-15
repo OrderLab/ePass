@@ -17,7 +17,7 @@ int main(int argn, char **argv)
 	const struct bpf_insn *insn = bpf_program__insns(prog);
 	struct ir_opts opts = {
 		.debug = 1,
-		.print_mode = BPF_IR_PRINT_BPF,
+		.print_mode = BPF_IR_PRINT_BOTH,
 	};
 	struct bpf_ir_env *env = bpf_ir_init_env(opts);
 	if (!env) {

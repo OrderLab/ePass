@@ -49,6 +49,7 @@ struct ir_opts {
 	enum {
 		BPF_IR_PRINT_BPF,
 		BPF_IR_PRINT_DETAIL,
+		BPF_IR_PRINT_BOTH,
 	} print_mode;
 };
 
