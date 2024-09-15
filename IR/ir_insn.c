@@ -403,8 +403,6 @@ create_bin_insn_base_cg(struct bpf_ir_env *env, struct ir_basic_block *bb,
 	new_insn->values[0] = val1;
 	new_insn->values[1] = val2;
 	new_insn->alu_op = alu_type;
-	bpf_ir_val_add_user(env, val1, new_insn);
-	bpf_ir_val_add_user(env, val2, new_insn);
 	new_insn->value_num = 2;
 	return new_insn;
 }
@@ -486,7 +484,6 @@ static struct ir_insn *create_assign_insn_base_cg(struct bpf_ir_env *env,
 	new_insn->value_num = 1;
 	new_insn->vr_type = IR_VR_TYPE_UNKNOWN;
 	new_insn->alu_op = IR_ALU_UNKNOWN;
-	bpf_ir_val_add_user(env, val, new_insn);
 	return new_insn;
 }
 

@@ -12,7 +12,7 @@ static const u32 helper_func_arg_num[100] = {
 // All function passes.
 static const struct function_pass passes[] = {
 	DEF_FUNC_PASS(remove_trivial_phi, "Remove the trival Phi"),
-	DEF_FUNC_PASS(add_counter, "Adding counter"),
+	// DEF_FUNC_PASS(add_counter, "Adding counter"),
 };
 
 static void write_variable(struct bpf_ir_env *env,
@@ -981,6 +981,11 @@ static void free_function(struct ir_function *fun)
 		bpf_ir_array_free(&fun->sp->users);
 		free_proto(fun->sp);
 	}
+	for (u8 i = 0; i < BPF_REG_10; ++i) {
+		struct ir_insn *insn = fun->cg_info.regs[i];
+		bpf_ir_array_free(&insn->users);
+		free_proto(insn);
+	}
 	bpf_ir_array_free(&fun->all_bbs);
 	bpf_ir_array_free(&fun->reachable_bbs);
 	bpf_ir_array_free(&fun->end_bbs);
@@ -1014,6 +1019,17 @@ static void init_function(struct bpf_ir_env *env, struct ir_function *fun,
 		bb->ir_bb->user_data = NULL;
 		bpf_ir_array_push(env, &fun->all_bbs, &bb->ir_bb);
 		free_proto(bb);
+	}
+	for (u8 i = 0; i < BPF_REG_10; ++i) {
+		struct ir_insn *insn;
+		SAFE_MALLOC(fun->cg_info.regs[i], sizeof(struct ir_insn));
+		// Those should be read-only
+		insn = fun->cg_info.regs[i];
+		insn->op = IR_INSN_REG;
+		insn->parent_bb = NULL;
+		INIT_ARRAY(&insn->users, struct ir_insn *);
+		insn->value_num = 0;
+		insn->reg_id = i;
 	}
 }
 

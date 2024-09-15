@@ -162,6 +162,11 @@ void bpf_ir_array_clone(struct bpf_ir_env *env, struct array *res,
 		CRITICAL("Assertion failed"); \
 	}
 
+#define ASSERT_DUMP(cond, ret)                            \
+	if (!(cond)) {                                    \
+		RAISE_ERROR_RET("Assertion failed", ret); \
+	}
+
 #define CRITICAL_DUMP(env, str)            \
 	{                                  \
 		bpf_ir_print_log_dbg(env); \

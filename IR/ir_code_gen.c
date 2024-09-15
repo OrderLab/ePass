@@ -20,16 +20,7 @@ static void init_cg(struct bpf_ir_env *env, struct ir_function *fun)
 	}
 
 	for (u8 i = 0; i < BPF_REG_10; ++i) {
-		struct ir_insn *insn;
-		SAFE_MALLOC(fun->cg_info.regs[i], sizeof(struct ir_insn));
-		// Those should be read-only
-		insn = fun->cg_info.regs[i];
-		insn->op = IR_INSN_REG;
-		insn->parent_bb = NULL;
-		INIT_ARRAY(&insn->users, struct ir_insn *);
-		insn->value_num = 0;
-
-		insn->reg_id = i;
+		struct ir_insn *insn = fun->cg_info.regs[i];
 		bpf_ir_init_insn_cg(env, insn);
 		CHECK_ERR();
 
@@ -81,9 +72,7 @@ static void free_cg_res(struct ir_function *fun)
 
 	for (u8 i = 0; i < BPF_REG_10; ++i) {
 		struct ir_insn *insn = fun->cg_info.regs[i];
-		bpf_ir_array_free(&insn->users);
 		free_insn_cg(insn);
-		free_proto(insn);
 	}
 	free_insn_cg(fun->sp);
 }
@@ -444,23 +433,79 @@ static void conflict_analysis(struct bpf_ir_env *env, struct ir_function *fun)
 	}
 }
 
-// Make register usage explicit
-// Example:
-// %x = add %y, %arg1
-// arg1 is r0 at the beginning of the function
-// We then add a new instruction to the beginning of the function.
-
-static void explicit_reg(struct bpf_ir_env *env, struct ir_function *fun)
+// Pre CG
+static void change_fun_arg(struct bpf_ir_env *env, struct ir_function *fun)
 {
-	// fun is still in IR form
-	// Before this step, users are correct
-	// In this step we change some dsts
-	// We need carefully handle the users
-	// dsts are NOT users
-	// Invariant: All operands are final values
-	// Final value: v == dst(v)
+	// Change function call args
+	for (u8 i = 0; i < MAX_FUNC_ARG; ++i) {
+		if (fun->function_arg[i]->users.num_elem > 0) {
+			// Insert ASSIGN arg[i] at the beginning of the function
+			struct ir_insn *new_insn = bpf_ir_create_assign_insn_bb(
+				env, fun->entry,
+				bpf_ir_value_insn(fun->cg_info.regs[i + 1]),
+				INSERT_FRONT_AFTER_PHI);
+			bpf_ir_replace_all_usage(env, fun->function_arg[i],
+						 bpf_ir_value_insn(new_insn));
+		}
+	}
+}
+
+// CG: After init
+static void change_ret(struct bpf_ir_env *env, struct ir_function *fun)
+{
 	struct ir_basic_block **pos;
 	// Maximum number of functions: MAX_FUNC_ARG
+	array_for(pos, fun->reachable_bbs)
+	{
+		struct ir_basic_block *bb = *pos;
+		struct ir_insn *insn;
+		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
+			if (insn->op == IR_INSN_RET) {
+				// ret x
+				// ==>
+				// R0 = x
+				// ret
+				struct ir_insn *new_insn =
+					bpf_ir_create_assign_insn_cg(
+						env, insn, insn->values[0],
+						INSERT_FRONT);
+				new_insn->alu_op = IR_ALU_64;
+				insn_cg(new_insn)->dst = fun->cg_info.regs[0];
+				insn->value_num = 0;
+			}
+		}
+	}
+}
+
+static void change_call_pre_cg(struct bpf_ir_env *env, struct ir_function *fun)
+{
+	struct ir_basic_block **pos;
+	array_for(pos, fun->reachable_bbs)
+	{
+		struct ir_basic_block *bb = *pos;
+		struct ir_insn *insn;
+		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
+			if (insn->op == IR_INSN_CALL) {
+				if (insn->users.num_elem == 0) {
+					continue;
+				}
+				struct ir_insn *new_insn =
+					bpf_ir_create_assign_insn(
+						env, insn,
+						bpf_ir_value_insn(
+							fun->cg_info.regs[0]),
+						INSERT_BACK);
+				bpf_ir_replace_all_usage(
+					env, insn, bpf_ir_value_insn(new_insn));
+			}
+		}
+	}
+}
+
+// After init
+static void change_call(struct bpf_ir_env *env, struct ir_function *fun)
+{
+	struct ir_basic_block **pos;
 	array_for(pos, fun->reachable_bbs)
 	{
 		struct ir_basic_block *bb = *pos;
@@ -475,52 +520,11 @@ static void explicit_reg(struct bpf_ir_env *env, struct ir_function *fun)
 							INSERT_FRONT);
 					insn_cg(new_insn)->dst =
 						fun->cg_info.regs[i + 1];
-					bpf_ir_val_remove_user(val, insn);
 				}
 				insn->value_num = 0; // Remove all operands
 				struct ir_insn_cg_extra *extra = insn_cg(insn);
 				extra->dst = NULL;
-				if (insn->users.num_elem == 0) {
-					continue;
-				}
-				struct ir_insn *new_insn =
-					bpf_ir_create_assign_insn_cg(
-						env, insn,
-						bpf_ir_value_insn(
-							fun->cg_info.regs[0]),
-						INSERT_BACK);
-				bpf_ir_replace_all_usage(
-					env, insn, bpf_ir_value_insn(new_insn));
 			}
-
-			if (insn->op == IR_INSN_RET) {
-				// ret x
-				// ==>
-				// R0 = x
-				// ret
-				struct ir_insn *new_insn =
-					bpf_ir_create_assign_insn_cg(
-						env, insn, insn->values[0],
-						INSERT_FRONT);
-				new_insn->alu_op = IR_ALU_64;
-				bpf_ir_val_remove_user(insn->values[0], insn);
-				insn_cg(new_insn)->dst = fun->cg_info.regs[0];
-				insn->value_num = 0;
-			}
-		}
-	}
-	// Arg
-	for (u8 i = 0; i < MAX_FUNC_ARG; ++i) {
-		if (fun->function_arg[i]->users.num_elem > 0) {
-			// Insert ASSIGN arg[i] at the beginning of the function
-			struct ir_insn *new_insn =
-				bpf_ir_create_assign_insn_bb_cg(
-					env, fun->entry,
-					bpf_ir_value_insn(
-						fun->cg_info.regs[i + 1]),
-					INSERT_FRONT_AFTER_PHI);
-			bpf_ir_replace_all_usage(env, fun->function_arg[i],
-						 bpf_ir_value_insn(new_insn));
 		}
 	}
 }
@@ -1706,9 +1710,9 @@ static bool spill_getelemptr(struct bpf_ir_env *env, struct ir_function *fun,
 	enum val_type tdst = vtype_insn(insn);
 	struct ir_insn_cg_extra *extra = insn_cg(insn);
 	struct ir_insn *dst_insn = insn_dst(insn);
-	DBGASSERT(t1 == STACK);
-	DBGASSERT(v1->type == IR_VALUE_INSN);
-	DBGASSERT(v1->data.insn_d->op == IR_INSN_ALLOCARRAY);
+	ASSERT_DUMP(v1->type == IR_VALUE_INSN, false);
+	ASSERT_DUMP(v1->data.insn_d->op == IR_INSN_ALLOCARRAY, false);
+	ASSERT_DUMP(t1 == STACK, false);
 	if (tdst == STACK) {
 		extra->dst = fun->cg_info.regs[0];
 		struct ir_insn *tmp = bpf_ir_create_assign_insn_cg(
@@ -1844,6 +1848,7 @@ static bool check_need_spill(struct bpf_ir_env *env, struct ir_function *fun)
 			} else {
 				RAISE_ERROR_RET("No such instruction", false);
 			}
+			CHECK_ERR(false);
 		}
 	}
 	return need_modify;
@@ -1892,12 +1897,11 @@ static void calc_stack_size(struct ir_function *fun)
 	PRINT_DBG("Stack size: %d\n", fun->cg_info.stack_offset);
 }
 
+// Pre CG
 static void add_stack_offset_pre_cg(struct bpf_ir_env *env,
 				    struct ir_function *fun)
 {
-	// Pre CG
 	struct array users = fun->sp->users;
-	PRINT_LOG(env, "Found %d SP users\n", users.num_elem);
 	struct ir_insn **pos;
 	array_for(pos, users)
 	{
@@ -1944,32 +1948,38 @@ static void add_stack_offset_pre_cg(struct bpf_ir_env *env,
 static void add_stack_offset(struct bpf_ir_env *env, struct ir_function *fun,
 			     s16 offset)
 {
-	struct array users = fun->sp->users;
-	struct ir_insn **pos;
-	array_for(pos, users)
+	struct ir_basic_block **pos;
+	// For each BB
+	array_for(pos, fun->reachable_bbs)
 	{
-		struct ir_insn *insn = *pos;
-		print_raw_ir_insn_full(env, insn, print_ir_alloc);
-		if (insn->op == IR_INSN_LOADRAW ||
-		    insn->op == IR_INSN_STORERAW) {
-			if (insn->addr_val.value.type == IR_VALUE_INSN &&
-			    insn->addr_val.value.data.insn_d == fun->sp) {
-				insn->addr_val.offset += offset;
-				continue;
+		struct ir_basic_block *bb = *pos;
+		struct ir_insn *insn;
+		// For each operation
+		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
+			if (insn->op == IR_INSN_LOADRAW ||
+			    insn->op == IR_INSN_STORERAW) {
+				if (insn->addr_val.value.type ==
+					    IR_VALUE_INSN &&
+				    insn->addr_val.value.data.insn_d ==
+					    fun->sp) {
+					insn->addr_val.offset += offset;
+					continue;
+				}
 			}
-		}
-		struct array value_uses = bpf_ir_get_operands(env, insn);
-		struct ir_value **pos2;
-		array_for(pos2, value_uses)
-		{
-			struct ir_value *val = *pos2;
-			if (val->type == IR_VALUE_CONSTANT_RAWOFF) {
-				// Stack pointer as value
-				val->data.constant_d = offset;
-				val->type = IR_VALUE_CONSTANT;
+			struct array value_uses =
+				bpf_ir_get_operands(env, insn);
+			struct ir_value **pos2;
+			array_for(pos2, value_uses)
+			{
+				struct ir_value *val = *pos2;
+				if (val->type == IR_VALUE_CONSTANT_RAWOFF) {
+					// Stack pointer as value
+					val->data.constant_d = offset;
+					val->type = IR_VALUE_CONSTANT;
+				}
 			}
+			bpf_ir_array_free(&value_uses);
 		}
-		bpf_ir_array_free(&value_uses);
 	}
 }
 
@@ -2430,6 +2440,16 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	// Preparation
 
+	change_fun_arg(env, fun);
+	CHECK_ERR();
+	bpf_ir_prog_check(env, fun);
+	CHECK_ERR();
+
+	change_call_pre_cg(env, fun);
+	CHECK_ERR();
+	bpf_ir_prog_check(env, fun);
+	CHECK_ERR();
+
 	// Step 1: Flag all raw stack access
 	add_stack_offset_pre_cg(env, fun);
 	CHECK_ERR();
@@ -2443,6 +2463,7 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 	CHECK_ERR();
 
 	print_ir_prog_pre_cg(env, fun, "To CSSA");
+	CHECK_ERR();
 
 	// Init CG, start real code generation
 	init_cg(env, fun);
@@ -2451,17 +2472,20 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 	// Debugging settings
 	fun->cg_info.spill_callee = 0;
 
+	change_ret(env, fun);
+	CHECK_ERR();
+
+	change_call(env, fun);
+	CHECK_ERR();
+	print_ir_prog_cg_dst(env, fun, "Changing calls");
+	CHECK_ERR();
+
 	spill_array(env, fun);
 	CHECK_ERR();
 	print_ir_prog_cg_dst(env, fun, "Spilling Arrays");
-
-	// Step 3: Use explicit real registers
-	explicit_reg(env, fun); // Still in SSA form, users are available
 	CHECK_ERR();
-	print_ir_prog_cg_dst(env, fun, "Explicit REG");
 
 	// Step 4: SSA Destruction
-	// users not available from now on
 	remove_phi(env, fun);
 	CHECK_ERR();
 	print_ir_prog_cg_dst(env, fun, "PHI Removal");
@@ -2562,6 +2586,8 @@ void bpf_ir_init_insn_cg(struct bpf_ir_env *env, struct ir_insn *insn)
 	} else {
 		extra->dst = insn;
 	}
+	bpf_ir_array_free(&insn->users);
+
 	INIT_ARRAY(&extra->adj, struct ir_insn *);
 	extra->allocated = false;
 	extra->spilled = 0;
