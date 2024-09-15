@@ -7,7 +7,7 @@ int prog(void *ctx)
 	for (__u64 i = 0; i < 1000; ++i) {
 		bpf_ktime_get_ns();
 	}
-	return 0;
+	return XDP_PASS;
 }
 
 char _license[] SEC("license") = "GPL";
