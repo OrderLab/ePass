@@ -845,7 +845,11 @@ static enum val_type vtype_insn(struct ir_insn *insn)
 	}
 	struct ir_insn_cg_extra *extra = insn_cg(insn);
 	if (extra->spilled) {
-		return STACK;
+		if (insn->op == IR_INSN_ALLOCARRAY) {
+			return STACKOFF;
+		} else {
+			return STACK;
+		}
 	} else {
 		return REG;
 	}
@@ -1197,7 +1201,7 @@ static void normalize_getelemptr(struct bpf_ir_env *env,
 	enum val_type tdst = vtype_insn(insn);
 	struct ir_insn *dst_insn = insn_dst(insn);
 	DBGASSERT(tdst == REG);
-	DBGASSERT(t1 == STACK);
+	DBGASSERT(t1 == STACKOFF);
 	DBGASSERT(v1->type == IR_VALUE_INSN &&
 		  v1->data.insn_d->op == IR_INSN_ALLOCARRAY);
 	struct ir_insn_cg_extra *v1_extra = insn_cg(v1->data.insn_d);
@@ -1284,6 +1288,20 @@ static void normalize_assign(struct ir_function *fun, struct ir_insn *insn)
 	}
 }
 
+static void normalize_storeraw(struct ir_function *fun, struct ir_insn *insn)
+{
+	// Stack already shifted
+	struct ir_value addrval = insn->addr_val.value;
+	enum val_type addr_ty = vtype(addrval);
+	// storeraw STACKOFF ?
+	// ==>
+	// storeraw r10 ?
+	if (addr_ty == STACKOFF) {
+		insn->addr_val.offset += insn_cg(addrval.data.insn_d)->spilled;
+		insn->addr_val.value = bpf_ir_value_insn(fun->sp);
+	}
+}
+
 static void normalize(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	struct ir_basic_block **pos;
@@ -1309,7 +1327,7 @@ static void normalize(struct bpf_ir_env *env, struct ir_function *fun)
 			} else if (insn->op == IR_INSN_LOADIMM_EXTRA) {
 				// OK
 			} else if (insn->op == IR_INSN_STORERAW) {
-				// OK
+				normalize_storeraw(fun, insn);
 			} else if (bpf_ir_is_alu(insn)) {
 				normalize_alu(env, fun, insn);
 			} else if (insn->op == IR_INSN_ASSIGN) {
@@ -1711,7 +1729,7 @@ static bool spill_getelemptr(struct bpf_ir_env *env, struct ir_function *fun,
 	struct ir_insn *dst_insn = insn_dst(insn);
 	ASSERT_DUMP(v1->type == IR_VALUE_INSN, false);
 	ASSERT_DUMP(v1->data.insn_d->op == IR_INSN_ALLOCARRAY, false);
-	ASSERT_DUMP(t1 == STACK, false);
+	ASSERT_DUMP(t1 == STACKOFF, false);
 	if (tdst == STACK) {
 		extra->dst = fun->cg_info.regs[0];
 		struct ir_insn *tmp = bpf_ir_create_assign_insn_cg(

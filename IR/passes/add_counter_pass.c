@@ -5,38 +5,43 @@ void add_counter(struct bpf_ir_env *env, struct ir_function *fun)
 	struct ir_basic_block *entry = fun->entry;
 	struct ir_insn *alloc_insn = bpf_ir_create_alloc_insn_bb(
 		env, entry, IR_VR_TYPE_64, INSERT_FRONT);
-	struct ir_value val;
-	val.type = IR_VALUE_CONSTANT;
-	val.data.constant_d = 0;
-	val.const_type = IR_ALU_64;
-	bpf_ir_create_store_insn(env, alloc_insn, alloc_insn, val, INSERT_BACK);
+	bpf_ir_create_store_insn(env, alloc_insn, alloc_insn,
+				 bpf_ir_value_const64(0), INSERT_BACK);
 	struct ir_basic_block **pos;
 
 	struct ir_basic_block *err_bb = bpf_ir_create_bb(env, fun);
-	val.data.constant_d = 1;
-	val.const_type = IR_ALU_32;
-	bpf_ir_create_ret_insn_bb(env, err_bb, val, INSERT_BACK);
+	bpf_ir_create_ret_insn_bb(env, err_bb, bpf_ir_value_const32(1),
+				  INSERT_BACK);
 
 	// Create an 8 bytes array to store the error message "exit"
-	struct ir_insn *insn;
-	insn = bpf_ir_create_allocarray_insn_bb(env, err_bb, IR_VR_TYPE_64, 1,
-						INSERT_FRONT);
+	struct ir_insn *alloc_array = bpf_ir_create_allocarray_insn_bb(
+		env, err_bb, IR_VR_TYPE_64, 1, INSERT_FRONT);
 
-	val.type = IR_VALUE_CONSTANT;
-	val.const_type = IR_ALU_32;
-	val.data.constant_d = 0;
+	// There are two ways to store the string "exit" in the array
+	// 1. Use getelemptr
+	// 2. Use storeraw
+
+	struct ir_insn *straw1 = bpf_ir_create_storeraw_insn(
+		env, alloc_array, IR_VR_TYPE_8,
+		bpf_ir_addr_val(bpf_ir_value_insn(alloc_array), 0x4),
+		bpf_ir_value_const32(0), INSERT_BACK);
+
+	struct ir_insn *straw2 = bpf_ir_create_storeraw_insn(
+		env, straw1, IR_VR_TYPE_32,
+		bpf_ir_addr_val(bpf_ir_value_insn(alloc_array), 0),
+		bpf_ir_value_const32(0x74697865), INSERT_BACK);
+
 	struct ir_insn *elemptr = bpf_ir_create_getelemptr_insn(
-		env, insn, insn, val, INSERT_BACK);
+		env, straw2, alloc_array, bpf_ir_value_const32(0),
+		INSERT_BACK);
 
-	insn = bpf_ir_create_call_insn(env, elemptr, 6,
-				       INSERT_BACK); // A printk call
+	struct ir_insn *call_insn =
+		bpf_ir_create_call_insn(env, elemptr, 6,
+					INSERT_BACK); // A printk call
 
-	bpf_ir_phi_add_call_arg(env, insn, bpf_ir_value_insn(elemptr));
-	val.type = IR_VALUE_CONSTANT;
-	val.const_type = IR_ALU_32;
-	val.data.constant_d = 5;
+	bpf_ir_phi_add_call_arg(env, call_insn, bpf_ir_value_insn(elemptr));
 
-	bpf_ir_phi_add_call_arg(env, insn, val);
+	bpf_ir_phi_add_call_arg(env, call_insn, bpf_ir_value_const32(5));
 
 	array_for(pos, fun->reachable_bbs)
 	{
@@ -63,10 +68,9 @@ void add_counter(struct bpf_ir_env *env, struct ir_function *fun)
 		struct ir_insn *added = bpf_ir_create_bin_insn(
 			env, load_insn, val1, val2, IR_INSN_ADD, IR_ALU_64,
 			INSERT_BACK);
-		val.data.insn_d = added;
-		val.type = IR_VALUE_INSN;
 		struct ir_insn *store_back = bpf_ir_create_store_insn(
-			env, added, alloc_insn, val, INSERT_BACK);
+			env, added, alloc_insn, bpf_ir_value_insn(added),
+			INSERT_BACK);
 		struct ir_basic_block *new_bb =
 			bpf_ir_split_bb(env, fun, store_back);
 		val2.data.insn_d = added;
