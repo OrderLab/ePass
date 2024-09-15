@@ -2175,7 +2175,6 @@ static struct pre_ir_insn cond_jmp_imm(u8 dst, s64 src,
 {
 	struct pre_ir_insn insn = { 0 };
 	insn.dst_reg = dst;
-	insn.src_reg = src;
 	int alu_class = type == IR_ALU_64 ? BPF_JMP : BPF_JMP32;
 	insn.it = IMM;
 	insn.imm = src;
