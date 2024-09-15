@@ -393,6 +393,22 @@ create_bin_insn_base(struct bpf_ir_env *env, struct ir_basic_block *bb,
 	return new_insn;
 }
 
+static struct ir_insn *
+create_bin_insn_base_cg(struct bpf_ir_env *env, struct ir_basic_block *bb,
+			struct ir_value val1, struct ir_value val2,
+			enum ir_insn_type ty, enum ir_alu_op_type alu_type)
+{
+	struct ir_insn *new_insn = bpf_ir_create_insn_base_cg(env, bb);
+	new_insn->op = ty;
+	new_insn->values[0] = val1;
+	new_insn->values[1] = val2;
+	new_insn->alu_op = alu_type;
+	bpf_ir_val_add_user(env, val1, new_insn);
+	bpf_ir_val_add_user(env, val2, new_insn);
+	new_insn->value_num = 2;
+	return new_insn;
+}
+
 static struct ir_insn *create_ja_insn_base(struct bpf_ir_env *env,
 					   struct ir_basic_block *bb,
 					   struct ir_basic_block *to_bb)
@@ -617,6 +633,29 @@ bpf_ir_create_bin_insn_bb(struct bpf_ir_env *env, struct ir_basic_block *pos_bb,
 {
 	struct ir_insn *new_insn =
 		create_bin_insn_base(env, pos_bb, val1, val2, ty, alu_type);
+	bpf_ir_insert_at_bb(new_insn, pos_bb, pos);
+	return new_insn;
+}
+
+struct ir_insn *
+bpf_ir_create_bin_insn_cg(struct bpf_ir_env *env, struct ir_insn *pos_insn,
+			  struct ir_value val1, struct ir_value val2,
+			  enum ir_insn_type ty, enum ir_alu_op_type alu_type,
+			  enum insert_position pos)
+{
+	struct ir_insn *new_insn = create_bin_insn_base_cg(
+		env, pos_insn->parent_bb, val1, val2, ty, alu_type);
+	bpf_ir_insert_at(new_insn, pos_insn, pos);
+	return new_insn;
+}
+
+struct ir_insn *bpf_ir_create_bin_insn_bb_cg(
+	struct bpf_ir_env *env, struct ir_basic_block *pos_bb,
+	struct ir_value val1, struct ir_value val2, enum ir_insn_type ty,
+	enum ir_alu_op_type alu_type, enum insert_position pos)
+{
+	struct ir_insn *new_insn =
+		create_bin_insn_base_cg(env, pos_bb, val1, val2, ty, alu_type);
 	bpf_ir_insert_at_bb(new_insn, pos_bb, pos);
 	return new_insn;
 }

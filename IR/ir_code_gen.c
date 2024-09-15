@@ -1184,20 +1184,65 @@ static void normalize_alu(struct bpf_ir_env *env, struct ir_function *fun,
 	}
 }
 
-// TODO
-static void normalize_getelemptr(struct bpf_ir_env *env, struct ir_insn *insn)
+static void normalize_getelemptr(struct bpf_ir_env *env,
+				 struct ir_function *fun, struct ir_insn *insn)
 {
 	struct ir_value *v0 = &insn->values[0];
-	// struct ir_value *v1 = &insn->values[1];
+	struct ir_value *v1 = &insn->values[1];
 	enum val_type t0 = insn->value_num >= 1 ? vtype(*v0) : UNDEF;
-	// enum val_type t1 = insn->value_num >= 2 ? vtype(*v1) : UNDEF;
+	enum val_type t1 = insn->value_num >= 2 ? vtype(*v1) : UNDEF;
 	enum val_type tdst = vtype_insn(insn);
-	// struct ir_insn *dst_insn = insn_dst(insn);
+	struct ir_insn *dst_insn = insn_dst(insn);
 	DBGASSERT(tdst == REG);
+	DBGASSERT(t1 == STACK);
+	DBGASSERT(v1->type == IR_VALUE_INSN &&
+		  v1->data.insn_d->op == IR_INSN_ALLOCARRAY);
+	struct ir_insn_cg_extra *v1_extra = insn_cg(v1->data.insn_d);
+	s32 spill_pos = v1_extra->spilled;
+	insn->op = IR_INSN_ADD;
+	insn->values[1].type = IR_VALUE_CONSTANT;
+	insn->values[1].const_type = IR_ALU_32;
+	insn->alu_op = IR_ALU_64;
 	if (t0 == CONST) {
-		// Could be translated into one instruction
+		// reg = getelemptr const ptr
+		// ==>
+		// reg = r10 + (const + spill_pos)
+		DBGASSERT(v0->const_type == IR_ALU_32);
+		insn->values[1].data.constant_d =
+			v0->data.constant_d + spill_pos; // Assume no overflow
+		insn->values[0] = bpf_ir_value_insn(fun->sp);
+		normalize_alu(env, fun, insn);
 	}
 	if (t0 == REG) {
+		insn->values[1].data.constant_d = spill_pos;
+		if (allocated_reg(*v0) == allocated_reg_insn(dst_insn)) {
+			// reg = getelemptr reg ptr
+			// ==>
+			// reg += r10
+			// reg += spill_pos
+			insn->values[0] = bpf_ir_value_insn(dst_insn);
+			struct ir_insn *new_insn = bpf_ir_create_bin_insn_cg(
+				env, insn, bpf_ir_value_insn(dst_insn),
+				bpf_ir_value_insn(fun->sp), IR_INSN_ADD,
+				IR_ALU_64, INSERT_FRONT);
+			insn_cg(new_insn)->dst = dst_insn;
+		} else {
+			// reg1 = getelemptr reg2 ptr
+			// ==>
+			// reg1 = reg2
+			// reg1 += r10
+			// reg1 += spill_pos
+			struct ir_insn *assign_insn =
+				bpf_ir_create_assign_insn_cg(env, insn, *v0,
+							     INSERT_FRONT);
+			insn_cg(assign_insn)->dst = dst_insn;
+			struct ir_insn *alu_insn = bpf_ir_create_bin_insn_cg(
+				env, insn, bpf_ir_value_insn(dst_insn),
+				bpf_ir_value_insn(fun->sp), IR_INSN_ADD,
+				IR_ALU_64, INSERT_FRONT);
+			insn_cg(alu_insn)->dst = dst_insn;
+			insn->values[0] = bpf_ir_value_insn(dst_insn);
+		}
 	}
 }
 
@@ -1250,7 +1295,7 @@ static void normalize(struct bpf_ir_env *env, struct ir_function *fun)
 			} else if (insn->op == IR_INSN_ALLOCARRAY) {
 				// OK
 			} else if (insn->op == IR_INSN_GETELEMPTR) {
-				normalize_getelemptr(env, insn);
+				normalize_getelemptr(env, fun, insn);
 			} else if (insn->op == IR_INSN_STORE) {
 				// Should be converted to ASSIGN
 				CRITICAL("Error");
@@ -1759,8 +1804,9 @@ static bool check_need_spill(struct bpf_ir_env *env, struct ir_function *fun)
 	array_for(pos, fun->reachable_bbs)
 	{
 		struct ir_basic_block *bb = *pos;
-		struct ir_insn *insn;
-		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
+		struct ir_insn *insn, *tmp;
+		list_for_each_entry_safe(insn, tmp, &bb->ir_insn_head,
+					 list_ptr) {
 			if (insn->op == IR_INSN_ALLOC) {
 				// dst = alloc <size>
 				// Nothing to do
@@ -2292,16 +2338,22 @@ static void translate(struct bpf_ir_env *env, struct ir_function *fun)
 	array_for(pos, fun->reachable_bbs)
 	{
 		struct ir_basic_block *bb = *pos;
-		struct ir_insn *insn;
-		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
+		struct ir_insn *insn, *tmp;
+		list_for_each_entry_safe(insn, tmp, &bb->ir_insn_head,
+					 list_ptr) {
 			struct ir_insn_cg_extra *extra = insn_cg(insn);
 			extra->translated_num = 1; // Default: 1 instruction
 			if (insn->op == IR_INSN_ALLOC) {
 				// Nothing to do
 				extra->translated_num = 0;
+			} else if (insn->op == IR_INSN_ALLOCARRAY) {
+				// Nothing to do
+				extra->translated_num = 0;
 			} else if (insn->op == IR_INSN_STORE) {
 				CRITICAL("Error");
 			} else if (insn->op == IR_INSN_LOAD) {
+				CRITICAL("Error");
+			} else if (insn->op == IR_INSN_GETELEMPTR) {
 				CRITICAL("Error");
 			} else if (insn->op == IR_INSN_LOADRAW) {
 				translate_loadraw(insn);
