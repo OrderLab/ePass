@@ -91,8 +91,8 @@ static void check_insn(struct bpf_ir_env *env, struct ir_function *fun)
 			}
 
 			if (insn->op == IR_INSN_GETELEMPTR) {
-				if (!(insn->values[0].type == IR_VALUE_INSN &&
-				      insn->values[0].data.insn_d->op ==
+				if (!(insn->values[1].type == IR_VALUE_INSN &&
+				      insn->values[1].data.insn_d->op ==
 					      IR_INSN_ALLOCARRAY)) {
 					print_ir_insn_err(env, insn, NULL);
 					RAISE_ERROR(

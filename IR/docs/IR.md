@@ -92,7 +92,7 @@ Syntax: `getelemptr <values[0]> <values[1]>`
 
 Get a pointer to the element in an array.
 
-`values[0]` should point to a `allocarray` instruction.
+`values[1]` should point to a `allocarray` instruction.
 
 ### `store`
 

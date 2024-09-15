@@ -631,6 +631,10 @@ void print_ir_value(struct bpf_ir_env *env, struct ir_value v);
 
 void print_raw_ir_insn(struct bpf_ir_env *env, struct ir_insn *insn);
 
+void print_raw_ir_insn_full(struct bpf_ir_env *env, struct ir_insn *insn,
+			    void (*print_ir)(struct bpf_ir_env *env,
+					     struct ir_insn *));
+
 void print_raw_ir_bb(struct bpf_ir_env *env, struct ir_basic_block *bb);
 
 void print_insn_ptr_base(struct bpf_ir_env *env, struct ir_insn *insn);

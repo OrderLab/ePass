@@ -1184,6 +1184,23 @@ static void normalize_alu(struct bpf_ir_env *env, struct ir_function *fun,
 	}
 }
 
+// TODO
+static void normalize_getelemptr(struct bpf_ir_env *env, struct ir_insn *insn)
+{
+	struct ir_value *v0 = &insn->values[0];
+	// struct ir_value *v1 = &insn->values[1];
+	enum val_type t0 = insn->value_num >= 1 ? vtype(*v0) : UNDEF;
+	// enum val_type t1 = insn->value_num >= 2 ? vtype(*v1) : UNDEF;
+	enum val_type tdst = vtype_insn(insn);
+	// struct ir_insn *dst_insn = insn_dst(insn);
+	DBGASSERT(tdst == REG);
+	if (t0 == CONST) {
+		// Could be translated into one instruction
+	}
+	if (t0 == REG) {
+	}
+}
+
 static void normalize_assign(struct ir_function *fun, struct ir_insn *insn)
 {
 	struct ir_value *v0 = &insn->values[0];
@@ -1230,6 +1247,10 @@ static void normalize(struct bpf_ir_env *env, struct ir_function *fun)
 					 list_ptr) {
 			if (insn->op == IR_INSN_ALLOC) {
 				// OK
+			} else if (insn->op == IR_INSN_ALLOCARRAY) {
+				// OK
+			} else if (insn->op == IR_INSN_GETELEMPTR) {
+				normalize_getelemptr(env, insn);
 			} else if (insn->op == IR_INSN_STORE) {
 				// Should be converted to ASSIGN
 				CRITICAL("Error");
@@ -1640,9 +1661,9 @@ static bool spill_getelemptr(struct bpf_ir_env *env, struct ir_function *fun,
 	enum val_type tdst = vtype_insn(insn);
 	struct ir_insn_cg_extra *extra = insn_cg(insn);
 	struct ir_insn *dst_insn = insn_dst(insn);
-	DBGASSERT(t0 == STACK);
-	DBGASSERT(v0->type == IR_VALUE_INSN);
-	DBGASSERT(v0->data.insn_d->op == IR_INSN_ALLOCARRAY);
+	DBGASSERT(t1 == STACK);
+	DBGASSERT(v1->type == IR_VALUE_INSN);
+	DBGASSERT(v1->data.insn_d->op == IR_INSN_ALLOCARRAY);
 	if (tdst == STACK) {
 		extra->dst = fun->cg_info.regs[0];
 		struct ir_insn *tmp = bpf_ir_create_assign_insn_cg(
@@ -1652,12 +1673,12 @@ static bool spill_getelemptr(struct bpf_ir_env *env, struct ir_function *fun,
 		spill_getelemptr(env, fun, insn);
 		return true;
 	}
-	if (t1 == STACK) {
-		cgir_load_stack_to_reg(env, fun, insn, v1, IR_VR_TYPE_64, 0);
+	if (t0 == STACK) {
+		cgir_load_stack_to_reg(env, fun, insn, v0, IR_VR_TYPE_64, 0);
 		return true;
 	}
-	if (t1 == CONST && v1->const_type == IR_ALU_64) {
-		cgir_load_const_to_reg(env, fun, insn, v1, 0);
+	if (t0 == CONST && v0->const_type == IR_ALU_64) {
+		cgir_load_const_to_reg(env, fun, insn, v0, 0);
 		return true;
 	}
 	return false;
@@ -1853,6 +1874,9 @@ static void add_stack_offset_pre_cg(struct bpf_ir_env *env,
 				struct ir_value new_val;
 				new_val.type = IR_VALUE_CONSTANT_RAWOFF;
 				new_val.const_type = IR_ALU_32;
+				new_val.data.constant_d = 0;
+				// tmp = SP + hole
+				// ... val ==> tmp
 				struct ir_insn *new_insn =
 					bpf_ir_create_bin_insn(env, insn, *val,
 							       new_val,
@@ -1862,6 +1886,8 @@ static void add_stack_offset_pre_cg(struct bpf_ir_env *env,
 				new_val.type = IR_VALUE_INSN;
 				new_val.data.insn_d = new_insn;
 				bpf_ir_val_add_user(env, new_val, insn);
+				bpf_ir_val_remove_user(
+					bpf_ir_value_insn(fun->sp), insn);
 				*val = new_val;
 			}
 		}
@@ -1877,7 +1903,7 @@ static void add_stack_offset(struct bpf_ir_env *env, struct ir_function *fun,
 	array_for(pos, users)
 	{
 		struct ir_insn *insn = *pos;
-
+		print_raw_ir_insn_full(env, insn, print_ir_alloc);
 		if (insn->op == IR_INSN_LOADRAW ||
 		    insn->op == IR_INSN_STORERAW) {
 			if (insn->addr_val.value.type == IR_VALUE_INSN &&
@@ -1894,6 +1920,7 @@ static void add_stack_offset(struct bpf_ir_env *env, struct ir_function *fun,
 			if (val->type == IR_VALUE_CONSTANT_RAWOFF) {
 				// Stack pointer as value
 				val->data.constant_d = offset;
+				val->type = IR_VALUE_CONSTANT;
 			}
 		}
 		bpf_ir_array_free(&value_uses);

@@ -237,6 +237,9 @@ void bpf_ir_val_remove_user(struct ir_value val, struct ir_insn *user)
 	PRINT_DBG("Warning: User not found in the users\n");
 }
 
+/**
+	Add user to the users of val
+ */
 void bpf_ir_val_add_user(struct bpf_ir_env *env, struct ir_value val,
 			 struct ir_insn *user)
 {
@@ -338,8 +341,8 @@ static struct ir_insn *create_getelemptr_insn_base(struct bpf_ir_env *env,
 {
 	struct ir_insn *new_insn = bpf_ir_create_insn_base(env, bb);
 	new_insn->op = IR_INSN_GETELEMPTR;
-	new_insn->values[0] = bpf_ir_value_insn(alloca_insn);
-	new_insn->values[1] = offset;
+	new_insn->values[0] = offset;
+	new_insn->values[1] = bpf_ir_value_insn(alloca_insn);
 	new_insn->value_num = 2;
 	bpf_ir_val_add_user(env, new_insn->values[0], new_insn);
 	bpf_ir_val_add_user(env, new_insn->values[1], new_insn);

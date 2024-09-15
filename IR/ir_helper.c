@@ -283,9 +283,9 @@ void print_ir_insn_full(struct bpf_ir_env *env, struct ir_insn *insn,
 		break;
 	case IR_INSN_GETELEMPTR:
 		PRINT_LOG(env, "getelemptr ");
-		print_ir_value_full(env, insn->values[0], print_ir);
-		PRINT_LOG(env, ", ");
 		print_ir_value_full(env, insn->values[1], print_ir);
+		PRINT_LOG(env, "+");
+		print_ir_value_full(env, insn->values[0], print_ir);
 		break;
 	case IR_INSN_ADD:
 		print_alu(env, insn->alu_op, "add");
