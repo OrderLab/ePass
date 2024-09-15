@@ -56,8 +56,8 @@ void add_counter(struct bpf_ir_env *env, struct ir_function *fun)
 		struct ir_insn *load_insn = bpf_ir_create_load_insn(
 			env, last, bpf_ir_value_insn(alloc_insn), INSERT_FRONT);
 		struct ir_insn *added = bpf_ir_create_bin_insn(
-			env, load_insn, bpf_ir_value_const32(len),
-			bpf_ir_value_insn(load_insn), IR_INSN_ADD, IR_ALU_64,
+			env, load_insn, bpf_ir_value_insn(load_insn),
+			bpf_ir_value_const32(len), IR_INSN_ADD, IR_ALU_64,
 			INSERT_BACK);
 		struct ir_insn *store_back = bpf_ir_create_store_insn(
 			env, added, alloc_insn, bpf_ir_value_insn(added),

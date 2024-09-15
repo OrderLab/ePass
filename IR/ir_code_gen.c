@@ -1834,22 +1834,22 @@ static bool check_need_spill(struct bpf_ir_env *env, struct ir_function *fun)
 			} else if (insn->op == IR_INSN_ALLOCARRAY) {
 				// Nothing to do
 			} else if (insn->op == IR_INSN_GETELEMPTR) {
-				need_modify = spill_getelemptr(env, fun, insn);
+				need_modify |= spill_getelemptr(env, fun, insn);
 			} else if (insn->op == IR_INSN_STORE) {
-				need_modify = spill_store(env, fun, insn);
+				need_modify |= spill_store(env, fun, insn);
 			} else if (insn->op == IR_INSN_LOAD) {
-				need_modify = spill_load(env, fun, insn);
+				need_modify |= spill_load(env, fun, insn);
 			} else if (insn->op == IR_INSN_LOADRAW) {
-				need_modify = spill_loadraw(env, fun, insn);
+				need_modify |= spill_loadraw(env, fun, insn);
 			} else if (insn->op == IR_INSN_LOADIMM_EXTRA) {
-				need_modify =
+				need_modify |=
 					spill_loadrawextra(env, fun, insn);
 			} else if (insn->op == IR_INSN_STORERAW) {
-				need_modify = spill_storeraw(env, fun, insn);
+				need_modify |= spill_storeraw(env, fun, insn);
 			} else if (bpf_ir_is_alu(insn)) {
-				need_modify = spill_alu(env, fun, insn);
+				need_modify |= spill_alu(env, fun, insn);
 			} else if (insn->op == IR_INSN_ASSIGN) {
-				need_modify = spill_assign(env, fun, insn);
+				need_modify |= spill_assign(env, fun, insn);
 			} else if (insn->op == IR_INSN_RET) {
 				// ret const/reg
 				// Done in explicit_reg pass
@@ -1861,7 +1861,7 @@ static bool check_need_spill(struct bpf_ir_env *env, struct ir_function *fun)
 			} else if (insn->op == IR_INSN_JA) {
 				// OK
 			} else if (bpf_ir_is_cond_jmp(insn)) {
-				need_modify = spill_cond_jump(env, fun, insn);
+				need_modify |= spill_cond_jump(env, fun, insn);
 			} else {
 				RAISE_ERROR_RET("No such instruction", false);
 			}
