@@ -298,6 +298,8 @@ enum ir_insn_type {
 	IR_INSN_LOADIMM_EXTRA,
 	IR_INSN_STORERAW,
 	IR_INSN_LOADRAW,
+	IR_INSN_STOREARRAY,
+	IR_INSN_LOADARRAY,
 	// ALU
 	IR_INSN_ADD,
 	IR_INSN_SUB,
@@ -327,12 +329,14 @@ enum ir_insn_type {
 /**
     INSN =
           ALLOC <vr_type>
-        | STORE <value:ptr>, <value>
+        | STORE <value:ptr> <value>
         | LOAD <value:ptr>
-		| IR_INSN_ALLOCARRAY <vr_type> <array_num>
-		| IR_INSN_GETELEMPTR <ir_address_value>
-        | STORERAW <vr_type> <ir_address_value>, <value>
+		| ALLOCARRAY <vr_type> <array_num>
+		| GETELEMPTR <ir_address_value>
+        | STORERAW <vr_type> <ir_address_value> <value>
         | LOADRAW <vr_type> <ir_address_value>
+		| STOREARRAY <vr_type> <value:ptr> <value>
+		| LOADARRAY <vr_type> <value:ptr>
 
         | ADD <value>, <value>
         | SUB <value>, <value>
