@@ -1,6 +1,6 @@
 #include <linux/bpf_ir.h>
 
-#define MAX_RUN_INSN 10
+#define MAX_RUN_INSN 1000
 
 void add_counter(struct bpf_ir_env *env, struct ir_function *fun)
 {
