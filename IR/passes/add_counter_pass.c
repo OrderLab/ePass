@@ -56,15 +56,18 @@ void add_counter(struct bpf_ir_env *env, struct ir_function *fun)
 		struct ir_insn *load_insn = bpf_ir_create_load_insn(
 			env, last, bpf_ir_value_insn(alloc_insn), INSERT_FRONT);
 		struct ir_insn *added = bpf_ir_create_bin_insn(
-			env, load_insn, bpf_ir_value_const32(len), bpf_ir_value_insn(load_insn), IR_INSN_ADD, IR_ALU_64,
+			env, load_insn, bpf_ir_value_const32(len),
+			bpf_ir_value_insn(load_insn), IR_INSN_ADD, IR_ALU_64,
 			INSERT_BACK);
 		struct ir_insn *store_back = bpf_ir_create_store_insn(
 			env, added, alloc_insn, bpf_ir_value_insn(added),
 			INSERT_BACK);
 		struct ir_basic_block *new_bb =
 			bpf_ir_split_bb(env, fun, store_back);
-		bpf_ir_create_jbin_insn(env, store_back, bpf_ir_value_insn(added), bpf_ir_value_const32(MAX_RUN_INSN), new_bb,
-					err_bb, IR_INSN_JGT, IR_ALU_64,
+		bpf_ir_create_jbin_insn(env, store_back,
+					bpf_ir_value_insn(added),
+					bpf_ir_value_const32(MAX_RUN_INSN),
+					new_bb, err_bb, IR_INSN_JGT, IR_ALU_64,
 					INSERT_BACK);
 		// Manually connect BBs
 		bpf_ir_connect_bb(env, bb, err_bb);
