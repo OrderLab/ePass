@@ -462,37 +462,6 @@ static struct ir_insn *create_call_insn_base(struct bpf_ir_env *env,
 	return new_insn;
 }
 
-static struct ir_insn *create_loadelem_insn_base(struct bpf_ir_env *env,
-						 struct ir_basic_block *bb,
-						 enum ir_vr_type type,
-						 struct ir_value addr)
-{
-	struct ir_insn *new_insn = bpf_ir_create_insn_base(env, bb);
-	new_insn->op = IR_INSN_LOADELEM;
-	new_insn->values[0] = addr;
-	new_insn->value_num = 1;
-	new_insn->vr_type = type;
-	bpf_ir_val_add_user(env, addr, new_insn);
-	return new_insn;
-}
-
-static struct ir_insn *create_storeelem_insn_base(struct bpf_ir_env *env,
-						  struct ir_basic_block *bb,
-						  enum ir_vr_type type,
-						  struct ir_value addr,
-						  struct ir_value to_store)
-{
-	struct ir_insn *new_insn = bpf_ir_create_insn_base(env, bb);
-	new_insn->op = IR_INSN_LOADELEM;
-	new_insn->values[0] = addr;
-	new_insn->values[1] = to_store;
-	new_insn->value_num = 2;
-	new_insn->vr_type = type;
-	bpf_ir_val_add_user(env, addr, new_insn);
-	bpf_ir_val_add_user(env, to_store, new_insn);
-	return new_insn;
-}
-
 static struct ir_insn *create_loadraw_insn_base(struct bpf_ir_env *env,
 						struct ir_basic_block *bb,
 						enum ir_vr_type type,
@@ -832,54 +801,6 @@ struct ir_insn *bpf_ir_create_call_insn_bb(struct bpf_ir_env *env,
 					   s32 fid, enum insert_position pos)
 {
 	struct ir_insn *new_insn = create_call_insn_base(env, pos_bb, fid);
-	bpf_ir_insert_at_bb(new_insn, pos_bb, pos);
-	return new_insn;
-}
-
-struct ir_insn *bpf_ir_create_loadelem_insn(struct bpf_ir_env *env,
-					    struct ir_insn *pos_insn,
-					    enum ir_vr_type type,
-					    struct ir_value addr,
-					    enum insert_position pos)
-{
-	struct ir_insn *new_insn =
-		create_loadelem_insn_base(env, pos_insn->parent_bb, type, addr);
-	bpf_ir_insert_at(new_insn, pos_insn, pos);
-	return new_insn;
-}
-
-struct ir_insn *bpf_ir_create_loadelem_insn_bb(struct bpf_ir_env *env,
-					       struct ir_basic_block *pos_bb,
-					       enum ir_vr_type type,
-					       struct ir_value addr,
-					       enum insert_position pos)
-{
-	struct ir_insn *new_insn =
-		create_loadelem_insn_base(env, pos_bb, type, addr);
-	bpf_ir_insert_at_bb(new_insn, pos_bb, pos);
-	return new_insn;
-}
-
-struct ir_insn *
-bpf_ir_create_storeelem_insn(struct bpf_ir_env *env, struct ir_insn *pos_insn,
-			     enum ir_vr_type type, struct ir_value addr,
-			     struct ir_value to_store, enum insert_position pos)
-{
-	struct ir_insn *new_insn = create_storeelem_insn_base(
-		env, pos_insn->parent_bb, type, addr, to_store);
-	bpf_ir_insert_at(new_insn, pos_insn, pos);
-	return new_insn;
-}
-
-struct ir_insn *bpf_ir_create_storeelem_insn_bb(struct bpf_ir_env *env,
-						struct ir_basic_block *pos_bb,
-						enum ir_vr_type type,
-						struct ir_value addr,
-						struct ir_value to_store,
-						enum insert_position pos)
-{
-	struct ir_insn *new_insn =
-		create_storeelem_insn_base(env, pos_bb, type, addr, to_store);
 	bpf_ir_insert_at_bb(new_insn, pos_bb, pos);
 	return new_insn;
 }

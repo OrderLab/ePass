@@ -298,8 +298,6 @@ enum ir_insn_type {
 	IR_INSN_LOADIMM_EXTRA,
 	IR_INSN_STORERAW,
 	IR_INSN_LOADRAW,
-	IR_INSN_STOREELEM,
-	IR_INSN_LOADELEM,
 	// ALU
 	IR_INSN_ADD,
 	IR_INSN_SUB,
@@ -335,8 +333,6 @@ enum ir_insn_type {
 		| GETELEMPTR <ir_address_value>
         | STORERAW <vr_type> <ir_address_value> <value>
         | LOADRAW <vr_type> <ir_address_value>
-		| STOREELEM <vr_type> <value:ptr> <value>
-		| LOADELEM <vr_type> <value:ptr>
 
         | ADD <value>, <value>
         | SUB <value>, <value>
@@ -819,32 +815,6 @@ struct ir_insn *bpf_ir_create_call_insn_bb(struct bpf_ir_env *env,
 					   struct ir_basic_block *pos_bb,
 					   s32 fid, enum insert_position pos);
 
-struct ir_insn *bpf_ir_create_loadelem_insn(struct bpf_ir_env *env,
-					    struct ir_insn *pos_insn,
-					    enum ir_vr_type type,
-					    struct ir_value addr,
-					    enum insert_position pos);
-
-struct ir_insn *bpf_ir_create_loadelem_insn_bb(struct bpf_ir_env *env,
-					       struct ir_basic_block *pos_bb,
-					       enum ir_vr_type type,
-					       struct ir_value addr,
-					       enum insert_position pos);
-
-struct ir_insn *bpf_ir_create_storeelem_insn(struct bpf_ir_env *env,
-					     struct ir_insn *pos_insn,
-					     enum ir_vr_type type,
-					     struct ir_value addr,
-					     struct ir_value to_store,
-					     enum insert_position pos);
-
-struct ir_insn *bpf_ir_create_storeelem_insn_bb(struct bpf_ir_env *env,
-						struct ir_basic_block *pos_bb,
-						enum ir_vr_type type,
-						struct ir_value addr,
-						struct ir_value to_store,
-						enum insert_position pos);
-
 struct ir_insn *bpf_ir_create_loadraw_insn(struct bpf_ir_env *env,
 					   struct ir_insn *pos_insn,
 					   enum ir_vr_type type,
@@ -1078,5 +1048,11 @@ struct ir_address_value bpf_ir_addr_val(struct ir_value value, s16 offset);
 struct ir_value bpf_ir_value_stack_ptr(struct ir_function *fun);
 
 /* IR Value End */
+
+/* IR Optimization Start */
+
+void bpf_ir_optimize_ir(struct bpf_ir_env *env, struct ir_function *fun);
+
+/* IR Optimization End */
 
 #endif

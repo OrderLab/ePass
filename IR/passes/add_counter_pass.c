@@ -17,10 +17,6 @@ void add_counter(struct bpf_ir_env *env, struct ir_function *fun)
 	struct ir_insn *alloc_array = bpf_ir_create_allocarray_insn_bb(
 		env, err_bb, IR_VR_TYPE_64, 1, INSERT_FRONT);
 
-	// There are two ways to store the string "exit" in the array
-	// 1. Use getelemptr
-	// 2. Use storeraw
-
 	struct ir_insn *straw1 = bpf_ir_create_storeraw_insn(
 		env, alloc_array, IR_VR_TYPE_8,
 		bpf_ir_addr_val(bpf_ir_value_insn(alloc_array), 0x4),
@@ -45,10 +41,10 @@ void add_counter(struct bpf_ir_env *env, struct ir_function *fun)
 	array_for(pos, fun->reachable_bbs)
 	{
 		struct ir_basic_block *bb = *pos;
-		// if (bb->preds.num_elem <= 1) {
-		// 	// Skip Non-loop BBs
-		// 	continue;
-		// }
+		if (bb->preds.num_elem <= 1) {
+			// Skip Non-loop BBs
+			continue;
+		}
 		size_t len = bpf_ir_bb_len(bb);
 		struct ir_insn *last = bpf_ir_get_last_insn(bb);
 		if (!last) {
