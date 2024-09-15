@@ -2152,7 +2152,6 @@ static struct pre_ir_insn alu_imm(u8 dst, s64 src, enum ir_alu_op_type type,
 {
 	struct pre_ir_insn insn = { 0 };
 	insn.dst_reg = dst;
-	insn.src_reg = src;
 	int alu_class = type == IR_ALU_64 ? BPF_ALU64 : BPF_ALU;
 	insn.it = IMM;
 	insn.imm = src;
