@@ -273,6 +273,7 @@ static void remove_phi(struct bpf_ir_env *env, struct ir_function *fun)
 	bpf_ir_array_free(&phi_insns);
 }
 
+/* Optimization: Coalescing */
 static void coalescing(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	struct ir_basic_block **pos;
@@ -293,7 +294,10 @@ static void coalescing(struct bpf_ir_env *env, struct ir_function *fun)
 					if (insn_cg(src)->alloc_reg ==
 					    insn_cg(insn_dst)->alloc_reg) {
 						// Remove
-						bpf_ir_erase_insn(env, insn);
+						// TODO
+						// Change all its users to another dst
+						// Wait, is this safe?
+						// bpf_ir_erase_insn(env, insn);
 					}
 				}
 			}
