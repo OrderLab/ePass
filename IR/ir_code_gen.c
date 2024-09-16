@@ -2444,6 +2444,7 @@ static void spill_array(struct bpf_ir_env *env, struct ir_function *fun)
 				offset -= (((size - 1) / 8) + 1) * 8;
 				extra->spilled = offset;
 				extra->spilled_size = size;
+				extra->nonvr = true; // Array is not a VR
 			}
 		}
 	}
