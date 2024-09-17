@@ -19,6 +19,11 @@ struct ir_value bpf_ir_value_insn(struct ir_insn *insn)
 	return (struct ir_value){ .type = IR_VALUE_INSN, .data.insn_d = insn };
 }
 
+struct ir_value bpf_ir_value_undef(void)
+{
+	return (struct ir_value){ .type = IR_VALUE_UNDEF };
+}
+
 struct ir_value bpf_ir_value_const32(s32 val)
 {
 	return (struct ir_value){ .type = IR_VALUE_CONSTANT,

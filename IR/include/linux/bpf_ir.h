@@ -967,7 +967,7 @@ struct ir_bb_cg_extra {
 
 struct ir_insn_cg_extra {
 	// Destination (Not in SSA form anymore)
-	struct ir_insn *dst;
+	struct ir_value dst;
 
 	// Liveness analysis
 	struct array in;
@@ -1016,7 +1016,7 @@ enum val_type {
 
 #define insn_cg(insn) ((struct ir_insn_cg_extra *)(insn)->user_data)
 
-#define insn_dst(insn) insn_cg(insn)->dst
+#define insn_dst(insn) insn_cg(insn)->dst.data.insn_d
 
 /* Code Gen End */
 
@@ -1053,6 +1053,8 @@ struct ir_value bpf_ir_value_insn(struct ir_insn *);
 struct ir_value bpf_ir_value_const32(s32 val);
 
 struct ir_value bpf_ir_value_const64(s64 val);
+
+struct ir_value bpf_ir_value_undef(void);
 
 struct ir_address_value bpf_ir_addr_val(struct ir_value value, s16 offset);
 

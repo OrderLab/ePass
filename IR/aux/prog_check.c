@@ -189,6 +189,7 @@ static void check_users(struct bpf_ir_env *env, struct ir_function *fun)
 		struct ir_insn *insn = fun->function_arg[i];
 		check_insn_users_use_insn(env, insn);
 	}
+	check_insn_users_use_insn(env, fun->sp);
 	struct ir_basic_block **pos;
 	array_for(pos, fun->reachable_bbs)
 	{

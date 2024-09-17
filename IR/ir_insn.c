@@ -27,7 +27,7 @@ struct ir_insn *bpf_ir_create_insn_base_cg(struct bpf_ir_env *env,
 
 	bpf_ir_init_insn_cg(env, new_insn);
 	CHECK_ERR(NULL);
-	insn_cg(new_insn)->dst = new_insn;
+	insn_cg(new_insn)->dst = bpf_ir_value_insn(new_insn);
 	return new_insn;
 }
 
@@ -123,6 +123,13 @@ struct array bpf_ir_get_operands(struct bpf_ir_env *env, struct ir_insn *insn)
 		pos = &insn->addr_val.value;
 		bpf_ir_array_push(env, &uses, &pos);
 	}
+	return uses;
+}
+
+struct array bpf_ir_get_operands_and_dst(struct bpf_ir_env *env,
+					 struct ir_insn *insn)
+{
+	struct array uses = bpf_ir_get_operands(env, insn);
 	return uses;
 }
 
