@@ -44,6 +44,12 @@ static void check_insn(struct bpf_ir_env *env, struct ir_function *fun)
 		struct ir_basic_block *bb = *pos;
 		struct ir_insn *insn;
 		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
+			if (insn->parent_bb != bb) {
+				print_ir_insn_err(
+					env, insn,
+					"Instruction's parent BB wrong");
+				RAISE_ERROR("Parent BB error");
+			}
 			if (insn->op == IR_INSN_LOADRAW ||
 			    insn->op == IR_INSN_ALLOC ||
 			    insn->op == IR_INSN_JA || insn->op == IR_INSN_PHI ||
@@ -51,7 +57,6 @@ static void check_insn(struct bpf_ir_env *env, struct ir_function *fun)
 				if (!(insn->value_num == 0)) {
 					print_ir_insn_err(env, insn, NULL);
 					RAISE_ERROR(
-
 						"Instruction should have no value");
 				}
 			}
@@ -61,7 +66,6 @@ static void check_insn(struct bpf_ir_env *env, struct ir_function *fun)
 				if (!(insn->value_num == 1)) {
 					print_ir_insn_err(env, insn, NULL);
 					RAISE_ERROR(
-
 						"Instruction should have 1 values");
 				}
 			}

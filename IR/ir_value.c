@@ -47,3 +47,11 @@ struct ir_value bpf_ir_value_stack_ptr(struct ir_function *fun)
 {
 	return bpf_ir_value_insn(fun->sp);
 }
+
+void bpf_ir_change_value(struct bpf_ir_env *env, struct ir_insn *insn,
+			 struct ir_value *old, struct ir_value new)
+{
+	bpf_ir_val_remove_user(*old, insn);
+	*old = new;
+	bpf_ir_val_add_user(env, new, insn);
+}

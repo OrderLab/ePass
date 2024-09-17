@@ -1072,6 +1072,9 @@ struct ir_address_value bpf_ir_addr_val(struct ir_value value, s16 offset);
 
 struct ir_value bpf_ir_value_stack_ptr(struct ir_function *fun);
 
+void bpf_ir_change_value(struct bpf_ir_env *env, struct ir_insn *insn,
+			 struct ir_value *old, struct ir_value new);
+
 /* IR Value End */
 
 /* IR Optimization Start */
