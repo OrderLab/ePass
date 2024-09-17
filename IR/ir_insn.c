@@ -16,7 +16,8 @@ struct ir_insn *bpf_ir_create_insn_base(struct bpf_ir_env *env,
 }
 
 struct ir_insn *bpf_ir_create_insn_base_cg(struct bpf_ir_env *env,
-					   struct ir_basic_block *bb)
+					   struct ir_basic_block *bb,
+					   enum ir_insn_type insn_type)
 {
 	struct ir_insn *new_insn = bpf_ir_create_insn_base(env, bb);
 	if (!new_insn) {
@@ -24,10 +25,9 @@ struct ir_insn *bpf_ir_create_insn_base_cg(struct bpf_ir_env *env,
 		PRINT_LOG(env, "Failed to allocate memory for ir_insn\n");
 		return NULL;
 	}
-
+	new_insn->op = insn_type;
 	bpf_ir_init_insn_cg(env, new_insn);
 	CHECK_ERR(NULL);
-	insn_cg(new_insn)->dst = bpf_ir_value_insn(new_insn);
 	return new_insn;
 }
 
@@ -54,6 +54,31 @@ void bpf_ir_replace_all_usage(struct bpf_ir_env *env, struct ir_insn *insn,
 	{
 		struct ir_insn *user = *pos;
 		struct array operands = bpf_ir_get_operands(env, user);
+		struct ir_value **pos2;
+		array_for(pos2, operands)
+		{
+			if ((*pos2)->type == IR_VALUE_INSN &&
+			    (*pos2)->data.insn_d == insn) {
+				// Match, replace
+				**pos2 = rep;
+				bpf_ir_val_add_user(env, rep, user);
+			}
+		}
+		bpf_ir_array_free(&operands);
+	}
+	bpf_ir_array_free(&users);
+}
+
+void bpf_ir_replace_all_usage_cg(struct bpf_ir_env *env, struct ir_insn *insn,
+				 struct ir_value rep)
+{
+	struct ir_insn **pos;
+	struct array users = insn->users;
+	INIT_ARRAY(&insn->users, struct ir_insn *);
+	array_for(pos, users)
+	{
+		struct ir_insn *user = *pos;
+		struct array operands = bpf_ir_get_operands_and_dst(env, user);
 		struct ir_value **pos2;
 		array_for(pos2, operands)
 		{
@@ -138,6 +163,42 @@ struct array bpf_ir_get_operands_and_dst(struct bpf_ir_env *env,
 int bpf_ir_is_last_insn(struct ir_insn *insn)
 {
 	return insn->parent_bb->ir_insn_head.prev == &insn->list_ptr;
+}
+
+void bpf_ir_erase_insn_cg(struct bpf_ir_env *env, struct ir_insn *insn)
+{
+	if (insn->users.num_elem > 0) {
+		struct ir_insn **pos;
+		bool fail = false;
+		array_for(pos, insn->users)
+		{
+			if (*pos != insn) {
+				fail = true;
+				break;
+			}
+		}
+		if (fail) {
+			array_for(pos, insn->users)
+			{
+				print_ir_insn_err(env, *pos, "User");
+			}
+			print_ir_insn_err(env, insn, "Has users");
+			RAISE_ERROR(
+				"Cannot erase a instruction that has (non-self) users");
+		}
+	}
+	struct array operands = bpf_ir_get_operands_and_dst(env, insn);
+	CHECK_ERR();
+	struct ir_value **pos2;
+	array_for(pos2, operands)
+	{
+		bpf_ir_val_remove_user((**pos2), insn);
+	}
+	bpf_ir_array_free(&operands);
+	bpf_ir_free_insn_cg(insn);
+	list_del(&insn->list_ptr);
+	bpf_ir_array_free(&insn->users);
+	free_proto(insn);
 }
 
 void bpf_ir_erase_insn(struct bpf_ir_env *env, struct ir_insn *insn)
@@ -408,11 +469,13 @@ create_bin_insn_base_cg(struct bpf_ir_env *env, struct ir_basic_block *bb,
 			struct ir_value val1, struct ir_value val2,
 			enum ir_insn_type ty, enum ir_alu_op_type alu_type)
 {
-	struct ir_insn *new_insn = bpf_ir_create_insn_base_cg(env, bb);
+	struct ir_insn *new_insn = bpf_ir_create_insn_base_cg(env, bb, ty);
 	new_insn->op = ty;
 	new_insn->values[0] = val1;
 	new_insn->values[1] = val2;
 	new_insn->alu_op = alu_type;
+	bpf_ir_val_add_user(env, val1, new_insn);
+	bpf_ir_val_add_user(env, val2, new_insn);
 	new_insn->value_num = 2;
 	return new_insn;
 }
@@ -491,11 +554,12 @@ static struct ir_insn *create_loadraw_insn_base_cg(struct bpf_ir_env *env,
 						   enum ir_vr_type type,
 						   struct ir_address_value val)
 {
-	struct ir_insn *new_insn = bpf_ir_create_insn_base_cg(env, bb);
-	new_insn->op = IR_INSN_LOADRAW;
+	struct ir_insn *new_insn =
+		bpf_ir_create_insn_base_cg(env, bb, IR_INSN_LOADRAW);
 	new_insn->addr_val = val;
 	new_insn->value_num = 0;
 	new_insn->vr_type = type;
+	bpf_ir_val_add_user(env, val.value, new_insn);
 	return new_insn;
 }
 
@@ -522,12 +586,14 @@ static struct ir_insn *create_storeraw_insn_base_cg(struct bpf_ir_env *env,
 						    struct ir_address_value val,
 						    struct ir_value to_store)
 {
-	struct ir_insn *new_insn = bpf_ir_create_insn_base_cg(env, bb);
-	new_insn->op = IR_INSN_STORERAW;
+	struct ir_insn *new_insn =
+		bpf_ir_create_insn_base_cg(env, bb, IR_INSN_STORERAW);
 	new_insn->addr_val = val;
 	new_insn->values[0] = to_store;
 	new_insn->value_num = 1;
 	new_insn->vr_type = type;
+	bpf_ir_val_add_user(env, val.value, new_insn);
+	bpf_ir_val_add_user(env, to_store, new_insn);
 	return new_insn;
 }
 
@@ -547,12 +613,13 @@ static struct ir_insn *create_assign_insn_base_cg(struct bpf_ir_env *env,
 						  struct ir_basic_block *bb,
 						  struct ir_value val)
 {
-	struct ir_insn *new_insn = bpf_ir_create_insn_base_cg(env, bb);
-	new_insn->op = IR_INSN_ASSIGN;
+	struct ir_insn *new_insn =
+		bpf_ir_create_insn_base_cg(env, bb, IR_INSN_ASSIGN);
 	new_insn->values[0] = val;
 	new_insn->value_num = 1;
 	new_insn->vr_type = IR_VR_TYPE_UNKNOWN;
 	new_insn->alu_op = IR_ALU_UNKNOWN;
+	bpf_ir_val_add_user(env, val, new_insn);
 	return new_insn;
 }
 

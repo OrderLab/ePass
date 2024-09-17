@@ -1,5 +1,6 @@
 {
     "cSpell.words": [
+        "addrval",
         "ALLOC",
         "ALLOCARRAY",
         "cgir",
@@ -24,6 +25,7 @@
         "RAWOFF",
         "repr",
         "SIZET",
+        "STACKOFF",
         "stackptr",
         "STOREELEM",
         "STORERAW",

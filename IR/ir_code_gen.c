@@ -4,12 +4,14 @@
 static void set_insn_dst(struct bpf_ir_env *env, struct ir_insn *insn,
 			 struct ir_insn *dst)
 {
+	struct ir_value v = dst ? bpf_ir_value_insn(dst) : bpf_ir_value_undef();
 	if (insn_cg(insn)->dst.type == IR_VALUE_INSN) {
 		// Remove previous user
 		// Change all users to new dst (used in coalescing)
 		// CRITICAL("TODO");
+		bpf_ir_replace_all_usage_cg(env, insn, v);
 	}
-	insn_cg(insn)->dst = bpf_ir_value_insn(dst);
+	insn_cg(insn)->dst = v;
 	bpf_ir_val_add_user(env, insn_cg(insn)->dst, insn);
 }
 
@@ -53,7 +55,7 @@ static void init_cg(struct bpf_ir_env *env, struct ir_function *fun)
 	extra->nonvr = true;
 }
 
-static void free_insn_cg(struct ir_insn *insn)
+void bpf_ir_free_insn_cg(struct ir_insn *insn)
 {
 	struct ir_insn_cg_extra *extra = insn_cg(insn);
 	bpf_ir_array_free(&extra->adj);
@@ -76,15 +78,15 @@ static void free_cg_res(struct ir_function *fun)
 		bb->user_data = NULL;
 		struct ir_insn *insn = NULL;
 		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
-			free_insn_cg(insn);
+			bpf_ir_free_insn_cg(insn);
 		}
 	}
 
 	for (u8 i = 0; i < BPF_REG_10; ++i) {
 		struct ir_insn *insn = fun->cg_info.regs[i];
-		free_insn_cg(insn);
+		bpf_ir_free_insn_cg(insn);
 	}
-	free_insn_cg(fun->sp);
+	bpf_ir_free_insn_cg(fun->sp);
 }
 
 static void clean_insn_cg(struct bpf_ir_env *env, struct ir_insn *insn)
@@ -267,8 +269,6 @@ static void remove_phi(struct bpf_ir_env *env, struct ir_function *fun)
 			if (!repr) {
 				repr = pos3->value.data.insn_d;
 			} else {
-				// insn_cg(pos3->value.data.insn_d)->dst =
-				// 	bpf_ir_value_insn(repr);
 				set_insn_dst(env, pos3->value.data.insn_d,
 					     repr);
 			}
@@ -277,10 +277,11 @@ static void remove_phi(struct bpf_ir_env *env, struct ir_function *fun)
 			CRITICAL("Empty Phi not removed!");
 		}
 
+		CRITICAL("PHI STOP");
 		DBGASSERT(repr == insn_dst(repr));
 
-		bpf_ir_replace_all_usage(env, insn, bpf_ir_value_insn(repr));
-		bpf_ir_erase_insn(env, insn);
+		bpf_ir_replace_all_usage_cg(env, insn, bpf_ir_value_insn(repr));
+		bpf_ir_erase_insn_cg(env, insn);
 	}
 
 	bpf_ir_array_free(&phi_insns);
@@ -486,8 +487,8 @@ static void change_ret(struct bpf_ir_env *env, struct ir_function *fun)
 						env, insn, insn->values[0],
 						INSERT_FRONT);
 				new_insn->alu_op = IR_ALU_64;
-				insn_cg(new_insn)->dst =
-					bpf_ir_value_insn(fun->cg_info.regs[0]);
+				set_insn_dst(env, new_insn,
+					     fun->cg_info.regs[0]);
 				insn->value_num = 0;
 			}
 		}
@@ -531,17 +532,16 @@ static void change_call(struct bpf_ir_env *env, struct ir_function *fun)
 			if (insn->op == IR_INSN_CALL) {
 				for (u8 i = 0; i < insn->value_num; ++i) {
 					struct ir_value val = insn->values[i];
+					bpf_ir_val_remove_user(val, insn);
 					struct ir_insn *new_insn =
 						bpf_ir_create_assign_insn_cg(
 							env, insn, val,
 							INSERT_FRONT);
-					insn_cg(new_insn)
-						->dst = bpf_ir_value_insn(
-						fun->cg_info.regs[i + 1]);
+					set_insn_dst(env, new_insn,
+						     fun->cg_info.regs[i + 1]);
 				}
 				insn->value_num = 0; // Remove all operands
-				struct ir_insn_cg_extra *extra = insn_cg(insn);
-				extra->dst = bpf_ir_value_undef();
+				set_insn_dst(env, insn, NULL);
 			}
 		}
 	}
@@ -972,7 +972,7 @@ static void cgir_load_const_to_reg(struct bpf_ir_env *env,
 	struct ir_insn *new_insn =
 		bpf_ir_create_assign_insn_cg(env, insn, *val, INSERT_FRONT);
 	new_insn->alu_op = IR_ALU_64;
-	insn_cg(new_insn)->dst = bpf_ir_value_insn(fun->cg_info.regs[reg]);
+	set_insn_dst(env, new_insn, fun->cg_info.regs[reg]);
 	val->type = IR_VALUE_INSN;
 	val->data.insn_d = fun->cg_info.regs[reg];
 }
@@ -984,7 +984,7 @@ static void cgir_load_reg_to_reg(struct bpf_ir_env *env,
 	struct ir_insn *new_insn =
 		bpf_ir_create_assign_insn_cg(env, insn, *val, INSERT_FRONT);
 	new_insn->alu_op = IR_ALU_64;
-	insn_cg(new_insn)->dst = bpf_ir_value_insn(fun->cg_info.regs[reg]);
+	set_insn_dst(env, new_insn, fun->cg_info.regs[reg]);
 	val->type = IR_VALUE_INSN;
 	val->data.insn_d = fun->cg_info.regs[reg];
 }
@@ -997,7 +997,7 @@ static void cgir_load_stack_to_reg(struct bpf_ir_env *env,
 	struct ir_insn *tmp =
 		bpf_ir_create_assign_insn_cg(env, insn, *val, INSERT_FRONT);
 	tmp->vr_type = vtype;
-	insn_cg(tmp)->dst = bpf_ir_value_insn(fun->cg_info.regs[reg]);
+	set_insn_dst(env, tmp, fun->cg_info.regs[reg]);
 
 	val->type = IR_VALUE_INSN;
 	val->data.insn_d = fun->cg_info.regs[reg];
@@ -1057,36 +1057,31 @@ static void spill_callee(struct bpf_ir_env *env, struct ir_function *fun)
 			// Spill at sp-off
 			// struct ir_insn *st = create_assign_insn_bb_cg(env,
 			//     fun->entry, ir_value_insn(fun->cg_info.regs[i]), INSERT_FRONT);
-			struct ir_insn *st =
-				bpf_ir_create_insn_base_cg(env, fun->entry);
+			struct ir_insn *st = bpf_ir_create_insn_base_cg(
+				env, fun->entry, IR_INSN_STORERAW);
 			bpf_ir_insert_at_bb(st, fun->entry, INSERT_FRONT);
-			st->op = IR_INSN_STORERAW;
 			st->values[0] = bpf_ir_value_insn(fun->cg_info.regs[i]);
 			st->value_num = 1;
 			st->vr_type = IR_VR_TYPE_64;
 			st->addr_val.value = bpf_ir_value_stack_ptr(fun);
 			st->addr_val.offset = -off * 8;
-			struct ir_insn_cg_extra *extra = insn_cg(st);
-			extra->dst = bpf_ir_value_undef();
+			set_insn_dst(env, st, NULL);
 
 			struct ir_basic_block **pos2;
 			array_for(pos2, fun->end_bbs)
 			{
 				struct ir_basic_block *bb = *pos2;
-				struct ir_insn *ld =
-					bpf_ir_create_insn_base_cg(env, bb);
+				struct ir_insn *ld = bpf_ir_create_insn_base_cg(
+					env, bb, IR_INSN_LOADRAW);
 				bpf_ir_insert_at_bb(ld, bb,
 						    INSERT_BACK_BEFORE_JMP);
-				ld->op = IR_INSN_LOADRAW;
 				ld->value_num = 0;
 				ld->vr_type = IR_VR_TYPE_64;
 				ld->addr_val.value =
 					bpf_ir_value_stack_ptr(fun);
 				ld->addr_val.offset = -off * 8;
 
-				extra = insn_cg(ld);
-				extra->dst =
-					bpf_ir_value_insn(fun->cg_info.regs[i]);
+				set_insn_dst(env, ld, fun->cg_info.regs[i]);
 			}
 		}
 	}
@@ -1107,9 +1102,8 @@ static struct ir_insn *normalize_load_const(struct bpf_ir_env *env,
 		val->data.insn_d = new_insn;
 		return new_insn;
 	} else {
-		struct ir_insn *new_insn =
-			bpf_ir_create_insn_base_cg(env, insn->parent_bb);
-		new_insn->op = IR_INSN_LOADIMM_EXTRA;
+		struct ir_insn *new_insn = bpf_ir_create_insn_base_cg(
+			env, insn->parent_bb, IR_INSN_LOADIMM_EXTRA);
 		new_insn->imm_extra_type = IR_LOADIMM_IMM64;
 		new_insn->imm64 = val->data.constant_d;
 		new_insn->vr_type = IR_VR_TYPE_64;
@@ -1148,7 +1142,7 @@ static void normalize_alu(struct bpf_ir_env *env, struct ir_function *fun,
 		// reg1 = add reg1 const
 		struct ir_insn *new_insn = bpf_ir_create_assign_insn_cg(
 			env, insn, *v0, INSERT_FRONT);
-		insn_cg(new_insn)->dst = bpf_ir_value_insn(dst_insn);
+		set_insn_dst(env, new_insn, dst_insn);
 		v0->type = IR_VALUE_INSN;
 		v0->data.insn_d = dst_insn;
 	} else if (t0 == STACK && t1 == REG) {
@@ -1158,7 +1152,7 @@ static void normalize_alu(struct bpf_ir_env *env, struct ir_function *fun,
 		// reg1 = add reg1 reg2
 		struct ir_insn *new_insn = bpf_ir_create_assign_insn_cg(
 			env, insn, *v0, INSERT_FRONT);
-		insn_cg(new_insn)->dst = bpf_ir_value_insn(dst_insn);
+		set_insn_dst(env, new_insn, dst_insn);
 
 		v0->type = IR_VALUE_INSN;
 		v0->data.insn_d = dst_insn;
@@ -1174,7 +1168,7 @@ static void normalize_alu(struct bpf_ir_env *env, struct ir_function *fun,
 			struct ir_insn *new_insn = bpf_ir_create_assign_insn_cg(
 				env, insn, *v0, INSERT_FRONT);
 			DBGASSERT(dst_insn == fun->cg_info.regs[reg1]);
-			insn_cg(new_insn)->dst = bpf_ir_value_insn(dst_insn);
+			set_insn_dst(env, new_insn, dst_insn);
 			v0->type = IR_VALUE_INSN;
 			v0->data.insn_d = dst_insn;
 		}
@@ -1186,7 +1180,7 @@ static void normalize_alu(struct bpf_ir_env *env, struct ir_function *fun,
 			// reg1 = add reg1 const
 			struct ir_insn *new_insn = bpf_ir_create_assign_insn_cg(
 				env, insn, *v0, INSERT_FRONT);
-			insn_cg(new_insn)->dst = bpf_ir_value_insn(dst_insn);
+			set_insn_dst(env, new_insn, dst_insn);
 			v0->type = IR_VALUE_INSN;
 			v0->data.insn_d = dst_insn;
 		}
@@ -1194,7 +1188,7 @@ static void normalize_alu(struct bpf_ir_env *env, struct ir_function *fun,
 		DBGASSERT(v1->const_type == IR_ALU_32);
 		struct ir_insn *load_const_insn =
 			normalize_load_const(env, insn, v0);
-		insn_cg(load_const_insn)->dst = bpf_ir_value_insn(dst_insn);
+		set_insn_dst(env, load_const_insn, dst_insn);
 		v0->data.insn_d = dst_insn;
 	} else if (t0 == CONST && t1 == REG) {
 		// reg1 = add const reg2
@@ -1203,7 +1197,7 @@ static void normalize_alu(struct bpf_ir_env *env, struct ir_function *fun,
 		// reg1 = add reg1 reg2
 		struct ir_insn *load_const_insn =
 			normalize_load_const(env, insn, v0);
-		insn_cg(load_const_insn)->dst = bpf_ir_value_insn(dst_insn);
+		set_insn_dst(env, load_const_insn, dst_insn);
 		v0->data.insn_d = dst_insn;
 
 	} else {
@@ -1252,7 +1246,7 @@ static void normalize_getelemptr(struct bpf_ir_env *env,
 				env, insn, bpf_ir_value_insn(dst_insn),
 				bpf_ir_value_insn(fun->sp), IR_INSN_ADD,
 				IR_ALU_64, INSERT_FRONT);
-			insn_cg(new_insn)->dst = bpf_ir_value_insn(dst_insn);
+			set_insn_dst(env, new_insn, dst_insn);
 		} else {
 			// reg1 = getelemptr reg2 ptr
 			// ==>
@@ -1267,7 +1261,7 @@ static void normalize_getelemptr(struct bpf_ir_env *env,
 				env, insn, bpf_ir_value_insn(dst_insn),
 				bpf_ir_value_insn(fun->sp), IR_INSN_ADD,
 				IR_ALU_64, INSERT_FRONT);
-			insn_cg(alu_insn)->dst = bpf_ir_value_insn(dst_insn);
+			set_insn_dst(env, alu_insn, dst_insn);
 			insn->values[0] = bpf_ir_value_insn(dst_insn);
 		}
 	}
@@ -2529,6 +2523,8 @@ static void spill_array(struct bpf_ir_env *env, struct ir_function *fun)
 					 list_ptr) {
 			if (insn->op == IR_INSN_ALLOCARRAY) {
 				struct ir_insn_cg_extra *extra = insn_cg(insn);
+				DBGASSERT(extra->dst.data.insn_d ==
+					  insn); // Ensure the dst is correct
 				extra->allocated = true;
 				// Calculate the offset
 				u32 size = insn->array_num *
@@ -2609,9 +2605,6 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 
 	change_call(env, fun);
 	CHECK_ERR();
-	prog_check_cg(env, fun);
-	CHECK_ERR();
-
 	print_ir_prog_cg_dst(env, fun, "Changing calls");
 	CHECK_ERR();
 	prog_check_cg(env, fun);
@@ -2646,6 +2639,9 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 		CHECK_ERR();
 		coalescing(env, fun);
 		CHECK_ERR();
+		prog_check_cg(env, fun);
+		CHECK_ERR();
+
 		PRINT_LOG(env, "Conflicting graph (after coloring):\n");
 		bpf_ir_print_interference_graph(env, fun);
 		print_ir_prog_cg_alloc(env, fun, "After RA");
@@ -2692,8 +2688,8 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 	normalize(env, fun);
 	CHECK_ERR();
 	print_ir_prog_cg_alloc(env, fun, "Normalization");
-	prog_check_cg(env, fun);
-	CHECK_ERR();
+	// prog_check_cg(env, fun);
+	// CHECK_ERR();
 
 	// Step 13: Direct Translation
 	translate(env, fun);

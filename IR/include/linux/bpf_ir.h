@@ -688,11 +688,16 @@ struct array bpf_ir_get_operands_and_dst(struct bpf_ir_env *env,
 void bpf_ir_replace_all_usage(struct bpf_ir_env *env, struct ir_insn *insn,
 			      struct ir_value rep);
 
+void bpf_ir_replace_all_usage_cg(struct bpf_ir_env *env, struct ir_insn *insn,
+				 struct ir_value rep);
+
 void bpf_ir_replace_all_usage_except(struct bpf_ir_env *env,
 				     struct ir_insn *insn, struct ir_value rep,
 				     struct ir_insn *except);
 
 void bpf_ir_erase_insn(struct bpf_ir_env *env, struct ir_insn *insn);
+
+void bpf_ir_erase_insn_cg(struct bpf_ir_env *env, struct ir_insn *insn);
 
 int bpf_ir_is_last_insn(struct ir_insn *insn);
 
@@ -925,7 +930,8 @@ void bpf_ir_replace_operand(struct bpf_ir_env *env, struct ir_insn *insn,
 			    struct ir_value v1, struct ir_value v2);
 
 struct ir_insn *bpf_ir_create_insn_base_cg(struct bpf_ir_env *env,
-					   struct ir_basic_block *bb);
+					   struct ir_basic_block *bb,
+					   enum ir_insn_type insn_type);
 
 struct ir_insn *bpf_ir_create_insn_base(struct bpf_ir_env *env,
 					struct ir_basic_block *bb);
@@ -962,6 +968,8 @@ struct function_pass {
 void bpf_ir_init_insn_cg(struct bpf_ir_env *env, struct ir_insn *insn);
 
 void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun);
+
+void bpf_ir_free_insn_cg(struct ir_insn *insn);
 
 // Extra information needed for code gen
 struct ir_bb_cg_extra {
