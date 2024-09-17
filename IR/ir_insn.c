@@ -130,6 +130,8 @@ struct array bpf_ir_get_operands_and_dst(struct bpf_ir_env *env,
 					 struct ir_insn *insn)
 {
 	struct array uses = bpf_ir_get_operands(env, insn);
+	struct ir_value *val = &insn_cg(insn)->dst;
+	bpf_ir_array_push(env, &uses, &val);
 	return uses;
 }
 
@@ -253,7 +255,8 @@ void bpf_ir_val_add_user(struct bpf_ir_env *env, struct ir_value val,
 	if (val.type != IR_VALUE_INSN) {
 		return;
 	}
-	bpf_ir_array_push_unique(env, &val.data.insn_d->users, &user);
+	// May push many same users
+	bpf_ir_array_push(env, &val.data.insn_d->users, &user);
 }
 
 struct ir_insn *bpf_ir_prev_insn(struct ir_insn *insn)

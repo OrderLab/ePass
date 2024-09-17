@@ -681,6 +681,10 @@ enum insert_position {
 // Return an array of struct ir_value*
 struct array bpf_ir_get_operands(struct bpf_ir_env *env, struct ir_insn *insn);
 
+// Return an array of struct ir_value*
+struct array bpf_ir_get_operands_and_dst(struct bpf_ir_env *env,
+					 struct ir_insn *insn);
+
 void bpf_ir_replace_all_usage(struct bpf_ir_env *env, struct ir_insn *insn,
 			      struct ir_value rep);
 

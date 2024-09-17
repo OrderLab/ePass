@@ -1,6 +1,18 @@
 #include <linux/bpf.h>
 #include <linux/bpf_ir.h>
 
+static void set_insn_dst(struct bpf_ir_env *env, struct ir_insn *insn,
+			 struct ir_insn *dst)
+{
+	if (insn_cg(insn)->dst.type == IR_VALUE_INSN) {
+		// Remove previous user
+		// Change all users to new dst (used in coalescing)
+		// CRITICAL("TODO");
+	}
+	insn_cg(insn)->dst = bpf_ir_value_insn(dst);
+	bpf_ir_val_add_user(env, insn_cg(insn)->dst, insn);
+}
+
 static void init_cg(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	struct ir_basic_block **pos = NULL;
@@ -26,7 +38,6 @@ static void init_cg(struct bpf_ir_env *env, struct ir_function *fun)
 
 		struct ir_insn_cg_extra *extra = insn_cg(insn);
 		extra->alloc_reg = i;
-		extra->dst = bpf_ir_value_insn(insn);
 		// Pre-colored registers are allocated
 		extra->allocated = true;
 		extra->spilled = 0;
@@ -36,7 +47,6 @@ static void init_cg(struct bpf_ir_env *env, struct ir_function *fun)
 	bpf_ir_init_insn_cg(env, fun->sp);
 	struct ir_insn_cg_extra *extra = insn_cg(fun->sp);
 	extra->alloc_reg = 10;
-	extra->dst = bpf_ir_value_insn(fun->sp);
 	extra->allocated = true;
 	extra->spilled = 0;
 	extra->spilled_size = 0;
@@ -257,8 +267,10 @@ static void remove_phi(struct bpf_ir_env *env, struct ir_function *fun)
 			if (!repr) {
 				repr = pos3->value.data.insn_d;
 			} else {
-				insn_cg(pos3->value.data.insn_d)->dst =
-					bpf_ir_value_insn(repr);
+				// insn_cg(pos3->value.data.insn_d)->dst =
+				// 	bpf_ir_value_insn(repr);
+				set_insn_dst(env, pos3->value.data.insn_d,
+					     repr);
 			}
 		}
 		if (!repr) {
@@ -1758,73 +1770,6 @@ static bool spill_getelemptr(struct bpf_ir_env *env, struct ir_function *fun,
 	return false;
 }
 
-static void cgir_check(struct bpf_ir_env *env, struct ir_function *fun)
-{
-	// Sanity check of CGIR (the IR after `check_need_spill`)
-	print_ir_err_init(fun);
-	struct ir_basic_block **pos;
-	array_for(pos, fun->reachable_bbs)
-	{
-		struct ir_basic_block *bb = *pos;
-		struct ir_insn *insn;
-		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
-			// First check insn
-			if (insn_dst(insn) == NULL) {
-				continue;
-			}
-			if (insn_dst(insn) != insn_dst(insn_dst(insn))) {
-				// dst(insn) != dst(dst(insn))
-				// dst is not final!
-				print_ir_insn_err_full(env, insn_dst(insn),
-						       "Instruction's dst",
-						       print_ir_dst);
-				print_ir_insn_err_full(
-					env, insn,
-					"This instruction's dst is not final!",
-					print_ir_dst);
-				CRITICAL_DUMP(env, "Dst is not final!");
-			}
-			struct array operands = bpf_ir_get_operands(env, insn);
-			struct ir_value **vpos;
-			array_for(vpos, operands)
-			{
-				struct ir_value *val = *vpos;
-				if (val->type == IR_VALUE_INSN) {
-					struct ir_insn *dst_insn =
-						val->data.insn_d;
-					if (insn_dst(dst_insn) == NULL) {
-						print_ir_insn_err_full(
-							env, dst_insn,
-							"Operand's dst is NULL",
-							print_ir_dst);
-						print_ir_insn_err_full(
-							env, insn,
-							"This instruction's operand's dst is NULL",
-							print_ir_dst);
-						CRITICAL_DUMP(env, "NULL dst");
-					}
-					if (insn_dst(dst_insn) != dst_insn) {
-						print_ir_insn_err_full(
-							env, insn_dst(dst_insn),
-							"Operand's dst",
-							print_ir_dst);
-						print_ir_insn_err_full(
-							env, dst_insn,
-							"Operand",
-							print_ir_dst);
-						print_ir_insn_err_full(
-							env, insn,
-							"This instruction's operand's dst is NULL",
-							print_ir_dst);
-						CRITICAL_DUMP(env, "NULL dst");
-					}
-				}
-			}
-			bpf_ir_array_free(&operands);
-		}
-	}
-}
-
 static void check_insn_users_use_insn_cg(struct bpf_ir_env *env,
 					 struct ir_insn *insn)
 {
@@ -1833,7 +1778,7 @@ static void check_insn_users_use_insn_cg(struct bpf_ir_env *env,
 	{
 		struct ir_insn *user = *pos;
 		// Check if the user actually uses this instruction
-		struct array operands = bpf_ir_get_operands(env, user);
+		struct array operands = bpf_ir_get_operands_and_dst(env, user);
 		struct ir_value **val;
 		int found = 0;
 		array_for(val, operands)
@@ -1849,9 +1794,11 @@ static void check_insn_users_use_insn_cg(struct bpf_ir_env *env,
 		bpf_ir_array_free(&operands);
 		if (!found) {
 			// Error!
-			print_ir_insn_err(env, insn, "The instruction");
-			print_ir_insn_err(env, user,
-					  "The user of that instruction");
+			print_ir_insn_err_full(env, insn, "The instruction",
+					       print_ir_dst);
+			print_ir_insn_err_full(env, user,
+					       "The user of that instruction",
+					       print_ir_dst);
 			RAISE_ERROR("User does not use the instruction");
 		}
 	}
@@ -1859,7 +1806,7 @@ static void check_insn_users_use_insn_cg(struct bpf_ir_env *env,
 
 static void check_insn_operand_cg(struct bpf_ir_env *env, struct ir_insn *insn)
 {
-	struct array operands = bpf_ir_get_operands(env, insn);
+	struct array operands = bpf_ir_get_operands_and_dst(env, insn);
 	struct ir_value **val;
 	array_for(val, operands)
 	{
@@ -1879,13 +1826,41 @@ static void check_insn_operand_cg(struct bpf_ir_env *env, struct ir_insn *insn)
 			}
 			if (!found) {
 				// Error!
-				print_ir_insn_err(env, v->data.insn_d,
-						  "Operand defined here");
-				print_ir_insn_err(
+				print_ir_insn_err_full(env, v->data.insn_d,
+						       "Operand defined here",
+						       print_ir_dst);
+				print_ir_insn_err_full(
 					env, insn,
-					"Instruction that uses the operand");
+					"Instruction that uses the operand",
+					print_ir_dst);
 				RAISE_ERROR(
 					"Instruction not found in the operand's users");
+			}
+
+			// Check dst
+
+			struct ir_insn *dst_insn = v->data.insn_d;
+			if (insn_dst(dst_insn) == NULL) {
+				print_ir_insn_err_full(env, dst_insn,
+						       "Operand's dst is NULL",
+						       print_ir_dst);
+				print_ir_insn_err_full(
+					env, insn,
+					"This instruction's operand's dst is NULL",
+					print_ir_dst);
+				RAISE_ERROR("NULL dst");
+			}
+			if (insn_dst(dst_insn) != dst_insn) {
+				print_ir_insn_err_full(env, insn_dst(dst_insn),
+						       "Operand's dst",
+						       print_ir_dst);
+				print_ir_insn_err_full(env, dst_insn, "Operand",
+						       print_ir_dst);
+				print_ir_insn_err_full(
+					env, insn,
+					"This instruction's operand's dst is NULL",
+					print_ir_dst);
+				RAISE_ERROR("NULL dst");
 			}
 		}
 	}
@@ -1910,36 +1885,17 @@ static void prog_check_cg(struct bpf_ir_env *env, struct ir_function *fun)
 		struct ir_insn *insn;
 		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
 			// Check dst
-			if (insn_cg(insn)->dst.type != IR_VALUE_INSN) {
-				RAISE_ERROR("Instruction's dst is not a INSN");
-			}
-			struct ir_insn *dst_insn = insn_dst(insn);
-			if (dst_insn) {
-				if (!insn_dst(dst_insn)) {
-					print_ir_insn_err_full(env, insn,
-							       "Instruction",
-							       print_ir_dst);
-					RAISE_ERROR(
-						"Instruction's dst'dst is NULL");
-				}
-				if (dst_insn != insn_dst(dst_insn)) {
-					print_ir_insn_err_full(
-						env, insn_dst(dst_insn),
-						"dst of dst of the instruction",
-						print_ir_dst);
-					print_ir_insn_err_full(
-						env, dst_insn,
-						"dst of the instruction",
-						print_ir_dst);
-					print_ir_insn_err_full(env, insn,
-							       "Instruction",
-							       print_ir_dst);
-					RAISE_ERROR(
-						"Instruction has a non-final dst");
-				}
+			if (insn_cg(insn)->dst.type == IR_VALUE_INSN) {
 				// Check users of this instruction
 				check_insn_users_use_insn_cg(env, insn);
 			} else {
+				if (insn_cg(insn)->dst.type != IR_VALUE_UNDEF) {
+					print_ir_insn_err_full(env, insn,
+							       "Instruction",
+							       print_ir_dst);
+					RAISE_ERROR(
+						"Instruction's dst is incorrect value");
+				}
 				// dst == NULL
 				// There should be no users!
 				if (insn->users.num_elem > 0) {
@@ -2631,6 +2587,9 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 	init_cg(env, fun);
 	CHECK_ERR();
 
+	prog_check_cg(env, fun);
+	CHECK_ERR();
+
 	// Debugging settings
 	fun->cg_info.spill_callee = 0;
 
@@ -2638,21 +2597,33 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 	remove_phi(env, fun);
 	CHECK_ERR();
 	print_ir_prog_cg_dst(env, fun, "PHI Removal");
+	prog_check_cg(env, fun);
+	CHECK_ERR();
 
 	// No more users, SSA structure is destroyed
 
 	change_ret(env, fun);
 	CHECK_ERR();
+	prog_check_cg(env, fun);
+	CHECK_ERR();
 
 	change_call(env, fun);
 	CHECK_ERR();
+	prog_check_cg(env, fun);
+	CHECK_ERR();
+
 	print_ir_prog_cg_dst(env, fun, "Changing calls");
+	CHECK_ERR();
+	prog_check_cg(env, fun);
 	CHECK_ERR();
 
 	spill_array(env, fun);
 	CHECK_ERR();
 	print_ir_prog_cg_dst(env, fun, "Spilling Arrays");
 	CHECK_ERR();
+	prog_check_cg(env, fun);
+	CHECK_ERR();
+
 	// print_ir_prog_reachable(fun);
 
 	bool need_spill = true;
@@ -2682,8 +2653,9 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 		// Step 8: Check if need to spill and spill
 		need_spill = check_need_spill(env, fun);
 		CHECK_ERR();
-		cgir_check(env, fun);
+		prog_check_cg(env, fun);
 		CHECK_ERR();
+
 		// print_ir_prog_cg_dst(env, fun, "After Spilling");
 		if (need_spill) {
 			// Still need to spill
@@ -2720,7 +2692,7 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 	normalize(env, fun);
 	CHECK_ERR();
 	print_ir_prog_cg_alloc(env, fun, "Normalization");
-	cgir_check(env, fun);
+	prog_check_cg(env, fun);
 	CHECK_ERR();
 
 	// Step 13: Direct Translation
@@ -2743,11 +2715,11 @@ void bpf_ir_init_insn_cg(struct bpf_ir_env *env, struct ir_insn *insn)
 {
 	struct ir_insn_cg_extra *extra = NULL;
 	SAFE_MALLOC(extra, sizeof(struct ir_insn_cg_extra));
+	insn->user_data = extra;
 	// When init, the destination is itself
-	if (bpf_ir_is_void(insn)) {
-		extra->dst = bpf_ir_value_undef();
-	} else {
-		extra->dst = bpf_ir_value_insn(insn);
+	extra->dst = bpf_ir_value_undef();
+	if (!bpf_ir_is_void(insn)) {
+		set_insn_dst(env, insn, insn);
 	}
 
 	INIT_ARRAY(&extra->adj, struct ir_insn *);
@@ -2760,5 +2732,4 @@ void bpf_ir_init_insn_cg(struct bpf_ir_env *env, struct ir_insn *insn)
 	INIT_ARRAY(&extra->out, struct ir_insn *);
 	extra->translated_num = 0;
 	extra->nonvr = false;
-	insn->user_data = extra;
 }
