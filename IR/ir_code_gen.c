@@ -975,6 +975,7 @@ static void cgir_load_const_to_reg(struct bpf_ir_env *env,
 	set_insn_dst(env, new_insn, fun->cg_info.regs[reg]);
 	val->type = IR_VALUE_INSN;
 	val->data.insn_d = fun->cg_info.regs[reg];
+	bpf_ir_val_add_user(env, *val, fun->cg_info.regs[reg]);
 }
 
 static void cgir_load_reg_to_reg(struct bpf_ir_env *env,
@@ -987,6 +988,7 @@ static void cgir_load_reg_to_reg(struct bpf_ir_env *env,
 	set_insn_dst(env, new_insn, fun->cg_info.regs[reg]);
 	val->type = IR_VALUE_INSN;
 	val->data.insn_d = fun->cg_info.regs[reg];
+	bpf_ir_val_add_user(env, *val, fun->cg_info.regs[reg]);
 }
 
 static void cgir_load_stack_to_reg(struct bpf_ir_env *env,
@@ -1001,6 +1003,7 @@ static void cgir_load_stack_to_reg(struct bpf_ir_env *env,
 
 	val->type = IR_VALUE_INSN;
 	val->data.insn_d = fun->cg_info.regs[reg];
+	bpf_ir_val_add_user(env, *val, fun->cg_info.regs[reg]);
 }
 
 static void add_stack_offset_vr(struct ir_function *fun, size_t num)
@@ -1435,6 +1438,8 @@ static bool spill_store(struct bpf_ir_env *env, struct ir_function *fun,
 		  IR_VALUE_INSN); // Should be guaranteed by prog_check
 	DBGASSERT(v0->data.insn_d->op == IR_INSN_ALLOC);
 	insn->vr_type = v0->data.insn_d->vr_type;
+	DBGASSERT(insn_cg(insn)->dst.type == IR_VALUE_UNDEF);
+	bpf_ir_val_remove_user(*v0, insn);
 	set_insn_dst(env, insn, v0->data.insn_d);
 	insn->value_num = 1;
 	*v0 = *v1;
