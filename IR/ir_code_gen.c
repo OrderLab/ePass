@@ -277,7 +277,6 @@ static void remove_phi(struct bpf_ir_env *env, struct ir_function *fun)
 			CRITICAL("Empty Phi not removed!");
 		}
 
-		CRITICAL("PHI STOP");
 		DBGASSERT(repr == insn_dst(repr));
 
 		bpf_ir_replace_all_usage_cg(env, insn, bpf_ir_value_insn(repr));
