@@ -1026,7 +1026,10 @@ static u8 allocated_reg(struct ir_value val)
 	return allocated_reg_insn(val.data.insn_d);
 }
 
-/* Spilling callee */
+/* Spilling callee
+
+	NOT TESTED YET
+ */
 static void spill_callee(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	// Spill Callee saved registers if used
@@ -1061,7 +1064,8 @@ static void spill_callee(struct bpf_ir_env *env, struct ir_function *fun)
 				env, fun->entry, IR_INSN_STORERAW);
 			bpf_ir_insert_at_bb(st, fun->entry, INSERT_FRONT);
 			// st->values[0] = bpf_ir_value_insn(fun->cg_info.regs[i]);
-			bpf_ir_val_add_user(env, st->values[0], fun->cg_info.regs[i]);
+			bpf_ir_val_add_user(env, st->values[0],
+					    fun->cg_info.regs[i]);
 			st->value_num = 1;
 			st->vr_type = IR_VR_TYPE_64;
 			st->addr_val.value = bpf_ir_value_stack_ptr(fun);
