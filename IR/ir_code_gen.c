@@ -1910,6 +1910,9 @@ static void prog_check_cg(struct bpf_ir_env *env, struct ir_function *fun)
 		struct ir_insn *insn;
 		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
 			// Check dst
+			if (insn_cg(insn)->dst.type != IR_VALUE_INSN) {
+				RAISE_ERROR("Instruction's dst is not a INSN");
+			}
 			struct ir_insn *dst_insn = insn_dst(insn);
 			if (dst_insn) {
 				if (!insn_dst(dst_insn)) {
