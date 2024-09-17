@@ -1060,7 +1060,8 @@ static void spill_callee(struct bpf_ir_env *env, struct ir_function *fun)
 			struct ir_insn *st = bpf_ir_create_insn_base_cg(
 				env, fun->entry, IR_INSN_STORERAW);
 			bpf_ir_insert_at_bb(st, fun->entry, INSERT_FRONT);
-			st->values[0] = bpf_ir_value_insn(fun->cg_info.regs[i]);
+			// st->values[0] = bpf_ir_value_insn(fun->cg_info.regs[i]);
+			bpf_ir_val_add_user(env, st->values[0], fun->cg_info.regs[i]);
 			st->value_num = 1;
 			st->vr_type = IR_VR_TYPE_64;
 			st->addr_val.value = bpf_ir_value_stack_ptr(fun);
@@ -1077,8 +1078,10 @@ static void spill_callee(struct bpf_ir_env *env, struct ir_function *fun)
 						    INSERT_BACK_BEFORE_JMP);
 				ld->value_num = 0;
 				ld->vr_type = IR_VR_TYPE_64;
-				ld->addr_val.value =
-					bpf_ir_value_stack_ptr(fun);
+				// ld->addr_val.value =
+				// 	bpf_ir_value_stack_ptr(fun);
+				bpf_ir_val_add_user(env, ld->addr_val.value,
+						    fun->sp);
 				ld->addr_val.offset = -off * 8;
 
 				set_insn_dst(env, ld, fun->cg_info.regs[i]);
