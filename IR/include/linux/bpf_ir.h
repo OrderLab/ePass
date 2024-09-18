@@ -113,6 +113,9 @@ void bpf_ir_array_free(struct array *);
 
 struct array bpf_ir_array_null(void);
 
+void bpf_ir_array_merge(struct bpf_ir_env *env, struct array *a,
+			struct array *b);
+
 void bpf_ir_array_erase(struct array *arr, size_t idx);
 
 void *bpf_ir_array_get_void(struct array *arr, size_t idx);
