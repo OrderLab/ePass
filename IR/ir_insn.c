@@ -180,9 +180,11 @@ void bpf_ir_erase_insn_cg(struct bpf_ir_env *env, struct ir_insn *insn)
 		if (fail) {
 			array_for(pos, insn->users)
 			{
-				print_ir_insn_err(env, *pos, "User");
+				print_ir_insn_err_full(env, *pos, "User",
+						       print_ir_dst);
 			}
-			print_ir_insn_err(env, insn, "Has users");
+			print_ir_insn_err_full(env, insn, "Has users",
+					       print_ir_dst);
 			RAISE_ERROR(
 				"Cannot erase a instruction that has (non-self) users");
 		}

@@ -8,7 +8,6 @@ static void set_insn_dst(struct bpf_ir_env *env, struct ir_insn *insn,
 	if (insn_cg(insn)->dst.type == IR_VALUE_INSN) {
 		// Remove previous user
 		// Change all users to new dst (used in coalescing)
-		// CRITICAL("TODO");
 		bpf_ir_replace_all_usage_cg(env, insn, v);
 	}
 	insn_cg(insn)->dst = v;
@@ -286,38 +285,6 @@ static void remove_phi(struct bpf_ir_env *env, struct ir_function *fun)
 	bpf_ir_array_free(&phi_insns);
 }
 
-/* Optimization: Coalescing */
-static void coalescing(struct bpf_ir_env *env, struct ir_function *fun)
-{
-	struct ir_basic_block **pos;
-	// For each BB
-	array_for(pos, fun->reachable_bbs)
-	{
-		struct ir_basic_block *bb = *pos;
-		struct ir_insn *insn, *tmp;
-		// For each operation
-		list_for_each_entry_safe(insn, tmp, &bb->ir_insn_head,
-					 list_ptr) {
-			struct ir_insn *insn_dst = insn_dst(insn);
-			if (insn->op == IR_INSN_ASSIGN) {
-				if (insn->values[0].type == IR_VALUE_INSN) {
-					struct ir_insn *src =
-						insn->values[0].data.insn_d;
-					DBGASSERT(src == insn_dst(src));
-					if (insn_cg(src)->alloc_reg ==
-					    insn_cg(insn_dst)->alloc_reg) {
-						// Remove
-						// TODO
-						// Change all its users to another dst
-						// Wait, is this safe?
-						// bpf_ir_erase_insn(env, insn);
-					}
-				}
-			}
-		}
-	}
-}
-
 static bool is_insn_final(struct ir_insn *v1)
 {
 	return v1 == insn_dst(v1);
@@ -444,6 +411,62 @@ static void conflict_analysis(struct bpf_ir_env *env, struct ir_function *fun)
 				{
 					DBGASSERT(*pos3 == insn_dst(*pos3));
 					build_conflict(env, insn_dst, *pos3);
+				}
+			}
+		}
+	}
+}
+
+static bool has_conflict(struct ir_insn *v1, struct ir_insn *v2)
+{
+	if (!is_insn_final(v1) || !is_insn_final(v2)) {
+		CRITICAL("Can only test conflict on final values");
+	}
+	if (v1 == v2) {
+		return false;
+	}
+	struct array adj = insn_cg(v1)->adj;
+	struct ir_insn **pos;
+	array_for(pos, adj)
+	{
+		if (*pos == v2) {
+			return true;
+		}
+	}
+	return false;
+}
+
+/* Optimization: Coalescing */
+static void coalescing(struct bpf_ir_env *env, struct ir_function *fun)
+{
+	struct ir_basic_block **pos;
+	// For each BB
+	array_for(pos, fun->reachable_bbs)
+	{
+		struct ir_basic_block *bb = *pos;
+		struct ir_insn *insn, *tmp;
+		// For each operation
+		list_for_each_entry_safe(insn, tmp, &bb->ir_insn_head,
+					 list_ptr) {
+			struct ir_insn *insn_dst = insn_dst(insn);
+			if (insn->op == IR_INSN_ASSIGN) {
+				if (insn->values[0].type == IR_VALUE_INSN) {
+					struct ir_insn *src =
+						insn->values[0].data.insn_d;
+					DBGASSERT(src == insn_dst(src));
+					// a = a ==> Remove
+					if (insn_cg(src)->alloc_reg ==
+					    insn_cg(insn_dst)->alloc_reg) {
+						// Remove
+						bpf_ir_erase_insn_cg(env, insn);
+						continue;
+					}
+
+					if (!has_conflict(insn_dst, src)) {
+						// No Conflict, could coalesce
+						CRITICAL(
+							"Coalescing not implemented");
+					}
 				}
 			}
 		}
@@ -2709,7 +2732,6 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 	normalize(env, fun);
 	CHECK_ERR();
 	print_ir_prog_cg_alloc(env, fun, "Normalization");
-
 	prog_check_cg(env, fun);
 	CHECK_ERR();
 
