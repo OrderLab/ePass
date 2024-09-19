@@ -1,8 +1,8 @@
 $(NAME).o: $(NAME).c
-	clang -O2 -I/usr/include/$(shell uname -m)-linux-gnu -g -target bpf -c $< -o $@
+	clang -O2 -I/usr/include/$(shell uname -m)-linux-gnu -target bpf -c $< -o $@
 
 $(NAME).nop.o: $(NAME).c
-	clang -O0 -I/usr/include/$(shell uname -m)-linux-gnu -g -target bpf -c $< -o $@
+	clang -O0 -I/usr/include/$(shell uname -m)-linux-gnu -target bpf -c $< -o $@
 
 $(NAME).nop.s: $(NAME).nop.o
 	llvm-objdump -S $< > $@

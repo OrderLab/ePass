@@ -4,11 +4,18 @@
 SEC("xdp")
 int prog(void *ctx)
 {
-	bpf_ktime_get_ns();
-	for (__u64 i = 0; i < 1000; ++i) {
-		bpf_ktime_get_ns();
+	__u64 i = 0;
+	while (i < 10000) {
+		__u64 a = bpf_ktime_get_ns();
+		__u64 b = bpf_ktime_get_ns();
+		if (a > b) {
+			break;
+		}
+		++i;
 	}
-	return 0;
+	static char msg[] = "finished:  %d";
+	bpf_trace_printk(msg, sizeof(msg), i);
+	return XDP_PASS;
 }
 
 char _license[] SEC("license") = "GPL";

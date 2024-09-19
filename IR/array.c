@@ -87,6 +87,18 @@ void bpf_ir_array_clone(struct bpf_ir_env *env, struct array *res,
 	memcpy(res->data, arr->data, arr->num_elem * arr->elem_size);
 }
 
+// Merge b into a
+void bpf_ir_array_merge(struct bpf_ir_env *env, struct array *a,
+			struct array *b)
+{
+	struct ir_insn **pos;
+	array_for(pos, (*b))
+	{
+		struct ir_insn *insn = *pos;
+		bpf_ir_array_push_unique(env, a, &insn);
+		CHECK_ERR();
+	}
+}
 void bpf_ir_array_free(struct array *arr)
 {
 	if (arr->data) {

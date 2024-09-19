@@ -44,15 +44,19 @@ static void check_insn(struct bpf_ir_env *env, struct ir_function *fun)
 		struct ir_basic_block *bb = *pos;
 		struct ir_insn *insn;
 		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
-			struct array operands = bpf_ir_get_operands(env, insn);
-			struct ir_value **vpos;
+			if (insn->parent_bb != bb) {
+				print_ir_insn_err(
+					env, insn,
+					"Instruction's parent BB wrong");
+				RAISE_ERROR("Parent BB error");
+			}
 			if (insn->op == IR_INSN_LOADRAW ||
 			    insn->op == IR_INSN_ALLOC ||
-			    insn->op == IR_INSN_JA || insn->op == IR_INSN_PHI) {
+			    insn->op == IR_INSN_JA || insn->op == IR_INSN_PHI ||
+			    insn->op == IR_INSN_ALLOCARRAY) {
 				if (!(insn->value_num == 0)) {
 					print_ir_insn_err(env, insn, NULL);
 					RAISE_ERROR(
-
 						"Instruction should have no value");
 				}
 			}
@@ -62,13 +66,14 @@ static void check_insn(struct bpf_ir_env *env, struct ir_function *fun)
 				if (!(insn->value_num == 1)) {
 					print_ir_insn_err(env, insn, NULL);
 					RAISE_ERROR(
-
 						"Instruction should have 1 values");
 				}
 			}
 
-			if (insn->op == IR_INSN_STORE || (is_alu(insn)) ||
-			    (is_cond_jmp(insn))) {
+			if (insn->op == IR_INSN_STORE ||
+			    (bpf_ir_is_alu(insn)) ||
+			    (bpf_ir_is_cond_jmp(insn)) ||
+			    insn->op == IR_INSN_GETELEMPTR) {
 				if (!(insn->value_num == 2)) {
 					print_ir_insn_err(env, insn, NULL);
 					RAISE_ERROR(
@@ -89,9 +94,19 @@ static void check_insn(struct bpf_ir_env *env, struct ir_function *fun)
 				}
 			}
 
+			if (insn->op == IR_INSN_GETELEMPTR) {
+				if (!(insn->values[1].type == IR_VALUE_INSN &&
+				      insn->values[1].data.insn_d->op ==
+					      IR_INSN_ALLOCARRAY)) {
+					print_ir_insn_err(env, insn, NULL);
+					RAISE_ERROR(
+						"Value should be an allocarray instruction");
+				}
+			}
+
 			// TODO: Check: users of alloc instructions must be STORE/LOAD
 
-			if (is_alu(insn) || is_cond_jmp(insn)) {
+			if (bpf_ir_is_alu(insn) || bpf_ir_is_cond_jmp(insn)) {
 				// Binary ALU
 				if (!bpf_ir_valid_alu_type(insn->alu_op)) {
 					print_ir_insn_err(env, insn, NULL);
@@ -99,6 +114,8 @@ static void check_insn(struct bpf_ir_env *env, struct ir_function *fun)
 				}
 			}
 
+			struct array operands = bpf_ir_get_operands(env, insn);
+			struct ir_value **vpos;
 			if (insn->op == IR_INSN_ALLOC ||
 			    insn->op == IR_INSN_LOADRAW ||
 			    insn->op == IR_INSN_STORERAW) {
@@ -107,6 +124,8 @@ static void check_insn(struct bpf_ir_env *env, struct ir_function *fun)
 					RAISE_ERROR("Invalid VR type");
 				}
 			}
+
+			// Checking operands
 			array_for(vpos, operands)
 			{
 				struct ir_value *val = *vpos;
@@ -115,6 +134,12 @@ static void check_insn(struct bpf_ir_env *env, struct ir_function *fun)
 						    val->const_type)) {
 						print_ir_insn_err(env, insn,
 								  NULL);
+
+						PRINT_LOG(
+							env,
+							"Constant type: %d, operand number: %d\n",
+							val->const_type,
+							operands.num_elem);
 						RAISE_ERROR(
 							"Invalid Constant type");
 					}
@@ -168,6 +193,7 @@ static void check_users(struct bpf_ir_env *env, struct ir_function *fun)
 		struct ir_insn *insn = fun->function_arg[i];
 		check_insn_users_use_insn(env, insn);
 	}
+	check_insn_users_use_insn(env, fun->sp);
 	struct ir_basic_block **pos;
 	array_for(pos, fun->reachable_bbs)
 	{
@@ -237,7 +263,7 @@ static void check_jumping(struct bpf_ir_env *env, struct ir_function *fun)
 		struct ir_insn *insn;
 		int jmp_exists = 0;
 		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
-			if (is_jmp(insn)) {
+			if (bpf_ir_is_jmp(insn)) {
 				jmp_exists = 1;
 				if (!bpf_ir_is_last_insn(insn)) {
 					// Error
@@ -259,7 +285,7 @@ static void check_jumping(struct bpf_ir_env *env, struct ir_function *fun)
 						continue;
 					}
 					// For conditional jumps, both BB1 and BB2 should be successors
-					if (is_cond_jmp(insn)) {
+					if (bpf_ir_is_cond_jmp(insn)) {
 						// Get the two basic blocks that the conditional jump statement jumps to
 						struct ir_basic_block *bb1 =
 							insn->bb1;
@@ -359,7 +385,7 @@ static void bpf_ir_fix_bb_succ(struct ir_function *fun)
 	{
 		struct ir_basic_block *bb = *pos;
 		struct ir_insn *insn = bpf_ir_get_last_insn(bb);
-		if (insn && is_cond_jmp(insn)) {
+		if (insn && bpf_ir_is_cond_jmp(insn)) {
 			// Conditional jmp
 			if (bb->succs.num_elem != 2) {
 				CRITICAL(
@@ -385,11 +411,11 @@ static void add_reach(struct bpf_ir_env *env, struct ir_function *fun,
 	bpf_ir_array_push(env, &fun->reachable_bbs, &bb);
 
 	struct ir_basic_block **succ;
-	u8 i = 0;
+	bool first = false;
 	array_for(succ, bb->succs)
 	{
-		if (i == 0) {
-			i = 1;
+		if (!first && bb->succs.num_elem > 1) {
+			first = true;
 			// Check if visited
 			if ((*succ)->_visited) {
 				RAISE_ERROR("Loop BB detected");

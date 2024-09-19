@@ -64,11 +64,11 @@ void bpf_ir_clean_id(struct ir_function *fun)
 void print_insn_ptr_base(struct bpf_ir_env *env, struct ir_insn *insn)
 {
 	if (insn->op == IR_INSN_REG) {
-		PRINT_LOG(env, "R%u", insn_cg(insn)->alloc_reg);
+		PRINT_LOG(env, "R%u", insn->reg_id);
 		return;
 	}
 	if (insn->op == IR_INSN_FUNCTIONARG) {
-		PRINT_LOG(env, "arg%u", insn->fid);
+		PRINT_LOG(env, "arg%u", insn->fun_arg_id);
 		return;
 	}
 	if (insn->_insn_id == SIZET_MAX) {
@@ -120,9 +120,6 @@ static void print_ir_value_full(struct bpf_ir_env *env, struct ir_value v,
 	switch (v.type) {
 	case IR_VALUE_INSN:
 		print_insn_ptr(env, v.data.insn_d, print_ir);
-		break;
-	case IR_VALUE_STACK_PTR:
-		PRINT_LOG(env, "SP");
 		break;
 	case IR_VALUE_CONSTANT:
 		print_const(env, v);
@@ -250,6 +247,11 @@ void print_ir_insn_full(struct bpf_ir_env *env, struct ir_insn *insn,
 		PRINT_LOG(env, "alloc ");
 		print_vr_type(env, insn->vr_type);
 		break;
+	case IR_INSN_ALLOCARRAY:
+		PRINT_LOG(env, "allocarray <");
+		print_vr_type(env, insn->vr_type);
+		PRINT_LOG(env, " x %u>", insn->array_num);
+		break;
 	case IR_INSN_STORE:
 		PRINT_LOG(env, "store ");
 		print_ir_value_full(env, insn->values[0], print_ir);
@@ -277,6 +279,12 @@ void print_ir_insn_full(struct bpf_ir_env *env, struct ir_insn *insn,
 		PRINT_LOG(env, " ");
 		print_address_value_full(env, insn->addr_val, print_ir);
 		PRINT_LOG(env, " ");
+		print_ir_value_full(env, insn->values[0], print_ir);
+		break;
+	case IR_INSN_GETELEMPTR:
+		PRINT_LOG(env, "getelemptr ");
+		print_ir_value_full(env, insn->values[1], print_ir);
+		PRINT_LOG(env, "+");
 		print_ir_value_full(env, insn->values[0], print_ir);
 		break;
 	case IR_INSN_ADD:
@@ -436,7 +444,7 @@ void print_ir_bb_no_rec(
 	struct list_head *p = NULL;
 	list_for_each(p, &bb->ir_insn_head) {
 		struct ir_insn *insn = list_entry(p, struct ir_insn, list_ptr);
-		if (is_void(insn)) {
+		if (bpf_ir_is_void(insn)) {
 			PRINT_LOG(env, "  ");
 		} else {
 			PRINT_LOG(env, "  ");
@@ -516,7 +524,7 @@ void assign_id(struct ir_basic_block *bb, size_t *cnt, size_t *bb_cnt)
 	struct list_head *p = NULL;
 	list_for_each(p, &bb->ir_insn_head) {
 		struct ir_insn *insn = list_entry(p, struct ir_insn, list_ptr);
-		if (!is_void(insn)) {
+		if (!bpf_ir_is_void(insn)) {
 			insn->_insn_id = (*cnt)++;
 		}
 	}
@@ -562,6 +570,10 @@ void print_ir_prog_notag(struct bpf_ir_env *env, struct ir_function *fun)
 
 void print_ir_dst(struct bpf_ir_env *env, struct ir_insn *insn)
 {
+	if (!insn_cg(insn)) {
+		PRINT_LOG(env, "(?)");
+		RAISE_ERROR("NULL userdata found");
+	}
 	insn = insn_dst(insn);
 	if (insn) {
 		print_insn_ptr_base(env, insn);
@@ -577,12 +589,12 @@ void print_ir_alloc(struct bpf_ir_env *env, struct ir_insn *insn)
 		struct ir_insn_cg_extra *extra = insn_cg(insn);
 		if (extra->allocated) {
 			if (extra->spilled) {
-				PRINT_LOG(env, "sp-%zu", extra->spilled * 8);
+				PRINT_LOG(env, "sp+%d", extra->spilled);
 			} else {
 				PRINT_LOG(env, "r%u", extra->alloc_reg);
 			}
 		} else {
-			CRITICAL_DUMP(env, "Not allocated");
+			RAISE_ERROR("Not allocated");
 		}
 	} else {
 		PRINT_LOG(env, "(NULL)");
@@ -605,11 +617,11 @@ void print_ir_insn_err_full(struct bpf_ir_env *env, struct ir_insn *insn,
 					     struct ir_insn *))
 {
 	PRINT_LOG(env, "In BB %zu,\n", insn->parent_bb->_id);
-	struct ir_insn *prev = prev_insn(insn);
-	struct ir_insn *next = next_insn(insn);
+	struct ir_insn *prev = bpf_ir_prev_insn(insn);
+	struct ir_insn *next = bpf_ir_next_insn(insn);
 	if (prev) {
 		PRINT_LOG(env, "  ");
-		if (!is_void(prev)) {
+		if (!bpf_ir_is_void(prev)) {
 			PRINT_LOG(env, "%%%zu", prev->_insn_id);
 			PRINT_LOG(env, " = ");
 		}
@@ -619,7 +631,7 @@ void print_ir_insn_err_full(struct bpf_ir_env *env, struct ir_insn *insn,
 		PRINT_LOG(env, "  (No instruction)\n");
 	}
 	PRINT_LOG(env, "  ");
-	if (!is_void(insn)) {
+	if (!bpf_ir_is_void(insn)) {
 		PRINT_LOG(env, "%%%zu", insn->_insn_id);
 		PRINT_LOG(env, " = ");
 	}
@@ -632,7 +644,7 @@ void print_ir_insn_err_full(struct bpf_ir_env *env, struct ir_insn *insn,
 	}
 	if (next) {
 		PRINT_LOG(env, "  ");
-		if (!is_void(next)) {
+		if (!bpf_ir_is_void(next)) {
 			PRINT_LOG(env, "%%%zu", next->_insn_id);
 			PRINT_LOG(env, " = ");
 		}
@@ -674,6 +686,7 @@ void bpf_ir_print_to_log(struct bpf_ir_env *env, char *fmt, ...)
 	va_end(args);
 }
 
+/* Dump env->log */
 void bpf_ir_print_log_dbg(struct bpf_ir_env *env)
 {
 	if (env->log_pos == 0) {
@@ -683,9 +696,9 @@ void bpf_ir_print_log_dbg(struct bpf_ir_env *env)
 	PRINT_DBG("----- Begin of Log -----\n");
 	// PRINT_DBG("%s", env->log);
 	char line[1000];
-	int i = 0; // Global ptr
+	size_t i = 0; // Global ptr
 	while (i < env->log_pos) {
-		int j = 0; // Line ptr
+		size_t j = 0; // Line ptr
 		while (i < env->log_pos && j < 1000) {
 			line[j++] = env->log[i++];
 			if (env->log[i - 1] == '\n') {

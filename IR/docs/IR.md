@@ -78,6 +78,22 @@ store %1 200
 
 (Currently other vr type is not working. All alloc uses 64 bits reg/stack)
 
+### `allocarray`
+
+Syntax: `allocarray <vr_type> <array_num>`
+
+Allocate a continuous array on stack with size `sizeof(vr_type)*array_num`.
+
+Users could load or store values to it by using `storeraw` and `loadraw`.
+
+### `getelemptr`
+
+Syntax: `getelemptr <values[0]> <values[1]>`
+
+Get a pointer to the element in an array.
+
+`values[1]` should point to a `allocarray` instruction.
+
 ### `store`
 
 Syntax: `store <values[0]> <values[1]>`

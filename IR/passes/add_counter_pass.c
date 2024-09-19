@@ -1,21 +1,44 @@
 #include <linux/bpf_ir.h>
 
+#define MAX_RUN_INSN 1000
+
 void add_counter(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	struct ir_basic_block *entry = fun->entry;
-	struct ir_insn *alloc_insn =
-		create_alloc_insn_bb(entry, IR_VR_TYPE_64, INSERT_FRONT);
-	struct ir_value val;
-	val.type = IR_VALUE_CONSTANT;
-	val.data.constant_d = 0;
-	val.const_type = IR_ALU_64;
-	create_store_insn(env, alloc_insn, alloc_insn, val, INSERT_BACK);
+	struct ir_insn *alloc_insn = bpf_ir_create_alloc_insn_bb(
+		env, entry, IR_VR_TYPE_32, INSERT_FRONT);
+	bpf_ir_create_store_insn(env, alloc_insn, alloc_insn,
+				 bpf_ir_value_const32(0), INSERT_BACK);
 	struct ir_basic_block **pos;
 
 	struct ir_basic_block *err_bb = bpf_ir_create_bb(env, fun);
-	val.data.constant_d = 1;
-	val.const_type = IR_ALU_32;
-	create_ret_insn_bb(env, err_bb, val, INSERT_BACK);
+	bpf_ir_create_ret_insn_bb(env, err_bb, bpf_ir_value_const32(1),
+				  INSERT_BACK);
+
+	// Create an 8 bytes array to store the error message "exit"
+	struct ir_insn *alloc_array = bpf_ir_create_allocarray_insn_bb(
+		env, err_bb, IR_VR_TYPE_64, 1, INSERT_FRONT);
+
+	struct ir_insn *straw1 = bpf_ir_create_storeraw_insn(
+		env, alloc_array, IR_VR_TYPE_8,
+		bpf_ir_addr_val(bpf_ir_value_insn(alloc_array), 0x4),
+		bpf_ir_value_const32(0), INSERT_BACK);
+
+	struct ir_insn *straw2 = bpf_ir_create_storeraw_insn(
+		env, straw1, IR_VR_TYPE_32,
+		bpf_ir_addr_val(bpf_ir_value_insn(alloc_array), 0),
+		bpf_ir_value_const32(0x74697865), INSERT_BACK);
+
+	struct ir_insn *elemptr = bpf_ir_create_getelemptr_insn(
+		env, straw2, alloc_array, bpf_ir_value_const32(0), INSERT_BACK);
+
+	struct ir_insn *call_insn =
+		bpf_ir_create_call_insn(env, elemptr, 6,
+					INSERT_BACK); // A printk call
+
+	bpf_ir_phi_add_call_arg(env, call_insn, bpf_ir_value_insn(elemptr));
+
+	bpf_ir_phi_add_call_arg(env, call_insn, bpf_ir_value_const32(5));
 
 	array_for(pos, fun->reachable_bbs)
 	{
@@ -30,28 +53,22 @@ void add_counter(struct bpf_ir_env *env, struct ir_function *fun)
 			// No insn in the bb
 			continue;
 		}
-		struct ir_insn *load_insn = create_load_insn(
+		struct ir_insn *load_insn = bpf_ir_create_load_insn(
 			env, last, bpf_ir_value_insn(alloc_insn), INSERT_FRONT);
-		struct ir_value val1;
-		val1.type = IR_VALUE_CONSTANT;
-		val1.data.constant_d = len;
-		val1.const_type = IR_ALU_32;
-		struct ir_value val2;
-		val2.type = IR_VALUE_INSN;
-		val2.data.insn_d = load_insn;
-		struct ir_insn *added = create_bin_insn(env, load_insn, val1,
-							val2, IR_INSN_ADD,
-							IR_ALU_64, INSERT_BACK);
-		val.data.insn_d = added;
-		val.type = IR_VALUE_INSN;
-		struct ir_insn *store_back = create_store_insn(
-			env, added, alloc_insn, val, INSERT_BACK);
+		struct ir_insn *added = bpf_ir_create_bin_insn(
+			env, load_insn, bpf_ir_value_insn(load_insn),
+			bpf_ir_value_const32(len), IR_INSN_ADD, IR_ALU_64,
+			INSERT_BACK);
+		struct ir_insn *store_back = bpf_ir_create_store_insn(
+			env, added, alloc_insn, bpf_ir_value_insn(added),
+			INSERT_BACK);
 		struct ir_basic_block *new_bb =
 			bpf_ir_split_bb(env, fun, store_back);
-		val2.data.insn_d = added;
-		val1.data.constant_d = 0x10000;
-		create_jbin_insn(env, store_back, val2, val1, new_bb, err_bb,
-				 IR_INSN_JGT, IR_ALU_64, INSERT_BACK);
+		bpf_ir_create_jbin_insn(env, store_back,
+					bpf_ir_value_insn(added),
+					bpf_ir_value_const32(MAX_RUN_INSN),
+					new_bb, err_bb, IR_INSN_JGT, IR_ALU_64,
+					INSERT_BACK);
 		// Manually connect BBs
 		bpf_ir_connect_bb(env, bb, err_bb);
 	}

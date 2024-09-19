@@ -1,9 +1,15 @@
+build: format
+	cmake --build build
+
+buildall: genctor
+	cmake --build build
 
 format:
 	./scripts/format.sh
 
-build: format
-	cmake --build build
+genctor:
+	./scripts/gen_insn_ctor.py
+	./scripts/format.sh
 
 kernel: build
 	./scripts/gen_kernel.sh
