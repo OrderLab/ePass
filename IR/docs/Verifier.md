@@ -35,3 +35,11 @@ How verifier reallocate the program:
 prog_adj = bpf_prog_realloc(prog, bpf_prog_size(insn_adj_cnt),
 			    GFP_USER);
 ```
+
+# Bridging
+
+Using our framework to connect with the verifier.
+
+Verifier-aware IR?
+
+Utilize the verifier information for the IR.
