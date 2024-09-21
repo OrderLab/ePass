@@ -1396,6 +1396,12 @@ static void normalize_assign(struct bpf_ir_env *env, struct ir_function *fun,
 			insn->imm64 = v0->data.constant_d;
 		}
 	}
+	if (tdst == REG && t0 == REG) {
+		if (allocated_reg_insn(dst_insn) == allocated_reg(*v0)) {
+			// The same, erase this instruction
+			bpf_ir_erase_insn_cg(env, insn);
+		}
+	}
 }
 
 static void normalize_stackoff(struct bpf_ir_env *env, struct ir_function *fun,
