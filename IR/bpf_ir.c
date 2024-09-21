@@ -3,10 +3,10 @@
 #include <linux/bpf_ir.h>
 
 // TODO: Change this to real function
-static const u32 helper_func_arg_num[100] = {
-	[0] = 1, [1] = 1, [2] = 1, [3] = 1, [4] = 1, [5] = 0,
-	[6] = 0, // Variable length
-	[7] = 1, [8] = 1
+static const s8 helper_func_arg_num[100] = {
+	[0] = 1,  [1] = 1, [2] = 1, [3] = 1, [4] = 1, [5] = 0,
+	[6] = -1, // Variable length
+	[7] = 1,  [8] = 1
 };
 
 // All function passes.
@@ -887,7 +887,7 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 						"Not supported function call\n");
 					new_insn->value_num = 0;
 				} else {
-					if (insn.imm == 6) {
+					if (helper_func_arg_num[insn.imm] < 0) {
 						// Variable length, infer from previous instructions
 						new_insn->value_num = 0;
 						// used[x] means whether there exists a usage of register x + 1
