@@ -630,7 +630,7 @@ static void change_call(struct bpf_ir_env *env, struct ir_function *fun)
 						     fun->cg_info.regs[i + 1]);
 				}
 				insn->value_num = 0; // Remove all operands
-				set_insn_dst(env, insn, NULL);
+				set_insn_dst(env, insn, fun->cg_info.regs[0]);
 			}
 		}
 	}
