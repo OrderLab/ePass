@@ -700,9 +700,12 @@ void bpf_ir_replace_all_usage_except(struct bpf_ir_env *env,
 
 void bpf_ir_erase_insn(struct bpf_ir_env *env, struct ir_insn *insn);
 
+/* Erase an instruction during CG. Cannot erase if gen kill sets are used */
 void bpf_ir_erase_insn_cg(struct bpf_ir_env *env, struct ir_insn *insn);
 
 int bpf_ir_is_last_insn(struct ir_insn *insn);
+
+void bpf_ir_check_no_user(struct bpf_ir_env *env, struct ir_insn *insn);
 
 int bpf_ir_is_void(struct ir_insn *insn);
 

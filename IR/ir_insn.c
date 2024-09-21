@@ -165,7 +165,7 @@ int bpf_ir_is_last_insn(struct ir_insn *insn)
 	return insn->parent_bb->ir_insn_head.prev == &insn->list_ptr;
 }
 
-void bpf_ir_erase_insn_cg(struct bpf_ir_env *env, struct ir_insn *insn)
+void bpf_ir_check_no_user(struct bpf_ir_env *env, struct ir_insn *insn)
 {
 	if (insn->users.num_elem > 0) {
 		struct ir_insn **pos;
@@ -189,6 +189,12 @@ void bpf_ir_erase_insn_cg(struct bpf_ir_env *env, struct ir_insn *insn)
 				"Cannot erase a instruction that has (non-self) users");
 		}
 	}
+}
+
+void bpf_ir_erase_insn_cg(struct bpf_ir_env *env, struct ir_insn *insn)
+{
+	bpf_ir_check_no_user(env, insn);
+	CHECK_ERR();
 	struct array operands = bpf_ir_get_operands_and_dst(env, insn);
 	CHECK_ERR();
 	struct ir_value **pos2;

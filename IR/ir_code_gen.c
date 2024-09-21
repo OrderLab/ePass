@@ -474,12 +474,6 @@ static void coalescing(struct bpf_ir_env *env, struct ir_function *fun)
 
 					if (!has_conflict(insn_dst, src)) {
 						// No Conflict, could coalesce
-						PRINT_LOG(
-							env,
-							"Coalescing %u and %u\n",
-							insn_cg(src)->alloc_reg,
-							insn_cg(insn_dst)
-								->alloc_reg);
 						// CRITICAL(
 						// 	"Coalescing not implemented");
 						// Check if coalescing is beneficial using Briggs' conservative coalescing
@@ -511,23 +505,33 @@ static void coalescing(struct bpf_ir_env *env, struct ir_function *fun)
 						// PRINT_LOG(env, "Count: %u\n", count);
 						if (count < BPF_REG_10) {
 							// Coalesce
-							if (insn_cg(src)->nonvr) {
-								// r = R
-								set_insn_dst(
-									env,
-									insn_dst,
-									src);
-							} else {
-								// R = r or r = r
+
+							PRINT_LOG(
+								env,
+								"Coalescing %u and %u\n",
+								insn_cg(src)
+									->alloc_reg,
+								insn_cg(insn_dst)
+									->alloc_reg);
+							if (insn_cg(insn_dst)
+								    ->nonvr) {
+								// R = r
 								set_insn_dst(
 									env,
 									src,
 									insn_dst);
+							} else {
+								// r = R || r = r
+								set_insn_dst(
+									env,
+									insn_dst,
+									src);
 							}
-							// bpf_ir_erase_insn_cg(
-							// 	env, insn);
+							// This instruction should have no users
+							bpf_ir_check_no_user(
+								env, insn);
+							// Cannot erase instruction because CG has other sets (gen kill etc.)
 						}
-
 						bpf_ir_array_free(&merged);
 					}
 				}
@@ -1518,7 +1522,8 @@ static bool spill_store(struct bpf_ir_env *env, struct ir_function *fun,
 	set_insn_dst(env, insn, v0->data.insn_d);
 	insn->value_num = 1;
 	*v0 = *v1;
-	return spill_assign(env, fun, insn);
+	spill_assign(env, fun, insn);
+	return true;
 }
 
 static bool spill_load(struct bpf_ir_env *env, struct ir_function *fun,
@@ -1534,7 +1539,8 @@ static bool spill_load(struct bpf_ir_env *env, struct ir_function *fun,
 		  IR_VALUE_INSN); // Should be guaranteed by prog_check
 	DBGASSERT(v0->data.insn_d->op == IR_INSN_ALLOC);
 	insn->vr_type = v0->data.insn_d->vr_type;
-	return spill_assign(env, fun, insn);
+	spill_assign(env, fun, insn);
+	return true;
 }
 
 static bool spill_loadraw(struct bpf_ir_env *env, struct ir_function *fun,
@@ -2746,7 +2752,6 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 		CHECK_ERR();
 		print_ir_prog_cg_dst(env, fun, "After Coalescing (dst)");
 		print_ir_prog_cg_alloc(env, fun, "After Coalescing (reg)");
-		// RAISE_ERROR("success");
 
 		// Step 8: Check if need to spill and spill
 		need_spill = check_need_spill(env, fun);
