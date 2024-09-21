@@ -212,6 +212,18 @@ void free_proto(void *ptr);
 		}                                         \
 	}
 
+#define SAFE_MALLOC_RET_NULL(dst, size)                   \
+	{                                                 \
+		if (size > 10000000) {                    \
+			CRITICAL("Incorrect Allocation"); \
+		}                                         \
+		dst = malloc_proto(size);                 \
+		if (!dst) {                               \
+			env->err = -ENOMEM;               \
+			return NULL;                      \
+		}                                         \
+	}
+
 #define MAX_FUNC_ARG 5
 
 enum imm_type { IMM, IMM64 };

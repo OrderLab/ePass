@@ -952,7 +952,7 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 	}
 }
 
-static void free_function(struct ir_function *fun)
+void bpf_ir_free_function(struct ir_function *fun)
 {
 	for (size_t i = 0; i < fun->all_bbs.num_elem; ++i) {
 		struct ir_basic_block *bb =
@@ -1093,42 +1093,52 @@ static void print_bpf_prog(struct bpf_ir_env *env, const struct bpf_insn *insns,
 
 // Interface implementation
 
-void bpf_ir_run(struct bpf_ir_env *env, const struct bpf_insn *insns,
-		size_t len)
+struct ir_function *bpf_ir_lift(struct bpf_ir_env *env,
+				const struct bpf_insn *insns, size_t len)
 {
 	struct bb_info info;
 	gen_bb(env, &info, insns, len);
-	CHECK_ERR();
+	CHECK_ERR(NULL);
 
 	print_pre_ir_cfg(env, info.entry);
 	struct ssa_transform_env trans_env;
 	init_tenv(env, &trans_env, info);
-	CHECK_ERR();
+	CHECK_ERR(NULL);
 
 	init_ir_bbs(env, &trans_env);
-	CHECK_ERR();
+	CHECK_ERR(NULL);
 
 	transform_bb(env, &trans_env, info.entry);
-	CHECK_ERR();
+	CHECK_ERR(NULL);
 
-	struct ir_function fun;
-	init_function(env, &fun, &trans_env);
+	struct ir_function *fun;
+	SAFE_MALLOC_RET_NULL(fun, sizeof(struct ir_function));
+	init_function(env, fun, &trans_env);
+
+	return fun;
+}
+
+void bpf_ir_run(struct bpf_ir_env *env, const struct bpf_insn *insns,
+		size_t len)
+{
+	struct ir_function *fun = bpf_ir_lift(env, insns, len);
+	CHECK_ERR();
 
 	// Drop env
 
-	bpf_ir_prog_check(env, &fun);
+	bpf_ir_prog_check(env, fun);
 	CHECK_ERR();
-	print_ir_prog(env, &fun);
+	print_ir_prog(env, fun);
 	PRINT_LOG(env, "Starting IR Passes...\n");
 	// Start IR manipulation
 
-	run_passes(env, &fun);
+	run_passes(env, fun);
 	CHECK_ERR();
 
 	// End IR manipulation
 	PRINT_LOG(env, "IR Passes Ended!\n");
 
-	bpf_ir_code_gen(env, &fun);
+	bpf_ir_code_gen(env, fun);
 	CHECK_ERR();
 
 	// Got the bpf bytecode
@@ -1141,7 +1151,7 @@ void bpf_ir_run(struct bpf_ir_env *env, const struct bpf_insn *insns,
 	print_bpf_prog(env, env->insns, env->insn_cnt);
 
 	// Free the memory
-	free_function(&fun);
+	bpf_ir_free_function(fun);
 }
 
 struct bpf_ir_env *bpf_ir_init_env(struct ir_opts opts)
