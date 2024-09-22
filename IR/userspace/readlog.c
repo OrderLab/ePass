@@ -37,7 +37,7 @@ int main(int argc, char **argv)
 	}
 
 	printf("Loaded program of size %zu\n", index);
-	struct ir_opts opts = {
+	struct bpf_ir_opts opts = {
 		.debug = 1,
 		.print_mode = BPF_IR_PRINT_BPF,
 	};

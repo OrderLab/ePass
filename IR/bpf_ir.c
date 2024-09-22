@@ -9,10 +9,10 @@ static const s8 helper_func_arg_num[100] = {
 	[7] = 1,  [8] = 1
 };
 
-// All function passes.
+// All function passes
 static const struct function_pass passes[] = {
-	DEF_FUNC_PASS(remove_trivial_phi, "Removing the trival Phi"),
-	DEF_FUNC_PASS(add_counter, "Adding counter"),
+	DEF_FUNC_PASS(remove_trivial_phi, "remove_trivial_phi", true),
+	DEF_FUNC_PASS(add_counter, "add_counter", false),
 };
 
 static void write_variable(struct bpf_ir_env *env,
@@ -1154,7 +1154,7 @@ void bpf_ir_run(struct bpf_ir_env *env, const struct bpf_insn *insns,
 	bpf_ir_free_function(fun);
 }
 
-struct bpf_ir_env *bpf_ir_init_env(struct ir_opts opts)
+struct bpf_ir_env *bpf_ir_init_env(struct bpf_ir_opts opts)
 {
 	struct bpf_ir_env *bpf_ir_env = malloc_proto(sizeof(struct bpf_ir_env));
 	bpf_ir_env->insn_cnt = 0;

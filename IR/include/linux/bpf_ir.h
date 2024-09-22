@@ -44,13 +44,28 @@ typedef __u64 u64;
 
 #define BPF_IR_LOG_SIZE 100000
 
-struct ir_opts {
+struct function_pass;
+
+struct function_pass_cfg {
+	bool custom;
+	union {
+		char name[100];
+		struct function_pass *custom_pass;
+	};
+};
+
+struct pass_config {
+	struct function_pass_cfg *passes;
+};
+
+struct bpf_ir_opts {
 	u8 debug;
 	enum {
 		BPF_IR_PRINT_BPF,
 		BPF_IR_PRINT_DETAIL,
 		BPF_IR_PRINT_BOTH,
 	} print_mode;
+	struct pass_config pass_config;
 };
 
 struct bpf_ir_env {
@@ -59,13 +74,13 @@ struct bpf_ir_env {
 	// Number of instructions
 	size_t insn_cnt;
 
-	// Instructions
+	// Instructions (Output)
 	struct bpf_insn *insns;
 
 	char log[BPF_IR_LOG_SIZE];
 	size_t log_pos;
 
-	struct ir_opts opts;
+	struct bpf_ir_opts opts;
 };
 
 void bpf_ir_print_to_log(struct bpf_ir_env *env, char *fmt, ...);
@@ -537,7 +552,7 @@ void bpf_ir_print_bpf_insn(struct bpf_ir_env *env, const struct bpf_insn *insn);
 
 void bpf_ir_free_env(struct bpf_ir_env *env);
 
-struct bpf_ir_env *bpf_ir_init_env(struct ir_opts);
+struct bpf_ir_env *bpf_ir_init_env(struct bpf_ir_opts);
 
 /* Fun Start */
 
@@ -974,10 +989,12 @@ void add_constraint(struct bpf_ir_env *env, struct ir_function *fun);
 
 struct function_pass {
 	void (*pass)(struct bpf_ir_env *env, struct ir_function *);
+	bool enabled;
 	char name[30];
 };
 
-#define DEF_FUNC_PASS(fun, msg) { .pass = fun, .name = msg }
+#define DEF_FUNC_PASS(fun, msg, default) \
+	{ .pass = fun, .name = msg, .enabled = default }
 
 /* Passes End */
 

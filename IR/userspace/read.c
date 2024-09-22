@@ -15,7 +15,7 @@ int main(int argn, char **argv)
 	}
 	size_t sz = bpf_program__insn_cnt(prog);
 	const struct bpf_insn *insn = bpf_program__insns(prog);
-	struct ir_opts opts = {
+	struct bpf_ir_opts opts = {
 		.debug = 1,
 		.print_mode = BPF_IR_PRINT_BPF,
 	};
