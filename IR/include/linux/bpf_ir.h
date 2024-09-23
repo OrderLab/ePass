@@ -69,12 +69,16 @@ struct bpf_ir_opts {
 };
 
 struct bpf_ir_env {
+	// Internal error code
 	int err;
+
+	// Verifier error
+	int verifier_err;
 
 	// Number of instructions
 	size_t insn_cnt;
 
-	// Instructions (Output)
+	// Instructions
 	struct bpf_insn *insns;
 
 	char log[BPF_IR_LOG_SIZE];

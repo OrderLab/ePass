@@ -1156,13 +1156,15 @@ void bpf_ir_run(struct bpf_ir_env *env, const struct bpf_insn *insns,
 
 struct bpf_ir_env *bpf_ir_init_env(struct bpf_ir_opts opts)
 {
-	struct bpf_ir_env *bpf_ir_env = malloc_proto(sizeof(struct bpf_ir_env));
-	bpf_ir_env->insn_cnt = 0;
-	bpf_ir_env->insns = NULL;
-	bpf_ir_env->log_pos = 0;
-	bpf_ir_env->err = 0;
-	bpf_ir_env->opts = opts;
-	return bpf_ir_env;
+	struct bpf_ir_env *env = malloc_proto(sizeof(struct bpf_ir_env));
+	env->insn_cnt = 0;
+	env->insns = NULL;
+	env->log_pos = 0;
+	env->err = 0;
+	env->opts = opts;
+	env->verifier_err = -1;
+
+	return env;
 }
 
 void bpf_ir_free_env(struct bpf_ir_env *env)
