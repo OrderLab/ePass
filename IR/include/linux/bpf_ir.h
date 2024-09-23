@@ -734,17 +734,17 @@ void bpf_ir_erase_insn(struct bpf_ir_env *env, struct ir_insn *insn);
 /* Erase an instruction during CG. Cannot erase if gen kill sets are used */
 void bpf_ir_erase_insn_cg(struct bpf_ir_env *env, struct ir_insn *insn);
 
-int bpf_ir_is_last_insn(struct ir_insn *insn);
+bool bpf_ir_is_last_insn(struct ir_insn *insn);
 
 void bpf_ir_check_no_user(struct bpf_ir_env *env, struct ir_insn *insn);
 
-int bpf_ir_is_void(struct ir_insn *insn);
+bool bpf_ir_is_void(struct ir_insn *insn);
 
-int bpf_ir_is_jmp(struct ir_insn *insn);
+bool bpf_ir_is_jmp(struct ir_insn *insn);
 
-int bpf_ir_is_cond_jmp(struct ir_insn *insn);
+bool bpf_ir_is_cond_jmp(struct ir_insn *insn);
 
-int bpf_ir_is_alu(struct ir_insn *insn);
+bool bpf_ir_is_alu(struct ir_insn *insn);
 
 struct ir_insn *bpf_ir_prev_insn(struct ir_insn *insn);
 

@@ -2162,6 +2162,15 @@ static void add_stack_offset_pre_cg(struct bpf_ir_env *env,
 			// insn->addr_val.offset += offset;
 			continue;
 		}
+		if (bpf_ir_is_alu(insn) &&
+		    insn->values[0].type == IR_VALUE_INSN &&
+		    insn->values[0].data.insn_d == fun->sp &&
+		    insn->values[1].type == IR_VALUE_CONSTANT) {
+			// ? = ALU SP CONST
+			// Optimize to ? = ALU CONSTRAWOFF
+			insn->values[1].type = IR_VALUE_CONSTANT_RAWOFF;
+			continue;
+		}
 		struct array value_uses = bpf_ir_get_operands(env, insn);
 		struct ir_value **pos2;
 		array_for(pos2, value_uses)
@@ -2174,7 +2183,7 @@ static void add_stack_offset_pre_cg(struct bpf_ir_env *env,
 				new_val.type = IR_VALUE_CONSTANT_RAWOFF;
 				new_val.const_type = IR_ALU_32;
 				new_val.data.constant_d = 0;
-				// tmp = SP + hole
+				// tmp = SP + hole(0)
 				// ... val ==> tmp
 				struct ir_insn *new_insn =
 					bpf_ir_create_bin_insn(env, insn, *val,
@@ -2220,7 +2229,7 @@ static void add_stack_offset(struct bpf_ir_env *env, struct ir_function *fun,
 				struct ir_value *val = *pos2;
 				if (val->type == IR_VALUE_CONSTANT_RAWOFF) {
 					// Stack pointer as value
-					val->data.constant_d = offset;
+					val->data.constant_d += offset;
 					val->type = IR_VALUE_CONSTANT;
 				}
 			}

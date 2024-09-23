@@ -160,7 +160,7 @@ struct array bpf_ir_get_operands_and_dst(struct bpf_ir_env *env,
 	return uses;
 }
 
-int bpf_ir_is_last_insn(struct ir_insn *insn)
+bool bpf_ir_is_last_insn(struct ir_insn *insn)
 {
 	return insn->parent_bb->ir_insn_head.prev == &insn->list_ptr;
 }
@@ -347,23 +347,23 @@ struct ir_insn *bpf_ir_next_insn(struct ir_insn *insn)
 }
 
 // Note. This includes ret instruction
-int bpf_ir_is_jmp(struct ir_insn *insn)
+bool bpf_ir_is_jmp(struct ir_insn *insn)
 {
 	return (insn->op >= IR_INSN_JA && insn->op <= IR_INSN_JNE) ||
 	       insn->op == IR_INSN_RET;
 }
 
-int bpf_ir_is_cond_jmp(struct ir_insn *insn)
+bool bpf_ir_is_cond_jmp(struct ir_insn *insn)
 {
 	return (insn->op >= IR_INSN_JEQ && insn->op < IR_INSN_PHI);
 }
 
-int bpf_ir_is_alu(struct ir_insn *insn)
+bool bpf_ir_is_alu(struct ir_insn *insn)
 {
 	return insn->op >= IR_INSN_ADD && insn->op < IR_INSN_CALL;
 }
 
-int bpf_ir_is_void(struct ir_insn *insn)
+bool bpf_ir_is_void(struct ir_insn *insn)
 {
 	return bpf_ir_is_jmp(insn) || insn->op == IR_INSN_STORERAW ||
 	       insn->op == IR_INSN_STORE;
