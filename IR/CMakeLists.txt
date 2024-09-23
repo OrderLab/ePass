@@ -27,6 +27,7 @@ add_executable(printlog userspace/printlog.c)
 
 target_link_libraries(read bpf bpf_ir)
 target_link_libraries(readlog bpf_ir)
-target_link_libraries(print bpf)
+target_link_libraries(print bpf bpf_ir)
+target_link_libraries(printlog bpf_ir)
 
 include_directories(include)
