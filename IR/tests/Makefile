@@ -10,7 +10,7 @@ s: obj
 # sobj: $(NAME).s
 # 	llvm-mc -triple bpf -filetype=obj -o $(NAME).o $(NAME).s
 
-load: clean obj
+load: obj
 	sudo bpftool prog load output/$(NAME).o /sys/fs/bpf/$(NAME)
 
 attachxdp: load
