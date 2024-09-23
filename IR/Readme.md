@@ -21,6 +21,8 @@ One opinion, one benefit of designing the raw constraint from is that our runtim
 - [x] Switch back for ALU spill
 - [ ] Test adding counter & print some result
 - [x] CGIR-I and CGIR-II formalization
+- [ ] CONSTOFF: add r10 const optimization
+- [ ] Fix: mask
 
 ## Bugs
 

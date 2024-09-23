@@ -12,7 +12,7 @@ static const s8 helper_func_arg_num[100] = {
 // All function passes
 static const struct function_pass passes[] = {
 	DEF_FUNC_PASS(remove_trivial_phi, "remove_trivial_phi", true),
-	DEF_FUNC_PASS(add_counter, "add_counter", false),
+	// DEF_FUNC_PASS(add_counter, "add_counter", false),
 };
 
 static void write_variable(struct bpf_ir_env *env,

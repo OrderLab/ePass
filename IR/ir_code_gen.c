@@ -212,8 +212,8 @@ static void to_cssa(struct bpf_ir_env *env, struct ir_function *fun)
 	{
 		struct ir_insn *insn = *pos2;
 		// Create the moved PHI insn
-		struct ir_insn *new_phi =
-			bpf_ir_create_phi_insn(env, insn, INSERT_FRONT);
+		struct ir_insn *new_phi = bpf_ir_create_phi_insn_bb(
+			env, insn->parent_bb, INSERT_FRONT);
 		struct phi_value *pos3;
 		array_for(pos3, insn->phi)
 		{
@@ -266,6 +266,7 @@ static void remove_phi(struct bpf_ir_env *env, struct ir_function *fun)
 		struct phi_value *pos3;
 		array_for(pos3, insn->phi)
 		{
+			DBGASSERT(pos3->value.type == IR_VALUE_INSN);
 			if (!repr) {
 				repr = pos3->value.data.insn_d;
 			} else {
@@ -439,6 +440,32 @@ static bool has_conflict(struct ir_insn *v1, struct ir_insn *v2)
 	return false;
 }
 
+static void erase_same_reg_assign(struct bpf_ir_env *env, struct ir_insn *insn)
+{
+	struct ir_insn *dst_insn = insn_dst(insn);
+	struct ir_insn *src_insn = insn->values[0].data.insn_d;
+	struct ir_insn_cg_extra *dst_insn_cg = insn_cg(dst_insn);
+	struct ir_insn_cg_extra *src_insn_cg = insn_cg(src_insn);
+	u8 src_reg = src_insn_cg->alloc_reg;
+	u8 dst_reg = dst_insn_cg->alloc_reg;
+	DBGASSERT(src_reg == dst_reg);
+	// Merge!
+	if (dst_insn_cg->nonvr && src_insn_cg->nonvr) {
+		// R = R
+		bpf_ir_erase_insn_cg(env, insn);
+		return;
+	}
+	if (src_insn_cg->nonvr) {
+		// R = r
+		set_insn_dst(env, src_insn, dst_insn);
+		bpf_ir_erase_insn_cg(env, insn);
+		return;
+	}
+	// r = R || r = r
+	set_insn_dst(env, dst_insn, src_insn);
+	bpf_ir_erase_insn_cg(env, insn);
+}
+
 /* Optimization: Coalescing */
 static void coalescing(struct bpf_ir_env *env, struct ir_function *fun)
 {
@@ -461,7 +488,8 @@ static void coalescing(struct bpf_ir_env *env, struct ir_function *fun)
 					if (insn_cg(src)->alloc_reg ==
 					    insn_cg(insn_dst)->alloc_reg) {
 						// Remove
-						// bpf_ir_erase_insn_cg(env, insn);
+						erase_same_reg_assign(env,
+								      insn);
 						continue;
 					}
 					// R = r
@@ -528,9 +556,10 @@ static void coalescing(struct bpf_ir_env *env, struct ir_function *fun)
 									src);
 							}
 							// This instruction should have no users
-							bpf_ir_check_no_user(
+							// bpf_ir_check_no_user(
+							// 	env, insn);
+							bpf_ir_erase_insn_cg(
 								env, insn);
-							// Cannot erase instruction because CG has other sets (gen kill etc.)
 						}
 						bpf_ir_array_free(&merged);
 					}
@@ -1987,6 +2016,12 @@ static void prog_check_cg(struct bpf_ir_env *env, struct ir_function *fun)
 		struct ir_insn *insn;
 		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
 			// Check dst
+			if (insn->op == IR_INSN_PHI) {
+				print_ir_insn_err_full(env, insn,
+						       "Phi instruction",
+						       print_ir_dst);
+				RAISE_ERROR("Phi instruction found during CG");
+			}
 			if (insn_cg(insn)->dst.type == IR_VALUE_INSN) {
 				// Check users of this instruction
 				check_insn_users_use_insn_cg(env, insn);
@@ -2668,16 +2703,22 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 	CHECK_ERR();
 	bpf_ir_prog_check(env, fun);
 	CHECK_ERR();
+	print_ir_prog_pre_cg(env, fun, "Changing function arg");
+	CHECK_ERR();
 
 	change_call_pre_cg(env, fun);
 	CHECK_ERR();
 	bpf_ir_prog_check(env, fun);
+	CHECK_ERR();
+	print_ir_prog_pre_cg(env, fun, "Changing call");
 	CHECK_ERR();
 
 	// Step 1: Flag all raw stack access
 	add_stack_offset_pre_cg(env, fun);
 	CHECK_ERR();
 	bpf_ir_prog_check(env, fun);
+	CHECK_ERR();
+	print_ir_prog_pre_cg(env, fun, "Changing raw stack access");
 	CHECK_ERR();
 
 	// Step 2: Eliminate SSA
@@ -2691,9 +2732,6 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 
 	// Init CG, start real code generation
 	init_cg(env, fun);
-	CHECK_ERR();
-
-	prog_check_cg(env, fun);
 	CHECK_ERR();
 
 	// Debugging settings
@@ -2761,6 +2799,7 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 
 		// Step 8: Check if need to spill and spill
 		need_spill = check_need_spill(env, fun);
+		// RAISE_ERROR("df")
 		CHECK_ERR();
 		prog_check_cg(env, fun);
 		CHECK_ERR();
