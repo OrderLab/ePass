@@ -46,7 +46,7 @@ int main(int argc, char **argv)
 		return 1;
 	}
 	bpf_ir_run(env, insns, index);
-	bpf_ir_print_log_dbg(env);
+	// bpf_ir_print_log_dbg(env);
 	bpf_ir_free_env(env);
 
 	fclose(fp);

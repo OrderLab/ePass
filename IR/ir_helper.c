@@ -678,6 +678,7 @@ void bpf_ir_print_to_log(struct bpf_ir_env *env, char *fmt, ...)
 	va_start(args, fmt);
 	char buf[200];
 	vsprintf(buf, fmt, args);
+	printf("%s", buf); // For debugging purpose, in case there is a SEGFAULT
 	size_t len = strlen(buf);
 	if (env->log_pos + len >= BPF_IR_LOG_SIZE) {
 		// Clean the log

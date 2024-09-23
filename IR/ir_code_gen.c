@@ -455,7 +455,7 @@ static void erase_same_reg_assign(struct bpf_ir_env *env, struct ir_insn *insn)
 		bpf_ir_erase_insn_cg(env, insn);
 		return;
 	}
-	if (src_insn_cg->nonvr) {
+	if (dst_insn_cg->nonvr) {
 		// R = r
 		set_insn_dst(env, src_insn, dst_insn);
 		bpf_ir_erase_insn_cg(env, insn);
@@ -1081,9 +1081,9 @@ static void cgir_load_const_to_reg(struct bpf_ir_env *env,
 		bpf_ir_create_assign_insn_cg(env, insn, *val, INSERT_FRONT);
 	new_insn->alu_op = IR_ALU_64;
 	set_insn_dst(env, new_insn, fun->cg_info.regs[reg]);
-	val->type = IR_VALUE_INSN;
-	val->data.insn_d = fun->cg_info.regs[reg];
-	bpf_ir_val_add_user(env, *val, fun->cg_info.regs[reg]);
+
+	bpf_ir_change_value(env, insn, val,
+			    bpf_ir_value_insn(fun->cg_info.regs[reg]));
 }
 
 static void cgir_load_reg_to_reg(struct bpf_ir_env *env,
@@ -1094,9 +1094,8 @@ static void cgir_load_reg_to_reg(struct bpf_ir_env *env,
 		bpf_ir_create_assign_insn_cg(env, insn, *val, INSERT_FRONT);
 	new_insn->alu_op = IR_ALU_64;
 	set_insn_dst(env, new_insn, fun->cg_info.regs[reg]);
-	val->type = IR_VALUE_INSN;
-	val->data.insn_d = fun->cg_info.regs[reg];
-	bpf_ir_val_add_user(env, *val, fun->cg_info.regs[reg]);
+	bpf_ir_change_value(env, insn, val,
+			    bpf_ir_value_insn(fun->cg_info.regs[reg]));
 }
 
 static void cgir_load_stack_to_reg(struct bpf_ir_env *env,
@@ -1109,9 +1108,8 @@ static void cgir_load_stack_to_reg(struct bpf_ir_env *env,
 	tmp->vr_type = vtype;
 	set_insn_dst(env, tmp, fun->cg_info.regs[reg]);
 
-	val->type = IR_VALUE_INSN;
-	val->data.insn_d = fun->cg_info.regs[reg];
-	bpf_ir_val_add_user(env, *val, fun->cg_info.regs[reg]);
+	bpf_ir_change_value(env, insn, val,
+			    bpf_ir_value_insn(fun->cg_info.regs[reg]));
 }
 
 static void add_stack_offset_vr(struct ir_function *fun, size_t num)
@@ -2808,7 +2806,6 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 
 		// Step 8: Check if need to spill and spill
 		need_spill = check_need_spill(env, fun);
-		// RAISE_ERROR("df")
 		CHECK_ERR();
 		prog_check_cg(env, fun);
 		CHECK_ERR();

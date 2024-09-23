@@ -24,7 +24,7 @@ int main(int argn, char **argv)
 		return 1;
 	}
 	bpf_ir_run(env, insn, sz);
-	bpf_ir_print_log_dbg(env);
+	// bpf_ir_print_log_dbg(env);
 	// To set the insns, you need to set the callback functions when loading
 	// See https://github.com/libbpf/libbpf/blob/master/src/libbpf.h
 	// bpf_program__set_insns(prog, env->insns, env->insn_cnt);
