@@ -1118,9 +1118,10 @@ struct ir_function *bpf_ir_lift(struct bpf_ir_env *env,
 	return fun;
 }
 
-void bpf_ir_run(struct bpf_ir_env *env, const struct bpf_insn *insns,
-		size_t len)
+void bpf_ir_run(struct bpf_ir_env *env)
 {
+	const struct bpf_insn *insns = env->insns;
+	size_t len = env->insn_cnt;
 	struct ir_function *fun = bpf_ir_lift(env, insns, len);
 	CHECK_ERR();
 
@@ -1154,11 +1155,13 @@ void bpf_ir_run(struct bpf_ir_env *env, const struct bpf_insn *insns,
 	bpf_ir_free_function(fun);
 }
 
-struct bpf_ir_env *bpf_ir_init_env(struct bpf_ir_opts opts)
+struct bpf_ir_env *bpf_ir_init_env(struct bpf_ir_opts opts,
+				   const struct bpf_insn *insns, size_t len)
 {
 	struct bpf_ir_env *env = malloc_proto(sizeof(struct bpf_ir_env));
-	env->insn_cnt = 0;
-	env->insns = NULL;
+	env->insn_cnt = len;
+	env->insns = malloc_proto(sizeof(struct bpf_insn) * len);
+	memcpy(env->insns, insns, sizeof(struct bpf_insn) * len);
 	env->log_pos = 0;
 	env->err = 0;
 	env->opts = opts;

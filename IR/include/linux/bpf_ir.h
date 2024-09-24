@@ -549,14 +549,14 @@ struct ssa_transform_env {
 struct ir_basic_block *bpf_ir_init_bb_raw(void);
 
 // Main interface
-void bpf_ir_run(struct bpf_ir_env *env, const struct bpf_insn *insns,
-		size_t len);
+void bpf_ir_run(struct bpf_ir_env *env);
 
 void bpf_ir_print_bpf_insn(struct bpf_ir_env *env, const struct bpf_insn *insn);
 
 void bpf_ir_free_env(struct bpf_ir_env *env);
 
-struct bpf_ir_env *bpf_ir_init_env(struct bpf_ir_opts);
+struct bpf_ir_env *bpf_ir_init_env(struct bpf_ir_opts opts,
+				   const struct bpf_insn *insns, size_t len);
 
 /* Fun Start */
 

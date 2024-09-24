@@ -55,7 +55,7 @@ int main(int argc, char **argv)
 		.debug = 1,
 		.print_mode = BPF_IR_PRINT_BPF,
 	};
-	struct bpf_ir_env *env = bpf_ir_init_env(opts);
+	struct bpf_ir_env *env = bpf_ir_init_env(opts, insns, index);
 	if (!env) {
 		return 1;
 	}

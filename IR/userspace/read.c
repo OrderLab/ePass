@@ -19,11 +19,11 @@ int main(int argn, char **argv)
 		.debug = 1,
 		.print_mode = BPF_IR_PRINT_BPF,
 	};
-	struct bpf_ir_env *env = bpf_ir_init_env(opts);
+	struct bpf_ir_env *env = bpf_ir_init_env(opts, insn, sz);
 	if (!env) {
 		return 1;
 	}
-	bpf_ir_run(env, insn, sz);
+	bpf_ir_run(env);
 	// bpf_ir_print_log_dbg(env);
 	// To set the insns, you need to set the callback functions when loading
 	// See https://github.com/libbpf/libbpf/blob/master/src/libbpf.h
