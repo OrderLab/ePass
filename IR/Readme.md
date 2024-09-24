@@ -19,10 +19,10 @@ One opinion, one benefit of designing the raw constraint from is that our runtim
 - [x] Env
 - [x] If ALU ops (including cond jmp) use 64 bits const, load it to register
 - [x] Switch back for ALU spill
-- [ ] Test adding counter & print some result
+- [x] Test adding counter & print some result
 - [x] CGIR-I and CGIR-II formalization
-- [ ] CONSTOFF: add r10 const optimization
-- [ ] Fix: mask
+- [x] CONSTOFF: add r10 const optimization
+- [x] Fix: mask
 
 ## Bugs
 
