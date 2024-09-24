@@ -323,6 +323,8 @@ static void init_tenv(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 	for (size_t i = 0; i < MAX_BPF_REG; ++i) {
 		INIT_ARRAY(&tenv->currentDef[i], struct bb_val);
 	}
+	SAFE_MALLOC(tenv->raw_info_map,
+		    sizeof(struct bpf_ir_lift_map_item) * env->insn_cnt);
 	tenv->info = info;
 	// Initialize SP
 	SAFE_MALLOC(tenv->sp, sizeof(struct ir_insn));
@@ -627,7 +629,8 @@ static void alu_write(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 	struct ir_insn *new_insn = create_alu_bin(
 		env, bb->ir_bb, read_variable(env, tenv, insn.dst_reg, bb),
 		get_src_value(env, tenv, bb, insn), ty, alu_ty);
-	write_variable(env, tenv, insn.dst_reg, bb, bpf_ir_value_insn(new_insn));
+	write_variable(env, tenv, insn.dst_reg, bb,
+		       bpf_ir_value_insn(new_insn));
 }
 
 static void create_cond_jmp(struct bpf_ir_env *env,
@@ -939,6 +942,7 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 
 void bpf_ir_free_function(struct ir_function *fun)
 {
+	free_proto(fun->raw_info_map);
 	for (size_t i = 0; i < fun->all_bbs.num_elem; ++i) {
 		struct ir_basic_block *bb =
 			((struct ir_basic_block **)(fun->all_bbs.data))[i];
@@ -983,6 +987,7 @@ static void init_function(struct bpf_ir_env *env, struct ir_function *fun,
 	fun->arg_num = 1;
 	fun->entry = tenv->info.entry->ir_bb;
 	fun->sp = tenv->sp;
+	fun->raw_info_map = tenv->raw_info_map;
 	for (u8 i = 0; i < MAX_FUNC_ARG; ++i) {
 		fun->function_arg[i] = tenv->function_arg[i];
 	}
