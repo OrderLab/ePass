@@ -1148,8 +1148,6 @@ struct ir_function *bpf_ir_lift(struct bpf_ir_env *env,
 	SAFE_MALLOC_RET_NULL(fun, sizeof(struct ir_function));
 	init_function(env, fun, &trans_env);
 
-	// Print the lift result
-
 	return fun;
 }
 

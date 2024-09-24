@@ -113,6 +113,30 @@ static void print_const(struct bpf_ir_env *env, struct ir_value v)
 	}
 }
 
+static void print_ir_rawpos(struct bpf_ir_env *env, struct ir_raw_pos pos)
+{
+	if (pos.valid) {
+		PRINT_LOG(env, "[%zu.", pos.pos);
+		switch (pos.pos_t) {
+		case IR_RAW_POS_IMM:
+			PRINT_LOG(env, "imm");
+			break;
+		case IR_RAW_POS_DST:
+			PRINT_LOG(env, "dst");
+			break;
+		case IR_RAW_POS_SRC:
+			PRINT_LOG(env, "src");
+			break;
+		case IR_RAW_POS_INSN:
+			PRINT_LOG(env, "insn");
+			break;
+		default:
+			CRITICAL("UNKNOWN IR RAWPOS")
+		}
+		PRINT_LOG(env, "]");
+	}
+}
+
 static void print_ir_value_full(struct bpf_ir_env *env, struct ir_value v,
 				void (*print_ir)(struct bpf_ir_env *env,
 						 struct ir_insn *))
@@ -135,6 +159,7 @@ static void print_ir_value_full(struct bpf_ir_env *env, struct ir_value v,
 	default:
 		RAISE_ERROR("Unknown IR value type");
 	}
+	print_ir_rawpos(env, v.raw_pos);
 }
 
 void print_ir_value(struct bpf_ir_env *env, struct ir_value v)
@@ -409,6 +434,10 @@ void print_ir_insn_full(struct bpf_ir_env *env, struct ir_insn *insn,
 		break;
 	default:
 		CRITICAL("Unknown IR insn");
+	}
+	if (insn->raw_pos.valid) {
+		PRINT_LOG(env, " // ");
+		print_ir_rawpos(env, insn->raw_pos);
 	}
 }
 
