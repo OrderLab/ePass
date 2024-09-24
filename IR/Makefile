@@ -17,4 +17,7 @@ kernel: build
 read: build
 	build/read tests/output/${NAME}.o prog
 
-.PHONY: build format kernel
+readlog: build
+	build/readlog tests/log/${NAME}.txt
+
+.PHONY: build format kernel readlog read genctor
