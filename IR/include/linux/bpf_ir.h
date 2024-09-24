@@ -282,6 +282,7 @@ enum ir_raw_pos_type {
 	IR_RAW_POS_IMM,
 	IR_RAW_POS_DST,
 	IR_RAW_POS_SRC,
+	IR_RAW_POS_INSN, // Mapping to this instruction, not to a specific value
 };
 
 // The original position of this instruction or value in the bytecode

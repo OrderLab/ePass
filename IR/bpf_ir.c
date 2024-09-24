@@ -424,6 +424,7 @@ static struct ir_insn *create_insn(void)
 	insn->alu_op = IR_ALU_UNKNOWN;
 	insn->vr_type = IR_VR_TYPE_UNKNOWN;
 	insn->value_num = 0;
+	insn->raw_pos.valid = false;
 	return insn;
 }
 
@@ -592,6 +593,21 @@ get_ir_bb_from_position(struct ssa_transform_env *tenv, size_t pos)
 	CRITICAL("Error");
 }
 
+static void set_insn_raw_pos(struct ir_insn *insn, size_t pos)
+{
+	insn->raw_pos.valid = true;
+	insn->raw_pos.pos = pos;
+	insn->raw_pos.pos_t = IR_RAW_POS_INSN;
+}
+
+static void set_value_raw_pos(struct ir_value *val, size_t pos,
+			      enum ir_raw_pos_type ty)
+{
+	val->raw_pos.valid = true;
+	val->raw_pos.pos = pos;
+	val->raw_pos.pos_t = ty;
+}
+
 static struct ir_value get_src_value(struct bpf_ir_env *env,
 				     struct ssa_transform_env *tenv,
 				     struct pre_ir_basic_block *bb,
@@ -599,20 +615,16 @@ static struct ir_value get_src_value(struct bpf_ir_env *env,
 {
 	u8 code = insn.opcode;
 	if (BPF_SRC(code) == BPF_K) {
-		return bpf_ir_value_const32(insn.imm);
+		struct ir_value v = bpf_ir_value_const32(insn.imm);
+		set_value_raw_pos(&v, insn.pos, IR_RAW_POS_IMM);
+		return v;
 	} else if (BPF_SRC(code) == BPF_X) {
-		return read_variable(env, tenv, insn.src_reg, bb);
+		struct ir_value v = read_variable(env, tenv, insn.src_reg, bb);
+		set_value_raw_pos(&v, insn.pos, IR_RAW_POS_SRC);
+		return v;
 	} else {
 		CRITICAL("Error");
 	}
-}
-
-void set_value_raw_pos(struct ir_value *val, size_t pos,
-		       enum ir_raw_pos_type ty)
-{
-	val->raw_pos.valid = true;
-	val->raw_pos.pos = pos;
-	val->raw_pos.pos_t = ty;
 }
 
 static struct ir_insn *
@@ -640,8 +652,10 @@ static void alu_write(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 		get_src_value(env, tenv, bb, insn), ty, alu_ty);
 	tenv->raw_info_map[insn.pos] = new_insn; // Raw to IR mapping
 	struct ir_value v = bpf_ir_value_insn(new_insn);
-	v.raw_pos.valid = true;
-	v.raw_pos.pos = insn.pos;
+	new_insn->raw_pos.pos = insn.pos;
+	set_insn_raw_pos(new_insn, insn.pos);
+	set_value_raw_pos(&v, insn.pos, IR_RAW_POS_INSN);
+	set_value_raw_pos(&new_insn->values[0], insn.pos, IR_RAW_POS_DST);
 	write_variable(env, tenv, insn.dst_reg, bb, v);
 }
 
@@ -665,6 +679,9 @@ static void create_cond_jmp(struct bpf_ir_env *env,
 	new_insn->bb2 = get_ir_bb_from_position(tenv, pos);
 	bpf_ir_array_push(env, &new_insn->bb1->users, &new_insn);
 	bpf_ir_array_push(env, &new_insn->bb2->users, &new_insn);
+
+	set_insn_raw_pos(new_insn, insn.pos);
+	set_value_raw_pos(&new_insn->values[0], insn.pos, IR_RAW_POS_DST);
 }
 
 static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
@@ -746,9 +763,10 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 			// 64-bit immediate load
 			if (insn.src_reg == 0x0) {
 				// immediate value
-				write_variable(
-					env, tenv, insn.dst_reg, bb,
-					bpf_ir_value_const64(insn.imm64));
+				struct ir_value v =
+					bpf_ir_value_const64(insn.imm64);
+				set_value_raw_pos(&v, insn.pos, IR_RAW_POS_IMM);
+				write_variable(env, tenv, insn.dst_reg, bb, v);
 			} else if (insn.src_reg > 0 && insn.src_reg <= 0x06) {
 				// BPF MAP instructions
 				struct ir_insn *new_insn =
@@ -759,6 +777,7 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 				new_insn->op = IR_INSN_LOADIMM_EXTRA;
 				new_insn->imm_extra_type = insn.src_reg;
 				new_insn->imm64 = insn.imm64;
+				set_insn_raw_pos(new_insn, insn.pos);
 				write_variable(env, tenv, insn.dst_reg, bb,
 					       bpf_ir_value_insn(new_insn));
 			} else {
@@ -777,10 +796,13 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 			addr_val.value =
 				read_variable(env, tenv, insn.src_reg, bb);
 			add_user(env, new_insn, addr_val.value);
+			set_value_raw_pos(&addr_val.value, insn.pos,
+					  IR_RAW_POS_SRC);
 			addr_val.offset = insn.off;
 			new_insn->vr_type = to_ir_ld_u(BPF_SIZE(code));
 			new_insn->addr_val = addr_val;
 
+			set_insn_raw_pos(new_insn, insn.pos);
 			write_variable(env, tenv, insn.dst_reg, bb,
 				       bpf_ir_value_insn(new_insn));
 		} else if (BPF_CLASS(code) == BPF_LDX &&
@@ -796,11 +818,14 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 			struct ir_address_value addr_val;
 			addr_val.value =
 				read_variable(env, tenv, insn.src_reg, bb);
+			set_value_raw_pos(&addr_val.value, insn.pos,
+					  IR_RAW_POS_SRC);
 			add_user(env, new_insn, addr_val.value);
 			addr_val.offset = insn.off;
 			new_insn->vr_type = to_ir_ld_u(BPF_SIZE(code));
 			new_insn->addr_val = addr_val;
 
+			set_insn_raw_pos(new_insn, insn.pos);
 			write_variable(env, tenv, insn.dst_reg, bb,
 				       bpf_ir_value_insn(new_insn));
 		} else if (BPF_CLASS(code) == BPF_ST &&
@@ -813,13 +838,17 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 			struct ir_address_value addr_val;
 			addr_val.value =
 				read_variable(env, tenv, insn.dst_reg, bb);
+			set_value_raw_pos(&addr_val.value, insn.pos,
+					  IR_RAW_POS_DST);
 			add_user(env, new_insn, addr_val.value);
 			addr_val.offset = insn.off;
 			new_insn->vr_type = to_ir_ld_u(BPF_SIZE(code));
 			new_insn->addr_val = addr_val;
-			new_insn->values[0].type = IR_VALUE_CONSTANT;
-			new_insn->values[0].data.constant_d = insn.imm;
+			new_insn->values[0] = bpf_ir_value_const32(insn.imm);
 			new_insn->value_num = 1;
+			set_value_raw_pos(&new_insn->values[0], insn.pos,
+					  IR_RAW_POS_IMM);
+			set_insn_raw_pos(new_insn, insn.pos);
 		} else if (BPF_CLASS(code) == BPF_STX &&
 			   BPF_MODE(code) == BPF_MEM) {
 			// *(size *) (dst + offset) = src
@@ -830,14 +859,19 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 			struct ir_address_value addr_val;
 			addr_val.value =
 				read_variable(env, tenv, insn.dst_reg, bb);
+			set_value_raw_pos(&addr_val.value, insn.pos,
+					  IR_RAW_POS_DST);
 			add_user(env, new_insn, addr_val.value);
 			addr_val.offset = insn.off;
 			new_insn->vr_type = to_ir_ld_u(BPF_SIZE(code));
 			new_insn->addr_val = addr_val;
 			new_insn->values[0] =
 				read_variable(env, tenv, insn.src_reg, bb);
+			set_value_raw_pos(&new_insn->values[0], insn.pos,
+					  IR_RAW_POS_SRC);
 			new_insn->value_num = 1;
 			add_user(env, new_insn, new_insn->values[0]);
+			set_insn_raw_pos(new_insn, insn.pos);
 		} else if (BPF_CLASS(code) == BPF_JMP ||
 			   BPF_CLASS(code) == BPF_JMP32) {
 			enum ir_alu_op_type alu_ty = IR_ALU_UNKNOWN;
@@ -857,6 +891,7 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 				size_t pos = insn.pos + insn.off + 1;
 				new_insn->bb1 =
 					get_ir_bb_from_position(tenv, pos);
+				set_insn_raw_pos(new_insn, insn.pos);
 				bpf_ir_array_push(env, &new_insn->bb1->users,
 						  &new_insn);
 			} else if (BPF_OP(code) == BPF_EXIT) {
@@ -869,6 +904,7 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 				new_insn->values[0] =
 					read_variable(env, tenv, BPF_REG_0, bb);
 				new_insn->value_num = 1;
+				set_insn_raw_pos(new_insn, insn.pos);
 			} else if (BPF_OP(code) == BPF_JEQ) {
 				// PC += offset if dst == src
 				create_cond_jmp(env, tenv, bb, insn,
@@ -899,6 +935,7 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 					create_insn_back(bb->ir_bb);
 				tenv->raw_info_map[insn.pos] =
 					new_insn; // Raw to IR mapping
+				set_insn_raw_pos(new_insn, insn.pos);
 				new_insn->op = IR_INSN_CALL;
 				new_insn->fid = insn.imm;
 				if (insn.imm < 0) {
