@@ -278,6 +278,18 @@ enum ir_value_type {
 	IR_VALUE_UNDEF,
 };
 
+enum ir_raw_pos_type {
+	IR_RAW_POS_IMM,
+	IR_RAW_POS_DST,
+	IR_RAW_POS_SRC,
+};
+
+struct ir_raw_pos {
+	bool valid;
+	size_t pos;
+	enum ir_raw_pos_type pos_t;
+};
+
 /**
     VALUE = CONSTANT | INSN
 
@@ -290,6 +302,7 @@ struct ir_value {
 	} data;
 	enum ir_value_type type;
 	enum ir_alu_op_type const_type; // Used when type is a constant
+	struct ir_raw_pos raw_pos;
 };
 
 /**
@@ -445,6 +458,9 @@ struct ir_insn {
 	// Users
 	struct array users;
 
+	// Raw position in bytecode
+	struct ir_raw_pos raw_pos;
+
 	// Used when generating the real code
 	size_t _insn_id;
 	void *user_data;
@@ -527,6 +543,13 @@ struct bb_info {
 
 	// Array of bb_entrance_info
 	struct array all_bbs;
+};
+
+struct bpf_ir_lift_map_item {
+	struct ir_value dst;
+	struct ir_value src;
+	struct ir_value imm;
+	struct ir_insn *insn;
 };
 
 /**
