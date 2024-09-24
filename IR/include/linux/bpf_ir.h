@@ -284,6 +284,7 @@ enum ir_raw_pos_type {
 	IR_RAW_POS_SRC,
 };
 
+// The original position of this instruction or value in the bytecode
 struct ir_raw_pos {
 	bool valid;
 	size_t pos;
@@ -545,13 +546,6 @@ struct bb_info {
 	struct array all_bbs;
 };
 
-struct bpf_ir_lift_map_item {
-	struct ir_value dst;
-	struct ir_value src;
-	struct ir_value imm;
-	struct ir_insn *insn;
-};
-
 /**
     The environment data for transformation
  */
@@ -567,7 +561,7 @@ struct ssa_transform_env {
 	struct ir_insn *function_arg[MAX_FUNC_ARG];
 
 	// Raw info map
-	struct bpf_ir_lift_map_item *raw_info_map;
+	struct ir_insn **raw_info_map;
 };
 
 // Helper functions
@@ -630,7 +624,7 @@ struct ir_function {
 	struct code_gen_info cg_info;
 
 	// Raw info map
-	struct bpf_ir_lift_map_item *raw_info_map;
+	struct ir_insn **raw_info_map;
 };
 
 // IR checks

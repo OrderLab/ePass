@@ -324,7 +324,7 @@ static void init_tenv(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 		INIT_ARRAY(&tenv->currentDef[i], struct bb_val);
 	}
 	SAFE_MALLOC(tenv->raw_info_map,
-		    sizeof(struct bpf_ir_lift_map_item) * env->insn_cnt);
+		    sizeof(struct ir_insn *) * env->insn_cnt);
 	tenv->info = info;
 	// Initialize SP
 	SAFE_MALLOC(tenv->sp, sizeof(struct ir_insn));
@@ -606,6 +606,14 @@ static struct ir_value get_src_value(struct bpf_ir_env *env,
 	}
 }
 
+void set_value_raw_pos(struct ir_value *val, size_t pos,
+		       enum ir_raw_pos_type ty)
+{
+	val->raw_pos.valid = true;
+	val->raw_pos.pos = pos;
+	val->raw_pos.pos_t = ty;
+}
+
 static struct ir_insn *
 create_alu_bin(struct bpf_ir_env *env, struct ir_basic_block *bb,
 	       struct ir_value val1, struct ir_value val2, enum ir_insn_type ty,
@@ -629,8 +637,11 @@ static void alu_write(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 	struct ir_insn *new_insn = create_alu_bin(
 		env, bb->ir_bb, read_variable(env, tenv, insn.dst_reg, bb),
 		get_src_value(env, tenv, bb, insn), ty, alu_ty);
-	write_variable(env, tenv, insn.dst_reg, bb,
-		       bpf_ir_value_insn(new_insn));
+	tenv->raw_info_map[insn.pos] = new_insn;
+	struct ir_value v = bpf_ir_value_insn(new_insn);
+	v.raw_pos.valid = true;
+	v.raw_pos.pos = insn.pos;
+	write_variable(env, tenv, insn.dst_reg, bb, v);
 }
 
 static void create_cond_jmp(struct bpf_ir_env *env,
