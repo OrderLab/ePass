@@ -560,9 +560,6 @@ struct ssa_transform_env {
 
 	// Function argument
 	struct ir_insn *function_arg[MAX_FUNC_ARG];
-
-	// Raw info map
-	struct ir_insn **raw_info_map;
 };
 
 // Helper functions
@@ -623,9 +620,6 @@ struct ir_function {
 	struct array value_constraints;
 
 	struct code_gen_info cg_info;
-
-	// Raw info map
-	struct ir_insn **raw_info_map;
 };
 
 // IR checks
