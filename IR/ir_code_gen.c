@@ -281,7 +281,7 @@ static void remove_phi(struct bpf_ir_env *env, struct ir_function *fun)
 		DBGASSERT(repr == insn_dst(repr));
 
 		bpf_ir_replace_all_usage_cg(env, insn, bpf_ir_value_insn(repr));
-		bpf_ir_erase_insn_cg(env, insn);
+		bpf_ir_erase_insn_cg(env, fun, insn);
 	}
 
 	bpf_ir_array_free(&phi_insns);
@@ -421,26 +421,90 @@ static void conflict_analysis(struct bpf_ir_env *env, struct ir_function *fun)
 	}
 }
 
+static u8 allocated_reg_insn(struct ir_insn *insn)
+{
+	return insn_cg(insn)->alloc_reg;
+}
+
+static u8 allocated_reg(struct ir_value val)
+{
+	// DBGASSERT(val.type == IR_VALUE_INSN);
+	return allocated_reg_insn(val.data.insn_d);
+}
+
 static bool has_conflict(struct ir_insn *v1, struct ir_insn *v2)
 {
 	if (!is_insn_final(v1) || !is_insn_final(v2)) {
 		CRITICAL("Can only test conflict on final values");
 	}
+	if (insn_cg(v1)->nonvr && insn_cg(v2)->nonvr) {
+		return false;
+	}
 	if (v1 == v2) {
 		return false;
 	}
-	struct array adj = insn_cg(v1)->adj;
-	struct ir_insn **pos;
-	array_for(pos, adj)
-	{
-		if (*pos == v2) {
+	if (insn_cg(v1)->nonvr) {
+		// R <-> r
+		struct array adj = insn_cg(v2)->adj;
+		struct ir_insn **pos;
+		array_for(pos, adj)
+		{
+			if (allocated_reg_insn(*pos) ==
+			    allocated_reg_insn(v1)) {
+				return true;
+			}
+		}
+	} else if (insn_cg(v2)->nonvr) {
+		// r <-> R
+		struct array adj = insn_cg(v1)->adj;
+		struct ir_insn **pos;
+		array_for(pos, adj)
+		{
+			if (allocated_reg_insn(*pos) ==
+			    allocated_reg_insn(v2)) {
+				return true;
+			}
+		}
+	} else {
+		// r <-> r
+		bool ok = true;
+		struct array adj = insn_cg(v1)->adj;
+		struct ir_insn **pos;
+		array_for(pos, adj)
+		{
+			if (allocated_reg_insn(*pos) ==
+			    allocated_reg_insn(v2)) {
+				ok = false;
+				break;
+			}
+		}
+		if (ok) {
+			// No conflict!
+			return false;
+		}
+		ok = true;
+		adj = insn_cg(v2)->adj;
+		array_for(pos, adj)
+		{
+			if (allocated_reg_insn(*pos) ==
+			    allocated_reg_insn(v1)) {
+				ok = false;
+				break;
+			}
+		}
+		if (ok) {
+			// No conflict!
+			return false;
+		} else {
+			// Both have conflict
 			return true;
 		}
 	}
 	return false;
 }
 
-static void erase_same_reg_assign(struct bpf_ir_env *env, struct ir_insn *insn)
+static void erase_same_reg_assign(struct bpf_ir_env *env,
+				  struct ir_function *fun, struct ir_insn *insn)
 {
 	struct ir_insn *dst_insn = insn_dst(insn);
 	struct ir_insn *src_insn = insn->values[0].data.insn_d;
@@ -452,22 +516,25 @@ static void erase_same_reg_assign(struct bpf_ir_env *env, struct ir_insn *insn)
 	// Merge!
 	if (dst_insn_cg->nonvr && src_insn_cg->nonvr) {
 		// R = R
-		bpf_ir_erase_insn_cg(env, insn);
+		bpf_ir_erase_insn_cg(env, fun, insn);
 		return;
 	}
 	if (dst_insn_cg->nonvr) {
 		// R = r
 		set_insn_dst(env, src_insn, dst_insn);
-		bpf_ir_erase_insn_cg(env, insn);
+		bpf_ir_erase_insn_cg(env, fun, insn);
 		return;
 	}
 	// r = R || r = r
 	set_insn_dst(env, dst_insn, src_insn);
-	bpf_ir_erase_insn_cg(env, insn);
+	bpf_ir_erase_insn_cg(env, fun, insn);
 }
 
-/* Optimization: Coalescing */
-static void coalescing(struct bpf_ir_env *env, struct ir_function *fun)
+/* Optimization: Coalescing
+
+ Returns false if no need to rerun liveness analysis
+ */
+static bool coalescing(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	struct ir_basic_block **pos;
 	// For each BB
@@ -488,19 +555,22 @@ static void coalescing(struct bpf_ir_env *env, struct ir_function *fun)
 					if (insn_cg(src)->alloc_reg ==
 					    insn_cg(insn_dst)->alloc_reg) {
 						// Remove
-						erase_same_reg_assign(env,
+						erase_same_reg_assign(env, fun,
 								      insn);
+						return true;
+					}
+
+					// R = R
+					if (insn_cg(src)->nonvr &&
+					    insn_cg(insn)->nonvr) {
 						continue;
 					}
 					// R = r
 					// r = R
 					// Able to coalesce
-					if (insn_cg(src)->nonvr &&
-					    insn_cg(insn)->nonvr) {
-						continue;
-					}
 
 					if (!has_conflict(insn_dst, src)) {
+						bool ret = false;
 						// No Conflict, could coalesce
 						// CRITICAL(
 						// 	"Coalescing not implemented");
@@ -533,6 +603,7 @@ static void coalescing(struct bpf_ir_env *env, struct ir_function *fun)
 						// PRINT_LOG(env, "Count: %u\n", count);
 						if (count < BPF_REG_10) {
 							// Coalesce
+							ret = true;
 
 							PRINT_LOG(
 								env,
@@ -548,8 +619,15 @@ static void coalescing(struct bpf_ir_env *env, struct ir_function *fun)
 									env,
 									src,
 									insn_dst);
+							} else if (insn_cg(src)
+									   ->nonvr) {
+								// r = R
+								set_insn_dst(
+									env,
+									insn_dst,
+									src);
 							} else {
-								// r = R || r = r
+								// r = r
 								set_insn_dst(
 									env,
 									insn_dst,
@@ -559,14 +637,16 @@ static void coalescing(struct bpf_ir_env *env, struct ir_function *fun)
 							// bpf_ir_check_no_user(
 							// 	env, insn);
 							bpf_ir_erase_insn_cg(
-								env, insn);
+								env, fun, insn);
 						}
 						bpf_ir_array_free(&merged);
+						return ret;
 					}
 				}
 			}
 		}
 	}
+	return false;
 }
 
 // Pre CG
@@ -1124,17 +1204,6 @@ static void add_stack_offset_vr(struct ir_function *fun, size_t num)
 	}
 }
 
-static u8 allocated_reg_insn(struct ir_insn *insn)
-{
-	return insn_cg(insn)->alloc_reg;
-}
-
-static u8 allocated_reg(struct ir_value val)
-{
-	// DBGASSERT(val.type == IR_VALUE_INSN);
-	return allocated_reg_insn(val.data.insn_d);
-}
-
 /* Spilling callee
 
 	NOT TESTED YET
@@ -1426,7 +1495,7 @@ static void normalize_assign(struct bpf_ir_env *env, struct ir_function *fun,
 	if (tdst == REG && t0 == REG) {
 		if (allocated_reg_insn(dst_insn) == allocated_reg(*v0)) {
 			// The same, erase this instruction
-			bpf_ir_erase_insn_cg(env, insn);
+			bpf_ir_erase_insn_cg(env, fun, insn);
 		}
 	}
 }
@@ -2797,8 +2866,14 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 		CHECK_ERR();
 		print_ir_prog_cg_alloc(env, fun, "After RA");
 
-		coalescing(env, fun);
+		bool need_rerun = coalescing(env, fun);
 		CHECK_ERR();
+		if (need_rerun) {
+			PRINT_LOG(env, "Need to re-analyze...\n");
+			clean_cg(env, fun);
+			CHECK_ERR();
+			continue;
+		}
 		prog_check_cg(env, fun);
 		CHECK_ERR();
 		print_ir_prog_cg_dst(env, fun, "After Coalescing (dst)");

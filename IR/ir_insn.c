@@ -191,16 +191,43 @@ void bpf_ir_check_no_user(struct bpf_ir_env *env, struct ir_insn *insn)
 	}
 }
 
-void bpf_ir_erase_insn_cg(struct bpf_ir_env *env, struct ir_insn *insn)
+void bpf_ir_erase_insn_cg(struct bpf_ir_env *env, struct ir_function *fun,
+			  struct ir_insn *insn)
 {
 	bpf_ir_check_no_user(env, insn);
 	CHECK_ERR();
 	struct array operands = bpf_ir_get_operands_and_dst(env, insn);
 	CHECK_ERR();
-	struct ir_value **pos2;
-	array_for(pos2, operands)
+	struct ir_value **pos;
+	array_for(pos, operands)
 	{
-		bpf_ir_val_remove_user((**pos2), insn);
+		bpf_ir_val_remove_user((**pos), insn);
+	}
+	struct ir_insn **pos2;
+	array_for(pos2, insn_cg(insn)->adj)
+	{
+		struct ir_insn **pos3;
+		size_t idx = 0;
+		array_for(pos3, insn_cg(*pos2)->adj)
+		{
+			// Remove from adj
+			if (*pos3 == insn) {
+				bpf_ir_array_erase(&insn_cg(*pos2)->adj, idx);
+				break;
+			}
+			idx++;
+		}
+	}
+	struct ir_insn **pos3;
+	size_t idx = 0;
+	array_for(pos3, fun->cg_info.all_var)
+	{
+		// Remove from all var
+		if (*pos3 == insn) {
+			bpf_ir_array_erase(&fun->cg_info.all_var, idx);
+			break;
+		}
+		idx++;
 	}
 	bpf_ir_array_free(&operands);
 	bpf_ir_free_insn_cg(insn);
