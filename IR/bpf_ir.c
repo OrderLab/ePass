@@ -325,6 +325,7 @@ static void init_tenv(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 	}
 	SAFE_MALLOC(tenv->raw_info_map,
 		    sizeof(struct ir_insn *) * env->insn_cnt);
+	memset(tenv->raw_info_map, 0, sizeof(struct ir_insn *) * env->insn_cnt);
 	tenv->info = info;
 	// Initialize SP
 	SAFE_MALLOC(tenv->sp, sizeof(struct ir_insn));
@@ -637,7 +638,7 @@ static void alu_write(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 	struct ir_insn *new_insn = create_alu_bin(
 		env, bb->ir_bb, read_variable(env, tenv, insn.dst_reg, bb),
 		get_src_value(env, tenv, bb, insn), ty, alu_ty);
-	tenv->raw_info_map[insn.pos] = new_insn;
+	tenv->raw_info_map[insn.pos] = new_insn; // Raw to IR mapping
 	struct ir_value v = bpf_ir_value_insn(new_insn);
 	v.raw_pos.valid = true;
 	v.raw_pos.pos = insn.pos;
@@ -651,6 +652,7 @@ static void create_cond_jmp(struct bpf_ir_env *env,
 			    enum ir_alu_op_type alu_ty)
 {
 	struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
+	tenv->raw_info_map[insn.pos] = new_insn; // Raw to IR mapping
 	new_insn->op = ty;
 	new_insn->values[0] = read_variable(env, tenv, insn.dst_reg, bb);
 	new_insn->values[1] = get_src_value(env, tenv, bb, insn);
@@ -747,11 +749,13 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 				write_variable(
 					env, tenv, insn.dst_reg, bb,
 					bpf_ir_value_const64(insn.imm64));
-
 			} else if (insn.src_reg > 0 && insn.src_reg <= 0x06) {
 				// BPF MAP instructions
 				struct ir_insn *new_insn =
 					create_insn_back(bb->ir_bb);
+
+				tenv->raw_info_map[insn.pos] =
+					new_insn; // Raw to IR mapping
 				new_insn->op = IR_INSN_LOADIMM_EXTRA;
 				new_insn->imm_extra_type = insn.src_reg;
 				new_insn->imm64 = insn.imm64;
@@ -766,6 +770,8 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 			// https://www.kernel.org/doc/html/v6.6/bpf/standardization/instruction-set.html#sign-extension-load-operations
 
 			struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
+			tenv->raw_info_map[insn.pos] =
+				new_insn; // Raw to IR mapping
 			new_insn->op = IR_INSN_LOADRAW;
 			struct ir_address_value addr_val;
 			addr_val.value =
@@ -784,6 +790,8 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 			// https://www.kernel.org/doc/html/v6.6/bpf/standardization/instruction-set.html#regular-load-and-store-operations
 			// TODO: use LOAD instead of LOADRAW
 			struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
+			tenv->raw_info_map[insn.pos] =
+				new_insn; // Raw to IR mapping
 			new_insn->op = IR_INSN_LOADRAW;
 			struct ir_address_value addr_val;
 			addr_val.value =
@@ -799,6 +807,8 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 			   BPF_MODE(code) == BPF_MEM) {
 			// *(size *) (dst + offset) = imm32
 			struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
+			tenv->raw_info_map[insn.pos] =
+				new_insn; // Raw to IR mapping
 			new_insn->op = IR_INSN_STORERAW;
 			struct ir_address_value addr_val;
 			addr_val.value =
@@ -814,6 +824,8 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 			   BPF_MODE(code) == BPF_MEM) {
 			// *(size *) (dst + offset) = src
 			struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
+			tenv->raw_info_map[insn.pos] =
+				new_insn; // Raw to IR mapping
 			new_insn->op = IR_INSN_STORERAW;
 			struct ir_address_value addr_val;
 			addr_val.value =
@@ -839,6 +851,8 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 				// PC += offset
 				struct ir_insn *new_insn =
 					create_insn_back(bb->ir_bb);
+				tenv->raw_info_map[insn.pos] =
+					new_insn; // Raw to IR mapping
 				new_insn->op = IR_INSN_JA;
 				size_t pos = insn.pos + insn.off + 1;
 				new_insn->bb1 =
@@ -849,6 +863,8 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 				// Exit
 				struct ir_insn *new_insn =
 					create_insn_back(bb->ir_bb);
+				tenv->raw_info_map[insn.pos] =
+					new_insn; // Raw to IR mapping
 				new_insn->op = IR_INSN_RET;
 				new_insn->values[0] =
 					read_variable(env, tenv, BPF_REG_0, bb);
@@ -881,6 +897,8 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 				// imm is the function id
 				struct ir_insn *new_insn =
 					create_insn_back(bb->ir_bb);
+				tenv->raw_info_map[insn.pos] =
+					new_insn; // Raw to IR mapping
 				new_insn->op = IR_INSN_CALL;
 				new_insn->fid = insn.imm;
 				if (insn.imm < 0) {
