@@ -32,15 +32,14 @@ done
 
 echo $filelist
 
-makefile_content="""
-obj-y :=$filelist
-"""
+makefile_content="obj-y := kernpass/
+obj-y +=$filelist"
 
-echo $makefile_content > Makefile
+echo "$makefile_content" > Makefile
 # Remove redundant files
 
-rm -rf ${KERNEL_PATH}/kernel/bpf/ir/
-mkdir ${KERNEL_PATH}/kernel/bpf/ir/
+rm -rf ${KERNEL_PATH}/kernel/bpf/ir/*.c
+mkdir -p ${KERNEL_PATH}/kernel/bpf/ir/
 cp * ${KERNEL_PATH}/kernel/bpf/ir/
 
 cd ../../

@@ -85,6 +85,9 @@ struct bpf_ir_env {
 	size_t log_pos;
 
 	struct bpf_ir_opts opts;
+
+	// Verifier env
+	void *venv;
 };
 
 void bpf_ir_print_to_log(struct bpf_ir_env *env, char *fmt, ...);
