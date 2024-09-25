@@ -988,6 +988,27 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 	}
 }
 
+struct ir_insn *bpf_ir_find_ir_insn_by_rawpos(struct ir_function *fun, size_t rawpos)
+{
+	// Scan through the IR to check if there is an instruction that maps to pos
+	struct ir_basic_block **pos;
+	array_for(pos, fun->reachable_bbs)
+	{
+		struct ir_basic_block *bb = *pos;
+		struct ir_insn *insn;
+		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
+			if (insn->raw_pos.valid) {
+				DBGASSERT(insn->raw_pos.pos_t ==
+					  IR_RAW_POS_INSN);
+				if (insn->raw_pos.pos == rawpos) {
+					return insn;
+				}
+			}
+		}
+	}
+	return NULL;
+}
+
 void bpf_ir_free_function(struct ir_function *fun)
 {
 	for (size_t i = 0; i < fun->all_bbs.num_elem; ++i) {

@@ -622,6 +622,9 @@ struct ir_function {
 	struct code_gen_info cg_info;
 };
 
+// Find IR instruction based on raw position
+struct ir_insn *bpf_ir_find_ir_insn_by_rawpos(struct ir_function *fun, size_t rawpos);
+
 // IR checks
 
 void bpf_ir_prog_check(struct bpf_ir_env *env, struct ir_function *fun);
