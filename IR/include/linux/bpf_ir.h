@@ -623,7 +623,8 @@ struct ir_function {
 };
 
 // Find IR instruction based on raw position
-struct ir_insn *bpf_ir_find_ir_insn_by_rawpos(struct ir_function *fun, size_t rawpos);
+struct ir_insn *bpf_ir_find_ir_insn_by_rawpos(struct ir_function *fun,
+					      size_t rawpos);
 
 // IR checks
 

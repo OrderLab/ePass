@@ -988,7 +988,8 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 	}
 }
 
-struct ir_insn *bpf_ir_find_ir_insn_by_rawpos(struct ir_function *fun, size_t rawpos)
+struct ir_insn *bpf_ir_find_ir_insn_by_rawpos(struct ir_function *fun,
+					      size_t rawpos)
 {
 	// Scan through the IR to check if there is an instruction that maps to pos
 	struct ir_basic_block **pos;
