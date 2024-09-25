@@ -1393,7 +1393,6 @@ static void normalize_getelemptr(struct bpf_ir_env *env,
 {
 	struct ir_value *v0 = &insn->values[0];
 	struct ir_value *v1 = &insn->values[1];
-	struct ir_value new_v1;
 	enum val_type t0 = insn->value_num >= 1 ? vtype(*v0) : UNDEF;
 	enum val_type t1 = insn->value_num >= 2 ? vtype(*v1) : UNDEF;
 	enum val_type tdst = vtype_insn(insn);
@@ -1405,23 +1404,20 @@ static void normalize_getelemptr(struct bpf_ir_env *env,
 	struct ir_insn_cg_extra *v1_extra = insn_cg(v1->data.insn_d);
 	s32 spill_pos = v1_extra->spilled;
 	insn->op = IR_INSN_ADD;
-	new_v1.type = IR_VALUE_CONSTANT;
-	new_v1.const_type = IR_ALU_32;
 	insn->alu_op = IR_ALU_64;
 	if (t0 == CONST) {
 		// reg = getelemptr const ptr
 		// ==>
 		// reg = r10 + (const + spill_pos)
 		DBGASSERT(v0->const_type == IR_ALU_32);
-		new_v1.data.constant_d =
-			v0->data.constant_d + spill_pos; // Assume no overflow
+		s64 tmp = v0->data.constant_d + spill_pos; // Assume no overflow
 		bpf_ir_change_value(env, insn, v0, bpf_ir_value_insn(fun->sp));
-		bpf_ir_change_value(env, insn, v1, new_v1);
+		bpf_ir_change_value(env, insn, v1, bpf_ir_value_const32(tmp));
 		normalize_alu(env, fun, insn);
 	}
 	if (t0 == REG) {
-		new_v1.data.constant_d = spill_pos;
-		bpf_ir_change_value(env, insn, v1, new_v1);
+		bpf_ir_change_value(env, insn, v1,
+				    bpf_ir_value_const32(spill_pos));
 		if (allocated_reg(*v0) == allocated_reg_insn(dst_insn)) {
 			// reg = getelemptr reg ptr
 			// ==>
