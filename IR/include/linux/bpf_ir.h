@@ -46,16 +46,8 @@ typedef __u64 u64;
 
 struct function_pass;
 
-struct function_pass_cfg {
-	bool custom;
-	union {
-		char name[100];
-		struct function_pass *custom_pass;
-	};
-};
-
-struct pass_config {
-	struct function_pass_cfg *passes;
+struct builtin_pass_cfg {
+	char name[30];
 };
 
 struct bpf_ir_opts {
@@ -65,7 +57,12 @@ struct bpf_ir_opts {
 		BPF_IR_PRINT_DETAIL,
 		BPF_IR_PRINT_BOTH,
 	} print_mode;
-	struct pass_config pass_config;
+
+	struct function_pass *custom_passes;
+	size_t custom_pass_num;
+
+	struct builtin_pass_cfg *builtin_enable_passes;
+	size_t builtin_enable_pass_num;
 };
 
 struct bpf_ir_env {

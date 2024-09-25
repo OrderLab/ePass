@@ -15,9 +15,15 @@ int main(int argn, char **argv)
 	}
 	size_t sz = bpf_program__insn_cnt(prog);
 	const struct bpf_insn *insn = bpf_program__insns(prog);
+	struct builtin_pass_cfg passes[] = {
+		{ .name = "add_counter" },
+	};
 	struct bpf_ir_opts opts = {
 		.debug = 1,
 		.print_mode = BPF_IR_PRINT_BPF,
+		.custom_pass_num = 0,
+		.builtin_enable_pass_num = 0,
+		.builtin_enable_passes = passes,
 	};
 	struct bpf_ir_env *env = bpf_ir_init_env(opts, insn, sz);
 	if (!env) {

@@ -10,9 +10,12 @@ static const s8 helper_func_arg_num[100] = {
 };
 
 // All function passes
-static const struct function_pass passes[] = {
+static const struct function_pass pre_passes[] = {
 	DEF_FUNC_PASS(remove_trivial_phi, "remove_trivial_phi", true),
-	// DEF_FUNC_PASS(add_counter, "add_counter", false),
+};
+
+static const struct function_pass post_passes[] = {
+	DEF_FUNC_PASS(add_counter, "add_counter", true),
 };
 
 static void write_variable(struct bpf_ir_env *env,
@@ -1066,23 +1069,64 @@ static void init_function(struct bpf_ir_env *env, struct ir_function *fun,
 	}
 }
 
+static void run_single_pass(struct bpf_ir_env *env, struct ir_function *fun,
+			    const struct function_pass *pass)
+{
+	bpf_ir_prog_check(env, fun);
+	CHECK_ERR();
+
+	PRINT_LOG(env, "\x1B[32m------ Running Pass: %s ------\x1B[0m\n",
+		  pass->name);
+	pass->pass(env, fun);
+	CHECK_ERR();
+
+	// Validate the IR
+	bpf_ir_prog_check(env, fun);
+	CHECK_ERR();
+
+	print_ir_prog(env, fun);
+	CHECK_ERR();
+}
+
 static void run_passes(struct bpf_ir_env *env, struct ir_function *fun)
 {
-	for (size_t i = 0; i < sizeof(passes) / sizeof(passes[0]); ++i) {
-		bpf_ir_prog_check(env, fun);
+	for (size_t i = 0; i < sizeof(pre_passes) / sizeof(pre_passes[0]);
+	     ++i) {
+		if (pre_passes[i].enabled) {
+			run_single_pass(env, fun, &pre_passes[i]);
+		} else {
+			for (size_t j = 0;
+			     j < env->opts.builtin_enable_pass_num; ++j) {
+				if (strcmp(env->opts.builtin_enable_passes[j]
+						   .name,
+					   pre_passes[i].name) == 0) {
+					run_single_pass(env, fun,
+							&pre_passes[i]);
+					break;
+				}
+			}
+		}
 		CHECK_ERR();
-
-		PRINT_LOG(env,
-			  "\x1B[32m------ Running Pass: %s ------\x1B[0m\n",
-			  passes[i].name);
-		passes[i].pass(env, fun);
-		CHECK_ERR();
-
-		// Validate the IR
-		bpf_ir_prog_check(env, fun);
-		CHECK_ERR();
-
-		print_ir_prog(env, fun);
+	}
+	for (size_t i = 0; i < env->opts.custom_pass_num; ++i) {
+		run_single_pass(env, fun, &env->opts.custom_passes[i]);
+	}
+	for (size_t i = 0; i < sizeof(post_passes) / sizeof(post_passes[0]);
+	     ++i) {
+		if (post_passes[i].enabled) {
+			run_single_pass(env, fun, &post_passes[i]);
+		} else {
+			for (size_t j = 0;
+			     j < env->opts.builtin_enable_pass_num; ++j) {
+				if (strcmp(env->opts.builtin_enable_passes[j]
+						   .name,
+					   post_passes[i].name) == 0) {
+					run_single_pass(env, fun,
+							&post_passes[i]);
+					break;
+				}
+			}
+		}
 		CHECK_ERR();
 	}
 }

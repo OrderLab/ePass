@@ -54,6 +54,8 @@ int main(int argc, char **argv)
 	struct bpf_ir_opts opts = {
 		.debug = 1,
 		.print_mode = BPF_IR_PRINT_BPF,
+		.custom_pass_num = 0,
+		.builtin_enable_pass_num = 0,
 	};
 	struct bpf_ir_env *env = bpf_ir_init_env(opts, insns, index);
 	if (!env) {
