@@ -371,7 +371,7 @@ static void check_phi(struct bpf_ir_env *env, struct ir_function *fun)
 	}
 }
 
-static void bpf_ir_fix_bb_succ(struct ir_function *fun)
+static void bpf_ir_fix_bb_succ(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	struct ir_basic_block **pos;
 	array_for(pos, fun->all_bbs)
@@ -381,7 +381,9 @@ static void bpf_ir_fix_bb_succ(struct ir_function *fun)
 		if (insn && bpf_ir_is_cond_jmp(insn)) {
 			// Conditional jmp
 			if (bb->succs.num_elem != 2) {
-				CRITICAL(
+				print_ir_insn_err(env, insn,
+						  "Jump instruction");
+				RAISE_ERROR(
 					"Conditional jmp with != 2 successors");
 			}
 			struct ir_basic_block **s1 = array_get(
@@ -456,15 +458,16 @@ static void check_err_and_print(struct bpf_ir_env *env, struct ir_function *fun)
 // Check that the program is valid and able to be compiled
 void bpf_ir_prog_check(struct bpf_ir_env *env, struct ir_function *fun)
 {
-	bpf_ir_fix_bb_succ(fun);
+	print_ir_err_init(fun);
+
+	bpf_ir_fix_bb_succ(env, fun);
+	CHECK_DUMP();
+
 	bpf_ir_clean_metadata_all(fun);
 	gen_reachable_bbs(env, fun);
-	CHECK_ERR();
-
+	CHECK_DUMP();
 	gen_end_bbs(env, fun);
-	CHECK_ERR();
-
-	print_ir_err_init(fun);
+	CHECK_DUMP();
 
 	check_insn(env, fun);
 	CHECK_DUMP();
