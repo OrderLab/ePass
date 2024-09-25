@@ -58,10 +58,10 @@ struct bpf_ir_opts {
 		BPF_IR_PRINT_BOTH,
 	} print_mode;
 
-	struct function_pass *custom_passes;
+	const struct function_pass *custom_passes;
 	size_t custom_pass_num;
 
-	struct builtin_pass_cfg *builtin_enable_passes;
+	const struct builtin_pass_cfg *builtin_enable_passes;
 	size_t builtin_enable_pass_num;
 };
 
