@@ -648,10 +648,10 @@ void bpf_ir_connect_bb(struct bpf_ir_env *env, struct ir_basic_block *from,
 void bpf_ir_disconnect_bb(struct ir_basic_block *from,
 			  struct ir_basic_block *to);
 
-/// Split a BB after an instruction
+/// Split a BB
 struct ir_basic_block *bpf_ir_split_bb(struct bpf_ir_env *env,
 				       struct ir_function *fun,
-				       struct ir_insn *insn);
+				       struct ir_insn *insn, bool split_front);
 
 struct ir_insn *bpf_ir_get_last_insn(struct ir_basic_block *bb);
 

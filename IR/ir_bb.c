@@ -69,7 +69,7 @@ void bpf_ir_disconnect_bb(struct ir_basic_block *from,
 
 struct ir_basic_block *bpf_ir_split_bb(struct bpf_ir_env *env,
 				       struct ir_function *fun,
-				       struct ir_insn *insn)
+				       struct ir_insn *insn, bool split_front)
 {
 	struct ir_basic_block *bb = insn->parent_bb;
 	struct ir_basic_block *new_bb = bpf_ir_create_bb(env, fun);
@@ -85,7 +85,12 @@ struct ir_basic_block *bpf_ir_split_bb(struct bpf_ir_env *env,
 	}
 	bpf_ir_array_free(&old_succs);
 	// Move all instructions after insn to new_bb
-	struct list_head *p = insn->list_ptr.next;
+	struct list_head *p;
+	if (split_front) {
+		p = &insn->list_ptr;
+	} else {
+		p = insn->list_ptr.next;
+	}
 	while (p != &bb->ir_insn_head) {
 		struct ir_insn *cur = list_entry(p, struct ir_insn, list_ptr);
 		p = p->next;
