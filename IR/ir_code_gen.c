@@ -2715,22 +2715,6 @@ static void translate(struct bpf_ir_env *env, struct ir_function *fun)
 	}
 }
 
-static u32 sizeof_vr_type(enum ir_vr_type type)
-{
-	switch (type) {
-	case IR_VR_TYPE_32:
-		return 4;
-	case IR_VR_TYPE_16:
-		return 2;
-	case IR_VR_TYPE_8:
-		return 1;
-	case IR_VR_TYPE_64:
-		return 8;
-	default:
-		CRITICAL("Error");
-	}
-}
-
 // Spill all `allocarray` instructions
 static void spill_array(struct bpf_ir_env *env, struct ir_function *fun)
 {
@@ -2749,7 +2733,7 @@ static void spill_array(struct bpf_ir_env *env, struct ir_function *fun)
 				extra->allocated = true;
 				// Calculate the offset
 				u32 size = insn->array_num *
-					   sizeof_vr_type(insn->vr_type);
+					   bpf_ir_sizeof_vr_type(insn->vr_type);
 				if (size == 0) {
 					RAISE_ERROR("Array size is 0");
 				}

@@ -337,6 +337,8 @@ enum ir_vr_type {
 	IR_VR_TYPE_64,
 };
 
+u32 bpf_ir_sizeof_vr_type(enum ir_vr_type type);
+
 enum ir_loadimm_extra_type {
 	IR_LOADIMM_IMM64 = 0,
 	IR_LOADIMM_MAP_BY_FD,

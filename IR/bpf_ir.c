@@ -535,6 +535,22 @@ static enum ir_vr_type to_ir_ld_u(u8 size)
 	}
 }
 
+u32 bpf_ir_sizeof_vr_type(enum ir_vr_type type)
+{
+	switch (type) {
+	case IR_VR_TYPE_32:
+		return 4;
+	case IR_VR_TYPE_16:
+		return 2;
+	case IR_VR_TYPE_8:
+		return 1;
+	case IR_VR_TYPE_64:
+		return 8;
+	default:
+		CRITICAL("Error");
+	}
+}
+
 // User uses val
 static void add_user(struct bpf_ir_env *env, struct ir_insn *user,
 		     struct ir_value val)
