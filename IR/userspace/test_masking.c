@@ -31,17 +31,16 @@ void masking_pass(struct bpf_ir_env *env, struct ir_function *fun)
 	struct ir_insn *aluinsn = v.data.insn_d;
 	CHECK_COND(bpf_ir_is_alu(aluinsn));
 	struct ir_value index;
+	CHECK_COND(aluinsn->values[0].type == IR_VALUE_INSN &&
+		   aluinsn->values[1].type == IR_VALUE_INSN);
 
-	if (aluinsn->values[0].type == IR_VALUE_CONSTANT &&
-	    aluinsn->values[0].const_type == IR_ALU_64) {
-		CHECK_COND(aluinsn->values[1].type == IR_VALUE_INSN);
+	if (aluinsn->values[0].data.insn_d->op == IR_INSN_LOADIMM_EXTRA) {
 		index = aluinsn->values[1];
-	}
-
-	if (aluinsn->values[1].type == IR_VALUE_CONSTANT &&
-	    aluinsn->values[1].const_type == IR_ALU_64) {
-		CHECK_COND(aluinsn->values[0].type == IR_VALUE_INSN);
+	} else if (aluinsn->values[1].data.insn_d->op ==
+		   IR_INSN_LOADIMM_EXTRA) {
 		index = aluinsn->values[0];
+	} else {
+		return;
 	}
 
 	struct ir_basic_block *err_bb = bpf_ir_create_bb(env, fun);
