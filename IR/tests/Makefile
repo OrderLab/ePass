@@ -1,23 +1,17 @@
-$(NAME).o: $(NAME).c
-	clang -O2 -I/usr/include/$(shell uname -m)-linux-gnu -target bpf -c $< -o $@
+obj: $(NAME).c
+	clang -O2 -I/usr/include/$(shell uname -m)-linux-gnu -target bpf -c $< -o output/$(NAME).o
 
-$(NAME).nop.o: $(NAME).c
-	clang -O0 -I/usr/include/$(shell uname -m)-linux-gnu -target bpf -c $< -o $@
+objnop: $(NAME).c
+	clang -O0 -I/usr/include/$(shell uname -m)-linux-gnu -target bpf -c $< -o output/$(NAME).o
 
-$(NAME).nop.s: $(NAME).nop.o
-	llvm-objdump -S $< > $@
+s: obj
+	llvm-objdump -S output/$(NAME).o > output/$(NAME).s
 
-$(NAME).s: $(NAME).o
-	llvm-objdump -S $< > $@
+# sobj: $(NAME).s
+# 	llvm-mc -triple bpf -filetype=obj -o $(NAME).o $(NAME).s
 
-sobj: $(NAME).s
-	llvm-mc -triple bpf -filetype=obj -o $(NAME).o $(NAME).s
-
-load: clean $(NAME).o
-	sudo bpftool prog load $(NAME).o /sys/fs/bpf/$(NAME)
-
-loadnop: clean $(NAME).nop.o
-	sudo bpftool prog load $(NAME).nop.o /sys/fs/bpf/$(NAME)
+load: obj
+	sudo bpftool prog load output/$(NAME).o /sys/fs/bpf/$(NAME)
 
 attachxdp: load
 	sudo bpftool net attach xdp name prog dev $(CARD)
@@ -30,6 +24,9 @@ log:
 
 clean:
 	rm -f $(NAME).o $(NAME).s
-	-sudo rm /sys/fs/bpf/$(NAME)
+	sudo rm /sys/fs/bpf/$(NAME)
 
-.PHONY: clean load loadnop sobj attachxdp detachxdp log
+cleanall:
+	rm -f *.o *.s
+
+.PHONY: clean cleanall load obj objnop sobj attachxdp detachxdp log

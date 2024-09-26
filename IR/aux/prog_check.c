@@ -77,7 +77,6 @@ static void check_insn(struct bpf_ir_env *env, struct ir_function *fun)
 				if (!(insn->value_num == 2)) {
 					print_ir_insn_err(env, insn, NULL);
 					RAISE_ERROR(
-
 						"Instruction should have 2 values");
 				}
 			}
@@ -89,7 +88,6 @@ static void check_insn(struct bpf_ir_env *env, struct ir_function *fun)
 					      IR_INSN_ALLOC)) {
 					print_ir_insn_err(env, insn, NULL);
 					RAISE_ERROR(
-
 						"Value[0] should be an alloc instruction");
 				}
 			}
@@ -294,7 +292,6 @@ static void check_jumping(struct bpf_ir_env *env, struct ir_function *fun)
 						// Check if the two basic blocks are successors of the current BB
 						if (bb->succs.num_elem != 2) {
 							RAISE_ERROR(
-
 								"BB succs error");
 						}
 						if (*array_get(
@@ -307,7 +304,6 @@ static void check_jumping(struct bpf_ir_env *env, struct ir_function *fun)
 								    *) != bb2) {
 							// Error
 							RAISE_ERROR(
-
 								"Conditional jump statement with operands that are not successors "
 								"of the current BB");
 						}
@@ -320,7 +316,6 @@ static void check_jumping(struct bpf_ir_env *env, struct ir_function *fun)
 									  insn,
 									  NULL);
 							RAISE_ERROR(
-
 								"Unconditional jump statement with more than one successor");
 						}
 						// Check if the jump operand is the only successor of BB
@@ -335,7 +330,6 @@ static void check_jumping(struct bpf_ir_env *env, struct ir_function *fun)
 									  insn,
 									  NULL);
 							RAISE_ERROR(
-
 								"The jump operand is not the only successor of BB");
 						}
 					}
@@ -368,7 +362,6 @@ static void check_phi(struct bpf_ir_env *env, struct ir_function *fun)
 					// Error!
 					print_ir_insn_err(env, insn, NULL);
 					RAISE_ERROR(
-
 						"Phi node not at the beginning of a BB");
 				}
 			} else {
@@ -378,7 +371,7 @@ static void check_phi(struct bpf_ir_env *env, struct ir_function *fun)
 	}
 }
 
-static void bpf_ir_fix_bb_succ(struct ir_function *fun)
+static void bpf_ir_fix_bb_succ(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	struct ir_basic_block **pos;
 	array_for(pos, fun->all_bbs)
@@ -388,7 +381,9 @@ static void bpf_ir_fix_bb_succ(struct ir_function *fun)
 		if (insn && bpf_ir_is_cond_jmp(insn)) {
 			// Conditional jmp
 			if (bb->succs.num_elem != 2) {
-				CRITICAL(
+				print_ir_insn_err(env, insn,
+						  "Jump instruction");
+				RAISE_ERROR(
 					"Conditional jmp with != 2 successors");
 			}
 			struct ir_basic_block **s1 = array_get(
@@ -463,15 +458,16 @@ static void check_err_and_print(struct bpf_ir_env *env, struct ir_function *fun)
 // Check that the program is valid and able to be compiled
 void bpf_ir_prog_check(struct bpf_ir_env *env, struct ir_function *fun)
 {
-	bpf_ir_fix_bb_succ(fun);
+	print_ir_err_init(fun);
+
+	bpf_ir_fix_bb_succ(env, fun);
+	CHECK_DUMP();
+
 	bpf_ir_clean_metadata_all(fun);
 	gen_reachable_bbs(env, fun);
-	CHECK_ERR();
-
+	CHECK_DUMP();
 	gen_end_bbs(env, fun);
-	CHECK_ERR();
-
-	print_ir_err_init(fun);
+	CHECK_DUMP();
 
 	check_insn(env, fun);
 	CHECK_DUMP();

@@ -9,7 +9,7 @@
             "request": "launch",
             "name": "Debug",
             "program": "${workspaceFolder}/build/read",
-            "args": ["tests/str.o", "prog"],
+            "args": ["tests/output/loop1.o", "prog"],
             "cwd": "${workspaceFolder}"
         }
     ]

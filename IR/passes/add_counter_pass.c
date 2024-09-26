@@ -63,7 +63,7 @@ void add_counter(struct bpf_ir_env *env, struct ir_function *fun)
 			env, added, alloc_insn, bpf_ir_value_insn(added),
 			INSERT_BACK);
 		struct ir_basic_block *new_bb =
-			bpf_ir_split_bb(env, fun, store_back);
+			bpf_ir_split_bb(env, fun, store_back, false);
 		bpf_ir_create_jbin_insn(env, store_back,
 					bpf_ir_value_insn(added),
 					bpf_ir_value_const32(MAX_RUN_INSN),

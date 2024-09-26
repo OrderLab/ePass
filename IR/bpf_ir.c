@@ -3,16 +3,19 @@
 #include <linux/bpf_ir.h>
 
 // TODO: Change this to real function
-static const u32 helper_func_arg_num[100] = {
-	[0] = 1, [1] = 1, [2] = 1, [3] = 1, [4] = 1, [5] = 0,
-	[6] = 0, // Variable length
-	[7] = 1, [8] = 1
+static const s8 helper_func_arg_num[100] = {
+	[0] = 1,  [1] = 1, [2] = 1, [3] = 1, [4] = 1, [5] = 0,
+	[6] = -1, // Variable length
+	[7] = 1,  [8] = 1
 };
 
-// All function passes.
-static const struct function_pass passes[] = {
-	DEF_FUNC_PASS(remove_trivial_phi, "Removing the trival Phi"),
-	DEF_FUNC_PASS(add_counter, "Adding counter"),
+// All function passes
+static const struct function_pass pre_passes[] = {
+	DEF_FUNC_PASS(remove_trivial_phi, "remove_trivial_phi", true),
+};
+
+static const struct function_pass post_passes[] = {
+	DEF_FUNC_PASS(add_counter, "add_counter", false),
 };
 
 static void write_variable(struct bpf_ir_env *env,
@@ -343,10 +346,8 @@ static void init_tenv(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 		tenv->function_arg[i]->fun_arg_id = i;
 		tenv->function_arg[i]->user_data = NULL;
 		tenv->function_arg[i]->value_num = 0;
-		struct ir_value val;
-		val.type = IR_VALUE_INSN;
-		val.data.insn_d = tenv->function_arg[i];
-		write_variable(env, tenv, BPF_REG_1 + i, NULL, val);
+		write_variable(env, tenv, BPF_REG_1 + i, NULL,
+			       bpf_ir_value_insn(tenv->function_arg[i]));
 	}
 }
 
@@ -423,6 +424,7 @@ static struct ir_insn *create_insn(void)
 	insn->alu_op = IR_ALU_UNKNOWN;
 	insn->vr_type = IR_VR_TYPE_UNKNOWN;
 	insn->value_num = 0;
+	insn->raw_pos.valid = false;
 	return insn;
 }
 
@@ -454,8 +456,7 @@ static struct ir_value read_variable_recursive(struct bpf_ir_env *env,
 		new_insn->op = IR_INSN_PHI;
 		INIT_ARRAY(&new_insn->phi, struct phi_value);
 		bb->incompletePhis[reg] = new_insn;
-		val.type = IR_VALUE_INSN;
-		val.data.insn_d = new_insn;
+		val = bpf_ir_value_insn(new_insn);
 	} else if (bb->preds.num_elem == 1) {
 		val = read_variable(
 			env, tenv, reg,
@@ -464,12 +465,10 @@ static struct ir_value read_variable_recursive(struct bpf_ir_env *env,
 		struct ir_insn *new_insn = create_insn_front(bb->ir_bb);
 		new_insn->op = IR_INSN_PHI;
 		INIT_ARRAY(&new_insn->phi, struct phi_value);
-		val.type = IR_VALUE_INSN;
-		val.data.insn_d = new_insn;
+		val = bpf_ir_value_insn(new_insn);
 		write_variable(env, tenv, reg, bb, val);
 		new_insn = add_phi_operands(env, tenv, reg, new_insn);
-		val.type = IR_VALUE_INSN;
-		val.data.insn_d = new_insn;
+		val = bpf_ir_value_insn(new_insn);
 	}
 	write_variable(env, tenv, reg, bb, val);
 	return val;
@@ -536,6 +535,22 @@ static enum ir_vr_type to_ir_ld_u(u8 size)
 	}
 }
 
+u32 bpf_ir_sizeof_vr_type(enum ir_vr_type type)
+{
+	switch (type) {
+	case IR_VR_TYPE_32:
+		return 4;
+	case IR_VR_TYPE_16:
+		return 2;
+	case IR_VR_TYPE_8:
+		return 1;
+	case IR_VR_TYPE_64:
+		return 8;
+	default:
+		CRITICAL("Error");
+	}
+}
+
 // User uses val
 static void add_user(struct bpf_ir_env *env, struct ir_insn *user,
 		     struct ir_value val)
@@ -594,6 +609,21 @@ get_ir_bb_from_position(struct ssa_transform_env *tenv, size_t pos)
 	CRITICAL("Error");
 }
 
+static void set_insn_raw_pos(struct ir_insn *insn, size_t pos)
+{
+	insn->raw_pos.valid = true;
+	insn->raw_pos.pos = pos;
+	insn->raw_pos.pos_t = IR_RAW_POS_INSN;
+}
+
+static void set_value_raw_pos(struct ir_value *val, size_t pos,
+			      enum ir_raw_pos_type ty)
+{
+	val->raw_pos.valid = true;
+	val->raw_pos.pos = pos;
+	val->raw_pos.pos_t = ty;
+}
+
 static struct ir_value get_src_value(struct bpf_ir_env *env,
 				     struct ssa_transform_env *tenv,
 				     struct pre_ir_basic_block *bb,
@@ -601,11 +631,13 @@ static struct ir_value get_src_value(struct bpf_ir_env *env,
 {
 	u8 code = insn.opcode;
 	if (BPF_SRC(code) == BPF_K) {
-		return (struct ir_value){ .type = IR_VALUE_CONSTANT,
-					  .data.constant_d = insn.imm,
-					  .const_type = IR_ALU_32 };
+		struct ir_value v = bpf_ir_value_const32(insn.imm);
+		set_value_raw_pos(&v, insn.pos, IR_RAW_POS_IMM);
+		return v;
 	} else if (BPF_SRC(code) == BPF_X) {
-		return read_variable(env, tenv, insn.src_reg, bb);
+		struct ir_value v = read_variable(env, tenv, insn.src_reg, bb);
+		set_value_raw_pos(&v, insn.pos, IR_RAW_POS_SRC);
+		return v;
 	} else {
 		CRITICAL("Error");
 	}
@@ -634,10 +666,12 @@ static void alu_write(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 	struct ir_insn *new_insn = create_alu_bin(
 		env, bb->ir_bb, read_variable(env, tenv, insn.dst_reg, bb),
 		get_src_value(env, tenv, bb, insn), ty, alu_ty);
-	struct ir_value new_val;
-	new_val.type = IR_VALUE_INSN;
-	new_val.data.insn_d = new_insn;
-	write_variable(env, tenv, insn.dst_reg, bb, new_val);
+	struct ir_value v = bpf_ir_value_insn(new_insn);
+	new_insn->raw_pos.pos = insn.pos;
+	set_insn_raw_pos(new_insn, insn.pos);
+	set_value_raw_pos(&v, insn.pos, IR_RAW_POS_INSN);
+	set_value_raw_pos(&new_insn->values[0], insn.pos, IR_RAW_POS_DST);
+	write_variable(env, tenv, insn.dst_reg, bb, v);
 }
 
 static void create_cond_jmp(struct bpf_ir_env *env,
@@ -659,6 +693,9 @@ static void create_cond_jmp(struct bpf_ir_env *env,
 	new_insn->bb2 = get_ir_bb_from_position(tenv, pos);
 	bpf_ir_array_push(env, &new_insn->bb1->users, &new_insn);
 	bpf_ir_array_push(env, &new_insn->bb2->users, &new_insn);
+
+	set_insn_raw_pos(new_insn, insn.pos);
+	set_value_raw_pos(&new_insn->values[0], insn.pos, IR_RAW_POS_DST);
 }
 
 static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
@@ -740,19 +777,19 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 			// 64-bit immediate load
 			if (insn.src_reg == 0x0) {
 				// immediate value
-				struct ir_value imm_val;
-				imm_val.type = IR_VALUE_CONSTANT;
-				imm_val.data.constant_d = insn.imm64;
-				imm_val.const_type = IR_ALU_64;
-				write_variable(env, tenv, insn.dst_reg, bb,
-					       imm_val);
+				struct ir_value v =
+					bpf_ir_value_const64(insn.imm64);
+				set_value_raw_pos(&v, insn.pos, IR_RAW_POS_IMM);
+				write_variable(env, tenv, insn.dst_reg, bb, v);
 			} else if (insn.src_reg > 0 && insn.src_reg <= 0x06) {
 				// BPF MAP instructions
 				struct ir_insn *new_insn =
 					create_insn_back(bb->ir_bb);
+
 				new_insn->op = IR_INSN_LOADIMM_EXTRA;
 				new_insn->imm_extra_type = insn.src_reg;
 				new_insn->imm64 = insn.imm64;
+				set_insn_raw_pos(new_insn, insn.pos);
 				write_variable(env, tenv, insn.dst_reg, bb,
 					       bpf_ir_value_insn(new_insn));
 			} else {
@@ -769,10 +806,13 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 			addr_val.value =
 				read_variable(env, tenv, insn.src_reg, bb);
 			add_user(env, new_insn, addr_val.value);
+			set_value_raw_pos(&addr_val.value, insn.pos,
+					  IR_RAW_POS_SRC);
 			addr_val.offset = insn.off;
 			new_insn->vr_type = to_ir_ld_u(BPF_SIZE(code));
 			new_insn->addr_val = addr_val;
 
+			set_insn_raw_pos(new_insn, insn.pos);
 			write_variable(env, tenv, insn.dst_reg, bb,
 				       bpf_ir_value_insn(new_insn));
 		} else if (BPF_CLASS(code) == BPF_LDX &&
@@ -786,11 +826,14 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 			struct ir_address_value addr_val;
 			addr_val.value =
 				read_variable(env, tenv, insn.src_reg, bb);
+			set_value_raw_pos(&addr_val.value, insn.pos,
+					  IR_RAW_POS_SRC);
 			add_user(env, new_insn, addr_val.value);
 			addr_val.offset = insn.off;
 			new_insn->vr_type = to_ir_ld_u(BPF_SIZE(code));
 			new_insn->addr_val = addr_val;
 
+			set_insn_raw_pos(new_insn, insn.pos);
 			write_variable(env, tenv, insn.dst_reg, bb,
 				       bpf_ir_value_insn(new_insn));
 		} else if (BPF_CLASS(code) == BPF_ST &&
@@ -801,13 +844,17 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 			struct ir_address_value addr_val;
 			addr_val.value =
 				read_variable(env, tenv, insn.dst_reg, bb);
+			set_value_raw_pos(&addr_val.value, insn.pos,
+					  IR_RAW_POS_DST);
 			add_user(env, new_insn, addr_val.value);
 			addr_val.offset = insn.off;
 			new_insn->vr_type = to_ir_ld_u(BPF_SIZE(code));
 			new_insn->addr_val = addr_val;
-			new_insn->values[0].type = IR_VALUE_CONSTANT;
-			new_insn->values[0].data.constant_d = insn.imm;
+			new_insn->values[0] = bpf_ir_value_const32(insn.imm);
 			new_insn->value_num = 1;
+			set_value_raw_pos(&new_insn->values[0], insn.pos,
+					  IR_RAW_POS_IMM);
+			set_insn_raw_pos(new_insn, insn.pos);
 		} else if (BPF_CLASS(code) == BPF_STX &&
 			   BPF_MODE(code) == BPF_MEM) {
 			// *(size *) (dst + offset) = src
@@ -816,14 +863,19 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 			struct ir_address_value addr_val;
 			addr_val.value =
 				read_variable(env, tenv, insn.dst_reg, bb);
+			set_value_raw_pos(&addr_val.value, insn.pos,
+					  IR_RAW_POS_DST);
 			add_user(env, new_insn, addr_val.value);
 			addr_val.offset = insn.off;
 			new_insn->vr_type = to_ir_ld_u(BPF_SIZE(code));
 			new_insn->addr_val = addr_val;
 			new_insn->values[0] =
 				read_variable(env, tenv, insn.src_reg, bb);
+			set_value_raw_pos(&new_insn->values[0], insn.pos,
+					  IR_RAW_POS_SRC);
 			new_insn->value_num = 1;
 			add_user(env, new_insn, new_insn->values[0]);
+			set_insn_raw_pos(new_insn, insn.pos);
 		} else if (BPF_CLASS(code) == BPF_JMP ||
 			   BPF_CLASS(code) == BPF_JMP32) {
 			enum ir_alu_op_type alu_ty = IR_ALU_UNKNOWN;
@@ -841,6 +893,7 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 				size_t pos = insn.pos + insn.off + 1;
 				new_insn->bb1 =
 					get_ir_bb_from_position(tenv, pos);
+				set_insn_raw_pos(new_insn, insn.pos);
 				bpf_ir_array_push(env, &new_insn->bb1->users,
 						  &new_insn);
 			} else if (BPF_OP(code) == BPF_EXIT) {
@@ -851,6 +904,7 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 				new_insn->values[0] =
 					read_variable(env, tenv, BPF_REG_0, bb);
 				new_insn->value_num = 1;
+				set_insn_raw_pos(new_insn, insn.pos);
 			} else if (BPF_OP(code) == BPF_JEQ) {
 				// PC += offset if dst == src
 				create_cond_jmp(env, tenv, bb, insn,
@@ -879,6 +933,7 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 				// imm is the function id
 				struct ir_insn *new_insn =
 					create_insn_back(bb->ir_bb);
+				set_insn_raw_pos(new_insn, insn.pos);
 				new_insn->op = IR_INSN_CALL;
 				new_insn->fid = insn.imm;
 				if (insn.imm < 0) {
@@ -887,7 +942,7 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 						"Not supported function call\n");
 					new_insn->value_num = 0;
 				} else {
-					if (insn.imm == 6) {
+					if (helper_func_arg_num[insn.imm] < 0) {
 						// Variable length, infer from previous instructions
 						new_insn->value_num = 0;
 						// used[x] means whether there exists a usage of register x + 1
@@ -926,11 +981,8 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 					}
 				}
 
-				struct ir_value new_val;
-				new_val.type = IR_VALUE_INSN;
-				new_val.data.insn_d = new_insn;
 				write_variable(env, tenv, BPF_REG_0, bb,
-					       new_val);
+					       bpf_ir_value_insn(new_insn));
 			} else {
 				// TODO
 				RAISE_ERROR("Error");
@@ -952,7 +1004,29 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 	}
 }
 
-static void free_function(struct ir_function *fun)
+struct ir_insn *bpf_ir_find_ir_insn_by_rawpos(struct ir_function *fun,
+					      size_t rawpos)
+{
+	// Scan through the IR to check if there is an instruction that maps to pos
+	struct ir_basic_block **pos;
+	array_for(pos, fun->reachable_bbs)
+	{
+		struct ir_basic_block *bb = *pos;
+		struct ir_insn *insn;
+		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
+			if (insn->raw_pos.valid) {
+				DBGASSERT(insn->raw_pos.pos_t ==
+					  IR_RAW_POS_INSN);
+				if (insn->raw_pos.pos == rawpos) {
+					return insn;
+				}
+			}
+		}
+	}
+	return NULL;
+}
+
+void bpf_ir_free_function(struct ir_function *fun)
 {
 	for (size_t i = 0; i < fun->all_bbs.num_elem; ++i) {
 		struct ir_basic_block *bb =
@@ -1033,23 +1107,64 @@ static void init_function(struct bpf_ir_env *env, struct ir_function *fun,
 	}
 }
 
+static void run_single_pass(struct bpf_ir_env *env, struct ir_function *fun,
+			    const struct function_pass *pass)
+{
+	bpf_ir_prog_check(env, fun);
+	CHECK_ERR();
+
+	PRINT_LOG(env, "\x1B[32m------ Running Pass: %s ------\x1B[0m\n",
+		  pass->name);
+	pass->pass(env, fun);
+	CHECK_ERR();
+
+	// Validate the IR
+	bpf_ir_prog_check(env, fun);
+	CHECK_ERR();
+
+	print_ir_prog(env, fun);
+	CHECK_ERR();
+}
+
 static void run_passes(struct bpf_ir_env *env, struct ir_function *fun)
 {
-	for (size_t i = 0; i < sizeof(passes) / sizeof(passes[0]); ++i) {
-		bpf_ir_prog_check(env, fun);
+	for (size_t i = 0; i < sizeof(pre_passes) / sizeof(pre_passes[0]);
+	     ++i) {
+		if (pre_passes[i].enabled) {
+			run_single_pass(env, fun, &pre_passes[i]);
+		} else {
+			for (size_t j = 0;
+			     j < env->opts.builtin_enable_pass_num; ++j) {
+				if (strcmp(env->opts.builtin_enable_passes[j]
+						   .name,
+					   pre_passes[i].name) == 0) {
+					run_single_pass(env, fun,
+							&pre_passes[i]);
+					break;
+				}
+			}
+		}
 		CHECK_ERR();
-
-		PRINT_LOG(env,
-			  "\x1B[32m------ Running Pass: %s ------\x1B[0m\n",
-			  passes[i].name);
-		passes[i].pass(env, fun);
-		CHECK_ERR();
-
-		// Validate the IR
-		bpf_ir_prog_check(env, fun);
-		CHECK_ERR();
-
-		print_ir_prog(env, fun);
+	}
+	for (size_t i = 0; i < env->opts.custom_pass_num; ++i) {
+		run_single_pass(env, fun, &env->opts.custom_passes[i]);
+	}
+	for (size_t i = 0; i < sizeof(post_passes) / sizeof(post_passes[0]);
+	     ++i) {
+		if (post_passes[i].enabled) {
+			run_single_pass(env, fun, &post_passes[i]);
+		} else {
+			for (size_t j = 0;
+			     j < env->opts.builtin_enable_pass_num; ++j) {
+				if (strcmp(env->opts.builtin_enable_passes[j]
+						   .name,
+					   post_passes[i].name) == 0) {
+					run_single_pass(env, fun,
+							&post_passes[i]);
+					break;
+				}
+			}
+		}
 		CHECK_ERR();
 	}
 }
@@ -1093,42 +1208,53 @@ static void print_bpf_prog(struct bpf_ir_env *env, const struct bpf_insn *insns,
 
 // Interface implementation
 
-void bpf_ir_run(struct bpf_ir_env *env, const struct bpf_insn *insns,
-		size_t len)
+struct ir_function *bpf_ir_lift(struct bpf_ir_env *env,
+				const struct bpf_insn *insns, size_t len)
 {
 	struct bb_info info;
 	gen_bb(env, &info, insns, len);
-	CHECK_ERR();
+	CHECK_ERR(NULL);
 
 	print_pre_ir_cfg(env, info.entry);
 	struct ssa_transform_env trans_env;
 	init_tenv(env, &trans_env, info);
-	CHECK_ERR();
+	CHECK_ERR(NULL);
 
 	init_ir_bbs(env, &trans_env);
-	CHECK_ERR();
+	CHECK_ERR(NULL);
 
 	transform_bb(env, &trans_env, info.entry);
-	CHECK_ERR();
+	CHECK_ERR(NULL);
 
-	struct ir_function fun;
-	init_function(env, &fun, &trans_env);
+	struct ir_function *fun;
+	SAFE_MALLOC_RET_NULL(fun, sizeof(struct ir_function));
+	init_function(env, fun, &trans_env);
+
+	return fun;
+}
+
+void bpf_ir_run(struct bpf_ir_env *env)
+{
+	const struct bpf_insn *insns = env->insns;
+	size_t len = env->insn_cnt;
+	struct ir_function *fun = bpf_ir_lift(env, insns, len);
+	CHECK_ERR();
 
 	// Drop env
 
-	bpf_ir_prog_check(env, &fun);
+	bpf_ir_prog_check(env, fun);
 	CHECK_ERR();
-	print_ir_prog(env, &fun);
+	print_ir_prog(env, fun);
 	PRINT_LOG(env, "Starting IR Passes...\n");
 	// Start IR manipulation
 
-	run_passes(env, &fun);
+	run_passes(env, fun);
 	CHECK_ERR();
 
 	// End IR manipulation
 	PRINT_LOG(env, "IR Passes Ended!\n");
 
-	bpf_ir_code_gen(env, &fun);
+	bpf_ir_code_gen(env, fun);
 	CHECK_ERR();
 
 	// Got the bpf bytecode
@@ -1141,18 +1267,23 @@ void bpf_ir_run(struct bpf_ir_env *env, const struct bpf_insn *insns,
 	print_bpf_prog(env, env->insns, env->insn_cnt);
 
 	// Free the memory
-	free_function(&fun);
+	bpf_ir_free_function(fun);
 }
 
-struct bpf_ir_env *bpf_ir_init_env(struct ir_opts opts)
+struct bpf_ir_env *bpf_ir_init_env(struct bpf_ir_opts opts,
+				   const struct bpf_insn *insns, size_t len)
 {
-	struct bpf_ir_env *bpf_ir_env = malloc_proto(sizeof(struct bpf_ir_env));
-	bpf_ir_env->insn_cnt = 0;
-	bpf_ir_env->insns = NULL;
-	bpf_ir_env->log_pos = 0;
-	bpf_ir_env->err = 0;
-	bpf_ir_env->opts = opts;
-	return bpf_ir_env;
+	struct bpf_ir_env *env = malloc_proto(sizeof(struct bpf_ir_env));
+	env->insn_cnt = len;
+	env->insns = malloc_proto(sizeof(struct bpf_insn) * len);
+	memcpy(env->insns, insns, sizeof(struct bpf_insn) * len);
+	env->log_pos = 0;
+	env->err = 0;
+	env->opts = opts;
+	env->verifier_err = -1;
+	env->venv = NULL;
+
+	return env;
 }
 
 void bpf_ir_free_env(struct bpf_ir_env *env)

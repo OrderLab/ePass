@@ -1,10 +1,6 @@
 #include <linux/bpf.h>
 #include <bpf/bpf_helpers.h>
 
-/**
-    Calling external function results in verifier halt
- */
-
 SEC("xdp")
 int prog(void *ctx)
 {

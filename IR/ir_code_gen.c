@@ -212,8 +212,8 @@ static void to_cssa(struct bpf_ir_env *env, struct ir_function *fun)
 	{
 		struct ir_insn *insn = *pos2;
 		// Create the moved PHI insn
-		struct ir_insn *new_phi =
-			bpf_ir_create_phi_insn(env, insn, INSERT_FRONT);
+		struct ir_insn *new_phi = bpf_ir_create_phi_insn_bb(
+			env, insn->parent_bb, INSERT_FRONT);
 		struct phi_value *pos3;
 		array_for(pos3, insn->phi)
 		{
@@ -266,6 +266,7 @@ static void remove_phi(struct bpf_ir_env *env, struct ir_function *fun)
 		struct phi_value *pos3;
 		array_for(pos3, insn->phi)
 		{
+			DBGASSERT(pos3->value.type == IR_VALUE_INSN);
 			if (!repr) {
 				repr = pos3->value.data.insn_d;
 			} else {
@@ -280,7 +281,7 @@ static void remove_phi(struct bpf_ir_env *env, struct ir_function *fun)
 		DBGASSERT(repr == insn_dst(repr));
 
 		bpf_ir_replace_all_usage_cg(env, insn, bpf_ir_value_insn(repr));
-		bpf_ir_erase_insn_cg(env, insn);
+		bpf_ir_erase_insn_cg(env, fun, insn);
 	}
 
 	bpf_ir_array_free(&phi_insns);
@@ -420,27 +421,120 @@ static void conflict_analysis(struct bpf_ir_env *env, struct ir_function *fun)
 	}
 }
 
+static u8 allocated_reg_insn(struct ir_insn *insn)
+{
+	return insn_cg(insn)->alloc_reg;
+}
+
+static u8 allocated_reg(struct ir_value val)
+{
+	// DBGASSERT(val.type == IR_VALUE_INSN);
+	return allocated_reg_insn(val.data.insn_d);
+}
+
 static bool has_conflict(struct ir_insn *v1, struct ir_insn *v2)
 {
 	if (!is_insn_final(v1) || !is_insn_final(v2)) {
 		CRITICAL("Can only test conflict on final values");
 	}
+	if (insn_cg(v1)->nonvr && insn_cg(v2)->nonvr) {
+		return false;
+	}
 	if (v1 == v2) {
 		return false;
 	}
-	struct array adj = insn_cg(v1)->adj;
-	struct ir_insn **pos;
-	array_for(pos, adj)
-	{
-		if (*pos == v2) {
+	if (insn_cg(v1)->nonvr) {
+		// R <-> r
+		struct array adj = insn_cg(v2)->adj;
+		struct ir_insn **pos;
+		array_for(pos, adj)
+		{
+			if (allocated_reg_insn(*pos) ==
+			    allocated_reg_insn(v1)) {
+				return true;
+			}
+		}
+	} else if (insn_cg(v2)->nonvr) {
+		// r <-> R
+		struct array adj = insn_cg(v1)->adj;
+		struct ir_insn **pos;
+		array_for(pos, adj)
+		{
+			if (allocated_reg_insn(*pos) ==
+			    allocated_reg_insn(v2)) {
+				return true;
+			}
+		}
+	} else {
+		// r <-> r
+		bool ok = true;
+		struct array adj = insn_cg(v1)->adj;
+		struct ir_insn **pos;
+		array_for(pos, adj)
+		{
+			if (allocated_reg_insn(*pos) ==
+			    allocated_reg_insn(v2)) {
+				ok = false;
+				break;
+			}
+		}
+		if (ok) {
+			// No conflict!
+			return false;
+		}
+		ok = true;
+		adj = insn_cg(v2)->adj;
+		array_for(pos, adj)
+		{
+			if (allocated_reg_insn(*pos) ==
+			    allocated_reg_insn(v1)) {
+				ok = false;
+				break;
+			}
+		}
+		if (ok) {
+			// No conflict!
+			return false;
+		} else {
+			// Both have conflict
 			return true;
 		}
 	}
 	return false;
 }
 
-/* Optimization: Coalescing */
-static void coalescing(struct bpf_ir_env *env, struct ir_function *fun)
+static void erase_same_reg_assign(struct bpf_ir_env *env,
+				  struct ir_function *fun, struct ir_insn *insn)
+{
+	struct ir_insn *dst_insn = insn_dst(insn);
+	struct ir_insn *src_insn = insn->values[0].data.insn_d;
+	struct ir_insn_cg_extra *dst_insn_cg = insn_cg(dst_insn);
+	struct ir_insn_cg_extra *src_insn_cg = insn_cg(src_insn);
+	u8 src_reg = src_insn_cg->alloc_reg;
+	u8 dst_reg = dst_insn_cg->alloc_reg;
+	DBGASSERT(src_reg == dst_reg);
+	// Merge!
+	if (dst_insn_cg->nonvr && src_insn_cg->nonvr) {
+		// R = R
+		bpf_ir_erase_insn_cg(env, fun, insn);
+		return;
+	}
+	if (dst_insn_cg->nonvr) {
+		// R = r
+		set_insn_dst(env, src_insn, dst_insn);
+		bpf_ir_erase_insn_cg(env, fun, insn);
+		return;
+	}
+	// r = R || r = r
+	set_insn_dst(env, dst_insn, src_insn);
+	bpf_ir_erase_insn_cg(env, fun, insn);
+}
+
+/* Optimization: Coalescing
+
+ Returns false if no need to rerun liveness analysis
+ */
+static bool coalescing(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	struct ir_basic_block **pos;
 	// For each BB
@@ -461,25 +555,23 @@ static void coalescing(struct bpf_ir_env *env, struct ir_function *fun)
 					if (insn_cg(src)->alloc_reg ==
 					    insn_cg(insn_dst)->alloc_reg) {
 						// Remove
-						// bpf_ir_erase_insn_cg(env, insn);
+						erase_same_reg_assign(env, fun,
+								      insn);
+						return true;
+					}
+
+					// R = R
+					if (insn_cg(src)->nonvr &&
+					    insn_cg(insn)->nonvr) {
 						continue;
 					}
 					// R = r
 					// r = R
 					// Able to coalesce
-					if (insn_cg(src)->nonvr &&
-					    insn_cg(insn)->nonvr) {
-						continue;
-					}
 
 					if (!has_conflict(insn_dst, src)) {
+						bool ret = false;
 						// No Conflict, could coalesce
-						PRINT_LOG(
-							env,
-							"Coalescing %u and %u\n",
-							insn_cg(src)->alloc_reg,
-							insn_cg(insn_dst)
-								->alloc_reg);
 						// CRITICAL(
 						// 	"Coalescing not implemented");
 						// Check if coalescing is beneficial using Briggs' conservative coalescing
@@ -511,29 +603,50 @@ static void coalescing(struct bpf_ir_env *env, struct ir_function *fun)
 						// PRINT_LOG(env, "Count: %u\n", count);
 						if (count < BPF_REG_10) {
 							// Coalesce
-							if (insn_cg(src)->nonvr) {
+							ret = true;
+
+							PRINT_LOG(
+								env,
+								"Coalescing %u and %u\n",
+								insn_cg(src)
+									->alloc_reg,
+								insn_cg(insn_dst)
+									->alloc_reg);
+							if (insn_cg(insn_dst)
+								    ->nonvr) {
+								// R = r
+								set_insn_dst(
+									env,
+									src,
+									insn_dst);
+							} else if (insn_cg(src)
+									   ->nonvr) {
 								// r = R
 								set_insn_dst(
 									env,
 									insn_dst,
 									src);
 							} else {
-								// R = r or r = r
+								// r = r
 								set_insn_dst(
 									env,
-									src,
-									insn_dst);
+									insn_dst,
+									src);
 							}
-							// bpf_ir_erase_insn_cg(
+							// This instruction should have no users
+							// bpf_ir_check_no_user(
 							// 	env, insn);
+							bpf_ir_erase_insn_cg(
+								env, fun, insn);
 						}
-
 						bpf_ir_array_free(&merged);
+						return ret;
 					}
 				}
 			}
 		}
 	}
+	return false;
 }
 
 // Pre CG
@@ -626,7 +739,7 @@ static void change_call(struct bpf_ir_env *env, struct ir_function *fun)
 						     fun->cg_info.regs[i + 1]);
 				}
 				insn->value_num = 0; // Remove all operands
-				set_insn_dst(env, insn, NULL);
+				set_insn_dst(env, insn, fun->cg_info.regs[0]);
 			}
 		}
 	}
@@ -1048,9 +1161,9 @@ static void cgir_load_const_to_reg(struct bpf_ir_env *env,
 		bpf_ir_create_assign_insn_cg(env, insn, *val, INSERT_FRONT);
 	new_insn->alu_op = IR_ALU_64;
 	set_insn_dst(env, new_insn, fun->cg_info.regs[reg]);
-	val->type = IR_VALUE_INSN;
-	val->data.insn_d = fun->cg_info.regs[reg];
-	bpf_ir_val_add_user(env, *val, fun->cg_info.regs[reg]);
+
+	bpf_ir_change_value(env, insn, val,
+			    bpf_ir_value_insn(fun->cg_info.regs[reg]));
 }
 
 static void cgir_load_reg_to_reg(struct bpf_ir_env *env,
@@ -1061,9 +1174,8 @@ static void cgir_load_reg_to_reg(struct bpf_ir_env *env,
 		bpf_ir_create_assign_insn_cg(env, insn, *val, INSERT_FRONT);
 	new_insn->alu_op = IR_ALU_64;
 	set_insn_dst(env, new_insn, fun->cg_info.regs[reg]);
-	val->type = IR_VALUE_INSN;
-	val->data.insn_d = fun->cg_info.regs[reg];
-	bpf_ir_val_add_user(env, *val, fun->cg_info.regs[reg]);
+	bpf_ir_change_value(env, insn, val,
+			    bpf_ir_value_insn(fun->cg_info.regs[reg]));
 }
 
 static void cgir_load_stack_to_reg(struct bpf_ir_env *env,
@@ -1076,9 +1188,8 @@ static void cgir_load_stack_to_reg(struct bpf_ir_env *env,
 	tmp->vr_type = vtype;
 	set_insn_dst(env, tmp, fun->cg_info.regs[reg]);
 
-	val->type = IR_VALUE_INSN;
-	val->data.insn_d = fun->cg_info.regs[reg];
-	bpf_ir_val_add_user(env, *val, fun->cg_info.regs[reg]);
+	bpf_ir_change_value(env, insn, val,
+			    bpf_ir_value_insn(fun->cg_info.regs[reg]));
 }
 
 static void add_stack_offset_vr(struct ir_function *fun, size_t num)
@@ -1091,17 +1202,6 @@ static void add_stack_offset_vr(struct ir_function *fun, size_t num)
 			extra->spilled -= num * 8;
 		}
 	}
-}
-
-static u8 allocated_reg_insn(struct ir_insn *insn)
-{
-	return insn_cg(insn)->alloc_reg;
-}
-
-static u8 allocated_reg(struct ir_value val)
-{
-	// DBGASSERT(val.type == IR_VALUE_INSN);
-	return allocated_reg_insn(val.data.insn_d);
 }
 
 /* Spilling callee
@@ -1293,7 +1393,6 @@ static void normalize_getelemptr(struct bpf_ir_env *env,
 {
 	struct ir_value *v0 = &insn->values[0];
 	struct ir_value *v1 = &insn->values[1];
-	struct ir_value new_v1;
 	enum val_type t0 = insn->value_num >= 1 ? vtype(*v0) : UNDEF;
 	enum val_type t1 = insn->value_num >= 2 ? vtype(*v1) : UNDEF;
 	enum val_type tdst = vtype_insn(insn);
@@ -1305,23 +1404,20 @@ static void normalize_getelemptr(struct bpf_ir_env *env,
 	struct ir_insn_cg_extra *v1_extra = insn_cg(v1->data.insn_d);
 	s32 spill_pos = v1_extra->spilled;
 	insn->op = IR_INSN_ADD;
-	new_v1.type = IR_VALUE_CONSTANT;
-	new_v1.const_type = IR_ALU_32;
 	insn->alu_op = IR_ALU_64;
 	if (t0 == CONST) {
 		// reg = getelemptr const ptr
 		// ==>
 		// reg = r10 + (const + spill_pos)
 		DBGASSERT(v0->const_type == IR_ALU_32);
-		new_v1.data.constant_d =
-			v0->data.constant_d + spill_pos; // Assume no overflow
+		s64 tmp = v0->data.constant_d + spill_pos; // Assume no overflow
 		bpf_ir_change_value(env, insn, v0, bpf_ir_value_insn(fun->sp));
-		bpf_ir_change_value(env, insn, v1, new_v1);
+		bpf_ir_change_value(env, insn, v1, bpf_ir_value_const32(tmp));
 		normalize_alu(env, fun, insn);
 	}
 	if (t0 == REG) {
-		new_v1.data.constant_d = spill_pos;
-		bpf_ir_change_value(env, insn, v1, new_v1);
+		bpf_ir_change_value(env, insn, v1,
+				    bpf_ir_value_const32(spill_pos));
 		if (allocated_reg(*v0) == allocated_reg_insn(dst_insn)) {
 			// reg = getelemptr reg ptr
 			// ==>
@@ -1390,6 +1486,12 @@ static void normalize_assign(struct bpf_ir_env *env, struct ir_function *fun,
 			insn->op = IR_INSN_LOADIMM_EXTRA;
 			insn->imm_extra_type = IR_LOADIMM_IMM64;
 			insn->imm64 = v0->data.constant_d;
+		}
+	}
+	if (tdst == REG && t0 == REG) {
+		if (allocated_reg_insn(dst_insn) == allocated_reg(*v0)) {
+			// The same, erase this instruction
+			bpf_ir_erase_insn_cg(env, fun, insn);
 		}
 	}
 }
@@ -1518,7 +1620,8 @@ static bool spill_store(struct bpf_ir_env *env, struct ir_function *fun,
 	set_insn_dst(env, insn, v0->data.insn_d);
 	insn->value_num = 1;
 	*v0 = *v1;
-	return spill_assign(env, fun, insn);
+	spill_assign(env, fun, insn);
+	return true;
 }
 
 static bool spill_load(struct bpf_ir_env *env, struct ir_function *fun,
@@ -1534,7 +1637,8 @@ static bool spill_load(struct bpf_ir_env *env, struct ir_function *fun,
 		  IR_VALUE_INSN); // Should be guaranteed by prog_check
 	DBGASSERT(v0->data.insn_d->op == IR_INSN_ALLOC);
 	insn->vr_type = v0->data.insn_d->vr_type;
-	return spill_assign(env, fun, insn);
+	spill_assign(env, fun, insn);
+	return true;
 }
 
 static bool spill_loadraw(struct bpf_ir_env *env, struct ir_function *fun,
@@ -1975,6 +2079,12 @@ static void prog_check_cg(struct bpf_ir_env *env, struct ir_function *fun)
 		struct ir_insn *insn;
 		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
 			// Check dst
+			if (insn->op == IR_INSN_PHI) {
+				print_ir_insn_err_full(env, insn,
+						       "Phi instruction",
+						       print_ir_dst);
+				RAISE_ERROR("Phi instruction found during CG");
+			}
 			if (insn_cg(insn)->dst.type == IR_VALUE_INSN) {
 				// Check users of this instruction
 				check_insn_users_use_insn_cg(env, insn);
@@ -2115,6 +2225,15 @@ static void add_stack_offset_pre_cg(struct bpf_ir_env *env,
 			// insn->addr_val.offset += offset;
 			continue;
 		}
+		if (bpf_ir_is_alu(insn) &&
+		    insn->values[0].type == IR_VALUE_INSN &&
+		    insn->values[0].data.insn_d == fun->sp &&
+		    insn->values[1].type == IR_VALUE_CONSTANT) {
+			// ? = ALU SP CONST
+			// Optimize to ? = ALU CONSTRAWOFF
+			insn->values[1].type = IR_VALUE_CONSTANT_RAWOFF;
+			continue;
+		}
 		struct array value_uses = bpf_ir_get_operands(env, insn);
 		struct ir_value **pos2;
 		array_for(pos2, value_uses)
@@ -2127,7 +2246,7 @@ static void add_stack_offset_pre_cg(struct bpf_ir_env *env,
 				new_val.type = IR_VALUE_CONSTANT_RAWOFF;
 				new_val.const_type = IR_ALU_32;
 				new_val.data.constant_d = 0;
-				// tmp = SP + hole
+				// tmp = SP + hole(0)
 				// ... val ==> tmp
 				struct ir_insn *new_insn =
 					bpf_ir_create_bin_insn(env, insn, *val,
@@ -2173,7 +2292,7 @@ static void add_stack_offset(struct bpf_ir_env *env, struct ir_function *fun,
 				struct ir_value *val = *pos2;
 				if (val->type == IR_VALUE_CONSTANT_RAWOFF) {
 					// Stack pointer as value
-					val->data.constant_d = offset;
+					val->data.constant_d += offset;
 					val->type = IR_VALUE_CONSTANT;
 				}
 			}
@@ -2313,6 +2432,10 @@ static int jmp_code(enum ir_insn_type insn)
 		return BPF_JGT;
 	case IR_INSN_JGE:
 		return BPF_JGE;
+	case IR_INSN_JSGT:
+		return BPF_JSGT;
+	case IR_INSN_JSLT:
+		return BPF_JSLT;
 	default:
 		CRITICAL("Error");
 	}
@@ -2592,22 +2715,6 @@ static void translate(struct bpf_ir_env *env, struct ir_function *fun)
 	}
 }
 
-static u32 sizeof_vr_type(enum ir_vr_type type)
-{
-	switch (type) {
-	case IR_VR_TYPE_32:
-		return 4;
-	case IR_VR_TYPE_16:
-		return 2;
-	case IR_VR_TYPE_8:
-		return 1;
-	case IR_VR_TYPE_64:
-		return 8;
-	default:
-		CRITICAL("Error");
-	}
-}
-
 // Spill all `allocarray` instructions
 static void spill_array(struct bpf_ir_env *env, struct ir_function *fun)
 {
@@ -2626,7 +2733,7 @@ static void spill_array(struct bpf_ir_env *env, struct ir_function *fun)
 				extra->allocated = true;
 				// Calculate the offset
 				u32 size = insn->array_num *
-					   sizeof_vr_type(insn->vr_type);
+					   bpf_ir_sizeof_vr_type(insn->vr_type);
 				if (size == 0) {
 					RAISE_ERROR("Array size is 0");
 				}
@@ -2656,16 +2763,22 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 	CHECK_ERR();
 	bpf_ir_prog_check(env, fun);
 	CHECK_ERR();
+	print_ir_prog_pre_cg(env, fun, "Changing function arg");
+	CHECK_ERR();
 
 	change_call_pre_cg(env, fun);
 	CHECK_ERR();
 	bpf_ir_prog_check(env, fun);
+	CHECK_ERR();
+	print_ir_prog_pre_cg(env, fun, "Changing call");
 	CHECK_ERR();
 
 	// Step 1: Flag all raw stack access
 	add_stack_offset_pre_cg(env, fun);
 	CHECK_ERR();
 	bpf_ir_prog_check(env, fun);
+	CHECK_ERR();
+	print_ir_prog_pre_cg(env, fun, "Changing raw stack access");
 	CHECK_ERR();
 
 	// Step 2: Eliminate SSA
@@ -2679,9 +2792,6 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 
 	// Init CG, start real code generation
 	init_cg(env, fun);
-	CHECK_ERR();
-
-	prog_check_cg(env, fun);
 	CHECK_ERR();
 
 	// Debugging settings
@@ -2740,13 +2850,18 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 		CHECK_ERR();
 		print_ir_prog_cg_alloc(env, fun, "After RA");
 
-		coalescing(env, fun);
+		bool need_rerun = coalescing(env, fun);
 		CHECK_ERR();
+		if (need_rerun) {
+			PRINT_LOG(env, "Need to re-analyze...\n");
+			clean_cg(env, fun);
+			CHECK_ERR();
+			continue;
+		}
 		prog_check_cg(env, fun);
 		CHECK_ERR();
 		print_ir_prog_cg_dst(env, fun, "After Coalescing (dst)");
 		print_ir_prog_cg_alloc(env, fun, "After Coalescing (reg)");
-		// RAISE_ERROR("success");
 
 		// Step 8: Check if need to spill and spill
 		need_spill = check_need_spill(env, fun);

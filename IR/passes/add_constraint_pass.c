@@ -22,20 +22,20 @@ void add_constraint(struct bpf_ir_env *env, struct ir_function *fun)
 		struct ir_constraint c = *pos;
 		if (c.type == CONSTRAINT_TYPE_VALUE_EQUAL) {
 			struct ir_basic_block *newbb =
-				bpf_ir_split_bb(env, fun, c.pos);
+				bpf_ir_split_bb(env, fun, c.pos, false);
 			bpf_ir_create_jbin_insn(env, c.pos, c.val, c.cval,
 						newbb, err_bb, IR_INSN_JNE,
 						IR_ALU_64, INSERT_FRONT);
 			bpf_ir_connect_bb(env, c.pos->parent_bb, err_bb);
 		} else if (c.type == CONSTRAINT_TYPE_VALUE_RANGE) {
 			struct ir_basic_block *newbb =
-				bpf_ir_split_bb(env, fun, c.pos);
+				bpf_ir_split_bb(env, fun, c.pos, false);
 			bpf_ir_create_jbin_insn(env, c.pos, c.val, c.start,
 						newbb, err_bb, IR_INSN_JLT,
 						IR_ALU_64, INSERT_FRONT);
 			bpf_ir_connect_bb(env, c.pos->parent_bb, err_bb);
 			struct ir_basic_block *newbb2 =
-				bpf_ir_split_bb(env, fun, c.pos);
+				bpf_ir_split_bb(env, fun, c.pos, false);
 			bpf_ir_create_jbin_insn(env, c.pos, c.val, c.end,
 						newbb2, err_bb, IR_INSN_JGE,
 						IR_ALU_64, INSERT_FRONT);

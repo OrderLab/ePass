@@ -16,26 +16,31 @@ bool bpf_ir_value_equal(struct ir_value a, struct ir_value b)
 
 struct ir_value bpf_ir_value_insn(struct ir_insn *insn)
 {
-	return (struct ir_value){ .type = IR_VALUE_INSN, .data.insn_d = insn };
+	return (struct ir_value){ .type = IR_VALUE_INSN,
+				  .data.insn_d = insn,
+				  .raw_pos = { .valid = false } };
 }
 
 struct ir_value bpf_ir_value_undef(void)
 {
-	return (struct ir_value){ .type = IR_VALUE_UNDEF };
+	return (struct ir_value){ .type = IR_VALUE_UNDEF,
+				  .raw_pos = { .valid = false } };
 }
 
 struct ir_value bpf_ir_value_const32(s32 val)
 {
 	return (struct ir_value){ .type = IR_VALUE_CONSTANT,
 				  .data.constant_d = val,
-				  .const_type = IR_ALU_32 };
+				  .const_type = IR_ALU_32,
+				  .raw_pos = { .valid = false } };
 }
 
 struct ir_value bpf_ir_value_const64(s64 val)
 {
 	return (struct ir_value){ .type = IR_VALUE_CONSTANT,
 				  .data.constant_d = val,
-				  .const_type = IR_ALU_64 };
+				  .const_type = IR_ALU_64,
+				  .raw_pos = { .valid = false } };
 }
 
 struct ir_address_value bpf_ir_addr_val(struct ir_value value, s16 offset)

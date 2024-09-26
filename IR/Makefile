@@ -14,4 +14,10 @@ genctor:
 kernel: build
 	./scripts/gen_kernel.sh
 
-.PHONY: build format kernel
+read: build
+	build/read tests/output/${NAME}.o prog
+
+readlog: build
+	build/readlog tests/log/${NAME}.txt
+
+.PHONY: build format kernel readlog read genctor

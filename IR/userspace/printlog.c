@@ -2,19 +2,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <linux/bpf_ir.h>
 
-int print(const struct bpf_insn *insns, size_t len)
+static void print_bpf_prog(struct bpf_ir_env *env, const struct bpf_insn *insns,
+			   size_t len)
 {
 	for (size_t i = 0; i < len; ++i) {
 		const struct bpf_insn *insn = &insns[i];
-		printf("insn[%zu]: code=%x, dst_reg=%x, src_reg=%x, off=%x, imm=%x\n",
-		       i, insn->code, insn->dst_reg, insn->src_reg, insn->off,
-		       insn->imm);
-		// u64 data;
-		// memcpy(&data, insn, sizeof(struct bpf_insn));
-		// printf("insn[%d]: %llu\n", i, data);
+		if (insn->code == 0) {
+			continue;
+		}
+		PRINT_LOG(env, "[%zu] ", i);
+		bpf_ir_print_bpf_insn(env, insn);
 	}
-	return 0;
 }
 
 int main(int argc, char **argv)
@@ -51,7 +51,20 @@ int main(int argc, char **argv)
 
 	printf("Loaded program of size %zu\n", index);
 
-	print(insns, index);
+	struct bpf_ir_opts opts = {
+		.debug = 1,
+		.print_mode = BPF_IR_PRINT_BPF,
+		.custom_pass_num = 0,
+		.builtin_enable_pass_num = 0,
+	};
+	struct bpf_ir_env *env = bpf_ir_init_env(opts, insns, index);
+	if (!env) {
+		return 1;
+	}
+	print_bpf_prog(env, insns, index);
+	bpf_ir_print_log_dbg(env);
+	bpf_ir_free_env(env);
+	free(insns);
 
 	fclose(fp);
 	return 0;

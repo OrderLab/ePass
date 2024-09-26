@@ -44,17 +44,33 @@ typedef __u64 u64;
 
 #define BPF_IR_LOG_SIZE 100000
 
-struct ir_opts {
+struct function_pass;
+
+struct builtin_pass_cfg {
+	char name[30];
+};
+
+struct bpf_ir_opts {
 	u8 debug;
 	enum {
 		BPF_IR_PRINT_BPF,
 		BPF_IR_PRINT_DETAIL,
 		BPF_IR_PRINT_BOTH,
 	} print_mode;
+
+	const struct function_pass *custom_passes;
+	size_t custom_pass_num;
+
+	const struct builtin_pass_cfg *builtin_enable_passes;
+	size_t builtin_enable_pass_num;
 };
 
 struct bpf_ir_env {
+	// Internal error code
 	int err;
+
+	// Verifier error
+	int verifier_err;
 
 	// Number of instructions
 	size_t insn_cnt;
@@ -65,7 +81,10 @@ struct bpf_ir_env {
 	char log[BPF_IR_LOG_SIZE];
 	size_t log_pos;
 
-	struct ir_opts opts;
+	struct bpf_ir_opts opts;
+
+	// Verifier env
+	void *venv;
 };
 
 void bpf_ir_print_to_log(struct bpf_ir_env *env, char *fmt, ...);
@@ -212,6 +231,18 @@ void free_proto(void *ptr);
 		}                                         \
 	}
 
+#define SAFE_MALLOC_RET_NULL(dst, size)                   \
+	{                                                 \
+		if (size > 10000000) {                    \
+			CRITICAL("Incorrect Allocation"); \
+		}                                         \
+		dst = malloc_proto(size);                 \
+		if (!dst) {                               \
+			env->err = -ENOMEM;               \
+			return NULL;                      \
+		}                                         \
+	}
+
 #define MAX_FUNC_ARG 5
 
 enum imm_type { IMM, IMM64 };
@@ -247,6 +278,20 @@ enum ir_value_type {
 	IR_VALUE_UNDEF,
 };
 
+enum ir_raw_pos_type {
+	IR_RAW_POS_IMM,
+	IR_RAW_POS_DST,
+	IR_RAW_POS_SRC,
+	IR_RAW_POS_INSN, // Mapping to this instruction, not to a specific value
+};
+
+// The original position of this instruction or value in the bytecode
+struct ir_raw_pos {
+	bool valid;
+	size_t pos;
+	enum ir_raw_pos_type pos_t;
+};
+
 /**
     VALUE = CONSTANT | INSN
 
@@ -259,6 +304,7 @@ struct ir_value {
 	} data;
 	enum ir_value_type type;
 	enum ir_alu_op_type const_type; // Used when type is a constant
+	struct ir_raw_pos raw_pos;
 };
 
 /**
@@ -290,6 +336,8 @@ enum ir_vr_type {
 	IR_VR_TYPE_32,
 	IR_VR_TYPE_64,
 };
+
+u32 bpf_ir_sizeof_vr_type(enum ir_vr_type type);
 
 enum ir_loadimm_extra_type {
 	IR_LOADIMM_IMM64 = 0,
@@ -329,6 +377,8 @@ enum ir_insn_type {
 	IR_INSN_JLT,
 	IR_INSN_JLE,
 	IR_INSN_JNE,
+	IR_INSN_JSGT,
+	IR_INSN_JSLT,
 	// PHI
 	IR_INSN_PHI,
 	// Code-gen instructions
@@ -413,6 +463,9 @@ struct ir_insn {
 	// Array of struct ir_insn *
 	// Users
 	struct array users;
+
+	// Raw position in bytecode
+	struct ir_raw_pos raw_pos;
 
 	// Used when generating the real code
 	size_t _insn_id;
@@ -518,14 +571,14 @@ struct ssa_transform_env {
 struct ir_basic_block *bpf_ir_init_bb_raw(void);
 
 // Main interface
-void bpf_ir_run(struct bpf_ir_env *env, const struct bpf_insn *insns,
-		size_t len);
+void bpf_ir_run(struct bpf_ir_env *env);
 
 void bpf_ir_print_bpf_insn(struct bpf_ir_env *env, const struct bpf_insn *insn);
 
 void bpf_ir_free_env(struct bpf_ir_env *env);
 
-struct bpf_ir_env *bpf_ir_init_env(struct ir_opts);
+struct bpf_ir_env *bpf_ir_init_env(struct bpf_ir_opts opts,
+				   const struct bpf_insn *insns, size_t len);
 
 /* Fun Start */
 
@@ -573,6 +626,10 @@ struct ir_function {
 	struct code_gen_info cg_info;
 };
 
+// Find IR instruction based on raw position
+struct ir_insn *bpf_ir_find_ir_insn_by_rawpos(struct ir_function *fun,
+					      size_t rawpos);
+
 // IR checks
 
 void bpf_ir_prog_check(struct bpf_ir_env *env, struct ir_function *fun);
@@ -595,10 +652,10 @@ void bpf_ir_connect_bb(struct bpf_ir_env *env, struct ir_basic_block *from,
 void bpf_ir_disconnect_bb(struct ir_basic_block *from,
 			  struct ir_basic_block *to);
 
-/// Split a BB after an instruction
+/// Split a BB
 struct ir_basic_block *bpf_ir_split_bb(struct bpf_ir_env *env,
 				       struct ir_function *fun,
-				       struct ir_insn *insn);
+				       struct ir_insn *insn, bool split_front);
 
 struct ir_insn *bpf_ir_get_last_insn(struct ir_basic_block *bb);
 
@@ -700,17 +757,21 @@ void bpf_ir_replace_all_usage_except(struct bpf_ir_env *env,
 
 void bpf_ir_erase_insn(struct bpf_ir_env *env, struct ir_insn *insn);
 
-void bpf_ir_erase_insn_cg(struct bpf_ir_env *env, struct ir_insn *insn);
+/* Erase an instruction during CG. Cannot erase if gen kill sets are used */
+void bpf_ir_erase_insn_cg(struct bpf_ir_env *env, struct ir_function *fun,
+			  struct ir_insn *insn);
 
-int bpf_ir_is_last_insn(struct ir_insn *insn);
+bool bpf_ir_is_last_insn(struct ir_insn *insn);
 
-int bpf_ir_is_void(struct ir_insn *insn);
+void bpf_ir_check_no_user(struct bpf_ir_env *env, struct ir_insn *insn);
 
-int bpf_ir_is_jmp(struct ir_insn *insn);
+bool bpf_ir_is_void(struct ir_insn *insn);
 
-int bpf_ir_is_cond_jmp(struct ir_insn *insn);
+bool bpf_ir_is_jmp(struct ir_insn *insn);
 
-int bpf_ir_is_alu(struct ir_insn *insn);
+bool bpf_ir_is_cond_jmp(struct ir_insn *insn);
+
+bool bpf_ir_is_alu(struct ir_insn *insn);
 
 struct ir_insn *bpf_ir_prev_insn(struct ir_insn *insn);
 
@@ -959,10 +1020,12 @@ void add_constraint(struct bpf_ir_env *env, struct ir_function *fun);
 
 struct function_pass {
 	void (*pass)(struct bpf_ir_env *env, struct ir_function *);
+	bool enabled;
 	char name[30];
 };
 
-#define DEF_FUNC_PASS(fun, msg) { .pass = fun, .name = msg }
+#define DEF_FUNC_PASS(fun, msg, default) \
+	{ .pass = fun, .name = msg, .enabled = default }
 
 /* Passes End */
 
