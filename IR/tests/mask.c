@@ -7,11 +7,11 @@ SEC("xdp")
 int prog(void *ctx)
 {
 	int t = bpf_ktime_get_ns() % SIZE;
-	static char a[SIZE] = { 0 };
+	static int a[SIZE] = { 0 };
 	for (int i = 0; i < SIZE; ++i) {
 		a[i] = i;
 	}
-	static char msg[] = "num:  %c";
+	static char msg[] = "num:  %d";
 	// if (t < 0 || t > 100) {
 	// 	return 0;
 	// }
