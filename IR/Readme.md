@@ -23,6 +23,7 @@ One opinion, one benefit of designing the raw constraint from is that our runtim
 - [x] CGIR-I and CGIR-II formalization
 - [x] CONSTOFF: add r10 const optimization
 - [x] Fix: mask
+- [ ] short
 
 ## Bugs
 
