@@ -1,6 +1,12 @@
 #include "bpf/libbpf.h"
 #include "linux/bpf_ir.h"
+#include "userspace.h"
 #include <stdio.h>
+
+// All function passes
+static const struct function_pass custom_passes[] = {
+	DEF_FUNC_PASS(masking_pass, "maksing", true),
+};
 
 int main(int argn, char **argv)
 {
@@ -21,7 +27,8 @@ int main(int argn, char **argv)
 	struct bpf_ir_opts opts = {
 		.debug = 1,
 		.print_mode = BPF_IR_PRINT_BPF,
-		.custom_pass_num = 0,
+		.custom_pass_num = 1,
+		.custom_passes = custom_passes,
 		.builtin_enable_pass_num = 0,
 		.builtin_enable_passes = passes,
 	};

@@ -20,7 +20,7 @@ add_library(bpf_ir STATIC
     lii.c
 )
 
-add_executable(read userspace/read.c)
+add_executable(read userspace/read.c userspace/test_masking.c)
 add_executable(readlog userspace/readlog.c)
 add_executable(print userspace/print.c)
 add_executable(printlog userspace/printlog.c)

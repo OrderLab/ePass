@@ -2432,6 +2432,10 @@ static int jmp_code(enum ir_insn_type insn)
 		return BPF_JGT;
 	case IR_INSN_JGE:
 		return BPF_JGE;
+	case IR_INSN_JSGT:
+		return BPF_JSGT;
+	case IR_INSN_JSLT:
+		return BPF_JSLT;
 	default:
 		CRITICAL("Error");
 	}

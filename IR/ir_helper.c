@@ -202,8 +202,9 @@ void print_vr_type(struct bpf_ir_env *env, enum ir_vr_type t)
 	}
 }
 
-void print_phi_full(struct bpf_ir_env *env, struct array *phi,
-		    void (*print_ir)(struct bpf_ir_env *env, struct ir_insn *))
+static void print_phi_full(struct bpf_ir_env *env, struct array *phi,
+			   void (*print_ir)(struct bpf_ir_env *env,
+					    struct ir_insn *))
 {
 	for (size_t i = 0; i < phi->num_elem; ++i) {
 		struct phi_value v = ((struct phi_value *)(phi->data))[i];
@@ -220,16 +221,23 @@ void print_phi(struct bpf_ir_env *env, struct array *phi)
 	print_phi_full(env, phi, 0);
 }
 
-void print_alu(struct bpf_ir_env *env, enum ir_alu_op_type ty, const char *str)
+static void print_alu(struct bpf_ir_env *env, struct ir_insn *insn,
+		      void (*print_ir)(struct bpf_ir_env *env,
+				       struct ir_insn *),
+		      const char *str)
 {
 	PRINT_LOG(env, "%s", str);
-	if (ty == IR_ALU_64) {
+	if (insn->alu_op == IR_ALU_64) {
 		PRINT_LOG(env, "(64) ");
-	} else if (ty == IR_ALU_32) {
+	} else if (insn->alu_op == IR_ALU_32) {
 		PRINT_LOG(env, "(32) ");
 	} else {
 		PRINT_LOG(env, "(?) ");
 	}
+	print_ir_value_full(env, insn->values[0], print_ir);
+	PRINT_LOG(env, ", ");
+	print_ir_value_full(env, insn->values[1], print_ir);
+	PRINT_LOG(env, ", ");
 }
 
 static void print_imm64ld_op(struct bpf_ir_env *env,
@@ -260,6 +268,17 @@ static void print_imm64ld_op(struct bpf_ir_env *env,
 	default:
 		CRITICAL("Error");
 	}
+}
+
+static void print_cond_jmp(struct bpf_ir_env *env, struct ir_insn *insn,
+			   void (*print_ir)(struct bpf_ir_env *env,
+					    struct ir_insn *),
+			   const char *name)
+{
+	print_alu(env, insn, print_ir, name);
+	print_bb_ptr(env, insn->bb1);
+	PRINT_LOG(env, "/");
+	print_bb_ptr(env, insn->bb2);
 }
 
 /**
@@ -315,22 +334,19 @@ void print_ir_insn_full(struct bpf_ir_env *env, struct ir_insn *insn,
 		print_ir_value_full(env, insn->values[0], print_ir);
 		break;
 	case IR_INSN_ADD:
-		print_alu(env, insn->alu_op, "add");
-		print_ir_value_full(env, insn->values[0], print_ir);
-		PRINT_LOG(env, ", ");
-		print_ir_value_full(env, insn->values[1], print_ir);
+		print_alu(env, insn, print_ir, "add");
 		break;
 	case IR_INSN_SUB:
-		print_alu(env, insn->alu_op, "sub");
-		print_ir_value_full(env, insn->values[0], print_ir);
-		PRINT_LOG(env, ", ");
-		print_ir_value_full(env, insn->values[1], print_ir);
+		print_alu(env, insn, print_ir, "sub");
 		break;
 	case IR_INSN_MUL:
-		print_alu(env, insn->alu_op, "mul");
-		print_ir_value_full(env, insn->values[0], print_ir);
-		PRINT_LOG(env, ", ");
-		print_ir_value_full(env, insn->values[1], print_ir);
+		print_alu(env, insn, print_ir, "mul");
+		break;
+	case IR_INSN_LSH:
+		print_alu(env, insn, print_ir, "lsh");
+		break;
+	case IR_INSN_MOD:
+		print_alu(env, insn, print_ir, "mod");
 		break;
 	case IR_INSN_CALL:
 		PRINT_LOG(env, "call __built_in_func_%d(", insn->fid);
@@ -354,80 +370,32 @@ void print_ir_insn_full(struct bpf_ir_env *env, struct ir_insn *insn,
 		print_bb_ptr(env, insn->bb1);
 		break;
 	case IR_INSN_JEQ:
-		print_alu(env, insn->alu_op, "jeq");
-		print_ir_value_full(env, insn->values[0], print_ir);
-		PRINT_LOG(env, ", ");
-		print_ir_value_full(env, insn->values[1], print_ir);
-		PRINT_LOG(env, ", ");
-		print_bb_ptr(env, insn->bb1);
-		PRINT_LOG(env, "/");
-		print_bb_ptr(env, insn->bb2);
+		print_cond_jmp(env, insn, print_ir, "jeq");
 		break;
 	case IR_INSN_JGT:
-		print_alu(env, insn->alu_op, "jgt");
-		print_ir_value_full(env, insn->values[0], print_ir);
-		PRINT_LOG(env, ", ");
-		print_ir_value_full(env, insn->values[1], print_ir);
-		PRINT_LOG(env, ", ");
-		print_bb_ptr(env, insn->bb1);
-		PRINT_LOG(env, "/");
-		print_bb_ptr(env, insn->bb2);
+		print_cond_jmp(env, insn, print_ir, "jgt");
 		break;
 	case IR_INSN_JGE:
-		print_alu(env, insn->alu_op, "jge");
-		print_ir_value_full(env, insn->values[0], print_ir);
-		PRINT_LOG(env, ", ");
-		print_ir_value_full(env, insn->values[1], print_ir);
-		PRINT_LOG(env, ", ");
-		print_bb_ptr(env, insn->bb1);
-		PRINT_LOG(env, "/");
-		print_bb_ptr(env, insn->bb2);
+		print_cond_jmp(env, insn, print_ir, "jge");
 		break;
 	case IR_INSN_JLT:
-		print_alu(env, insn->alu_op, "jlt");
-		print_ir_value_full(env, insn->values[0], print_ir);
-		PRINT_LOG(env, ", ");
-		print_ir_value_full(env, insn->values[1], print_ir);
-		PRINT_LOG(env, ", ");
-		print_bb_ptr(env, insn->bb1);
-		PRINT_LOG(env, "/");
-		print_bb_ptr(env, insn->bb2);
+		print_cond_jmp(env, insn, print_ir, "jlt");
 		break;
 	case IR_INSN_JLE:
-		print_alu(env, insn->alu_op, "jle");
-		print_ir_value_full(env, insn->values[0], print_ir);
-		PRINT_LOG(env, ", ");
-		print_ir_value_full(env, insn->values[1], print_ir);
-		PRINT_LOG(env, ", ");
-		print_bb_ptr(env, insn->bb1);
-		PRINT_LOG(env, "/");
-		print_bb_ptr(env, insn->bb2);
+		print_cond_jmp(env, insn, print_ir, "jle");
 		break;
 	case IR_INSN_JNE:
-		print_alu(env, insn->alu_op, "jne");
-		print_ir_value_full(env, insn->values[0], print_ir);
-		PRINT_LOG(env, ", ");
-		print_ir_value_full(env, insn->values[1], print_ir);
-		PRINT_LOG(env, ", ");
-		print_bb_ptr(env, insn->bb1);
-		PRINT_LOG(env, "/");
-		print_bb_ptr(env, insn->bb2);
+		print_cond_jmp(env, insn, print_ir, "jne");
+		break;
+	case IR_INSN_JSGT:
+		print_cond_jmp(env, insn, print_ir, "jsgt");
+		break;
+	case IR_INSN_JSLT:
+		print_cond_jmp(env, insn, print_ir, "jslt");
 		break;
 	case IR_INSN_PHI:
 		PRINT_LOG(env, "phi");
 		print_phi_full(env, &insn->phi, print_ir);
-		break;
-	case IR_INSN_LSH:
-		print_alu(env, insn->alu_op, "lsh");
-		print_ir_value_full(env, insn->values[0], print_ir);
-		PRINT_LOG(env, ", ");
-		print_ir_value_full(env, insn->values[1], print_ir);
-		break;
-	case IR_INSN_MOD:
-		print_alu(env, insn->alu_op, "mod");
-		print_ir_value_full(env, insn->values[0], print_ir);
-		PRINT_LOG(env, ", ");
-		print_ir_value_full(env, insn->values[1], print_ir);
 		break;
 	case IR_INSN_ASSIGN:
 		print_ir_value_full(env, insn->values[0], print_ir);

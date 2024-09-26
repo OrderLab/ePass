@@ -376,7 +376,7 @@ struct ir_insn *bpf_ir_next_insn(struct ir_insn *insn)
 // Note. This includes ret instruction
 bool bpf_ir_is_jmp(struct ir_insn *insn)
 {
-	return (insn->op >= IR_INSN_JA && insn->op <= IR_INSN_JNE) ||
+	return (insn->op >= IR_INSN_JA && insn->op < IR_INSN_PHI) ||
 	       insn->op == IR_INSN_RET;
 }
 
