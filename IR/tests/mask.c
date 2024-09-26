@@ -1,7 +1,7 @@
 #include <linux/bpf.h>
 #include <bpf/bpf_helpers.h>
 
-#define SIZE 123
+#define SIZE 100
 
 SEC("xdp")
 int prog(void *ctx)

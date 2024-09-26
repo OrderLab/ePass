@@ -27,7 +27,7 @@ int main(int argn, char **argv)
 	struct bpf_ir_opts opts = {
 		.debug = 1,
 		.print_mode = BPF_IR_PRINT_BPF,
-		.custom_pass_num = 1,
+		.custom_pass_num = 0,
 		.custom_passes = custom_passes,
 		.builtin_enable_pass_num = 0,
 		.builtin_enable_passes = passes,
