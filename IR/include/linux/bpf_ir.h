@@ -270,6 +270,11 @@ enum ir_alu_op_type {
 	IR_ALU_64,
 };
 
+enum ir_builtin_constant {
+	IR_BUILTIN_NONE, // Not a builtin constant
+	IR_BUILTIN_BB_INSN_CNT, // The number of instructions in the basic block (computed during code generation)
+};
+
 enum ir_value_type {
 	IR_VALUE_CONSTANT,
 	// A constant value in raw operations to be added during code generation
@@ -304,6 +309,7 @@ struct ir_value {
 	} data;
 	enum ir_value_type type;
 	enum ir_alu_op_type const_type; // Used when type is a constant
+	enum ir_builtin_constant builtin_const;
 	struct ir_raw_pos raw_pos;
 };
 

@@ -14,33 +14,46 @@ bool bpf_ir_value_equal(struct ir_value a, struct ir_value b)
 	CRITICAL("Error");
 }
 
+static struct ir_value value_base(void)
+{
+	// Create a new value
+	return (struct ir_value){ .type = IR_VALUE_UNDEF,
+				  .raw_pos = { .valid = false },
+				  .const_type = IR_ALU_UNKNOWN,
+				  .builtin_const = IR_BUILTIN_NONE };
+}
+
 struct ir_value bpf_ir_value_insn(struct ir_insn *insn)
 {
-	return (struct ir_value){ .type = IR_VALUE_INSN,
-				  .data.insn_d = insn,
-				  .raw_pos = { .valid = false } };
+	struct ir_value v = value_base();
+	v.type = IR_VALUE_INSN;
+	v.data.insn_d = insn;
+	return v;
 }
 
 struct ir_value bpf_ir_value_undef(void)
 {
-	return (struct ir_value){ .type = IR_VALUE_UNDEF,
-				  .raw_pos = { .valid = false } };
+	struct ir_value v = value_base();
+	v.type = IR_VALUE_UNDEF;
+	return v;
 }
 
 struct ir_value bpf_ir_value_const32(s32 val)
 {
-	return (struct ir_value){ .type = IR_VALUE_CONSTANT,
-				  .data.constant_d = val,
-				  .const_type = IR_ALU_32,
-				  .raw_pos = { .valid = false } };
+	struct ir_value v = value_base();
+	v.type = IR_VALUE_CONSTANT;
+	v.data.constant_d = val;
+	v.const_type = IR_ALU_32;
+	return v;
 }
 
 struct ir_value bpf_ir_value_const64(s64 val)
 {
-	return (struct ir_value){ .type = IR_VALUE_CONSTANT,
-				  .data.constant_d = val,
-				  .const_type = IR_ALU_64,
-				  .raw_pos = { .valid = false } };
+	struct ir_value v = value_base();
+	v.type = IR_VALUE_CONSTANT;
+	v.data.constant_d = val;
+	v.const_type = IR_ALU_64;
+	return v;
 }
 
 struct ir_address_value bpf_ir_addr_val(struct ir_value value, s16 offset)
