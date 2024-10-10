@@ -47,7 +47,7 @@ void add_counter(struct bpf_ir_env *env, struct ir_function *fun)
 			// Skip Non-loop BBs
 			continue;
 		}
-		size_t len = bpf_ir_bb_len(bb);
+		// size_t len = bpf_ir_bb_len(bb);
 		struct ir_insn *last = bpf_ir_get_last_insn(bb);
 		if (!last) {
 			// No insn in the bb
@@ -55,10 +55,11 @@ void add_counter(struct bpf_ir_env *env, struct ir_function *fun)
 		}
 		struct ir_insn *load_insn = bpf_ir_create_load_insn(
 			env, last, bpf_ir_value_insn(alloc_insn), INSERT_FRONT);
+		struct ir_value cv = bpf_ir_value_const32(-1);
+		cv.builtin_const = IR_BUILTIN_BB_INSN_CNT;
 		struct ir_insn *added = bpf_ir_create_bin_insn(
-			env, load_insn, bpf_ir_value_insn(load_insn),
-			bpf_ir_value_const32(len), IR_INSN_ADD, IR_ALU_64,
-			INSERT_BACK);
+			env, load_insn, bpf_ir_value_insn(load_insn), cv,
+			IR_INSN_ADD, IR_ALU_64, INSERT_BACK);
 		struct ir_insn *store_back = bpf_ir_create_store_insn(
 			env, added, alloc_insn, bpf_ir_value_insn(added),
 			INSERT_BACK);
