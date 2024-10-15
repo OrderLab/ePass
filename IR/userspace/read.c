@@ -25,7 +25,7 @@ int main(int argn, char **argv)
 		{ .name = "add_counter" },
 	};
 	struct bpf_ir_opts opts = {
-		.debug = 1,
+		.debug = true,
 		.print_mode = BPF_IR_PRINT_BPF,
 		.custom_pass_num = 0,
 		.custom_passes = custom_passes,

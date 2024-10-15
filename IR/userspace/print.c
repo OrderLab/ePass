@@ -30,7 +30,7 @@ int main(int argn, char **argv)
 	const struct bpf_insn *insn = bpf_program__insns(prog);
 	// bpf_program__set_insns
 	struct bpf_ir_opts opts = {
-		.debug = 1,
+		.debug = true,
 		.print_mode = BPF_IR_PRINT_BPF,
 		.custom_pass_num = 0,
 		.builtin_enable_pass_num = 0,
