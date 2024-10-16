@@ -37,7 +37,7 @@ One opinion, one benefit of designing the raw constraint from is that our runtim
 
 ## Bugs
 
-- `erase_insn_cg` Not working in the normalization. Should spilling use `safe` list iterations?
+- SplitBB operation may not work properly if it's at the top of a BB
 
 # TODO
 
