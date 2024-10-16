@@ -27,13 +27,14 @@ One opinion, one benefit of designing the raw constraint from is that our runtim
 
 ## TODO
 
-- Testing the framework using buzzer or similar fuzzing tools
-- Support Configuration: pass config
-- Optimize counter pass
-- Termination point (Exception handler)
-- Exception instruction
-- Helper function to handle the exception
-- Measure the performmance
+- [ ] Support Configuration: pass config
+- [ ] libbpf integration
+- [ ] Optimize counter pass
+- [ ] Termination point (Exception handler)
+- [ ] Exception instruction
+- [ ] Helper function to handle the exception
+- [ ] Testing the framework using buzzer or similar fuzzing tools
+- [ ] Measure the performance
 
 ## Bugs
 
