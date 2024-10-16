@@ -25,6 +25,16 @@ One opinion, one benefit of designing the raw constraint from is that our runtim
 - [x] Fix: mask
 - [ ] signed right shift
 
+## TODO
+
+- Testing the framework using buzzer or similar fuzzing tools
+- Support Configuration: pass config
+- Optimize counter pass
+- Termination point (Exception handler)
+- Exception instruction
+- Helper function to handle the exception
+- Measure the performmance
+
 ## Bugs
 
 - `erase_insn_cg` Not working in the normalization. Should spilling use `safe` list iterations?
