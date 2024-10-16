@@ -43,3 +43,15 @@ Using our framework to connect with the verifier.
 Verifier-aware IR?
 
 Utilize the verifier information for the IR.
+
+# Memory access
+
+if (cond) {
+	write xxx
+}
+
+if (another_cond) {
+	read xxx
+}
+
+Verifier cannot infer `cond == another_cond` ==> Error!

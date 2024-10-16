@@ -36,6 +36,10 @@ One opinion, one benefit of designing the raw constraint from is that our runtim
 - [ ] Testing the framework using buzzer or similar fuzzing tools
 - [ ] Measure the performance
 
+Ask gpt for advise on type I?
+
+runtime write/read wrapper?
+
 ## Bugs
 
 - SplitBB operation may not work properly if it's at the top of a BB
