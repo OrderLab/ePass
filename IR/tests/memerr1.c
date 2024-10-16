@@ -5,7 +5,7 @@ SEC("xdp")
 int prog(struct xdp_md *ctx)
 {
 	int i[10];
-	bpf_printk("%d\n", i[7]);
+	// bpf_printk("%d\n", i[7]);
 	return i[3] + 1;
 }
 
