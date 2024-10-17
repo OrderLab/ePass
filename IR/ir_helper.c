@@ -116,6 +116,12 @@ static void print_const(struct bpf_ir_env *env, struct ir_value v)
 		// Builtin constant
 		if (v.builtin_const == IR_BUILTIN_BB_INSN_CNT) {
 			PRINT_LOG(env, "__BB_INSN_CNT__");
+		} else if (v.builtin_const == IR_BUILTIN_BB_INSN_CRITICAL_CNT) {
+			PRINT_LOG(env, "__BB_INSN_CRITICAL_CNT__");
+		} else {
+			PRINT_LOG(env, "(unknown)");
+			env->err = -1;
+			return;
 		}
 	}
 }

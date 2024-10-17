@@ -2689,7 +2689,9 @@ static u32 bb_insn_critical_cnt(struct ir_basic_block *bb)
 		if (bb->preds.num_elem == 0) {
 			break;
 		}
-		bb = bpf_ir_array_get_void(&bb->preds, 0);
+		struct ir_basic_block **tmp =
+			bpf_ir_array_get_void(&bb->preds, 0);
+		bb = *tmp;
 		if (bb->flag & IR_BB_HAS_COUNTER) {
 			break;
 		}
