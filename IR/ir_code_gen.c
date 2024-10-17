@@ -2682,6 +2682,22 @@ static u32 bb_insn_cnt(struct ir_basic_block *bb)
 	return cnt;
 }
 
+static u32 bb_insn_critical_cnt(struct ir_basic_block *bb)
+{
+	u32 cnt = bb_insn_cnt(bb);
+	while (bb->preds.num_elem <= 1) {
+		if (bb->preds.num_elem == 0) {
+			break;
+		}
+		bb = bpf_ir_array_get_void(&bb->preds, 0);
+		if (bb->flag & IR_BB_HAS_COUNTER) {
+			break;
+		}
+		cnt += bb_insn_cnt(bb);
+	}
+	return cnt;
+}
+
 static void replace_builtin_const(struct bpf_ir_env *env,
 				  struct ir_function *fun)
 {
@@ -2702,6 +2718,12 @@ static void replace_builtin_const(struct bpf_ir_env *env,
 					    IR_BUILTIN_BB_INSN_CNT) {
 						v->data.constant_d =
 							bb_insn_cnt(bb);
+					}
+					if (v->builtin_const ==
+					    IR_BUILTIN_BB_INSN_CRITICAL_CNT) {
+						v->data.constant_d =
+							bb_insn_critical_cnt(
+								bb);
 					}
 				}
 			}

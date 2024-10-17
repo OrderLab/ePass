@@ -279,6 +279,7 @@ enum ir_alu_op_type {
 enum ir_builtin_constant {
 	IR_BUILTIN_NONE, // Not a builtin constant
 	IR_BUILTIN_BB_INSN_CNT, // The number of instructions in the basic block (computed during code generation)
+	IR_BUILTIN_BB_INSN_CRITICAL_CNT, // The number of instructions from the nearest critical block
 };
 
 enum ir_value_type {
@@ -516,6 +517,10 @@ struct pre_ir_basic_block {
 	struct ir_insn *incompletePhis[MAX_BPF_REG];
 };
 
+enum ir_bb_flag {
+	IR_BB_HAS_COUNTER = 1 << 0,
+};
+
 /**
     IR Basic Block
  */
@@ -532,6 +537,9 @@ struct ir_basic_block {
 	u8 _visited;
 	size_t _id;
 	void *user_data;
+
+	// Flag
+	u32 flag;
 
 	// Array of struct ir_insn *
 	struct array users;

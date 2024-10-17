@@ -446,7 +446,7 @@ void print_ir_bb_no_rec(
 	void (*post_insn)(struct bpf_ir_env *env, struct ir_insn *),
 	void (*print_insn_name)(struct bpf_ir_env *env, struct ir_insn *))
 {
-	PRINT_LOG(env, "b%zu:\n", bb->_id);
+	PRINT_LOG(env, "b%zu (flag: 0x%x):\n", bb->_id, bb->flag);
 	struct list_head *p = NULL;
 	list_for_each(p, &bb->ir_insn_head) {
 		struct ir_insn *insn = list_entry(p, struct ir_insn, list_ptr);
