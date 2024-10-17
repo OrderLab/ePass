@@ -25,11 +25,11 @@ int main(int argn, char **argv)
 		{ .name = "add_counter" },
 	};
 	struct bpf_ir_opts opts = {
-		.debug = 1,
+		.debug = true,
 		.print_mode = BPF_IR_PRINT_BPF,
 		.custom_pass_num = 0,
 		.custom_passes = custom_passes,
-		.builtin_enable_pass_num = 0,
+		.builtin_enable_pass_num = 1,
 		.builtin_enable_passes = passes,
 	};
 	struct bpf_ir_env *env = bpf_ir_init_env(opts, insn, sz);

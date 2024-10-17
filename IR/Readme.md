@@ -25,9 +25,24 @@ One opinion, one benefit of designing the raw constraint from is that our runtim
 - [x] Fix: mask
 - [ ] signed right shift
 
+## TODO
+
+- [ ] Support Configuration: pass config
+- [ ] libbpf integration
+- [ ] Optimize counter pass
+- [ ] Termination point (Exception handler)
+- [ ] Exception instruction
+- [ ] Helper function to handle the exception
+- [ ] Testing the framework using buzzer or similar fuzzing tools
+- [ ] Measure the performance
+
+Ask gpt for advise on type I?
+
+runtime write/read wrapper?
+
 ## Bugs
 
-- `erase_insn_cg` Not working in the normalization. Should spilling use `safe` list iterations?
+- SplitBB operation may not work properly if it's at the top of a BB
 
 # TODO
 

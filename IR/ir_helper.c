@@ -100,16 +100,29 @@ void print_bb_ptr(struct bpf_ir_env *env, struct ir_basic_block *insn)
 
 static void print_const(struct bpf_ir_env *env, struct ir_value v)
 {
-	if (v.const_type == IR_ALU_64) {
-		PRINT_LOG(env, "0x%llx", v.data.constant_d);
-		PRINT_LOG(env, "(64)");
-	} else if (v.const_type == IR_ALU_32) {
-		PRINT_LOG(env, "0x%x", v.data.constant_d & 0xFFFFFFFF);
-		PRINT_LOG(env, "(32)");
+	if (v.builtin_const == IR_BUILTIN_NONE) {
+		if (v.const_type == IR_ALU_64) {
+			PRINT_LOG(env, "0x%llx", v.data.constant_d);
+			PRINT_LOG(env, "(64)");
+		} else if (v.const_type == IR_ALU_32) {
+			PRINT_LOG(env, "0x%x", v.data.constant_d & 0xFFFFFFFF);
+			PRINT_LOG(env, "(32)");
+		} else {
+			PRINT_LOG(env, "(unknown)");
+			env->err = -1;
+			return;
+		}
 	} else {
-		PRINT_LOG(env, "(unknown)");
-		env->err = -1;
-		return;
+		// Builtin constant
+		if (v.builtin_const == IR_BUILTIN_BB_INSN_CNT) {
+			PRINT_LOG(env, "__BB_INSN_CNT__");
+		} else if (v.builtin_const == IR_BUILTIN_BB_INSN_CRITICAL_CNT) {
+			PRINT_LOG(env, "__BB_INSN_CRITICAL_CNT__");
+		} else {
+			PRINT_LOG(env, "(unknown)");
+			env->err = -1;
+			return;
+		}
 	}
 }
 
@@ -439,7 +452,7 @@ void print_ir_bb_no_rec(
 	void (*post_insn)(struct bpf_ir_env *env, struct ir_insn *),
 	void (*print_insn_name)(struct bpf_ir_env *env, struct ir_insn *))
 {
-	PRINT_LOG(env, "b%zu:\n", bb->_id);
+	PRINT_LOG(env, "b%zu (flag: 0x%x):\n", bb->_id, bb->flag);
 	struct list_head *p = NULL;
 	list_for_each(p, &bb->ir_insn_head) {
 		struct ir_insn *insn = list_entry(p, struct ir_insn, list_ptr);

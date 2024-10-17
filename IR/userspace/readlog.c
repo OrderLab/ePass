@@ -44,7 +44,7 @@ int main(int argc, char **argv)
 
 	printf("Loaded program of size %zu\n", index);
 	struct bpf_ir_opts opts = {
-		.debug = 1,
+		.debug = true,
 		.print_mode = BPF_IR_PRINT_BPF,
 		.custom_pass_num = 0,
 		.custom_passes = custom_passes,

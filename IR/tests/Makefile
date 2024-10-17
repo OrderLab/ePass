@@ -1,8 +1,9 @@
-obj: $(NAME).c
-	clang -O2 -I/usr/include/$(shell uname -m)-linux-gnu -target bpf -c $< -o output/$(NAME).o
 
-objnop: $(NAME).c
-	clang -O0 -I/usr/include/$(shell uname -m)-linux-gnu -target bpf -c $< -o output/$(NAME).o
+obj: $(NAME).c vmlinux.h
+	clang -O2 -I/usr/include/$(shell uname -m)-linux-gnu -target bpf -g -c $< -o output/$(NAME).o
+
+objnop: $(NAME).c vmlinux.h
+	clang -O0 -I/usr/include/$(shell uname -m)-linux-gnu -target bpf -g -c $< -o output/$(NAME).o
 
 s: obj
 	llvm-objdump -S output/$(NAME).o > output/$(NAME).s
@@ -25,6 +26,9 @@ log:
 clean:
 	rm -f $(NAME).o $(NAME).s
 	sudo rm /sys/fs/bpf/$(NAME)
+
+vmlinux.h:
+	bpftool btf dump file /sys/kernel/btf/vmlinux format c > vmlinux.h
 
 cleanall:
 	rm -f *.o *.s

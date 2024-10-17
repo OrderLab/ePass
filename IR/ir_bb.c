@@ -28,6 +28,7 @@ struct ir_basic_block *bpf_ir_init_bb_raw(void)
 	INIT_ARRAY(&new_bb->preds, struct ir_basic_block *);
 	INIT_ARRAY(&new_bb->succs, struct ir_basic_block *);
 	INIT_ARRAY(&new_bb->users, struct ir_insn *);
+	new_bb->flag = 0;
 	return new_bb;
 }
 

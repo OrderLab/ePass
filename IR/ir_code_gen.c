@@ -2667,6 +2667,92 @@ static void translate_cond_jmp(struct ir_insn *insn)
 	}
 }
 
+static u32 bb_insn_cnt(struct ir_basic_block *bb)
+{
+	u32 cnt = 0;
+	struct ir_insn *insn, *tmp;
+	list_for_each_entry_safe(insn, tmp, &bb->ir_insn_head, list_ptr) {
+		if (insn->op == IR_INSN_ALLOC ||
+		    insn->op == IR_INSN_ALLOCARRAY) {
+			continue;
+		} else {
+			cnt++;
+		}
+	}
+	return cnt;
+}
+
+static u32 bb_insn_critical_cnt(struct ir_basic_block *bb)
+{
+	u32 cnt = bb_insn_cnt(bb);
+	while (bb->preds.num_elem <= 1) {
+		if (bb->preds.num_elem == 0) {
+			break;
+		}
+		struct ir_basic_block **tmp =
+			bpf_ir_array_get_void(&bb->preds, 0);
+		bb = *tmp;
+		if (bb->flag & IR_BB_HAS_COUNTER) {
+			break;
+		}
+		cnt += bb_insn_cnt(bb);
+	}
+	return cnt;
+}
+
+static void replace_builtin_const(struct bpf_ir_env *env,
+				  struct ir_function *fun)
+{
+	struct ir_basic_block **pos;
+	array_for(pos, fun->reachable_bbs)
+	{
+		struct ir_basic_block *bb = *pos;
+		struct ir_insn *insn, *tmp;
+		list_for_each_entry_safe(insn, tmp, &bb->ir_insn_head,
+					 list_ptr) {
+			struct array operands = bpf_ir_get_operands(env, insn);
+			struct ir_value **val;
+			array_for(val, operands)
+			{
+				struct ir_value *v = *val;
+				if (v->type == IR_VALUE_CONSTANT) {
+					if (v->builtin_const ==
+					    IR_BUILTIN_BB_INSN_CNT) {
+						v->data.constant_d =
+							bb_insn_cnt(bb);
+					}
+					if (v->builtin_const ==
+					    IR_BUILTIN_BB_INSN_CRITICAL_CNT) {
+						v->data.constant_d =
+							bb_insn_critical_cnt(
+								bb);
+					}
+				}
+			}
+			bpf_ir_array_free(&operands);
+		}
+	}
+}
+
+static void check_total_insn(struct bpf_ir_env *env, struct ir_function *fun)
+{
+	u32 cnt = 0;
+	struct ir_basic_block **pos;
+	array_for(pos, fun->reachable_bbs)
+	{
+		struct ir_basic_block *bb = *pos;
+		struct ir_insn *insn, *tmp;
+		list_for_each_entry_safe(insn, tmp, &bb->ir_insn_head,
+					 list_ptr) {
+			struct ir_insn_cg_extra *extra = insn_cg(insn);
+			cnt += extra->translated_num;
+		}
+	}
+	if (cnt >= 1000000) {
+		RAISE_ERROR("Too many instructions");
+	}
+}
+
 static void translate(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	struct ir_basic_block **pos;
@@ -2912,8 +2998,14 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 	prog_check_cg(env, fun);
 	CHECK_ERR();
 
+	replace_builtin_const(env, fun);
+	CHECK_ERR();
+
 	// Step 13: Direct Translation
 	translate(env, fun);
+	CHECK_ERR();
+
+	check_total_insn(env, fun);
 	CHECK_ERR();
 
 	// Step 14: Relocation
