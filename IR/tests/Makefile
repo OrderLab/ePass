@@ -1,8 +1,8 @@
 
-obj: $(NAME).c
+obj: $(NAME).c vmlinux.h
 	clang -O2 -I/usr/include/$(shell uname -m)-linux-gnu -target bpf -g -c $< -o output/$(NAME).o
 
-objnop: $(NAME).c
+objnop: $(NAME).c vmlinux.h
 	clang -O0 -I/usr/include/$(shell uname -m)-linux-gnu -target bpf -g -c $< -o output/$(NAME).o
 
 s: obj
