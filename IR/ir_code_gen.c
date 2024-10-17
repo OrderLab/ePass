@@ -2734,6 +2734,25 @@ static void replace_builtin_const(struct bpf_ir_env *env,
 	}
 }
 
+static void check_total_insn(struct bpf_ir_env *env, struct ir_function *fun)
+{
+	u32 cnt = 0;
+	struct ir_basic_block **pos;
+	array_for(pos, fun->reachable_bbs)
+	{
+		struct ir_basic_block *bb = *pos;
+		struct ir_insn *insn, *tmp;
+		list_for_each_entry_safe(insn, tmp, &bb->ir_insn_head,
+					 list_ptr) {
+			struct ir_insn_cg_extra *extra = insn_cg(insn);
+			cnt += extra->translated_num;
+		}
+	}
+	if (cnt >= 1000000) {
+		RAISE_ERROR("Too many instructions");
+	}
+}
+
 static void translate(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	struct ir_basic_block **pos;
@@ -2984,6 +3003,9 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 
 	// Step 13: Direct Translation
 	translate(env, fun);
+	CHECK_ERR();
+
+	check_total_insn(env, fun);
 	CHECK_ERR();
 
 	// Step 14: Relocation
