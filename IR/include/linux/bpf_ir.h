@@ -50,14 +50,10 @@ struct builtin_pass_cfg {
 	char name[30];
 };
 
-struct bpf_ir_reg_opts {
-	u8 max_reg_num; // Deafult: 11. 0:9 are normal, 10 is SP
-	u8 min_callee_reg; // Deafult: 6. BPF_REG_6 to BPF_REG_9 are callee save
-};
-
 struct bpf_ir_opts {
 	bool debug;
-	// struct bpf_ir_reg_opts reg_opts;
+	bool enable_coalesce;
+
 	enum {
 		BPF_IR_PRINT_BPF,
 		BPF_IR_PRINT_DETAIL,
@@ -70,6 +66,8 @@ struct bpf_ir_opts {
 	const struct builtin_pass_cfg *builtin_enable_passes;
 	size_t builtin_enable_pass_num;
 };
+
+struct bpf_ir_opts bpf_ir_default_opts(void);
 
 struct bpf_ir_env {
 	// Internal error code

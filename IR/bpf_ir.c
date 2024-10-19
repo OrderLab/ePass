@@ -1270,6 +1270,17 @@ void bpf_ir_run(struct bpf_ir_env *env)
 	bpf_ir_free_function(fun);
 }
 
+struct bpf_ir_opts bpf_ir_default_opts(void)
+{
+	struct bpf_ir_opts opts;
+	opts.print_mode = BPF_IR_PRINT_BPF;
+	opts.builtin_enable_pass_num = 0;
+	opts.custom_pass_num = 0;
+	opts.debug = false;
+	opts.enable_coalesce = false;
+	return opts;
+}
+
 struct bpf_ir_env *bpf_ir_init_env(struct bpf_ir_opts opts,
 				   const struct bpf_insn *insns, size_t len)
 {
