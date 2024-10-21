@@ -910,6 +910,14 @@ struct ir_insn *bpf_ir_create_ret_insn_bb(struct bpf_ir_env *env,
 					  struct ir_value val,
 					  enum insert_position pos);
 
+struct ir_insn *bpf_ir_create_throw_insn(struct bpf_ir_env *env,
+					 struct ir_insn *pos_insn,
+					 enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_throw_insn_bb(struct bpf_ir_env *env,
+					    struct ir_basic_block *pos_bb,
+					    enum insert_position pos);
+
 struct ir_insn *bpf_ir_create_call_insn(struct bpf_ir_env *env,
 					struct ir_insn *pos_insn, s32 fid,
 					enum insert_position pos);
