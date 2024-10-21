@@ -380,6 +380,7 @@ enum ir_insn_type {
 	// CALL EXIT
 	IR_INSN_CALL,
 	IR_INSN_RET,
+	IR_INSN_THROW,
 	// JMP
 	IR_INSN_JA,
 	IR_INSN_JEQ,

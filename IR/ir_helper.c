@@ -378,6 +378,9 @@ void print_ir_insn_full(struct bpf_ir_env *env, struct ir_insn *insn,
 			print_ir_value_full(env, insn->values[0], print_ir);
 		}
 		break;
+	case IR_INSN_THROW:
+		PRINT_LOG(env, "throw");
+		break;
 	case IR_INSN_JA:
 		PRINT_LOG(env, "ja ");
 		print_bb_ptr(env, insn->bb1);
