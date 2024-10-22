@@ -271,7 +271,8 @@ static void check_jumping(struct bpf_ir_env *env, struct ir_function *fun)
 					RAISE_ERROR(
 						"Jump statement not at the end of a BB");
 				} else {
-					if (insn->op == IR_INSN_RET) {
+					if (insn->op == IR_INSN_RET ||
+					    insn->op == IR_INSN_THROW) {
 						if (bb->succs.num_elem != 0) {
 							// Error
 

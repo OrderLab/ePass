@@ -20,35 +20,6 @@ void add_counter(struct bpf_ir_env *env, struct ir_function *fun)
 				 bpf_ir_value_const32(0), INSERT_BACK);
 	struct ir_basic_block **pos;
 
-	struct ir_basic_block *err_bb = bpf_ir_create_bb(env, fun);
-	bpf_ir_create_ret_insn_bb(env, err_bb, bpf_ir_value_const32(1),
-				  INSERT_BACK);
-
-	// Create an 8 bytes array to store the error message "exit"
-	struct ir_insn *alloc_array = bpf_ir_create_allocarray_insn_bb(
-		env, err_bb, IR_VR_TYPE_64, 1, INSERT_FRONT);
-
-	struct ir_insn *straw1 = bpf_ir_create_storeraw_insn(
-		env, alloc_array, IR_VR_TYPE_8,
-		bpf_ir_addr_val(bpf_ir_value_insn(alloc_array), 0x4),
-		bpf_ir_value_const32(0), INSERT_BACK);
-
-	struct ir_insn *straw2 = bpf_ir_create_storeraw_insn(
-		env, straw1, IR_VR_TYPE_32,
-		bpf_ir_addr_val(bpf_ir_value_insn(alloc_array), 0),
-		bpf_ir_value_const32(0x74697865), INSERT_BACK);
-
-	struct ir_insn *elemptr = bpf_ir_create_getelemptr_insn(
-		env, straw2, alloc_array, bpf_ir_value_const32(0), INSERT_BACK);
-
-	struct ir_insn *call_insn =
-		bpf_ir_create_call_insn(env, elemptr, 6,
-					INSERT_BACK); // A printk call
-
-	bpf_ir_add_call_arg(env, call_insn, bpf_ir_value_insn(elemptr));
-
-	bpf_ir_add_call_arg(env, call_insn, bpf_ir_value_const32(5));
-
 	struct array critical_bbs;
 	INIT_ARRAY(&critical_bbs, struct ir_basic_block *);
 
@@ -90,6 +61,9 @@ void add_counter(struct bpf_ir_env *env, struct ir_function *fun)
 				bpf_ir_value_insn(added), INSERT_BACK);
 			struct ir_basic_block **succ =
 				bpf_ir_array_get_void(&bb->succs, 0);
+			struct ir_basic_block *err_bb =
+				bpf_ir_create_bb(env, fun);
+			bpf_ir_create_throw_insn_bb(env, err_bb, INSERT_BACK);
 			bpf_ir_create_jbin_insn(
 				env, store_back, bpf_ir_value_insn(added),
 				bpf_ir_value_const32(MAX_RUN_INSN), *succ,
@@ -109,6 +83,8 @@ void add_counter(struct bpf_ir_env *env, struct ir_function *fun)
 			INSERT_BACK);
 		struct ir_basic_block *new_bb =
 			bpf_ir_split_bb(env, fun, store_back, false);
+		struct ir_basic_block *err_bb = bpf_ir_create_bb(env, fun);
+		bpf_ir_create_throw_insn_bb(env, err_bb, INSERT_BACK);
 		bpf_ir_create_jbin_insn(env, store_back,
 					bpf_ir_value_insn(added),
 					bpf_ir_value_const32(MAX_RUN_INSN),

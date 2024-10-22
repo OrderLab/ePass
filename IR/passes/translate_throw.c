@@ -104,7 +104,7 @@ void translate_throw_helper(struct bpf_ir_env *env, struct ir_function *fun)
 	{
 		struct ir_basic_block *bb = *pos;
 		struct ir_insn *insn = bpf_ir_get_last_insn(bb);
-		if (insn->op == IR_INSN_THROW) {
+		if (insn && insn->op == IR_INSN_THROW) {
 			bpf_ir_array_push(env, &throw_insns, &insn);
 		}
 	}
@@ -126,13 +126,16 @@ void translate_throw_helper(struct bpf_ir_env *env, struct ir_function *fun)
 				if (ref_def->op == IR_INSN_CALL &&
 				    ref_def->fid == RINGBUF_RESERVE) {
 					// Insert bpf_ringbuf_discard(x, 0);
-					bpf_ir_create_call_insn(env, insn,
-								RINGBUF_DISCARD,
-								INSERT_FRONT);
-					bpf_ir_add_call_arg(env, insn,
-							    ref_def->values[0]);
+					struct ir_insn *callinsn =
+						bpf_ir_create_call_insn(
+							env, insn,
+							RINGBUF_DISCARD,
+							INSERT_FRONT);
 					bpf_ir_add_call_arg(
-						env, insn,
+						env, callinsn,
+						bpf_ir_value_insn(ref_def));
+					bpf_ir_add_call_arg(
+						env, callinsn,
 						bpf_ir_value_const32(0));
 
 				} else {
