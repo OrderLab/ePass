@@ -1,6 +1,6 @@
 #include <linux/bpf_ir.h>
 
-void try_remove_trivial_phi(struct bpf_ir_env *env, struct ir_insn *phi)
+static void try_remove_trivial_phi(struct bpf_ir_env *env, struct ir_insn *phi)
 {
 	if (phi->op != IR_INSN_PHI) {
 		return;
