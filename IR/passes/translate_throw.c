@@ -22,6 +22,9 @@ static void init_new_bb(struct bpf_ir_env *env, struct ir_basic_block *bb)
 
 static void free_bb_extra(struct ir_basic_block *bb)
 {
+	if (bb->user_data == NULL) {
+		return;
+	}
 	struct bb_extra *extra = bb->user_data;
 	bpf_ir_array_free(&extra->gen);
 	bpf_ir_array_free(&extra->kill);
@@ -74,5 +77,14 @@ void translate_throw(struct bpf_ir_env *env, struct ir_function *fun)
 				}
 			}
 		}
+		PRINT_LOG(env, "gen size: %d, kill size: %d\n",
+			  extra->gen.num_elem, extra->kill.num_elem);
+	}
+
+	array_for(pos, fun->reachable_bbs)
+	{
+		struct ir_basic_block *bb = *pos;
+		free_bb_extra(bb);
+		CHECK_ERR();
 	}
 }

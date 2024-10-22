@@ -1039,11 +1039,9 @@ void bpf_ir_insert_at_bb(struct ir_insn *new_insn, struct ir_basic_block *bb,
 
 void remove_trivial_phi(struct bpf_ir_env *env, struct ir_function *fun);
 
-void cut_bb(struct bpf_ir_env *env, struct ir_function *fun);
-
 void add_counter(struct bpf_ir_env *env, struct ir_function *fun);
 
-void add_constraint(struct bpf_ir_env *env, struct ir_function *fun);
+void translate_throw(struct bpf_ir_env *env, struct ir_function *fun);
 
 struct function_pass {
 	void (*pass)(struct bpf_ir_env *env, struct ir_function *);
@@ -1124,30 +1122,6 @@ enum val_type {
 #define insn_dst(insn) insn_cg(insn)->dst.data.insn_d
 
 /* Code Gen End */
-
-/* Constraint Start */
-
-enum constraint_type {
-	CONSTRAINT_TYPE_VALUE_EQUAL,
-	CONSTRAINT_TYPE_VALUE_RANGE
-};
-
-struct ir_constraint {
-	enum constraint_type type;
-
-	// Range: [start, end)
-	struct ir_value start;
-	struct ir_value end;
-
-	// Constraint value
-	struct ir_value cval;
-
-	// Real value to be compared
-	struct ir_value val;
-	struct ir_insn *pos;
-};
-
-/* Constraint End */
 
 /* IR Value Start */
 
