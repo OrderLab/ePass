@@ -1492,7 +1492,7 @@ static void normalize_assign(struct bpf_ir_env *env, struct ir_function *fun,
 	if (tdst == REG && t0 == REG) {
 		if (allocated_reg_insn(dst_insn) == allocated_reg(*v0)) {
 			// The same, erase this instruction
-			bpf_ir_erase_insn_cg(env, fun, insn);
+			erase_same_reg_assign(env, fun, insn);
 		}
 	}
 }
@@ -2938,18 +2938,22 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 		CHECK_ERR();
 		print_ir_prog_cg_alloc(env, fun, "After RA");
 
-		bool need_rerun = coalescing(env, fun);
-		CHECK_ERR();
-		if (need_rerun) {
-			PRINT_LOG(env, "Need to re-analyze...\n");
-			clean_cg(env, fun);
+		if (env->opts.enable_coalesce) {
+			bool need_rerun = coalescing(env, fun);
 			CHECK_ERR();
-			continue;
+			if (need_rerun) {
+				PRINT_LOG(env, "Need to re-analyze...\n");
+				clean_cg(env, fun);
+				CHECK_ERR();
+				continue;
+			}
+			prog_check_cg(env, fun);
+			CHECK_ERR();
+			print_ir_prog_cg_dst(env, fun,
+					     "After Coalescing (dst)");
+			print_ir_prog_cg_alloc(env, fun,
+					       "After Coalescing (reg)");
 		}
-		prog_check_cg(env, fun);
-		CHECK_ERR();
-		print_ir_prog_cg_dst(env, fun, "After Coalescing (dst)");
-		print_ir_prog_cg_alloc(env, fun, "After Coalescing (reg)");
 
 		// Step 8: Check if need to spill and spill
 		need_spill = check_need_spill(env, fun);
@@ -2970,7 +2974,6 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 	PRINT_LOG(env, "Register allocation finished in %d iterations\n",
 		  iterations);
 	print_ir_prog_cg_alloc(env, fun, "After RA & Spilling");
-
 	// Step 9: Calculate stack size
 	if (fun->cg_info.spill_callee) {
 		calc_callee_num(fun);

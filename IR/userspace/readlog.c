@@ -41,15 +41,10 @@ int main(int argc, char **argv)
 		memcpy(&insns[index], &s, sizeof(struct bpf_insn));
 		index++;
 	}
-
-	printf("Loaded program of size %zu\n", index);
-	struct bpf_ir_opts opts = {
-		.debug = true,
-		.print_mode = BPF_IR_PRINT_BPF,
-		.custom_pass_num = 0,
-		.custom_passes = custom_passes,
-		.builtin_enable_pass_num = 0,
-	};
+	struct bpf_ir_opts opts = bpf_ir_default_opts();
+	opts.custom_pass_num = 0;
+	opts.custom_passes = custom_passes;
+	opts.builtin_enable_pass_num = 0;
 	struct bpf_ir_env *env = bpf_ir_init_env(opts, insns, index);
 	if (!env) {
 		return 1;

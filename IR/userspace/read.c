@@ -24,14 +24,11 @@ int main(int argn, char **argv)
 	struct builtin_pass_cfg passes[] = {
 		{ .name = "add_counter" },
 	};
-	struct bpf_ir_opts opts = {
-		.debug = true,
-		.print_mode = BPF_IR_PRINT_BPF,
-		.custom_pass_num = 0,
-		.custom_passes = custom_passes,
-		.builtin_enable_pass_num = 1,
-		.builtin_enable_passes = passes,
-	};
+	struct bpf_ir_opts opts = bpf_ir_default_opts();
+	opts.custom_pass_num = 0;
+	opts.custom_passes = custom_passes;
+	opts.builtin_enable_pass_num = 1;
+	opts.builtin_enable_passes = passes;
 	struct bpf_ir_env *env = bpf_ir_init_env(opts, insn, sz);
 	if (!env) {
 		return 1;
