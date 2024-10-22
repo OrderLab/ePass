@@ -1183,12 +1183,27 @@ static void print_bpf_insn_simple(struct bpf_ir_env *env,
 	}
 }
 
+static void print_bpf_prog_dump(struct bpf_ir_env *env,
+				const struct bpf_insn *insns, size_t len)
+{
+	for (u32 i = 0; i < len; ++i) {
+		const struct bpf_insn *insn = &insns[i];
+		__u64 data;
+		memcpy(&data, insn, sizeof(struct bpf_insn));
+		PRINT_LOG(env, "insn[%d]: %llu\n", i, data);
+	}
+}
+
 static void print_bpf_prog(struct bpf_ir_env *env, const struct bpf_insn *insns,
 			   size_t len)
 {
+	if (env->opts.print_mode == BPF_IR_PRINT_DUMP) {
+		print_bpf_prog_dump(env, insns, len);
+		return;
+	}
 	if (env->opts.print_mode == BPF_IR_PRINT_DETAIL) {
 		PRINT_LOG(env, "      op     src     dst      imm       off\n");
-	} else if (env->opts.print_mode == BPF_IR_PRINT_BOTH) {
+	} else if (env->opts.print_mode == BPF_IR_PRINT_BPF_DETAIL) {
 		PRINT_LOG(env, "  op     src     dst      imm       off\n");
 	}
 	for (size_t i = 0; i < len; ++i) {
@@ -1198,11 +1213,11 @@ static void print_bpf_prog(struct bpf_ir_env *env, const struct bpf_insn *insns,
 		}
 		PRINT_LOG(env, "[%zu] ", i);
 		if (env->opts.print_mode == BPF_IR_PRINT_BPF ||
-		    env->opts.print_mode == BPF_IR_PRINT_BOTH) {
+		    env->opts.print_mode == BPF_IR_PRINT_BPF_DETAIL) {
 			bpf_ir_print_bpf_insn(env, insn);
 		}
 		if (env->opts.print_mode == BPF_IR_PRINT_DETAIL ||
-		    env->opts.print_mode == BPF_IR_PRINT_BOTH) {
+		    env->opts.print_mode == BPF_IR_PRINT_BPF_DETAIL) {
 			print_bpf_insn_simple(env, insn);
 		}
 	}

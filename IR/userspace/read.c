@@ -27,8 +27,9 @@ int main(int argn, char **argv)
 	struct bpf_ir_opts opts = bpf_ir_default_opts();
 	opts.custom_pass_num = 0;
 	opts.custom_passes = custom_passes;
-	opts.builtin_enable_pass_num = 1;
+	opts.builtin_enable_pass_num = 0;
 	opts.builtin_enable_passes = passes;
+	opts.print_mode = BPF_IR_PRINT_DUMP;
 	struct bpf_ir_env *env = bpf_ir_init_env(opts, insn, sz);
 	if (!env) {
 		return 1;

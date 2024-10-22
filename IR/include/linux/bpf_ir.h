@@ -57,7 +57,8 @@ struct bpf_ir_opts {
 	enum {
 		BPF_IR_PRINT_BPF,
 		BPF_IR_PRINT_DETAIL,
-		BPF_IR_PRINT_BOTH,
+		BPF_IR_PRINT_BPF_DETAIL,
+		BPF_IR_PRINT_DUMP,
 	} print_mode;
 
 	const struct function_pass *custom_passes;
