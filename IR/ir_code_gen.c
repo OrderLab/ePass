@@ -687,6 +687,7 @@ static void change_ret(struct bpf_ir_env *env, struct ir_function *fun)
 				new_insn->alu_op = IR_ALU_64;
 				set_insn_dst(env, new_insn,
 					     fun->cg_info.regs[0]);
+				bpf_ir_val_remove_user(insn->values[0], insn);
 				insn->value_num = 0;
 			}
 		}
@@ -2894,6 +2895,7 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 
 	change_ret(env, fun);
 	CHECK_ERR();
+	print_ir_prog_cg_dst(env, fun, "Changing ret");
 	prog_check_cg(env, fun);
 	CHECK_ERR();
 

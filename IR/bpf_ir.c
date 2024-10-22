@@ -1256,8 +1256,6 @@ void bpf_ir_run(struct bpf_ir_env *env)
 	// End IR manipulation
 	PRINT_LOG(env, "IR Passes Ended!\n");
 
-	return;
-
 	bpf_ir_code_gen(env, fun);
 	CHECK_ERR();
 
