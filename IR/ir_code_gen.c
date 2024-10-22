@@ -924,10 +924,10 @@ static bool equal_set(struct array *a, struct array *b)
 
 static void in_out(struct bpf_ir_env *env, struct ir_function *fun)
 {
-	int change = 1;
+	bool change = true;
 	// For each BB
 	while (change) {
-		change = 0;
+		change = false;
 		struct ir_basic_block **pos;
 		array_for(pos, fun->reachable_bbs)
 		{
@@ -985,7 +985,7 @@ static void in_out(struct bpf_ir_env *env, struct ir_function *fun)
 				CHECK_ERR();
 				// Check for change
 				if (!equal_set(&insn_cg->in, &old_in)) {
-					change = 1;
+					change = true;
 				}
 				// Collect garbage
 				bpf_ir_array_free(&out_kill_delta);

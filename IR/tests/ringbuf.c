@@ -14,7 +14,8 @@ int prog(void *ctx)
 	if (!x)
 		return XDP_DROP;
 
-	bpf_ringbuf_discard(x, 0);
+	// bpf_ringbuf_discard(x, 0);
+	bpf_ringbuf_submit(x, 0);
 	return XDP_PASS;
 }
 

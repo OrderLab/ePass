@@ -1009,8 +1009,8 @@ struct ir_insn *bpf_ir_create_phi_insn_bb(struct bpf_ir_env *env,
 void bpf_ir_phi_add_operand(struct bpf_ir_env *env, struct ir_insn *insn,
 			    struct ir_basic_block *bb, struct ir_value val);
 
-void bpf_ir_phi_add_call_arg(struct bpf_ir_env *env, struct ir_insn *insn,
-			     struct ir_value val);
+void bpf_ir_add_call_arg(struct bpf_ir_env *env, struct ir_insn *insn,
+			 struct ir_value val);
 
 void bpf_ir_val_add_user(struct bpf_ir_env *env, struct ir_value val,
 			 struct ir_insn *user);

@@ -4,9 +4,9 @@
 
 // TODO: Change this to real function
 static const s8 helper_func_arg_num[200] = {
-	[0] = 1,  [1] = 1, [2] = 1,   [3] = 1,	 [4] = 1, [5] = 0,
+	[5] = 0,
 	[6] = -1, // Variable length
-	[7] = 1,  [8] = 1, [131] = 3, [133] = 2,
+	[131] = 3, [132] = 2, [133] = 2,
 };
 
 // All function passes
@@ -1243,8 +1243,6 @@ void bpf_ir_run(struct bpf_ir_env *env)
 	CHECK_ERR();
 
 	// Drop env
-	print_ir_prog(env, fun);
-	return;
 
 	bpf_ir_prog_check(env, fun);
 	CHECK_ERR();

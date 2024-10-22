@@ -408,8 +408,8 @@ void bpf_ir_phi_add_operand(struct bpf_ir_env *env, struct ir_insn *insn,
 	bpf_ir_val_add_user(env, val, insn);
 }
 
-void bpf_ir_phi_add_call_arg(struct bpf_ir_env *env, struct ir_insn *insn,
-			     struct ir_value val)
+void bpf_ir_add_call_arg(struct bpf_ir_env *env, struct ir_insn *insn,
+			 struct ir_value val)
 {
 	insn->values[insn->value_num++] = val;
 	bpf_ir_val_add_user(env, val, insn);

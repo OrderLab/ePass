@@ -45,9 +45,9 @@ void add_counter(struct bpf_ir_env *env, struct ir_function *fun)
 		bpf_ir_create_call_insn(env, elemptr, 6,
 					INSERT_BACK); // A printk call
 
-	bpf_ir_phi_add_call_arg(env, call_insn, bpf_ir_value_insn(elemptr));
+	bpf_ir_add_call_arg(env, call_insn, bpf_ir_value_insn(elemptr));
 
-	bpf_ir_phi_add_call_arg(env, call_insn, bpf_ir_value_const32(5));
+	bpf_ir_add_call_arg(env, call_insn, bpf_ir_value_const32(5));
 
 	struct array critical_bbs;
 	INIT_ARRAY(&critical_bbs, struct ir_basic_block *);
