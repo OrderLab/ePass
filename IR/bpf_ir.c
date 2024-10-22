@@ -3,10 +3,10 @@
 #include <linux/bpf_ir.h>
 
 // TODO: Change this to real function
-static const s8 helper_func_arg_num[100] = {
-	[0] = 1,  [1] = 1, [2] = 1, [3] = 1, [4] = 1, [5] = 0,
+static const s8 helper_func_arg_num[200] = {
+	[0] = 1,  [1] = 1, [2] = 1,   [3] = 1,	 [4] = 1, [5] = 0,
 	[6] = -1, // Variable length
-	[7] = 1,  [8] = 1
+	[7] = 1,  [8] = 1, [131] = 3, [133] = 2,
 };
 
 // All function passes
@@ -905,6 +905,7 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 				new_insn->values[0] =
 					read_variable(env, tenv, BPF_REG_0, bb);
 				new_insn->value_num = 1;
+				add_user(env, new_insn, new_insn->values[0]);
 				set_insn_raw_pos(new_insn, insn.pos);
 			} else if (BPF_OP(code) == BPF_JEQ) {
 				// PC += offset if dst == src
@@ -1242,6 +1243,8 @@ void bpf_ir_run(struct bpf_ir_env *env)
 	CHECK_ERR();
 
 	// Drop env
+	print_ir_prog(env, fun);
+	return;
 
 	bpf_ir_prog_check(env, fun);
 	CHECK_ERR();
