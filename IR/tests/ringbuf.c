@@ -11,9 +11,10 @@ SEC("xdp")
 int prog(void *ctx)
 {
 	int *x = bpf_ringbuf_reserve(&rb, sizeof(int), 0);
-    if(!x) return XDP_DROP;
+	if (!x)
+		return XDP_DROP;
 
-    bpf_ringbuf_discard(x, 0);
+	bpf_ringbuf_discard(x, 0);
 	return XDP_PASS;
 }
 

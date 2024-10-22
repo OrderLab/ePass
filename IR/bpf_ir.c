@@ -16,6 +16,7 @@ static const struct function_pass pre_passes[] = {
 
 static const struct function_pass post_passes[] = {
 	DEF_FUNC_PASS(add_counter, "add_counter", false),
+	DEF_FUNC_PASS(translate_throw, "translate_throw", true),
 };
 
 static void write_variable(struct bpf_ir_env *env,
@@ -1253,6 +1254,8 @@ void bpf_ir_run(struct bpf_ir_env *env)
 
 	// End IR manipulation
 	PRINT_LOG(env, "IR Passes Ended!\n");
+
+	return;
 
 	bpf_ir_code_gen(env, fun);
 	CHECK_ERR();
