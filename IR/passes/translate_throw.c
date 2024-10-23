@@ -150,7 +150,8 @@ void translate_throw_helper(struct bpf_ir_env *env, struct ir_function *fun)
 	}
 }
 
-void translate_throw(struct bpf_ir_env *env, struct ir_function *fun)
+void translate_throw(struct bpf_ir_env *env, struct ir_function *fun,
+		     void *param)
 {
 	// Initialize
 	struct ir_basic_block **pos;

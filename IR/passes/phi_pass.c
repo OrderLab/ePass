@@ -35,7 +35,8 @@ static void try_remove_trivial_phi(struct bpf_ir_env *env, struct ir_insn *phi)
 	CHECK_ERR();
 }
 
-void remove_trivial_phi(struct bpf_ir_env *env, struct ir_function *fun)
+void remove_trivial_phi(struct bpf_ir_env *env, struct ir_function *fun,
+			void *param)
 {
 	struct ir_basic_block **bpos;
 	array_for(bpos, fun->reachable_bbs)

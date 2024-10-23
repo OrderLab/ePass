@@ -11,7 +11,7 @@ static u32 en_pred_num(struct ir_function *fun, struct ir_basic_block *bb)
 	}
 }
 
-void add_counter(struct bpf_ir_env *env, struct ir_function *fun)
+void add_counter(struct bpf_ir_env *env, struct ir_function *fun, void *param)
 {
 	struct ir_basic_block *entry = fun->entry;
 	struct ir_insn *alloc_insn = bpf_ir_create_alloc_insn_bb(

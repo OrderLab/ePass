@@ -7,7 +7,7 @@
 
 // All function passes
 static const struct function_pass custom_passes[] = {
-	DEF_FUNC_PASS(masking_pass, "maksing", true),
+	DEF_FUNC_PASS(masking_pass, "maksing", true, NULL),
 };
 
 int main(int argc, char **argv)
@@ -44,7 +44,7 @@ int main(int argc, char **argv)
 	struct bpf_ir_opts opts = bpf_ir_default_opts();
 	opts.custom_pass_num = 0;
 	opts.custom_passes = custom_passes;
-	opts.builtin_enable_pass_num = 0;
+	opts.builtin_pass_cfg_num = 0;
 	struct bpf_ir_env *env = bpf_ir_init_env(opts, insns, index);
 	if (!env) {
 		return 1;

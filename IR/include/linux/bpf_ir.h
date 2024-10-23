@@ -48,6 +48,8 @@ struct function_pass;
 
 struct builtin_pass_cfg {
 	char name[30];
+	void *param;
+	bool enable;
 };
 
 struct bpf_ir_opts {
@@ -64,8 +66,8 @@ struct bpf_ir_opts {
 	const struct function_pass *custom_passes;
 	size_t custom_pass_num;
 
-	const struct builtin_pass_cfg *builtin_enable_passes;
-	size_t builtin_enable_pass_num;
+	const struct builtin_pass_cfg *builtin_pass_cfg;
+	size_t builtin_pass_cfg_num;
 };
 
 struct bpf_ir_opts bpf_ir_default_opts(void);
@@ -1038,20 +1040,23 @@ void bpf_ir_insert_at_bb(struct ir_insn *new_insn, struct ir_basic_block *bb,
 
 /* Passes Start */
 
-void remove_trivial_phi(struct bpf_ir_env *env, struct ir_function *fun);
+void remove_trivial_phi(struct bpf_ir_env *env, struct ir_function *fun,
+			void *param);
 
-void add_counter(struct bpf_ir_env *env, struct ir_function *fun);
+void add_counter(struct bpf_ir_env *env, struct ir_function *fun, void *param);
 
-void translate_throw(struct bpf_ir_env *env, struct ir_function *fun);
+void translate_throw(struct bpf_ir_env *env, struct ir_function *fun,
+		     void *param);
 
 struct function_pass {
-	void (*pass)(struct bpf_ir_env *env, struct ir_function *);
+	void (*pass)(struct bpf_ir_env *env, struct ir_function *, void *param);
 	bool enabled;
 	char name[30];
+	void *default_param;
 };
 
-#define DEF_FUNC_PASS(fun, msg, default) \
-	{ .pass = fun, .name = msg, .enabled = default }
+#define DEF_FUNC_PASS(fun, msg, default, param) \
+	{ .pass = fun, .name = msg, .enabled = default, .default_param = param }
 
 /* Passes End */
 
