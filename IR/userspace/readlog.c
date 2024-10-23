@@ -7,7 +7,7 @@
 #include "userspace.h"
 
 // All function passes
-static const struct function_pass custom_passes[] = {
+static struct function_pass custom_passes[] = {
 	DEF_FUNC_PASS(masking_pass, "maksing", true, NULL),
 };
 

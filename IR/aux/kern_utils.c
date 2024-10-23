@@ -8,6 +8,7 @@ static int apply_pass_opt(struct bpf_ir_env *env, const char *opt)
 	char param[64];
 	u32 len = 0;
 	bool has_param = false;
+	bool has_closed = false;
 	const char *p = opt;
 	while (*p != '\0') {
 		if (len >= 64) {
@@ -20,6 +21,7 @@ static int apply_pass_opt(struct bpf_ir_env *env, const char *opt)
 		}
 		if (has_param && *p == ')') {
 			// End of parameter
+			has_closed = true;
 			break;
 		}
 		if (has_param) {
@@ -29,11 +31,29 @@ static int apply_pass_opt(struct bpf_ir_env *env, const char *opt)
 		}
 		++p;
 	}
-	PRINT_DBG("pass_name: %s\n", pass_name);
+	if (has_param && !has_closed) {
+		return -EINVAL;
+	}
+	pass_name[pass_len] = '\0';
 	if (has_param) {
 		param[len] = '\0';
-		PRINT_DBG("param: %s\n", param);
 	}
+	bool found_pass = false;
+	for (size_t i = 0; i < env->opts.builtin_pass_cfg_num; ++i) {
+		if (strcmp(env->opts.builtin_pass_cfg[i].name, pass_name) ==
+		    0) {
+			found_pass = true;
+			if (has_param) {
+				env->opts.builtin_pass_cfg[i];
+			}
+			env->opts.builtin_pass_cfg[i].enable_cfg = true;
+			env->opts.builtin_pass_cfg[i].enable = false;
+			break;
+		}
+	}
+    if (!found_pass) {
+    
+    }
 	return 0;
 }
 
@@ -94,12 +114,14 @@ int bpf_ir_init_opts(struct bpf_ir_env *env, const char *pass_opt,
 		opt[len++] = *p;
 		++p;
 	}
-	opt[len] = '\0';
-	err = apply_global_opt(env, opt);
-	if (err < 0) {
-		return err;
+	if (len != 0) {
+		opt[len] = '\0';
+		err = apply_global_opt(env, opt);
+		if (err < 0) {
+			return err;
+		}
+		len = 0;
 	}
-	len = 0;
 
 	p = pass_opt;
 	while (*p != '\0') {
@@ -120,10 +142,12 @@ int bpf_ir_init_opts(struct bpf_ir_env *env, const char *pass_opt,
 		opt[len++] = *p;
 		++p;
 	}
-	opt[len] = '\0';
-	err = apply_pass_opt(env, opt);
-	if (err < 0) {
-		return err;
+	if (len != 0) {
+		opt[len] = '\0';
+		err = apply_pass_opt(env, opt);
+		if (err < 0) {
+			return err;
+		}
 	}
 	return 0;
 }
