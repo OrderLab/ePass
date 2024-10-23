@@ -99,3 +99,30 @@ void add_counter(struct bpf_ir_env *env, struct ir_function *fun, void *param)
 
 	bpf_ir_array_free(&critical_bbs);
 }
+
+static int load_param(const char *opt, void **param)
+{
+	int res = 0;
+#ifndef __KERNEL__
+	res = atoi(opt);
+#else
+	int err = kstrtoint(opt, 10, &res);
+	if (err) {
+		return err;
+	}
+#endif
+	*param = malloc_proto(sizeof(int));
+	if (!param) {
+		return -ENOMEM;
+	}
+	*(int *)(*param) = res;
+	return 0;
+}
+
+static void unload_param(void *param)
+{
+	free_proto(param);
+}
+
+const struct builtin_pass_cfg bpf_ir_kern_add_counter_pass =
+	DEF_BUILTIN_PASS_CFG("add_counter", load_param, unload_param);
