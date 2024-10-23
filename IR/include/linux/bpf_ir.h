@@ -53,7 +53,13 @@ struct builtin_pass_cfg {
 };
 
 struct bpf_ir_opts {
+	// Enable debug mode
 	bool debug;
+
+	// Force to use ePass, even if verifier passes
+	bool force;
+
+	// Enable register coalesce optimization
 	bool enable_coalesce;
 
 	enum {

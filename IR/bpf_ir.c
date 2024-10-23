@@ -1178,8 +1178,11 @@ static void run_passes(struct bpf_ir_env *env, struct ir_function *fun)
 		CHECK_ERR();
 	}
 	for (size_t i = 0; i < env->opts.custom_pass_num; ++i) {
-		run_single_pass(env, fun, &env->opts.custom_passes[i],
+		if (env->opts.custom_passes[i].enabled) {
+			run_single_pass(
+				env, fun, &env->opts.custom_passes[i],
 				env->opts.custom_passes[i].default_param);
+		}
 	}
 	for (size_t i = 0; i < sizeof(post_passes) / sizeof(post_passes[0]);
 	     ++i) {
@@ -1306,8 +1309,6 @@ void bpf_ir_run(struct bpf_ir_env *env)
 	struct ir_function *fun = bpf_ir_lift(env, insns, len);
 	CHECK_ERR();
 
-	// Drop env
-
 	bpf_ir_prog_check(env, fun);
 	CHECK_ERR();
 	print_ir_prog(env, fun);
@@ -1344,6 +1345,7 @@ struct bpf_ir_opts bpf_ir_default_opts(void)
 	opts.custom_pass_num = 0;
 	opts.debug = false;
 	opts.enable_coalesce = false;
+	opts.force = false;
 	return opts;
 }
 
