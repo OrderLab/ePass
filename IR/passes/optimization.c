@@ -72,7 +72,8 @@ static void remove_unused_alloc(struct bpf_ir_env *env, struct ir_function *fun)
 	bpf_ir_array_free(&alloc_insns);
 }
 
-void bpf_ir_optimize_ir(struct bpf_ir_env *env, struct ir_function *fun)
+void bpf_ir_optimize_ir(struct bpf_ir_env *env, struct ir_function *fun,
+			void *param)
 {
 	remove_no_user_insn(env, fun);
 	CHECK_ERR();

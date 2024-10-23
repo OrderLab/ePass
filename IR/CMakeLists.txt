@@ -12,9 +12,9 @@ add_library(bpf_ir STATIC
     passes/phi_pass.c
     passes/add_counter_pass.c
     passes/translate_throw.c
+    passes/optimization.c
     aux/prog_check.c
     aux/disasm.c
-    aux/optimization.c
     ir_code_gen.c
     lii.c
 )

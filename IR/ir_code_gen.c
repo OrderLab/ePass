@@ -2839,13 +2839,6 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	// Preparation
 
-	bpf_ir_optimize_ir(env, fun);
-	CHECK_ERR();
-	bpf_ir_prog_check(env, fun);
-	CHECK_ERR();
-	print_ir_prog_pre_cg(env, fun, "Optimization");
-	CHECK_ERR();
-
 	change_fun_arg(env, fun);
 	CHECK_ERR();
 	bpf_ir_prog_check(env, fun);

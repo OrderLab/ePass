@@ -1152,7 +1152,8 @@ void bpf_ir_change_value(struct bpf_ir_env *env, struct ir_insn *insn,
 
 /* IR Optimization Start */
 
-void bpf_ir_optimize_ir(struct bpf_ir_env *env, struct ir_function *fun);
+void bpf_ir_optimize_ir(struct bpf_ir_env *env, struct ir_function *fun,
+			void *data);
 
 /* IR Optimization End */
 

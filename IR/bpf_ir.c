@@ -18,6 +18,7 @@ static const struct function_pass post_passes[] = {
 	DEF_FUNC_PASS(add_counter, "add_counter", false, NULL),
 	/* CG Preparation Passes */
 	DEF_FUNC_PASS(translate_throw, "translate_throw", true, NULL),
+	DEF_FUNC_PASS(bpf_ir_optimize_ir, "optimize_ir", true, NULL),
 };
 
 static void write_variable(struct bpf_ir_env *env,
