@@ -1,7 +1,5 @@
 #include <linux/bpf_ir.h>
 
-#define MAX_RUN_INSN 10000
-
 static u32 en_pred_num(struct ir_function *fun, struct ir_basic_block *bb)
 {
 	if (fun->entry == bb) {
@@ -13,6 +11,10 @@ static u32 en_pred_num(struct ir_function *fun, struct ir_basic_block *bb)
 
 void add_counter(struct bpf_ir_env *env, struct ir_function *fun, void *param)
 {
+	int max_run_insn = 1000000;
+	if (param) {
+		max_run_insn = *(int *)param;
+	}
 	struct ir_basic_block *entry = fun->entry;
 	struct ir_insn *alloc_insn = bpf_ir_create_alloc_insn_bb(
 		env, entry, IR_VR_TYPE_32, INSERT_FRONT);
@@ -66,7 +68,7 @@ void add_counter(struct bpf_ir_env *env, struct ir_function *fun, void *param)
 			bpf_ir_create_throw_insn_bb(env, err_bb, INSERT_BACK);
 			bpf_ir_create_jbin_insn(
 				env, store_back, bpf_ir_value_insn(added),
-				bpf_ir_value_const32(MAX_RUN_INSN), *succ,
+				bpf_ir_value_const32(max_run_insn), *succ,
 				err_bb, IR_INSN_JGT, IR_ALU_64, INSERT_BACK);
 			bpf_ir_connect_bb(env, bb, err_bb);
 			continue;
@@ -87,7 +89,7 @@ void add_counter(struct bpf_ir_env *env, struct ir_function *fun, void *param)
 		bpf_ir_create_throw_insn_bb(env, err_bb, INSERT_BACK);
 		bpf_ir_create_jbin_insn(env, store_back,
 					bpf_ir_value_insn(added),
-					bpf_ir_value_const32(MAX_RUN_INSN),
+					bpf_ir_value_const32(max_run_insn),
 					new_bb, err_bb, IR_INSN_JGT, IR_ALU_64,
 					INSERT_BACK);
 		// Manually connect BBs

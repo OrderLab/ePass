@@ -13,6 +13,7 @@ add_library(bpf_ir STATIC
     passes/add_counter_pass.c
     passes/translate_throw.c
     passes/optimization.c
+    passes/cg_prepare.c
     aux/prog_check.c
     aux/disasm.c
     ir_code_gen.c

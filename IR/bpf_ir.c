@@ -19,6 +19,11 @@ static const struct function_pass post_passes[] = {
 	/* CG Preparation Passes */
 	DEF_FUNC_PASS(translate_throw, "translate_throw", true, NULL),
 	DEF_FUNC_PASS(bpf_ir_optimize_ir, "optimize_ir", true, NULL),
+	DEF_FUNC_PASS(bpf_ir_cg_change_fun_arg, "change_fun_arg", true, NULL),
+	DEF_FUNC_PASS(bpf_ir_cg_change_call_pre_cg, "change_call", true, NULL),
+	DEF_FUNC_PASS(bpf_ir_cg_add_stack_offset_pre_cg, "add_stack_offset",
+		      true, NULL),
+	DEF_FUNC_PASS(bpr_ir_cg_to_cssa, "to_cssa", true, NULL),
 };
 
 static void write_variable(struct bpf_ir_env *env,

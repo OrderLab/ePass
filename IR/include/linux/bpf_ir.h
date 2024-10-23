@@ -1157,4 +1157,20 @@ void bpf_ir_optimize_ir(struct bpf_ir_env *env, struct ir_function *fun,
 
 /* IR Optimization End */
 
+/* CG Prepare Start */
+
+void bpf_ir_cg_change_fun_arg(struct bpf_ir_env *env, struct ir_function *fun,
+			      void *param);
+
+void bpf_ir_cg_change_call_pre_cg(struct bpf_ir_env *env,
+				  struct ir_function *fun, void *param);
+
+void bpf_ir_cg_add_stack_offset_pre_cg(struct bpf_ir_env *env,
+				       struct ir_function *fun, void *param);
+
+void bpr_ir_cg_to_cssa(struct bpf_ir_env *env, struct ir_function *fun,
+		       void *param);
+
+/* CG Prepare End */
+
 #endif
