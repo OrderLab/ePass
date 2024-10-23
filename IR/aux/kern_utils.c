@@ -179,3 +179,24 @@ int bpf_ir_init_opts(struct bpf_ir_env *env, const char *pass_opt,
 	}
 	return 0;
 }
+
+/* Free the option memory, mainly the `param` field generated. */
+void bpf_ir_free_opts(struct bpf_ir_env *env)
+{
+	for (size_t i = 0; i < env->opts.builtin_pass_cfg_num; ++i) {
+		if (env->opts.builtin_pass_cfg[i].param &&
+		    env->opts.builtin_pass_cfg[i].param_unload) {
+			env->opts.builtin_pass_cfg[i].param_unload(
+				env->opts.builtin_pass_cfg[i].param);
+			env->opts.builtin_pass_cfg[i].param = NULL;
+		}
+	}
+	for (size_t i = 0; i < env->opts.custom_pass_num; ++i) {
+		if (env->opts.custom_passes[i].param &&
+		    env->opts.custom_passes[i].param_unload) {
+			env->opts.custom_passes[i].param_unload(
+				env->opts.custom_passes[i].param);
+			env->opts.custom_passes[i].param = NULL;
+		}
+	}
+}
