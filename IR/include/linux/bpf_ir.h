@@ -43,11 +43,12 @@ typedef __u64 u64;
 // A environment for communicating with external functions
 
 #define BPF_IR_LOG_SIZE 100000
+#define BPF_IR_MAX_PASS_NAME_SIZE 32
 
 struct function_pass;
 
 struct builtin_pass_cfg {
-	char name[30];
+	char name[BPF_IR_MAX_PASS_NAME_SIZE];
 	void *param;
 	bool enable;
 };
@@ -1058,7 +1059,7 @@ struct function_pass {
 	void (*pass)(struct bpf_ir_env *env, struct ir_function *, void *param);
 	bool enabled;
 	bool non_overridable;
-	char name[30];
+	char name[BPF_IR_MAX_PASS_NAME_SIZE];
 	void *default_param;
 };
 
@@ -1190,5 +1191,12 @@ void bpr_ir_cg_to_cssa(struct bpf_ir_env *env, struct ir_function *fun,
 		       void *param);
 
 /* CG Prepare End */
+
+/* Kern Utils Start */
+
+int bpf_ir_init_opts(struct bpf_ir_env *env, const char *pass_opt,
+		     const char *global_opt);
+
+/* Kern Utils End */
 
 #endif

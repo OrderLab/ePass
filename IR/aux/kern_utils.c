@@ -1,6 +1,65 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include <linux/bpf_ir.h>
 
+static int apply_pass_opt(struct bpf_ir_env *env, const char *opt)
+{
+	char pass_name[BPF_IR_MAX_PASS_NAME_SIZE];
+	u32 pass_len = 0;
+	char param[64];
+	u32 len = 0;
+	bool has_param = false;
+	const char *p = opt;
+	while (*p != '\0') {
+		if (len >= 64) {
+			return -EINVAL;
+		}
+		if (*p == '(' && !has_param) {
+			has_param = true;
+			++p;
+			continue;
+		}
+		if (has_param && *p == ')') {
+			// End of parameter
+			break;
+		}
+		if (has_param) {
+			param[len++] = *p;
+		} else {
+			pass_name[pass_len++] = *p;
+		}
+		++p;
+	}
+	PRINT_DBG("pass_name: %s\n", pass_name);
+	if (has_param) {
+		param[len] = '\0';
+		PRINT_DBG("param: %s\n", param);
+	}
+	return 0;
+}
+
+static int apply_global_opt(struct bpf_ir_env *env, const char *opt)
+{
+	PRINT_DBG("global opt: %s\n", opt);
+	if (strcmp(opt, "force") == 0) {
+		env->opts.force = true;
+	} else if (strcmp(opt, "enable_coalesce") == 0) {
+		env->opts.enable_coalesce = true;
+	} else if (strcmp(opt, "debug") == 0) {
+		env->opts.debug = true;
+	} else if (strcmp(opt, "print_bpf") == 0) {
+		env->opts.print_mode = BPF_IR_PRINT_BPF;
+	} else if (strcmp(opt, "print_dump") == 0) {
+		env->opts.print_mode = BPF_IR_PRINT_DUMP;
+	} else if (strcmp(opt, "print_detail") == 0) {
+		env->opts.print_mode = BPF_IR_PRINT_DETAIL;
+	} else if (strcmp(opt, "print_bpf_detail") == 0) {
+		env->opts.print_mode = BPF_IR_PRINT_BPF_DETAIL;
+	} else {
+		return -EINVAL;
+	}
+	return 0;
+}
+
 /* Initialize pass configuration for kernel component
  *
  * @param env: bpf_ir_env, must be already initialized
@@ -13,23 +72,58 @@ int bpf_ir_init_opts(struct bpf_ir_env *env, const char *pass_opt,
 		     const char *global_opt)
 {
 	// Parse global options
+	int err = 0;
 	u32 len = 0;
-	char opt[32];
 	const char *p = global_opt;
+	char opt[64];
 	while (*p != '\0') {
-		if (len >= 32) {
+		if (len >= 64) {
 			return -EINVAL;
 		}
 		if (*p == ',') {
 			// New option
-			if (strcmp(opt, "force") == 0) {
+			opt[len] = '\0';
+			err = apply_global_opt(env, opt);
+			if (err < 0) {
+				return err;
 			}
 			len = 0;
 			++p;
 			continue;
 		}
-		opt[len] = *p;
+		opt[len++] = *p;
 		++p;
+	}
+	opt[len] = '\0';
+	err = apply_global_opt(env, opt);
+	if (err < 0) {
+		return err;
+	}
+	len = 0;
+
+	p = pass_opt;
+	while (*p != '\0') {
+		if (len >= 64) {
+			return -EINVAL;
+		}
+		if (*p == ',') {
+			// New option
+			opt[len] = '\0';
+			err = apply_pass_opt(env, opt);
+			if (err < 0) {
+				return err;
+			}
+			len = 0;
+			++p;
+			continue;
+		}
+		opt[len++] = *p;
+		++p;
+	}
+	opt[len] = '\0';
+	err = apply_pass_opt(env, opt);
+	if (err < 0) {
+		return err;
 	}
 	return 0;
 }
