@@ -28,7 +28,7 @@ int main(int argn, char **argv)
 	struct function_pass mp1 =
 		DEF_FUNC_PASS(masking_pass, "masking", false);
 	struct custom_pass_cfg custom_passes[] = {
-		DEF_CUSTOM_PASS(&mp1, NULL, NULL),
+		DEF_CUSTOM_PASS(mp1, NULL, NULL),
 	};
 	struct bpf_ir_opts opts = bpf_ir_default_opts();
 	opts.custom_pass_num = 0;

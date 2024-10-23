@@ -63,7 +63,7 @@ static int apply_pass_opt(struct bpf_ir_env *env, const char *opt)
 		// Find in custom passes
 
 		for (size_t i = 0; i < env->opts.custom_pass_num; ++i) {
-			if (strcmp(env->opts.custom_passes[i].pass->name,
+			if (strcmp(env->opts.custom_passes[i].pass.name,
 				   pass_name) == 0) {
 				found_pass = true;
 				if (has_param &&
@@ -77,7 +77,7 @@ static int apply_pass_opt(struct bpf_ir_env *env, const char *opt)
 					}
 				}
 				// Custom passes, enabled at all time
-				env->opts.custom_passes[i].pass->enabled = true;
+				env->opts.custom_passes[i].pass.enabled = true;
 				break;
 			}
 		}

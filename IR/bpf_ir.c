@@ -1176,10 +1176,10 @@ static void run_passes(struct bpf_ir_env *env, struct ir_function *fun)
 		CHECK_ERR();
 	}
 	for (size_t i = 0; i < env->opts.custom_pass_num; ++i) {
-		if (env->opts.custom_passes[i].pass->enabled &&
+		if (env->opts.custom_passes[i].pass.enabled &&
 		    env->opts.custom_passes[i].check_apply(env) == 0) {
 			run_single_pass(env, fun,
-					env->opts.custom_passes[i].pass,
+					&env->opts.custom_passes[i].pass,
 					env->opts.custom_passes[i].param);
 			CHECK_ERR();
 		}
