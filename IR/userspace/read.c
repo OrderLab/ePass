@@ -5,9 +5,9 @@
 #include <stdio.h>
 
 // All function passes
-static struct function_pass custom_passes[] = {
-	DEF_FUNC_PASS(masking_pass, "maksing", true, NULL),
-};
+// static struct custom_pass_cfg custom_passes[] = {
+// 	DEF_CUSTOM_PASS(masking_pass, "maksing", true, NULL, NULL, NULL),
+// };
 
 int main(int argn, char **argv)
 {
@@ -24,6 +24,11 @@ int main(int argn, char **argv)
 	const struct bpf_insn *insn = bpf_program__insns(prog);
 	struct builtin_pass_cfg passes[] = {
 		{ .name = "add_counter" },
+	};
+	struct function_pass mp1 =
+		DEF_FUNC_PASS(masking_pass, "masking", false);
+	struct custom_pass_cfg custom_passes[] = {
+		DEF_CUSTOM_PASS(&mp1, NULL, NULL),
 	};
 	struct bpf_ir_opts opts = bpf_ir_default_opts();
 	opts.custom_pass_num = 0;

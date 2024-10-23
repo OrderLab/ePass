@@ -46,11 +46,24 @@ typedef __u64 u64;
 #define BPF_IR_MAX_PASS_NAME_SIZE 32
 
 struct function_pass;
+struct bpf_ir_env;
 
 struct custom_pass_cfg {
 	struct function_pass *pass;
 	void *param;
+	// Check if able to apply
+	int (*check_apply)(struct bpf_ir_env *);
+
+	// Load the param
+	int (*param_load)(const char *, void **param);
+	int (*param_unload)(void *param);
 };
+
+#define DEF_CUSTOM_PASS(pass_def, param_loadc, param_unloadc) \
+	{ .pass = pass_def,                                   \
+	  .param = NULL,                                      \
+	  .param_load = param_loadc,                          \
+	  .param_unload = param_unloadc }
 
 struct builtin_pass_cfg {
 	char name[BPF_IR_MAX_PASS_NAME_SIZE];
@@ -61,6 +74,10 @@ struct builtin_pass_cfg {
 
 	// Should be enabled for the last run
 	bool enable_cfg;
+
+	// Load the param
+	int (*param_load)(const char *, void **param);
+	int (*param_unload)(void *param);
 };
 
 struct bpf_ir_opts {
@@ -1068,24 +1085,19 @@ void translate_throw(struct bpf_ir_env *env, struct ir_function *fun,
 struct function_pass {
 	void (*pass)(struct bpf_ir_env *env, struct ir_function *, void *param);
 
-	// Load the param
-	int (*param_load)(const char *, void *param);
 	bool enabled;
 	bool non_overridable;
 	char name[BPF_IR_MAX_PASS_NAME_SIZE];
 };
 
-#define DEF_FUNC_PASS(fun, msg, default) \
-	{ .pass = fun,                   \
-	  .name = msg,                   \
-	  .enabled = default,            \
+#define DEF_FUNC_PASS(fun, msg, en_def) \
+	{ .pass = fun,                  \
+	  .name = msg,                  \
+	  .enabled = en_def,            \
 	  .non_overridable = false }
 
-#define DEF_NON_OVERRIDE_FUNC_PASS(fun, msg, default) \
-	{ .pass = fun,                                \
-	  .name = msg,                                \
-	  .enabled = default,                         \
-	  .non_overridable = true }
+#define DEF_NON_OVERRIDE_FUNC_PASS(fun, msg, en_def) \
+	{ .pass = fun, .name = msg, .enabled = en_def, .non_overridable = true }
 
 /* Passes End */
 
