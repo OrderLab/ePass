@@ -1051,12 +1051,24 @@ void translate_throw(struct bpf_ir_env *env, struct ir_function *fun,
 struct function_pass {
 	void (*pass)(struct bpf_ir_env *env, struct ir_function *, void *param);
 	bool enabled;
+	bool non_overridable;
 	char name[30];
 	void *default_param;
 };
 
 #define DEF_FUNC_PASS(fun, msg, default, param) \
-	{ .pass = fun, .name = msg, .enabled = default, .default_param = param }
+	{ .pass = fun,                          \
+	  .name = msg,                          \
+	  .enabled = default,                   \
+	  .default_param = param,               \
+	  .non_overridable = false }
+
+#define DEF_NON_OVERRIDE_FUNC_PASS(fun, msg, default) \
+	{ .pass = fun,                                \
+	  .name = msg,                                \
+	  .enabled = default,                         \
+	  .default_param = NULL,                      \
+	  .non_overridable = true }
 
 /* Passes End */
 

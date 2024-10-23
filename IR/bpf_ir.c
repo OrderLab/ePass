@@ -17,13 +17,15 @@ static const struct function_pass pre_passes[] = {
 static const struct function_pass post_passes[] = {
 	DEF_FUNC_PASS(add_counter, "add_counter", false, NULL),
 	/* CG Preparation Passes */
-	DEF_FUNC_PASS(translate_throw, "translate_throw", true, NULL),
-	DEF_FUNC_PASS(bpf_ir_optimize_ir, "optimize_ir", true, NULL),
-	DEF_FUNC_PASS(bpf_ir_cg_change_fun_arg, "change_fun_arg", true, NULL),
-	DEF_FUNC_PASS(bpf_ir_cg_change_call_pre_cg, "change_call", true, NULL),
-	DEF_FUNC_PASS(bpf_ir_cg_add_stack_offset_pre_cg, "add_stack_offset",
-		      true, NULL),
-	DEF_FUNC_PASS(bpr_ir_cg_to_cssa, "to_cssa", true, NULL),
+	DEF_NON_OVERRIDE_FUNC_PASS(translate_throw, "translate_throw", true),
+	DEF_NON_OVERRIDE_FUNC_PASS(bpf_ir_optimize_ir, "optimize_ir", true),
+	DEF_NON_OVERRIDE_FUNC_PASS(bpf_ir_cg_change_fun_arg, "change_fun_arg",
+				   true),
+	DEF_NON_OVERRIDE_FUNC_PASS(bpf_ir_cg_change_call_pre_cg, "change_call",
+				   true),
+	DEF_NON_OVERRIDE_FUNC_PASS(bpf_ir_cg_add_stack_offset_pre_cg,
+				   "add_stack_offset", true),
+	DEF_NON_OVERRIDE_FUNC_PASS(bpr_ir_cg_to_cssa, "to_cssa", true),
 };
 
 static void write_variable(struct bpf_ir_env *env,
@@ -1139,24 +1141,37 @@ static void run_passes(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	for (size_t i = 0; i < sizeof(pre_passes) / sizeof(pre_passes[0]);
 	     ++i) {
-		bool has_override = false;
-		for (size_t j = 0; j < env->opts.builtin_pass_cfg_num; ++j) {
-			if (strcmp(env->opts.builtin_pass_cfg[j].name,
-				   pre_passes[i].name) == 0) {
-				has_override = true;
-				if (env->opts.builtin_pass_cfg[j].enable) {
-					run_single_pass(
-						env, fun, &pre_passes[i],
-						env->opts.builtin_pass_cfg[j]
-							.param);
-				}
-				break;
-			}
-		}
-		if (!has_override) {
+		if (pre_passes[i].non_overridable) {
 			if (pre_passes[i].enabled) {
 				run_single_pass(env, fun, &pre_passes[i],
 						pre_passes[i].default_param);
+			}
+		} else {
+			bool has_override = false;
+			for (size_t j = 0; j < env->opts.builtin_pass_cfg_num;
+			     ++j) {
+				if (strcmp(env->opts.builtin_pass_cfg[j].name,
+					   pre_passes[i].name) == 0) {
+					has_override = true;
+					if (env->opts.builtin_pass_cfg[j]
+						    .enable) {
+						run_single_pass(
+							env, fun,
+							&pre_passes[i],
+							env->opts
+								.builtin_pass_cfg
+									[j]
+								.param);
+					}
+					break;
+				}
+			}
+			if (!has_override) {
+				if (pre_passes[i].enabled) {
+					run_single_pass(
+						env, fun, &pre_passes[i],
+						pre_passes[i].default_param);
+				}
 			}
 		}
 		CHECK_ERR();
@@ -1167,24 +1182,37 @@ static void run_passes(struct bpf_ir_env *env, struct ir_function *fun)
 	}
 	for (size_t i = 0; i < sizeof(post_passes) / sizeof(post_passes[0]);
 	     ++i) {
-		bool has_override = false;
-		for (size_t j = 0; j < env->opts.builtin_pass_cfg_num; ++j) {
-			if (strcmp(env->opts.builtin_pass_cfg[j].name,
-				   post_passes[i].name) == 0) {
-				has_override = true;
-				if (env->opts.builtin_pass_cfg[j].enable) {
-					run_single_pass(
-						env, fun, &post_passes[i],
-						env->opts.builtin_pass_cfg[j]
-							.param);
-				}
-				break;
-			}
-		}
-		if (!has_override) {
+		if (post_passes[i].non_overridable) {
 			if (post_passes[i].enabled) {
 				run_single_pass(env, fun, &post_passes[i],
 						post_passes[i].default_param);
+			}
+		} else {
+			bool has_override = false;
+			for (size_t j = 0; j < env->opts.builtin_pass_cfg_num;
+			     ++j) {
+				if (strcmp(env->opts.builtin_pass_cfg[j].name,
+					   post_passes[i].name) == 0) {
+					has_override = true;
+					if (env->opts.builtin_pass_cfg[j]
+						    .enable) {
+						run_single_pass(
+							env, fun,
+							&post_passes[i],
+							env->opts
+								.builtin_pass_cfg
+									[j]
+								.param);
+					}
+					break;
+				}
+			}
+			if (!has_override) {
+				if (post_passes[i].enabled) {
+					run_single_pass(
+						env, fun, &post_passes[i],
+						post_passes[i].default_param);
+				}
 			}
 		}
 		CHECK_ERR();
