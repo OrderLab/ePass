@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include <linux/bpf_ir.h>
 
 bool bpf_ir_value_equal(struct ir_value a, struct ir_value b)

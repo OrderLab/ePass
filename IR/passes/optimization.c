@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include <linux/bpf_ir.h>
 
 static void remove_no_user_insn(struct bpf_ir_env *env, struct ir_function *fun)

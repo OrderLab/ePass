@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include <linux/bpf_ir.h>
 
 static u32 en_pred_num(struct ir_function *fun, struct ir_basic_block *bb)

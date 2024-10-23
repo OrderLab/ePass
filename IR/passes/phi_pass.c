@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include <linux/bpf_ir.h>
 
 static void try_remove_trivial_phi(struct bpf_ir_env *env, struct ir_insn *phi)
