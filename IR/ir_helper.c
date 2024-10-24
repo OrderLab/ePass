@@ -693,8 +693,6 @@ void bpf_ir_reset_env(struct bpf_ir_env *env)
 	env->err = 0;
 	env->verifier_err = 0;
 	env->executed = false;
-	env->insn_cnt = 0;
-	env->insns = 0;
 }
 
 void bpf_ir_print_to_log(struct bpf_ir_env *env, char *fmt, ...)
