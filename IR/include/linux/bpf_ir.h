@@ -58,6 +58,9 @@ struct bpf_ir_opts {
 	// Enable register coalesce optimization
 	bool enable_coalesce;
 
+	// Verbose level
+	int verbose;
+
 	enum {
 		BPF_IR_PRINT_BPF,
 		BPF_IR_PRINT_DETAIL,
@@ -1086,11 +1089,12 @@ struct builtin_pass_cfg {
 	void (*param_unload)(void *param);
 };
 
-#define DEF_CUSTOM_PASS(pass_def, param_loadc, param_unloadc) \
-	{ .pass = pass_def,                                   \
-	  .param = NULL,                                      \
-	  .param_load = param_loadc,                          \
-	  .param_unload = param_unloadc }
+#define DEF_CUSTOM_PASS(pass_def, check_applyc, param_loadc, param_unloadc) \
+	{ .pass = pass_def,                                                 \
+	  .param = NULL,                                                    \
+	  .param_load = param_loadc,                                        \
+	  .param_unload = param_unloadc,                                    \
+	  .check_apply = check_applyc }
 
 #define DEF_BUILTIN_PASS_CFG(namec, param_loadc, param_unloadc) \
 	{ .name = namec,                                        \

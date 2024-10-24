@@ -245,8 +245,8 @@ static void gen_bb(struct bpf_ir_env *env, struct bb_info *ret,
 	// Allocate instructions
 	for (size_t i = 0; i < bb_entrance.num_elem; ++i) {
 		struct pre_ir_basic_block *real_bb = all_bbs[i].bb;
-		PRINT_LOG(env, "BB Alloc: [%zu, %zu)\n", real_bb->start_pos,
-			  real_bb->end_pos);
+		// PRINT_LOG(env, "BB Alloc: [%zu, %zu)\n", real_bb->start_pos,
+		// 	  real_bb->end_pos);
 		SAFE_MALLOC(real_bb->pre_insns,
 			    sizeof(struct pre_ir_insn) *
 				    (real_bb->end_pos - real_bb->start_pos));
@@ -712,7 +712,7 @@ static void create_cond_jmp(struct bpf_ir_env *env,
 static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 			 struct pre_ir_basic_block *bb)
 {
-	PRINT_LOG(env, "Transforming BB%zu\n", bb->id);
+	// PRINT_LOG(env, "Transforming BB%zu\n", bb->id);
 	if (bb->sealed) {
 		return;
 	}
@@ -1176,11 +1176,23 @@ static void run_passes(struct bpf_ir_env *env, struct ir_function *fun)
 		CHECK_ERR();
 	}
 	for (size_t i = 0; i < env->opts.custom_pass_num; ++i) {
-		if (env->opts.custom_passes[i].pass.enabled &&
-		    env->opts.custom_passes[i].check_apply(env) == 0) {
-			run_single_pass(env, fun,
+		if (env->opts.custom_passes[i].pass.enabled) {
+			if (env->opts.custom_passes[i].check_apply) {
+				if (env->opts.custom_passes[i].check_apply(
+					    env) == 0) {
+					// Pass
+					run_single_pass(
+						env, fun,
+						&env->opts.custom_passes[i].pass,
+						env->opts.custom_passes[i]
+							.param);
+				}
+			} else {
+				run_single_pass(
+					env, fun,
 					&env->opts.custom_passes[i].pass,
 					env->opts.custom_passes[i].param);
+			}
 			CHECK_ERR();
 		}
 	}
@@ -1283,7 +1295,9 @@ struct ir_function *bpf_ir_lift(struct bpf_ir_env *env,
 	gen_bb(env, &info, insns, len);
 	CHECK_ERR(NULL);
 
-	print_pre_ir_cfg(env, info.entry);
+	if (env->opts.verbose > 2) {
+		print_pre_ir_cfg(env, info.entry);
+	}
 	struct ssa_transform_env trans_env;
 	init_tenv(env, &trans_env, info);
 	CHECK_ERR(NULL);
@@ -1345,6 +1359,7 @@ struct bpf_ir_opts bpf_ir_default_opts(void)
 	opts.debug = false;
 	opts.enable_coalesce = false;
 	opts.force = false;
+	opts.verbose = 1;
 	return opts;
 }
 

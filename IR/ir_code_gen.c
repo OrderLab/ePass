@@ -947,9 +947,12 @@ static void liveness_analysis(struct bpf_ir_env *env, struct ir_function *fun)
 	// TODO: Encode Calling convention into GEN KILL
 	gen_kill(env, fun);
 	in_out(env, fun);
-	PRINT_LOG(env, "--------------\n");
-	print_ir_prog_advanced(env, fun, NULL, print_insn_extra, print_ir_dst);
-	print_ir_prog_advanced(env, fun, NULL, NULL, print_ir_dst);
+	if (env->opts.verbose > 2) {
+		PRINT_LOG(env, "--------------\n");
+		print_ir_prog_advanced(env, fun, NULL, print_insn_extra,
+				       print_ir_dst);
+		print_ir_prog_advanced(env, fun, NULL, NULL, print_ir_dst);
+	}
 }
 
 static enum val_type vtype_insn(struct ir_insn *insn)
@@ -2741,14 +2744,19 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 		// Step 6: Conflict Analysis
 		conflict_analysis(env, fun);
 		CHECK_ERR();
-		PRINT_LOG(env, "Conflicting graph:\n");
-		bpf_ir_print_interference_graph(env, fun);
+		if (env->opts.verbose > 2) {
+			PRINT_LOG(env, "Conflicting graph:\n");
+			bpf_ir_print_interference_graph(env, fun);
+		}
 
 		// Step 7: Graph coloring
 		graph_coloring(env, fun);
 		CHECK_ERR();
-		PRINT_LOG(env, "Conflicting graph (after coloring):\n");
-		bpf_ir_print_interference_graph(env, fun);
+
+		if (env->opts.verbose > 2) {
+			PRINT_LOG(env, "Conflicting graph (after coloring):\n");
+			bpf_ir_print_interference_graph(env, fun);
+		}
 		CHECK_ERR();
 		print_ir_prog_cg_alloc(env, fun, "After RA");
 
