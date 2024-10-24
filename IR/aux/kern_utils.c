@@ -87,7 +87,6 @@ static int apply_pass_opt(struct bpf_ir_env *env, const char *opt)
 
 static int apply_global_opt(struct bpf_ir_env *env, const char *opt)
 {
-	PRINT_DBG("global opt: %s\n", opt);
 	if (strcmp(opt, "force") == 0) {
 		env->opts.force = true;
 	} else if (strcmp(opt, "enable_coalesce") == 0) {
@@ -126,6 +125,17 @@ static int apply_global_opt(struct bpf_ir_env *env, const char *opt)
 		return -EINVAL;
 	}
 	return 0;
+}
+
+// Check if a builtin pass is enabled (by cfg)
+bool bpf_ir_builtin_pass_enabled(struct bpf_ir_env *env, const char *pass_name)
+{
+	for (size_t i = 0; i < env->opts.builtin_pass_cfg_num; ++i) {
+		if (strcmp(env->opts.builtin_pass_cfg[i].name, pass_name) == 0) {
+			return env->opts.builtin_pass_cfg[i].enable_cfg;
+		}
+	}
+	return false;
 }
 
 /* Initialize pass configuration for kernel component
