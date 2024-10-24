@@ -717,6 +717,9 @@ void bpf_ir_print_to_log(struct bpf_ir_env *env, char *fmt, ...)
 /* Dump env->log */
 void bpf_ir_print_log_dbg(struct bpf_ir_env *env)
 {
+	if (env->opts.verbose == 0) {
+		return;
+	}
 	if (env->log_pos == 0) {
 		return;
 	}
