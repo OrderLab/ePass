@@ -103,14 +103,13 @@ void add_counter(struct bpf_ir_env *env, struct ir_function *fun, void *param)
 static int load_param(const char *opt, void **param)
 {
 	int res = 0;
-#ifndef __KERNEL__
-	res = atoi(opt);
-#else
-	int err = kstrtoint(opt, 10, &res);
+	int err = parse_int(opt, &res);
 	if (err) {
 		return err;
 	}
-#endif
+	if (res > 1000000) {
+		return -EINVAL;
+	}
 	*param = malloc_proto(sizeof(int));
 	if (!param) {
 		return -ENOMEM;
