@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include <linux/bpf.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -55,7 +56,7 @@ int main(int argc, char **argv)
 		.debug = true,
 		.print_mode = BPF_IR_PRINT_BPF,
 		.custom_pass_num = 0,
-		.builtin_enable_pass_num = 0,
+		.builtin_pass_cfg_num = 0,
 	};
 	struct bpf_ir_env *env = bpf_ir_init_env(opts, insns, index);
 	if (!env) {

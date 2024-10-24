@@ -11,11 +11,12 @@ add_library(bpf_ir STATIC
     ir_insn.c
     passes/phi_pass.c
     passes/add_counter_pass.c
-    passes/add_constraint_pass.c
-    passes/cut_bb_pass.c
+    passes/translate_throw.c
+    passes/optimization.c
+    passes/cg_prepare.c
     aux/prog_check.c
     aux/disasm.c
-    aux/optimization.c
+    aux/kern_utils.c
     ir_code_gen.c
     lii.c
 )
@@ -24,10 +25,12 @@ add_executable(read userspace/read.c userspace/test_masking.c)
 add_executable(readlog userspace/readlog.c userspace/test_masking.c)
 add_executable(print userspace/print.c)
 add_executable(printlog userspace/printlog.c)
+add_executable(test_kern userspace/test_kern.c)
 
 target_link_libraries(read bpf bpf_ir)
 target_link_libraries(readlog bpf_ir)
 target_link_libraries(print bpf bpf_ir)
 target_link_libraries(printlog bpf_ir)
+target_link_libraries(test_kern bpf_ir)
 
 include_directories(include)

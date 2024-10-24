@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include <linux/bpf_ir.h>
 
 int bpf_ir_valid_alu_type(enum ir_alu_op_type type)
@@ -378,6 +379,9 @@ void print_ir_insn_full(struct bpf_ir_env *env, struct ir_insn *insn,
 			print_ir_value_full(env, insn->values[0], print_ir);
 		}
 		break;
+	case IR_INSN_THROW:
+		PRINT_LOG(env, "throw");
+		break;
 	case IR_INSN_JA:
 		PRINT_LOG(env, "ja ");
 		print_bb_ptr(env, insn->bb1);
@@ -682,6 +686,15 @@ void print_ir_bb_err(struct bpf_ir_env *env, struct ir_basic_block *bb)
 	PRINT_LOG(env, "BB %zu encountered an error:\n", bb->_id);
 }
 
+void bpf_ir_reset_env(struct bpf_ir_env *env)
+{
+	env->log_pos = 0;
+	env->venv = NULL;
+	env->err = 0;
+	env->verifier_err = 0;
+	env->executed = false;
+}
+
 void bpf_ir_print_to_log(struct bpf_ir_env *env, char *fmt, ...)
 {
 	va_list args;
@@ -704,6 +717,9 @@ void bpf_ir_print_to_log(struct bpf_ir_env *env, char *fmt, ...)
 /* Dump env->log */
 void bpf_ir_print_log_dbg(struct bpf_ir_env *env)
 {
+	if (env->opts.verbose == 0) {
+		return;
+	}
 	if (env->log_pos == 0) {
 		return;
 	}

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include <linux/bpf_ir.h>
 
 size_t bpf_ir_bb_len(struct ir_basic_block *bb)

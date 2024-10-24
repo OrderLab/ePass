@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include <linux/bpf_ir.h>
 
 static void check_insn_users_use_insn(struct bpf_ir_env *env,
@@ -53,7 +54,8 @@ static void check_insn(struct bpf_ir_env *env, struct ir_function *fun)
 			if (insn->op == IR_INSN_LOADRAW ||
 			    insn->op == IR_INSN_ALLOC ||
 			    insn->op == IR_INSN_JA || insn->op == IR_INSN_PHI ||
-			    insn->op == IR_INSN_ALLOCARRAY) {
+			    insn->op == IR_INSN_ALLOCARRAY ||
+			    insn->op == IR_INSN_THROW) {
 				if (!(insn->value_num == 0)) {
 					print_ir_insn_err(env, insn, NULL);
 					RAISE_ERROR(
@@ -270,7 +272,8 @@ static void check_jumping(struct bpf_ir_env *env, struct ir_function *fun)
 					RAISE_ERROR(
 						"Jump statement not at the end of a BB");
 				} else {
-					if (insn->op == IR_INSN_RET) {
+					if (insn->op == IR_INSN_RET ||
+					    insn->op == IR_INSN_THROW) {
 						if (bb->succs.num_elem != 0) {
 							// Error
 

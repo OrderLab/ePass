@@ -2,10 +2,10 @@
 
 # Generating kernel source files
 
-KERNEL_PATH=/home/linsy/Projects/ebpf/eBPF-kernel
+KERNEL_PATH=/home/linsy/Projects/ebpf/ePass-kernel
 
 if [ ! -d $KERNEL_PATH ]; then
-  echo "Directory does not exists."
+  echo "Directory does not exists"
   exit 1
 fi
 

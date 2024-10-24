@@ -4,7 +4,7 @@
 SEC("xdp")
 int prog(void *ctx)
 {
-	char msg[] = "exit";
+	char msg[] = "exitexi";
 	bpf_trace_printk(msg, sizeof(msg));
 	return XDP_DROP;
 }

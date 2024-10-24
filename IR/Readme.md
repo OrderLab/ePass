@@ -42,7 +42,11 @@ runtime write/read wrapper?
 
 ## Bugs
 
-- SplitBB operation may not work properly if it's at the top of a BB
+### SplitBB operation may not work properly if it's at the top of a BB
+
+### Coalesce has some bugs
+
+Reproduce: `ringbuf.c` enable coalesce will cause some error in CG
 
 # TODO
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include <linux/bpf_ir.h>
 
 #define CHECK_COND(cond) \
@@ -5,7 +6,7 @@
 		return;  \
 	}
 
-void masking_pass(struct bpf_ir_env *env, struct ir_function *fun)
+void masking_pass(struct bpf_ir_env *env, struct ir_function *fun, void *param)
 {
 	struct ir_insn *insn = NULL;
 	struct ir_basic_block **pos;

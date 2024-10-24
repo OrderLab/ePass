@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include <linux/bpf_ir.h>
 
 // Kernel-side Low-level Interface Implementation
@@ -13,6 +14,12 @@ void free_proto(void *ptr)
 {
 	kvfree(ptr);
 }
+
+int parse_int(const char *str, int *val)
+{
+	return kstrtoint(str, 10, val);
+}
+
 #else
 
 void *malloc_proto(size_t size)
@@ -27,6 +34,16 @@ void *malloc_proto(size_t size)
 void free_proto(void *ptr)
 {
 	free(ptr);
+}
+
+int parse_int(const char *str, int *val)
+{
+	char *end;
+	*val = strtol(str, &end, 10);
+	if (*end != '\0') {
+		return -EINVAL;
+	}
+	return 0;
 }
 
 #endif

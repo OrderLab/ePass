@@ -1,14 +1,10 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include <linux/bpf.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <linux/bpf_ir.h>
 #include <string.h>
 #include "userspace.h"
-
-// All function passes
-static const struct function_pass custom_passes[] = {
-	DEF_FUNC_PASS(masking_pass, "maksing", true),
-};
 
 int main(int argc, char **argv)
 {
@@ -41,15 +37,15 @@ int main(int argc, char **argv)
 		memcpy(&insns[index], &s, sizeof(struct bpf_insn));
 		index++;
 	}
-
-	printf("Loaded program of size %zu\n", index);
-	struct bpf_ir_opts opts = {
-		.debug = true,
-		.print_mode = BPF_IR_PRINT_BPF,
-		.custom_pass_num = 0,
-		.custom_passes = custom_passes,
-		.builtin_enable_pass_num = 0,
+	struct bpf_ir_opts opts = bpf_ir_default_opts();
+	struct function_pass mp1 =
+		DEF_FUNC_PASS(masking_pass, "masking", false);
+	struct custom_pass_cfg custom_passes[] = {
+		DEF_CUSTOM_PASS(mp1, NULL, NULL, NULL),
 	};
+	opts.custom_pass_num = 0;
+	opts.custom_passes = custom_passes;
+	opts.builtin_pass_cfg_num = 0;
 	struct bpf_ir_env *env = bpf_ir_init_env(opts, insns, index);
 	if (!env) {
 		return 1;

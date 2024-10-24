@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include <linux/bpf_ir.h>
 
 struct ir_insn *bpf_ir_create_insn_base(struct bpf_ir_env *env,
@@ -374,10 +375,11 @@ struct ir_insn *bpf_ir_next_insn(struct ir_insn *insn)
 }
 
 // Note. This includes ret instruction
+// This will be checked that must be at the end of BB
 bool bpf_ir_is_jmp(struct ir_insn *insn)
 {
 	return (insn->op >= IR_INSN_JA && insn->op < IR_INSN_PHI) ||
-	       insn->op == IR_INSN_RET;
+	       insn->op == IR_INSN_RET || insn->op == IR_INSN_THROW;
 }
 
 bool bpf_ir_is_cond_jmp(struct ir_insn *insn)
@@ -407,8 +409,8 @@ void bpf_ir_phi_add_operand(struct bpf_ir_env *env, struct ir_insn *insn,
 	bpf_ir_val_add_user(env, val, insn);
 }
 
-void bpf_ir_phi_add_call_arg(struct bpf_ir_env *env, struct ir_insn *insn,
-			     struct ir_value val)
+void bpf_ir_add_call_arg(struct bpf_ir_env *env, struct ir_insn *insn,
+			 struct ir_value val)
 {
 	insn->values[insn->value_num++] = val;
 	bpf_ir_val_add_user(env, val, insn);
@@ -557,6 +559,15 @@ static struct ir_insn *create_ret_insn_base(struct bpf_ir_env *env,
 	new_insn->values[0] = val;
 	new_insn->value_num = 1;
 	bpf_ir_val_add_user(env, val, new_insn);
+	return new_insn;
+}
+
+static struct ir_insn *create_throw_insn_base(struct bpf_ir_env *env,
+					      struct ir_basic_block *bb)
+{
+	struct ir_insn *new_insn = bpf_ir_create_insn_base(env, bb);
+	new_insn->op = IR_INSN_THROW;
+	new_insn->value_num = 0;
 	return new_insn;
 }
 
@@ -894,6 +905,25 @@ struct ir_insn *bpf_ir_create_ret_insn_bb(struct bpf_ir_env *env,
 					  enum insert_position pos)
 {
 	struct ir_insn *new_insn = create_ret_insn_base(env, pos_bb, val);
+	bpf_ir_insert_at_bb(new_insn, pos_bb, pos);
+	return new_insn;
+}
+
+struct ir_insn *bpf_ir_create_throw_insn(struct bpf_ir_env *env,
+					 struct ir_insn *pos_insn,
+					 enum insert_position pos)
+{
+	struct ir_insn *new_insn =
+		create_throw_insn_base(env, pos_insn->parent_bb);
+	bpf_ir_insert_at(new_insn, pos_insn, pos);
+	return new_insn;
+}
+
+struct ir_insn *bpf_ir_create_throw_insn_bb(struct bpf_ir_env *env,
+					    struct ir_basic_block *pos_bb,
+					    enum insert_position pos)
+{
+	struct ir_insn *new_insn = create_throw_insn_base(env, pos_bb);
 	bpf_ir_insert_at_bb(new_insn, pos_bb, pos);
 	return new_insn;
 }
