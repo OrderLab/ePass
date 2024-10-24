@@ -86,6 +86,9 @@ struct bpf_ir_env {
 	// Verifier error
 	int verifier_err;
 
+	// Whether executed, used in verifier
+	bool executed;
+
 	// Number of instructions
 	size_t insn_cnt;
 

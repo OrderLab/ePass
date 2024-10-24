@@ -1375,6 +1375,7 @@ struct bpf_ir_env *bpf_ir_init_env(struct bpf_ir_opts opts,
 	env->err = 0;
 	env->opts = opts;
 	env->verifier_err = -1;
+	env->executed = false;
 	env->venv = NULL;
 
 	return env;
