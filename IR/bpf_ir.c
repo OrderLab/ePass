@@ -1179,7 +1179,7 @@ static void run_passes(struct bpf_ir_env *env, struct ir_function *fun)
 		if (env->opts.custom_passes[i].pass.enabled) {
 			if (env->opts.custom_passes[i].check_apply) {
 				if (env->opts.custom_passes[i].check_apply(
-					    env)) {
+					    env->verifier_err)) {
 					// Pass
 					run_single_pass(
 						env, fun,

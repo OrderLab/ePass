@@ -1067,7 +1067,7 @@ struct custom_pass_cfg {
 	struct function_pass pass;
 	void *param;
 	// Check if able to apply
-	bool (*check_apply)(struct bpf_ir_env *);
+	bool (*check_apply)(int err_code);
 
 	// Load the param
 	int (*param_load)(const char *, void **param);
