@@ -106,6 +106,8 @@ struct bpf_ir_env {
 
 void bpf_ir_print_to_log(struct bpf_ir_env *env, char *fmt, ...);
 
+void bpf_ir_reset_env(struct bpf_ir_env *env);
+
 #ifndef __KERNEL__
 
 #define PRINT_DBG printf

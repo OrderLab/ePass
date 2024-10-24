@@ -686,6 +686,17 @@ void print_ir_bb_err(struct bpf_ir_env *env, struct ir_basic_block *bb)
 	PRINT_LOG(env, "BB %zu encountered an error:\n", bb->_id);
 }
 
+void bpf_ir_reset_env(struct bpf_ir_env *env)
+{
+	env->log_pos = 0;
+	env->venv = NULL;
+	env->err = 0;
+	env->verifier_err = 0;
+	env->executed = false;
+	env->insn_cnt = 0;
+	env->insns = 0;
+}
+
 void bpf_ir_print_to_log(struct bpf_ir_env *env, char *fmt, ...)
 {
 	va_list args;
