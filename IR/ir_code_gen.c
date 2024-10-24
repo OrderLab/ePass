@@ -127,13 +127,6 @@ static void clean_cg(struct bpf_ir_env *env, struct ir_function *fun)
 	bpf_ir_array_clear(env, &fun->cg_info.all_var);
 }
 
-static void print_ir_prog_pre_cg(struct bpf_ir_env *env,
-				 struct ir_function *fun, char *msg)
-{
-	PRINT_LOG(env, "\x1B[32m----- CG: %s -----\x1B[0m\n", msg);
-	print_ir_prog_advanced(env, fun, NULL, NULL, NULL);
-}
-
 static void print_ir_prog_cg_dst(struct bpf_ir_env *env,
 				 struct ir_function *fun, char *msg)
 {
