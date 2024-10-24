@@ -4,11 +4,6 @@
 #include "userspace.h"
 #include <stdio.h>
 
-// All function passes
-// static struct custom_pass_cfg custom_passes[] = {
-// 	DEF_CUSTOM_PASS(masking_pass, "maksing", true, NULL, NULL, NULL),
-// };
-
 int main(int argn, char **argv)
 {
 	if (argn != 3) {

@@ -1360,6 +1360,7 @@ struct bpf_ir_opts bpf_ir_default_opts(void)
 	opts.enable_coalesce = false;
 	opts.force = false;
 	opts.verbose = 1;
+	opts.max_iteration = 10;
 	return opts;
 }
 

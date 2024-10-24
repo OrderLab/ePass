@@ -102,6 +102,26 @@ static int apply_global_opt(struct bpf_ir_env *env, const char *opt)
 		env->opts.print_mode = BPF_IR_PRINT_DETAIL;
 	} else if (strcmp(opt, "print_bpf_detail") == 0) {
 		env->opts.print_mode = BPF_IR_PRINT_BPF_DETAIL;
+	} else if (strncmp(opt, "verbose=", 8) == 0) {
+		int res = 0;
+		int err = parse_int(opt + 8, &res);
+		if (err) {
+			return err;
+		}
+		if (res < 0 || res > 10) {
+			return -EINVAL;
+		}
+		env->opts.verbose = res;
+	} else if (strncmp(opt, "maxit=", 6) == 0) {
+		int res = 0;
+		int err = parse_int(opt + 6, &res);
+		if (err) {
+			return err;
+		}
+		if (res < 0 || res > 15) {
+			return -EINVAL;
+		}
+		env->opts.max_iteration = res;
 	} else {
 		return -EINVAL;
 	}

@@ -61,6 +61,8 @@ struct bpf_ir_opts {
 	// Verbose level
 	int verbose;
 
+	u32 max_iteration;
+
 	enum {
 		BPF_IR_PRINT_BPF,
 		BPF_IR_PRINT_DETAIL,
@@ -225,11 +227,13 @@ void bpf_ir_array_clone(struct bpf_ir_env *env, struct array *res,
 
 /* DBG Macro End */
 
-/*  */
+/* LLI Start */
 
 void *malloc_proto(size_t size);
 
 void free_proto(void *ptr);
+
+int parse_int(const char *str, int *val);
 
 #define SAFE_MALLOC(dst, size)                            \
 	{                                                 \
@@ -255,13 +259,13 @@ void free_proto(void *ptr);
 		}                                         \
 	}
 
+/* LLI End */
+
 #define MAX_FUNC_ARG 5
 
 enum imm_type { IMM, IMM64 };
 
-/**
-    Pre-IR instructions, similar to `bpf_insn`
- */
+/* Pre-IR instructions, similar to `bpf_insn` */
 struct pre_ir_insn {
 	u8 opcode;
 
@@ -310,10 +314,10 @@ struct ir_raw_pos {
 	enum ir_raw_pos_type pos_t;
 };
 
-/**
-    VALUE = CONSTANT | INSN
-
-    "r1 = constant" pattern will use `CONSTANT` which will not be added to BB.
+/*
+ *  VALUE = CONSTANT | INSN
+ *
+ *  "r1 = constant" pattern will use `CONSTANT` which will not be added to BB.
  */
 struct ir_value {
 	union {
@@ -326,8 +330,8 @@ struct ir_value {
 	struct ir_raw_pos raw_pos;
 };
 
-/**
-    Value plus an offset
+/*
+ * Value plus an offset
  */
 struct ir_address_value {
 	// The value might be stack pointer
@@ -335,8 +339,8 @@ struct ir_address_value {
 	s16 offset;
 };
 
-/**
-    A single phi value entry
+/*
+ * A single phi value entry
  */
 struct phi_value {
 	struct ir_value value;
@@ -345,8 +349,8 @@ struct phi_value {
 
 int bpf_ir_valid_alu_type(enum ir_alu_op_type type);
 
-/**
-    Virtual Register Type
+/*
+ * Virtual Register Type
  */
 enum ir_vr_type {
 	IR_VR_TYPE_UNKNOWN, // To prevent from not manually setting this type
