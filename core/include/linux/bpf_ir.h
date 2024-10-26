@@ -1113,6 +1113,14 @@ struct builtin_pass_cfg {
 	  .param_load = param_loadc,                            \
 	  .param_unload = param_unloadc }
 
+#define DEF_BUILTIN_PASS_ENABLE_CFG(namec, param_loadc, param_unloadc) \
+	{ .name = namec,                                               \
+	  .param = NULL,                                               \
+	  .enable = true,                                              \
+	  .enable_cfg = false,                                         \
+	  .param_load = param_loadc,                                   \
+	  .param_unload = param_unloadc }
+
 #define DEF_FUNC_PASS(fun, msg, en_def) \
 	{ .pass = fun,                  \
 	  .name = msg,                  \

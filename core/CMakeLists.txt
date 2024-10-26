@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.20)
-project(bpf_ir)
+project(epass)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror -Wstrict-prototypes -Wenum-compare -Wunused-variable -Wunused-but-set-variable -Wsign-compare -O3")
 
-add_library(bpf_ir STATIC 
+add_library(epass STATIC
     bpf_ir.c
     array.c
     ir_helper.c
@@ -21,16 +21,22 @@ add_library(bpf_ir STATIC
     lii.c
 )
 
+add_executable(readload userspace/readload.c)
 add_executable(read userspace/read.c userspace/test_masking.c)
 add_executable(readlog userspace/readlog.c userspace/test_masking.c)
 add_executable(print userspace/print.c)
 add_executable(printlog userspace/printlog.c)
 add_executable(test_kern userspace/test_kern.c)
 
-target_link_libraries(read bpf bpf_ir)
-target_link_libraries(readlog bpf_ir)
-target_link_libraries(print bpf bpf_ir)
-target_link_libraries(printlog bpf_ir)
-target_link_libraries(test_kern bpf_ir)
+target_link_libraries(read bpf epass)
+target_link_libraries(readload bpf epass)
+target_link_libraries(readlog epass)
+target_link_libraries(print bpf epass)
+target_link_libraries(printlog epass)
+target_link_libraries(test_kern epass)
 
 include_directories(include)
+
+INSTALL(TARGETS epass
+        LIBRARY DESTINATION usr/local/lib
+)
