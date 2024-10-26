@@ -1,18 +1,18 @@
 
-obj: $(NAME).c vmlinux.h
+obj: $(NAME).c
 	clang -O2 -I/usr/include/$(shell uname -m)-linux-gnu -target bpf -g -c $< -o output/$(NAME).o
 
-objnop: $(NAME).c vmlinux.h
+objnop: $(NAME).c
 	clang -O0 -I/usr/include/$(shell uname -m)-linux-gnu -target bpf -g -c $< -o output/$(NAME).o
 
 s: obj
 	llvm-objdump -S output/$(NAME).o > output/$(NAME).s
 
-# sobj: $(NAME).s
-# 	llvm-mc -triple bpf -filetype=obj -o $(NAME).o $(NAME).s
-
-load: obj
+load: clean obj
 	sudo bpftool prog load output/$(NAME).o /sys/fs/bpf/$(NAME)
+
+autoattach: clean obj
+	sudo bpftool prog load output/$(NAME).o /sys/fs/bpf/$(NAME) autoattach
 
 attachxdp: load
 	sudo bpftool net attach xdp name prog dev $(CARD)
