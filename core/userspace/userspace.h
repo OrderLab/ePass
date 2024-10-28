@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #ifndef _USP_TEST_H_
 #define _USP_TEST_H_
 

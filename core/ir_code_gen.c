@@ -707,7 +707,7 @@ static void graph_coloring(struct bpf_ir_env *env, struct ir_function *fun)
 			}
 		}
 		bool need_spill = true;
-		for (u8 i = 0; i < MAX_BPF_REG; i++) {
+		for (u8 i = 0; i < BPF_REG_10; i++) { // Wrong!
 			if (!used_reg[i]) {
 				extra->allocated = true;
 				PRINT_LOG(env, "Allocate r%u for %%%zu\n", i,
@@ -2724,6 +2724,10 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 	int iterations = 0;
 
 	while (need_spill) {
+		PRINT_LOG(
+			env,
+			"\x1B[32m----- Register allocation iteration %d -----\x1B[0m\n",
+			iterations);
 		iterations++;
 		// Step 5: Liveness Analysis
 		liveness_analysis(env, fun);
