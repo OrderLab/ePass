@@ -847,6 +847,17 @@ struct ir_insn *bpf_ir_create_getelemptr_insn_bb(struct bpf_ir_env *env,
 						 struct ir_value offset,
 						 enum insert_position pos);
 
+struct ir_insn *bpf_ir_create_getelemptr_insn_cg(struct bpf_ir_env *env,
+						 struct ir_insn *pos_insn,
+						 struct ir_insn *alloca_insn,
+						 struct ir_value offset,
+						 enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_getelemptr_insn_bb_cg(
+	struct bpf_ir_env *env, struct ir_basic_block *pos_bb,
+	struct ir_insn *alloca_insn, struct ir_value offset,
+	enum insert_position pos);
+
 struct ir_insn *bpf_ir_create_store_insn(struct bpf_ir_env *env,
 					 struct ir_insn *pos_insn,
 					 struct ir_insn *insn,
