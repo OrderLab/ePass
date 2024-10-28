@@ -1184,23 +1184,20 @@ static struct ir_insn *normalize_load_const(struct bpf_ir_env *env,
 					    struct ir_insn *insn,
 					    struct ir_value *val)
 {
+	struct ir_insn *new_insn = NULL;
 	if (val->const_type == IR_ALU_32) {
-		struct ir_insn *new_insn = bpf_ir_create_assign_insn_cg(
-			env, insn, *val, INSERT_FRONT);
+		new_insn = bpf_ir_create_assign_insn_cg(env, insn, *val,
+							INSERT_FRONT);
 		new_insn->alu_op = IR_ALU_64;
-		val->type = IR_VALUE_INSN;
-		val->data.insn_d = new_insn;
-		return new_insn;
 	} else {
-		struct ir_insn *new_insn = bpf_ir_create_insn_base_cg(
-			env, insn->parent_bb, IR_INSN_LOADIMM_EXTRA);
+		new_insn = bpf_ir_create_insn_base_cg(env, insn->parent_bb,
+						      IR_INSN_LOADIMM_EXTRA);
 		new_insn->imm_extra_type = IR_LOADIMM_IMM64;
 		new_insn->imm64 = val->data.constant_d;
 		new_insn->vr_type = IR_VR_TYPE_64;
-		val->type = IR_VALUE_INSN;
-		val->data.insn_d = new_insn;
-		return new_insn;
 	}
+	bpf_ir_change_value(env, insn, val, bpf_ir_value_insn(new_insn));
+	return new_insn;
 }
 
 /* Normalize ALU */
@@ -1277,7 +1274,6 @@ static void normalize_alu(struct bpf_ir_env *env, struct ir_function *fun,
 		struct ir_insn *load_const_insn =
 			normalize_load_const(env, insn, v0);
 		set_insn_dst(env, load_const_insn, dst_insn);
-		// bpf_ir_change_value(env, insn, v0, bpf_ir_value_insn(dst_insn));
 	} else if (t0 == CONST && t1 == REG) {
 		// reg1 = add const reg2
 		// ==>
@@ -1286,7 +1282,6 @@ static void normalize_alu(struct bpf_ir_env *env, struct ir_function *fun,
 		struct ir_insn *load_const_insn =
 			normalize_load_const(env, insn, v0);
 		set_insn_dst(env, load_const_insn, dst_insn);
-		// bpf_ir_change_value(env, insn, v0, bpf_ir_value_insn(dst_insn));
 
 	} else {
 		CRITICAL_DUMP(env, "Error");

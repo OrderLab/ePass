@@ -5,4 +5,6 @@
 
 void masking_pass(struct bpf_ir_env *env, struct ir_function *fun, void *param);
 
+void test_pass1(struct bpf_ir_env *env, struct ir_function *fun, void *param);
+
 #endif

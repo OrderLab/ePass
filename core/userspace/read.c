@@ -20,13 +20,14 @@ int main(int argn, char **argv)
 	struct builtin_pass_cfg passes[] = {
 		{ .name = "add_counter" },
 	};
-	struct function_pass mp1 =
-		DEF_FUNC_PASS(masking_pass, "masking", false);
 	struct custom_pass_cfg custom_passes[] = {
-		DEF_CUSTOM_PASS(mp1, NULL, NULL, NULL),
+		DEF_CUSTOM_PASS(DEF_FUNC_PASS(test_pass1, "test_pass1", true),
+				NULL, NULL, NULL),
+		// DEF_CUSTOM_PASS(DEF_FUNC_PASS(masking_pass, "masking", false),
+		// 		NULL, NULL, NULL),
 	};
 	struct bpf_ir_opts opts = bpf_ir_default_opts();
-	opts.custom_pass_num = 0;
+	opts.custom_pass_num = 1;
 	opts.custom_passes = custom_passes;
 	opts.builtin_pass_cfg_num = 0;
 	opts.builtin_pass_cfg = passes;
