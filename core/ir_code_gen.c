@@ -2772,6 +2772,8 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 		// Step 8: Check if need to spill and spill
 		need_spill = check_need_spill(env, fun);
 		CHECK_ERR();
+		print_ir_prog_cg_alloc(env, fun, "Spilling");
+		CHECK_ERR();
 		prog_check_cg(env, fun);
 		CHECK_ERR();
 
