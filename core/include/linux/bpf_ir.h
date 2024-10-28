@@ -1060,6 +1060,7 @@ void remove_trivial_phi(struct bpf_ir_env *env, struct ir_function *fun,
 void add_counter(struct bpf_ir_env *env, struct ir_function *fun, void *param);
 
 extern const struct builtin_pass_cfg bpf_ir_kern_add_counter_pass;
+extern const struct builtin_pass_cfg bpf_ir_kern_optimization_pass;
 
 void translate_throw(struct bpf_ir_env *env, struct ir_function *fun,
 		     void *param);
@@ -1068,7 +1069,7 @@ struct function_pass {
 	void (*pass)(struct bpf_ir_env *env, struct ir_function *, void *param);
 
 	bool enabled;
-	bool non_overridable;
+	bool force_enable;
 	char name[BPF_IR_MAX_PASS_NAME_SIZE];
 };
 
@@ -1122,13 +1123,10 @@ struct builtin_pass_cfg {
 	  .param_unload = param_unloadc }
 
 #define DEF_FUNC_PASS(fun, msg, en_def) \
-	{ .pass = fun,                  \
-	  .name = msg,                  \
-	  .enabled = en_def,            \
-	  .non_overridable = false }
+	{ .pass = fun, .name = msg, .enabled = en_def, .force_enable = false }
 
-#define DEF_NON_OVERRIDE_FUNC_PASS(fun, msg, en_def) \
-	{ .pass = fun, .name = msg, .enabled = en_def, .non_overridable = true }
+#define DEF_NON_OVERRIDE_FUNC_PASS(fun, msg) \
+	{ .pass = fun, .name = msg, .enabled = true, .force_enable = true }
 
 /* Passes End */
 

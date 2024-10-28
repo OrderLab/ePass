@@ -111,7 +111,7 @@ static int load_param(const char *opt, void **param)
 		return -EINVAL;
 	}
 	*param = malloc_proto(sizeof(int));
-	if (!param) {
+	if (!*param) {
 		return -ENOMEM;
 	}
 	*(int *)(*param) = res;

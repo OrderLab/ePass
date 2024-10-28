@@ -4,7 +4,7 @@
 static void remove_no_user_insn(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	// Remove all instructions that have no users, except for void instructions & calls
-
+	bool changed = false;
 	struct ir_basic_block **pos;
 	array_for(pos, fun->reachable_bbs)
 	{
@@ -16,10 +16,14 @@ static void remove_no_user_insn(struct bpf_ir_env *env, struct ir_function *fun)
 				continue;
 			}
 			if (insn->users.num_elem == 0) {
+				changed = true;
 				bpf_ir_erase_insn(env, insn);
 				CHECK_ERR();
 			}
 		}
+	}
+	if (changed) {
+		remove_no_user_insn(env, fun);
 	}
 }
 
@@ -73,12 +77,70 @@ static void remove_unused_alloc(struct bpf_ir_env *env, struct ir_function *fun)
 	bpf_ir_array_free(&alloc_insns);
 }
 
+struct bpf_ir_optimization_opt {
+	bool no_dead_elim;
+};
+
 void bpf_ir_optimize_ir(struct bpf_ir_env *env, struct ir_function *fun,
 			void *param)
 {
-	remove_no_user_insn(env, fun);
-	CHECK_ERR();
+	struct bpf_ir_optimization_opt *opt = param;
+
+	if (!(opt && opt->no_dead_elim)) {
+		remove_no_user_insn(env, fun);
+		CHECK_ERR();
+	} else {
+		PRINT_LOG(env, "skip remove_no_user_insn\n");
+	}
 
 	remove_unused_alloc(env, fun);
 	CHECK_ERR();
 }
+
+static void get_opt(char *p, char **src)
+{
+	while (**src && **src != ' ') {
+		*p = **src;
+		p++;
+		(*src)++;
+	}
+	*p = '\0';
+}
+
+static int load_param(const char *opt, void **param)
+{
+	struct bpf_ir_optimization_opt ropt;
+	ropt.no_dead_elim = false;
+
+	char mopt[30] = { 0 };
+	char *src = (char *)opt;
+	while (*src) {
+		char *p = mopt;
+		get_opt(p, &src);
+
+		if (strcmp(mopt, "no_dead_elim") == 0) {
+			ropt.no_dead_elim = true;
+		}
+
+		if (*src) {
+			src++;
+		} else {
+			break;
+		}
+	}
+
+	*param = malloc_proto(sizeof(struct bpf_ir_optimization_opt));
+	if (!*param) {
+		return -ENOMEM;
+	}
+	*(struct bpf_ir_optimization_opt *)(*param) = ropt;
+	return 0;
+}
+
+static void unload_param(void *param)
+{
+	free_proto(param);
+}
+
+const struct builtin_pass_cfg bpf_ir_kern_optimization_pass =
+	DEF_BUILTIN_PASS_CFG("optimize_ir", load_param, unload_param);

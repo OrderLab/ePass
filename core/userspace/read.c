@@ -17,9 +17,10 @@ int main(int argn, char **argv)
 	}
 	size_t sz = bpf_program__insn_cnt(prog);
 	const struct bpf_insn *insn = bpf_program__insns(prog);
-	struct builtin_pass_cfg passes[] = {
-		{ .name = "add_counter" },
-	};
+	struct builtin_pass_cfg p1 = bpf_ir_kern_optimization_pass;
+	p1.param_load("no_dead_elim", &p1.param);
+
+	struct builtin_pass_cfg passes[] = { p1 };
 	struct custom_pass_cfg custom_passes[] = {
 		DEF_CUSTOM_PASS(DEF_FUNC_PASS(test_pass1, "test_pass1", true),
 				NULL, NULL, NULL),
@@ -27,9 +28,9 @@ int main(int argn, char **argv)
 		// 		NULL, NULL, NULL),
 	};
 	struct bpf_ir_opts opts = bpf_ir_default_opts();
-	opts.custom_pass_num = 1;
+	opts.custom_pass_num = 0;
 	opts.custom_passes = custom_passes;
-	opts.builtin_pass_cfg_num = 0;
+	opts.builtin_pass_cfg_num = 1;
 	opts.builtin_pass_cfg = passes;
 	opts.print_mode = BPF_IR_PRINT_DUMP;
 	struct bpf_ir_env *env = bpf_ir_init_env(opts, insn, sz);
@@ -43,4 +44,5 @@ int main(int argn, char **argv)
 	// bpf_program__set_insns(prog, env->insns, env->insn_cnt);
 	bpf_ir_free_env(env);
 	bpf_object__close(obj);
+	p1.param_unload(p1.param);
 }
