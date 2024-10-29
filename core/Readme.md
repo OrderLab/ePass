@@ -49,8 +49,6 @@ runtime write/read wrapper?
 ## Errors
 
 - Found error with output/test_asm.c.o
-- Found error with output/memerr1.c.o
-- Found error with output/mem1.c.o
 
 Reproduce: `ringbuf.c` enable coalesce will cause some error in CG
 

@@ -525,7 +525,8 @@ static struct ir_value read_variable(struct bpf_ir_env *env,
 		} else {
 			// Invalid Program!
 			// Should throw an exception here
-			CRITICAL("Invalid program detected!");
+			RAISE_ERROR_RET("Invalid program detected!",
+					bpf_ir_value_undef());
 		}
 	}
 	// Not found
@@ -778,6 +779,8 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 					  alu_ty);
 			} else {
 				// TODO
+				PRINT_LOG_ERROR(env, "Unknown opcode: %d\n",
+						code);
 				RAISE_ERROR(
 					"Unknown ALU instruction, not supported");
 			}
@@ -952,10 +955,9 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 				new_insn->op = IR_INSN_CALL;
 				new_insn->fid = insn.imm;
 				if (insn.imm < 0) {
-					PRINT_LOG_WARNING(
-						env,
-						"Not supported function call\n");
 					new_insn->value_num = 0;
+					RAISE_ERROR(
+						"Not supported function call\n");
 				} else {
 					// Test if the helper function is supported
 					bool supported = false;
