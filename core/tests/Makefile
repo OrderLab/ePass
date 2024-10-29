@@ -28,7 +28,7 @@ log:
 
 clean:
 	rm -f $(NAME).o $(NAME).s
-	sudo rm /sys/fs/bpf/$(NAME)
+	sudo rm -f /sys/fs/bpf/$(NAME)
 
 vmlinux.h:
 	bpftool btf dump file /sys/kernel/btf/vmlinux format c > vmlinux.h
