@@ -11,8 +11,10 @@ int main(int argc, char **argv)
 	enum {
 		MODE_NONE,
 		MODE_READ,
+		MODE_READLOAD,
 		MODE_READLOG,
 		MODE_PRINT,
+		MODE_PRINT_LOG,
 	} mode = MODE_NONE;
 	struct user_opts uopts;
 	static struct option long_options[] = {
@@ -44,6 +46,8 @@ int main(int argc, char **argv)
 					mode = MODE_READLOG;
 				} else if (strcmp(optarg, "print") == 0) {
 					mode = MODE_PRINT;
+				} else if (strcmp(optarg, "readload") == 0) {
+					mode = MODE_READLOAD;
 				}
 				break;
 			case 'p':
@@ -61,4 +65,22 @@ int main(int argc, char **argv)
 	if (mode == MODE_NONE) {
 		return 1;
 	}
+
+	if (mode == MODE_READLOG) {
+		return printlog(uopts);
+	}
+	if (mode == MODE_PRINT) {
+		return print(uopts);
+	}
+	if (mode == MODE_READ) {
+		return read(uopts);
+	}
+	if (mode == MODE_READLOAD) {
+		return readload(uopts);
+	}
+	if (mode == MODE_PRINT_LOG) {
+		return printlog(uopts);
+	}
+
+	return 0;
 }

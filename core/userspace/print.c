@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "bpf/libbpf.h"
 #include <linux/bpf_ir.h>
+#include "userspace.h"
 
 static void print_bpf_prog(struct bpf_ir_env *env, const struct bpf_insn *insns,
 			   size_t len)
@@ -15,14 +16,11 @@ static void print_bpf_prog(struct bpf_ir_env *env, const struct bpf_insn *insns,
 	}
 }
 
-int main(int argn, char **argv)
+int print(struct user_opts uopts)
 {
-	if (argn != 3) {
-		return 1;
-	}
-	struct bpf_object *obj = bpf_object__open(argv[1]);
+	struct bpf_object *obj = bpf_object__open(uopts.prog);
 	struct bpf_program *prog =
-		bpf_object__find_program_by_name(obj, argv[2]);
+		bpf_object__find_program_by_name(obj, uopts.sec);
 	if (!prog) {
 		return 1;
 	}
@@ -43,4 +41,5 @@ int main(int argn, char **argv)
 	bpf_ir_print_log_dbg(env);
 	bpf_ir_free_env(env);
 	bpf_object__close(obj);
+	return 0;
 }

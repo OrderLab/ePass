@@ -4,14 +4,11 @@
 #include "userspace.h"
 #include <stdio.h>
 
-int main(int argn, char **argv)
+int read(struct user_opts uopts)
 {
-	if (argn != 3) {
-		return 1;
-	}
-	struct bpf_object *obj = bpf_object__open(argv[1]);
+	struct bpf_object *obj = bpf_object__open(uopts.prog);
 	struct bpf_program *prog =
-		bpf_object__find_program_by_name(obj, argv[2]);
+		bpf_object__find_program_by_name(obj, uopts.sec);
 	if (!prog) {
 		return 1;
 	}
@@ -45,4 +42,5 @@ int main(int argn, char **argv)
 	bpf_ir_free_env(env);
 	bpf_object__close(obj);
 	p1.param_unload(p1.param);
+	return 0;
 }

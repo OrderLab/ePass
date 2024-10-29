@@ -6,13 +6,10 @@
 #include <string.h>
 #include "userspace.h"
 
-int main(int argc, char **argv)
+int readlog(struct user_opts uopts)
 {
-	if (argc <= 1) {
-		return -1;
-	}
 	FILE *fp = NULL;
-	char *program_name = argv[1];
+	char *program_name = uopts.prog;
 	fp = fopen(program_name, "r");
 	if (!fp) {
 		return -1;

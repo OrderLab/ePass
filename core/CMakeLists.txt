@@ -21,18 +21,25 @@ add_library(epass STATIC
     lii.c
 )
 
-add_executable(readload userspace/readload.c)
-add_executable(read userspace/read.c userspace/test_pass1.c)
-add_executable(readlog userspace/readlog.c)
-add_executable(print userspace/print.c)
-add_executable(printlog userspace/printlog.c)
-add_executable(epasstool userspace/epasstool.c)
+# add_executable(readload userspace/readload.c)
+# add_executable(read userspace/read.c userspace/test_pass1.c)
+# add_executable(readlog userspace/readlog.c)
+# add_executable(print userspace/print.c)
+# add_executable(printlog userspace/printlog.c)
+add_executable(epasstool
+    userspace/epasstool.c
+    userspace/readload.c
+    userspace/test_pass1.c
+    userspace/readlog.c
+    userspace/print.c
+    userspace/printlog.c
+)
 
-target_link_libraries(read bpf epass)
-target_link_libraries(readload bpf epass)
-target_link_libraries(readlog epass)
-target_link_libraries(print bpf epass)
-target_link_libraries(printlog epass)
+# target_link_libraries(read bpf epass)
+# target_link_libraries(readload bpf epass)
+# target_link_libraries(readlog epass)
+# target_link_libraries(print bpf epass)
+# target_link_libraries(printlog epass)
 target_link_libraries(epasstool bpf epass)
 
 include_directories(include)

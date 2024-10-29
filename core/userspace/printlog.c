@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <linux/bpf_ir.h>
+#include "userspace.h"
 
 static void print_bpf_prog(struct bpf_ir_env *env, const struct bpf_insn *insns,
 			   size_t len)
@@ -18,13 +19,10 @@ static void print_bpf_prog(struct bpf_ir_env *env, const struct bpf_insn *insns,
 	}
 }
 
-int main(int argc, char **argv)
+int printlog(struct user_opts uopts)
 {
-	if (argc <= 1) {
-		return -1;
-	}
 	FILE *fp = NULL;
-	char *program_name = argv[1];
+	char *program_name = uopts.prog;
 	fp = fopen(program_name, "r");
 	if (!fp) {
 		return -1;

@@ -6,8 +6,8 @@
 
 static struct bpf_ir_env *env;
 
-int callback_fn(struct bpf_program *prog, struct bpf_prog_load_opts *opts,
-		long cookie)
+static int callback_fn(struct bpf_program *prog,
+		       struct bpf_prog_load_opts *opts, long cookie)
 {
 	if (!env->err) {
 		bpf_program__set_insns(prog, env->insns, env->insn_cnt);
@@ -18,14 +18,11 @@ int callback_fn(struct bpf_program *prog, struct bpf_prog_load_opts *opts,
 	}
 }
 
-int main(int argn, char **argv)
+int readload(struct user_opts uopts)
 {
-	if (argn != 3) {
-		return 1;
-	}
-	struct bpf_object *obj = bpf_object__open(argv[1]);
+	struct bpf_object *obj = bpf_object__open(uopts.prog);
 	struct bpf_program *prog =
-		bpf_object__find_program_by_name(obj, argv[2]);
+		bpf_object__find_program_by_name(obj, uopts.sec);
 	if (!prog) {
 		return 1;
 	}
@@ -58,8 +55,9 @@ int main(int argn, char **argv)
 				     bpf_program__expected_attach_type(prog),
 				     &handler_opts);
 	bpf_object__close(obj);
-	obj = bpf_object__open(argv[1]);
+	obj = bpf_object__open(uopts.prog);
 	bpf_object__load(obj);
 	bpf_ir_free_env(env);
 	bpf_object__close(obj);
+	return 0;
 }
