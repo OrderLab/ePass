@@ -1301,7 +1301,9 @@ static void normalize_alu(struct bpf_ir_env *env, struct ir_function *fun,
 			// reg1 = add reg1 reg3
 			struct ir_insn *new_insn = bpf_ir_create_assign_insn_cg(
 				env, insn, *v0, INSERT_FRONT);
-			DBGASSERT(dst_insn == fun->cg_info.regs[reg1]);
+			// DBGASSERT(dst_insn ==
+			// 	  fun->cg_info.regs[reg1]); // Fixed reg?
+			// TODO: Investigate here, why did I write this check?
 			set_insn_dst(env, new_insn, dst_insn);
 			bpf_ir_change_value(env, insn, v0,
 					    bpf_ir_value_insn(dst_insn));

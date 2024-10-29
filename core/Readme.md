@@ -48,12 +48,7 @@ runtime write/read wrapper?
 
 ## Errors
 
-- Found error with output/mem1.c.nop.o
-- Found error with output/ringbuf.c.nop.o
 - Found error with output/test_asm.c.o
-- Found error with output/mem2.c.nop.o
-- Found error with output/test_asm.c.nop.o
-- Found error with output/mask.c.nop.o
 - Found error with output/memerr1.c.o
 - Found error with output/mem1.c.o
 

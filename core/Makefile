@@ -16,9 +16,9 @@ kernel: build
 	./scripts/gen_kernel.sh
 
 read: build
-	epasstool -m read -p tests/output/${NAME}.o -s prog --gopt verbose=3
+	epasstool -m read -p tests/output/${NAME}.o -s prog --gopt verbose=2
 
 readlog: build
-	epasstool -m readlog -p tests/log/${NAME}.txt --gopt verbose=3
+	epasstool -m readlog -p tests/log/${NAME}.txt --gopt verbose=2
 
 .PHONY: build format kernel readlog read genctor

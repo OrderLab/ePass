@@ -105,8 +105,8 @@ void bpf_ir_print_to_log(int level, struct bpf_ir_env *env, char *fmt, ...);
 
 void bpf_ir_reset_env(struct bpf_ir_env *env);
 
-#define PRINT_LOG_DEBUG(...) bpf_ir_print_to_log(3, __VA_ARGS__)
-#define PRINT_LOG_INFO(...) bpf_ir_print_to_log(2, __VA_ARGS__)
+#define PRINT_LOG_INFO(...) bpf_ir_print_to_log(3, __VA_ARGS__)
+#define PRINT_LOG_DEBUG(...) bpf_ir_print_to_log(2, __VA_ARGS__)
 #define PRINT_LOG_WARNING(...) bpf_ir_print_to_log(1, __VA_ARGS__)
 #define PRINT_LOG_ERROR(...) bpf_ir_print_to_log(0, __VA_ARGS__)
 
