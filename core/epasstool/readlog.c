@@ -41,6 +41,9 @@ int readlog(struct user_opts uopts)
 	}
 	enable_builtin(env);
 	bpf_ir_run(env);
+	if (env->err) {
+		return env->err;
+	}
 	// bpf_ir_print_log_dbg(env);
 	bpf_ir_free_opts(env);
 	bpf_ir_free_env(env);
