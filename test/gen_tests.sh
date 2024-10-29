@@ -11,4 +11,3 @@ for file in $files; do
     clang -O2 -I/usr/include/$(uname -m)-linux-gnu -target bpf -g -c $file -o output/$base_name.o
     clang -O0 -I/usr/include/$(uname -m)-linux-gnu -target bpf -g -c $file -o output/$base_name.nop.o
 done
-
