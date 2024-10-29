@@ -799,13 +799,7 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 			   BPF_MODE(code) == BPF_IMM &&
 			   BPF_SIZE(code) == BPF_DW) {
 			// 64-bit immediate load
-			if (insn.src_reg == 0x0) {
-				// immediate value
-				struct ir_value v =
-					bpf_ir_value_const64(insn.imm64);
-				set_value_raw_pos(&v, insn.pos, IR_RAW_POS_IMM);
-				write_variable(env, tenv, insn.dst_reg, bb, v);
-			} else if (insn.src_reg > 0 && insn.src_reg <= 0x06) {
+			if (insn.src_reg >= 0 && insn.src_reg <= 0x06) {
 				// BPF MAP instructions
 				struct ir_insn *new_insn =
 					create_insn_back(bb->ir_bb);
