@@ -803,6 +803,8 @@ bool bpf_ir_is_void(struct ir_insn *insn);
 
 bool bpf_ir_is_jmp(struct ir_insn *insn);
 
+bool bpf_ir_is_commutative_alu(struct ir_insn *insn);
+
 bool bpf_ir_is_cond_jmp(struct ir_insn *insn);
 
 bool bpf_ir_is_alu(struct ir_insn *insn);

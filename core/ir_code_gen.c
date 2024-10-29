@@ -1723,6 +1723,20 @@ static bool spill_alu(struct bpf_ir_env *env, struct ir_function *fun,
 	}
 
 	if (t1 == REG && allocated_reg_insn(dst_insn) == allocated_reg(*v1)) {
+		if (t0 == REG && allocated_reg(*v1) == allocated_reg(*v0)) {
+			// reg = ALU reg reg
+			// OK, no need to change
+			return false;
+		}
+		if (bpf_ir_is_commutative_alu(insn)) {
+			// reg = ALU ? reg
+			// ==>
+			// reg = ALU reg ?
+			struct ir_value tmp = *v0;
+			*v0 = *v1;
+			*v1 = tmp;
+			return spill_alu(env, fun, insn);
+		}
 		// r0 = ALU ? r0
 		// ==>
 		// R1 = r0
