@@ -1,7 +1,7 @@
 #include <linux/bpf.h>
 #include <bpf/bpf_helpers.h>
 
-int __noinline call(__u64 i)
+int inline call(__u64 i)
 {
 	if (i > 100) {
 		return -1;

@@ -1,7 +1,7 @@
 #include <linux/bpf.h>
 #include <bpf/bpf_helpers.h>
 
-int __noinline spill(int cr, int ci)
+int inline spill(int cr, int ci)
 {
 	int i = 0;
 	int zr = 0;
@@ -22,12 +22,12 @@ int __noinline spill(int cr, int ci)
 	return i;
 }
 
-void __noinline pk(char s)
+void inline pk(char s)
 {
 	bpf_trace_printk("%c", 1, s);
 }
 
-void __noinline pk_l(char *s)
+void inline pk_l(char *s)
 {
 	bpf_trace_printk("%s", 1, s);
 }
