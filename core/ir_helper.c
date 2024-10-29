@@ -695,8 +695,11 @@ void bpf_ir_reset_env(struct bpf_ir_env *env)
 	env->executed = false;
 }
 
-void bpf_ir_print_to_log(struct bpf_ir_env *env, char *fmt, ...)
+void bpf_ir_print_to_log(int level, struct bpf_ir_env *env, char *fmt, ...)
 {
+	if (env->opts.verbose < level) {
+		return;
+	}
 	va_list args;
 	va_start(args, fmt);
 	char buf[200];

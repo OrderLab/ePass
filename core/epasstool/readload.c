@@ -26,17 +26,6 @@ int readload(struct user_opts uopts)
 	}
 	size_t sz = bpf_program__insn_cnt(prog);
 	const struct bpf_insn *insn = bpf_program__insns(prog);
-	// struct builtin_pass_cfg passes[] = {
-	// 	// { .name = "add_counter", .param = NULL, .enable = true },
-	// 	DEF_BUILTIN_PASS_ENABLE_CFG("add_counter", NULL, NULL),
-	// };
-	// struct custom_pass_cfg custom_passes[] = {};
-	// struct bpf_ir_opts opts = bpf_ir_default_opts();
-	// opts.custom_pass_num = 0;
-	// opts.custom_passes = custom_passes;
-	// opts.builtin_pass_cfg_num = 1;
-	// opts.builtin_pass_cfg = passes;
-	// opts.print_mode = BPF_IR_PRINT_DUMP;
 	env = bpf_ir_init_env(uopts.opts, insn, sz);
 	if (!env) {
 		return 1;

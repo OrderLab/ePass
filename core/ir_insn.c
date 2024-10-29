@@ -340,7 +340,7 @@ void bpf_ir_val_remove_user(struct ir_value val, struct ir_insn *user)
 			return;
 		}
 	}
-	PRINT_DBG("Warning: User not found in the users\n");
+	// PRINT_DBG("Warning: User not found in the users\n");
 }
 
 /**

@@ -1334,7 +1334,6 @@ struct bpf_ir_opts bpf_ir_default_opts(void)
 	opts.print_mode = BPF_IR_PRINT_BPF;
 	opts.builtin_pass_cfg_num = 0;
 	opts.custom_pass_num = 0;
-	opts.debug = false;
 	opts.enable_coalesce = false;
 	opts.force = false;
 	opts.verbose = 1;

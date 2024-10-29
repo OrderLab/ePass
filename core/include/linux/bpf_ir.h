@@ -49,9 +49,6 @@ struct custom_pass_cfg;
 struct builtin_pass_cfg;
 
 struct bpf_ir_opts {
-	// Enable debug mode
-	bool debug;
-
 	// Force to use ePass, even if verifier passes
 	bool force;
 
@@ -104,21 +101,24 @@ struct bpf_ir_env {
 	void *venv;
 };
 
-void bpf_ir_print_to_log(struct bpf_ir_env *env, char *fmt, ...);
+void bpf_ir_print_to_log(int level, struct bpf_ir_env *env, char *fmt, ...);
 
 void bpf_ir_reset_env(struct bpf_ir_env *env);
+
+#define PRINT_LOG_DEBUG(...) bpf_ir_print_to_log(3, __VA_ARGS__)
+#define PRINT_LOG_INFO(...) bpf_ir_print_to_log(2, __VA_ARGS__)
+#define PRINT_LOG_WARNING(...) bpf_ir_print_to_log(1, __VA_ARGS__)
+#define PRINT_LOG_ERROR(...) bpf_ir_print_to_log(0, __VA_ARGS__)
+
+#define PRINT_LOG(...) bpf_ir_print_to_log(1, __VA_ARGS__)
 
 #ifndef __KERNEL__
 
 #define PRINT_DBG printf
 
-#define PRINT_LOG bpf_ir_print_to_log
-
 #else
 
 #define PRINT_DBG printk
-
-#define PRINT_LOG bpf_ir_print_to_log
 
 #endif
 

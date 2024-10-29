@@ -2156,7 +2156,7 @@ static void calc_stack_size(struct ir_function *fun)
 		}
 	}
 	fun->cg_info.stack_offset = off + max;
-	PRINT_DBG("Stack size: %d\n", fun->cg_info.stack_offset);
+	// PRINT_DBG("Stack size: %d\n", fun->cg_info.stack_offset);
 }
 
 static void add_stack_offset(struct bpf_ir_env *env, struct ir_function *fun,
