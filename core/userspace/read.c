@@ -32,7 +32,7 @@ int main(int argn, char **argv)
 	opts.custom_passes = custom_passes;
 	opts.builtin_pass_cfg_num = 1;
 	opts.builtin_pass_cfg = passes;
-	opts.print_mode = BPF_IR_PRINT_DUMP;
+	opts.print_mode = BPF_IR_PRINT_BPF;
 	struct bpf_ir_env *env = bpf_ir_init_env(opts, insn, sz);
 	if (!env) {
 		return 1;

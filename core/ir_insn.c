@@ -442,6 +442,28 @@ static struct ir_insn *create_allocarray_insn_base(struct bpf_ir_env *env,
 	return new_insn;
 }
 
+static struct ir_insn *
+create_loadimmextra_insn_base(struct bpf_ir_env *env, struct ir_basic_block *bb,
+			      enum ir_loadimm_extra_type load_ty, s64 imm)
+{
+	struct ir_insn *new_insn = bpf_ir_create_insn_base(env, bb);
+	new_insn->op = IR_INSN_LOADIMM_EXTRA;
+	new_insn->imm_extra_type = load_ty;
+	new_insn->imm64 = imm;
+	return new_insn;
+}
+static struct ir_insn *
+create_loadimmextra_insn_base_cg(struct bpf_ir_env *env,
+				 struct ir_basic_block *bb,
+				 enum ir_loadimm_extra_type load_ty, s64 imm)
+{
+	struct ir_insn *new_insn =
+		bpf_ir_create_insn_base_cg(env, bb, IR_INSN_LOADIMM_EXTRA);
+	new_insn->imm_extra_type = load_ty;
+	new_insn->imm64 = imm;
+	return new_insn;
+}
+
 static struct ir_insn *create_getelemptr_insn_base(struct bpf_ir_env *env,
 						   struct ir_basic_block *bb,
 						   struct ir_insn *alloca_insn,
@@ -733,6 +755,46 @@ struct ir_insn *bpf_ir_create_allocarray_insn_bb(struct bpf_ir_env *env,
 {
 	struct ir_insn *new_insn =
 		create_allocarray_insn_base(env, pos_bb, type, num);
+	bpf_ir_insert_at_bb(new_insn, pos_bb, pos);
+	return new_insn;
+}
+
+struct ir_insn *bpf_ir_create_loadimmextra_insn(
+	struct bpf_ir_env *env, struct ir_insn *pos_insn,
+	enum ir_loadimm_extra_type load_ty, s64 imm, enum insert_position pos)
+{
+	struct ir_insn *new_insn = create_loadimmextra_insn_base(
+		env, pos_insn->parent_bb, load_ty, imm);
+	bpf_ir_insert_at(new_insn, pos_insn, pos);
+	return new_insn;
+}
+
+struct ir_insn *bpf_ir_create_loadimmextra_insn_bb(
+	struct bpf_ir_env *env, struct ir_basic_block *pos_bb,
+	enum ir_loadimm_extra_type load_ty, s64 imm, enum insert_position pos)
+{
+	struct ir_insn *new_insn =
+		create_loadimmextra_insn_base(env, pos_bb, load_ty, imm);
+	bpf_ir_insert_at_bb(new_insn, pos_bb, pos);
+	return new_insn;
+}
+
+struct ir_insn *bpf_ir_create_loadimmextra_insn_cg(
+	struct bpf_ir_env *env, struct ir_insn *pos_insn,
+	enum ir_loadimm_extra_type load_ty, s64 imm, enum insert_position pos)
+{
+	struct ir_insn *new_insn = create_loadimmextra_insn_base_cg(
+		env, pos_insn->parent_bb, load_ty, imm);
+	bpf_ir_insert_at(new_insn, pos_insn, pos);
+	return new_insn;
+}
+
+struct ir_insn *bpf_ir_create_loadimmextra_insn_bb_cg(
+	struct bpf_ir_env *env, struct ir_basic_block *pos_bb,
+	enum ir_loadimm_extra_type load_ty, s64 imm, enum insert_position pos)
+{
+	struct ir_insn *new_insn =
+		create_loadimmextra_insn_base_cg(env, pos_bb, load_ty, imm);
 	bpf_ir_insert_at_bb(new_insn, pos_bb, pos);
 	return new_insn;
 }

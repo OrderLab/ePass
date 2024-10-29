@@ -835,6 +835,22 @@ struct ir_insn *bpf_ir_create_allocarray_insn_bb(struct bpf_ir_env *env,
 						 enum ir_vr_type type, u32 num,
 						 enum insert_position pos);
 
+struct ir_insn *bpf_ir_create_loadimmextra_insn(
+	struct bpf_ir_env *env, struct ir_insn *pos_insn,
+	enum ir_loadimm_extra_type load_ty, s64 imm, enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_loadimmextra_insn_bb(
+	struct bpf_ir_env *env, struct ir_basic_block *pos_bb,
+	enum ir_loadimm_extra_type load_ty, s64 imm, enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_loadimmextra_insn_cg(
+	struct bpf_ir_env *env, struct ir_insn *pos_insn,
+	enum ir_loadimm_extra_type load_ty, s64 imm, enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_loadimmextra_insn_bb_cg(
+	struct bpf_ir_env *env, struct ir_basic_block *pos_bb,
+	enum ir_loadimm_extra_type load_ty, s64 imm, enum insert_position pos);
+
 struct ir_insn *bpf_ir_create_getelemptr_insn(struct bpf_ir_env *env,
 					      struct ir_insn *pos_insn,
 					      struct ir_insn *alloca_insn,
