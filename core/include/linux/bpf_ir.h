@@ -391,6 +391,7 @@ enum ir_insn_type {
 	IR_INSN_SUB,
 	IR_INSN_MUL,
 	IR_INSN_LSH,
+	IR_INSN_RSH,
 	IR_INSN_MOD,
 	// CALL EXIT
 	IR_INSN_CALL,

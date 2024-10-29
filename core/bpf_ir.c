@@ -773,14 +773,18 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 			} else if (BPF_OP(code) == BPF_LSH) {
 				alu_write(env, tenv, IR_INSN_LSH, insn, bb,
 					  alu_ty);
+			} else if (BPF_OP(code) == BPF_RSH) {
+				alu_write(env, tenv, IR_INSN_RSH, insn, bb,
+					  alu_ty);
 			} else if (BPF_OP(code) == BPF_MOD) {
 				// dst = (src != 0) ? (dst % src) : dst
 				alu_write(env, tenv, IR_INSN_MOD, insn, bb,
 					  alu_ty);
 			} else {
 				// TODO
-				PRINT_LOG_ERROR(env, "Unknown opcode: %d\n",
-						code);
+				PRINT_LOG_ERROR(
+					env, "Unknown opcode: %d at insn %d\n",
+					code, insn.pos);
 				RAISE_ERROR(
 					"Unknown ALU instruction, not supported");
 			}

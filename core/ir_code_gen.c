@@ -2323,6 +2323,8 @@ static int alu_code(enum ir_insn_type insn)
 		return BPF_MOD;
 	case IR_INSN_LSH:
 		return BPF_LSH;
+	case IR_INSN_RSH:
+		return BPF_RSH;
 	default:
 		CRITICAL("Error");
 	}
