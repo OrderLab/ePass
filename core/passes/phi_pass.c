@@ -25,7 +25,7 @@ static void try_remove_trivial_phi(struct bpf_ir_env *env, struct ir_insn *phi)
 		same = pv.value;
 		same_has_value = 1;
 	}
-	// PRINT_LOG("Phi to remove: ");
+	// PRINT_LOG_DEBUG("Phi to remove: ");
 	// print_raw_ir_insn(phi);
 	if (!same_has_value) {
 		same.type = IR_VALUE_UNDEF;

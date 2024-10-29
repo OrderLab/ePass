@@ -64,16 +64,17 @@ static const char *const bpf_jmp_string[16] = {
 static void print_bpf_end_insn(struct bpf_ir_env *env,
 			       const struct bpf_insn *insn)
 {
-	PRINT_LOG(env, "(%02x) r%d = %s%d r%d\n", insn->code, insn->dst_reg,
-		  BPF_SRC(insn->code) == BPF_TO_BE ? "be" : "le", insn->imm,
-		  insn->dst_reg);
+	PRINT_LOG_DEBUG(env, "(%02x) r%d = %s%d r%d\n", insn->code,
+			insn->dst_reg,
+			BPF_SRC(insn->code) == BPF_TO_BE ? "be" : "le",
+			insn->imm, insn->dst_reg);
 }
 
 static void print_bpf_bswap_insn(struct bpf_ir_env *env,
 				 const struct bpf_insn *insn)
 {
-	PRINT_LOG(env, "(%02x) r%d = bswap%d r%d\n", insn->code, insn->dst_reg,
-		  insn->imm, insn->dst_reg);
+	PRINT_LOG_DEBUG(env, "(%02x) r%d = bswap%d r%d\n", insn->code,
+			insn->dst_reg, insn->imm, insn->dst_reg);
 }
 
 static bool is_sdiv_smod(const struct bpf_insn *insn)
@@ -116,11 +117,12 @@ void bpf_ir_print_bpf_insn(struct bpf_ir_env *env, const struct bpf_insn *insn)
 			else
 				print_bpf_end_insn(env, insn);
 		} else if (BPF_OP(insn->code) == BPF_NEG) {
-			PRINT_LOG(env, "(%02x) %c%d = -%c%d\n", insn->code,
-				  class == BPF_ALU ? 'w' : 'r', insn->dst_reg,
-				  class == BPF_ALU ? 'w' : 'r', insn->dst_reg);
+			PRINT_LOG_DEBUG(
+				env, "(%02x) %c%d = -%c%d\n", insn->code,
+				class == BPF_ALU ? 'w' : 'r', insn->dst_reg,
+				class == BPF_ALU ? 'w' : 'r', insn->dst_reg);
 		} else if (BPF_SRC(insn->code) == BPF_X) {
-			PRINT_LOG(
+			PRINT_LOG_DEBUG(
 				env, "(%02x) %c%d %s %s%c%d\n", insn->code,
 				class == BPF_ALU ? 'w' : 'r', insn->dst_reg,
 				is_sdiv_smod(insn) ?
@@ -132,7 +134,7 @@ void bpf_ir_print_bpf_insn(struct bpf_ir_env *env, const struct bpf_insn *insn)
 					"",
 				class == BPF_ALU ? 'w' : 'r', insn->src_reg);
 		} else {
-			PRINT_LOG(
+			PRINT_LOG_DEBUG(
 				env, "(%02x) %c%d %s %d\n", insn->code,
 				class == BPF_ALU ? 'w' : 'r', insn->dst_reg,
 				is_sdiv_smod(insn) ?
@@ -143,25 +145,27 @@ void bpf_ir_print_bpf_insn(struct bpf_ir_env *env, const struct bpf_insn *insn)
 		}
 	} else if (class == BPF_STX) {
 		if (BPF_MODE(insn->code) == BPF_MEM)
-			PRINT_LOG(env, "(%02x) *(%s *)(r%d %+d) = r%d\n",
-				  insn->code,
-				  bpf_ldst_string[BPF_SIZE(insn->code) >> 3],
-				  insn->dst_reg, insn->off, insn->src_reg);
+			PRINT_LOG_DEBUG(
+				env, "(%02x) *(%s *)(r%d %+d) = r%d\n",
+				insn->code,
+				bpf_ldst_string[BPF_SIZE(insn->code) >> 3],
+				insn->dst_reg, insn->off, insn->src_reg);
 		else if (BPF_MODE(insn->code) == BPF_ATOMIC &&
 			 (insn->imm == BPF_ADD || insn->imm == BPF_AND ||
 			  insn->imm == BPF_OR || insn->imm == BPF_XOR)) {
-			PRINT_LOG(env, "(%02x) lock *(%s *)(r%d %+d) %s r%d\n",
-				  insn->code,
-				  bpf_ldst_string[BPF_SIZE(insn->code) >> 3],
-				  insn->dst_reg, insn->off,
-				  bpf_alu_string[BPF_OP(insn->imm) >> 4],
-				  insn->src_reg);
+			PRINT_LOG_DEBUG(
+				env, "(%02x) lock *(%s *)(r%d %+d) %s r%d\n",
+				insn->code,
+				bpf_ldst_string[BPF_SIZE(insn->code) >> 3],
+				insn->dst_reg, insn->off,
+				bpf_alu_string[BPF_OP(insn->imm) >> 4],
+				insn->src_reg);
 		} else if (BPF_MODE(insn->code) == BPF_ATOMIC &&
 			   (insn->imm == (BPF_ADD | BPF_FETCH) ||
 			    insn->imm == (BPF_AND | BPF_FETCH) ||
 			    insn->imm == (BPF_OR | BPF_FETCH) ||
 			    insn->imm == (BPF_XOR | BPF_FETCH))) {
-			PRINT_LOG(
+			PRINT_LOG_DEBUG(
 				env,
 				"(%02x) r%d = atomic%s_fetch_%s((%s *)(r%d %+d), r%d)\n",
 				insn->code, insn->src_reg,
@@ -171,7 +175,7 @@ void bpf_ir_print_bpf_insn(struct bpf_ir_env *env, const struct bpf_insn *insn)
 				insn->dst_reg, insn->off, insn->src_reg);
 		} else if (BPF_MODE(insn->code) == BPF_ATOMIC &&
 			   insn->imm == BPF_CMPXCHG) {
-			PRINT_LOG(
+			PRINT_LOG_DEBUG(
 				env,
 				"(%02x) r0 = atomic%s_cmpxchg((%s *)(r%d %+d), r0, r%d)\n",
 				insn->code,
@@ -180,7 +184,7 @@ void bpf_ir_print_bpf_insn(struct bpf_ir_env *env, const struct bpf_insn *insn)
 				insn->dst_reg, insn->off, insn->src_reg);
 		} else if (BPF_MODE(insn->code) == BPF_ATOMIC &&
 			   insn->imm == BPF_XCHG) {
-			PRINT_LOG(
+			PRINT_LOG_DEBUG(
 				env,
 				"(%02x) r%d = atomic%s_xchg((%s *)(r%d %+d), r%d)\n",
 				insn->code, insn->src_reg,
@@ -188,43 +192,46 @@ void bpf_ir_print_bpf_insn(struct bpf_ir_env *env, const struct bpf_insn *insn)
 				bpf_ldst_string[BPF_SIZE(insn->code) >> 3],
 				insn->dst_reg, insn->off, insn->src_reg);
 		} else {
-			PRINT_LOG(env, "BUG_%02x\n", insn->code);
+			PRINT_LOG_DEBUG(env, "BUG_%02x\n", insn->code);
 		}
 	} else if (class == BPF_ST) {
 		if (BPF_MODE(insn->code) == BPF_MEM) {
-			PRINT_LOG(env, "(%02x) *(%s *)(r%d %+d) = %d\n",
-				  insn->code,
-				  bpf_ldst_string[BPF_SIZE(insn->code) >> 3],
-				  insn->dst_reg, insn->off, insn->imm);
+			PRINT_LOG_DEBUG(
+				env, "(%02x) *(%s *)(r%d %+d) = %d\n",
+				insn->code,
+				bpf_ldst_string[BPF_SIZE(insn->code) >> 3],
+				insn->dst_reg, insn->off, insn->imm);
 		} else if (BPF_MODE(insn->code) ==
 			   0xc0 /* BPF_NOSPEC, no UAPI */) {
-			PRINT_LOG(env, "(%02x) nospec\n", insn->code);
+			PRINT_LOG_DEBUG(env, "(%02x) nospec\n", insn->code);
 		} else {
-			PRINT_LOG(env, "BUG_st_%02x\n", insn->code);
+			PRINT_LOG_DEBUG(env, "BUG_st_%02x\n", insn->code);
 		}
 	} else if (class == BPF_LDX) {
 		if (BPF_MODE(insn->code) != BPF_MEM &&
 		    BPF_MODE(insn->code) != BPF_MEMSX) {
-			PRINT_LOG(env, "BUG_ldx_%02x\n", insn->code);
+			PRINT_LOG_DEBUG(env, "BUG_ldx_%02x\n", insn->code);
 			return;
 		}
-		PRINT_LOG(env, "(%02x) r%d = *(%s *)(r%d %+d)\n", insn->code,
-			  insn->dst_reg,
-			  BPF_MODE(insn->code) == BPF_MEM ?
-				  bpf_ldst_string[BPF_SIZE(insn->code) >> 3] :
-				  bpf_ldsx_string[BPF_SIZE(insn->code) >> 3],
-			  insn->src_reg, insn->off);
+		PRINT_LOG_DEBUG(
+			env, "(%02x) r%d = *(%s *)(r%d %+d)\n", insn->code,
+			insn->dst_reg,
+			BPF_MODE(insn->code) == BPF_MEM ?
+				bpf_ldst_string[BPF_SIZE(insn->code) >> 3] :
+				bpf_ldsx_string[BPF_SIZE(insn->code) >> 3],
+			insn->src_reg, insn->off);
 	} else if (class == BPF_LD) {
 		if (BPF_MODE(insn->code) == BPF_ABS) {
-			PRINT_LOG(env, "(%02x) r0 = *(%s *)skb[%d]\n",
-				  insn->code,
-				  bpf_ldst_string[BPF_SIZE(insn->code) >> 3],
-				  insn->imm);
+			PRINT_LOG_DEBUG(
+				env, "(%02x) r0 = *(%s *)skb[%d]\n", insn->code,
+				bpf_ldst_string[BPF_SIZE(insn->code) >> 3],
+				insn->imm);
 		} else if (BPF_MODE(insn->code) == BPF_IND) {
-			PRINT_LOG(env, "(%02x) r0 = *(%s *)skb[r%d + %d]\n",
-				  insn->code,
-				  bpf_ldst_string[BPF_SIZE(insn->code) >> 3],
-				  insn->src_reg, insn->imm);
+			PRINT_LOG_DEBUG(
+				env, "(%02x) r0 = *(%s *)skb[r%d + %d]\n",
+				insn->code,
+				bpf_ldst_string[BPF_SIZE(insn->code) >> 3],
+				insn->src_reg, insn->imm);
 		} else if (BPF_MODE(insn->code) == BPF_IMM &&
 			   BPF_SIZE(insn->code) == BPF_DW) {
 			/* At this point, we already made sure that the second
@@ -237,11 +244,11 @@ void bpf_ir_print_bpf_insn(struct bpf_ir_env *env, const struct bpf_insn *insn)
 			// if (is_ptr && !allow_ptr_leaks)
 			// 	imm = 0;
 
-			PRINT_LOG(env, "(%02x) r%d = 0x%llx (imm64 ld)\n",
-				  insn->code, insn->dst_reg, imm, insn->imm,
-				  (insn + 1)->imm);
+			PRINT_LOG_DEBUG(env, "(%02x) r%d = 0x%llx (imm64 ld)\n",
+					insn->code, insn->dst_reg, imm,
+					insn->imm, (insn + 1)->imm);
 		} else {
-			PRINT_LOG(env, "BUG_ld_%02x\n", insn->code);
+			PRINT_LOG_DEBUG(env, "BUG_ld_%02x\n", insn->code);
 			return;
 		}
 	} else if (class == BPF_JMP32 || class == BPF_JMP) {
@@ -251,40 +258,45 @@ void bpf_ir_print_bpf_insn(struct bpf_ir_env *env, const struct bpf_insn *insn)
 			char tmp[64];
 
 			if (insn->src_reg == BPF_PSEUDO_CALL) {
-				PRINT_LOG(env, "(%02x) call pc%s\n", insn->code,
-					  __func_get_name(insn, tmp,
-							  sizeof(tmp)));
+				PRINT_LOG_DEBUG(env, "(%02x) call pc%s\n",
+						insn->code,
+						__func_get_name(insn, tmp,
+								sizeof(tmp)));
 			} else {
 				strcpy(tmp, "unknown");
-				PRINT_LOG(
+				PRINT_LOG_DEBUG(
 					env, "(%02x) call %s#%d\n", insn->code,
 					__func_get_name(insn, tmp, sizeof(tmp)),
 					insn->imm);
 			}
 		} else if (insn->code == (BPF_JMP | BPF_JA)) {
-			PRINT_LOG(env, "(%02x) goto pc%+d\n", insn->code,
-				  insn->off);
+			PRINT_LOG_DEBUG(env, "(%02x) goto pc%+d\n", insn->code,
+					insn->off);
 		} else if (insn->code == (BPF_JMP32 | BPF_JA)) {
-			PRINT_LOG(env, "(%02x) gotol pc%+d\n", insn->code,
-				  insn->imm);
+			PRINT_LOG_DEBUG(env, "(%02x) gotol pc%+d\n", insn->code,
+					insn->imm);
 		} else if (insn->code == (BPF_JMP | BPF_EXIT)) {
-			PRINT_LOG(env, "(%02x) exit\n", insn->code);
+			PRINT_LOG_DEBUG(env, "(%02x) exit\n", insn->code);
 		} else if (BPF_SRC(insn->code) == BPF_X) {
-			PRINT_LOG(env, "(%02x) if %c%d %s %c%d goto pc%+d\n",
-				  insn->code, class == BPF_JMP32 ? 'w' : 'r',
-				  insn->dst_reg,
-				  bpf_jmp_string[BPF_OP(insn->code) >> 4],
-				  class == BPF_JMP32 ? 'w' : 'r', insn->src_reg,
-				  insn->off);
+			PRINT_LOG_DEBUG(env,
+					"(%02x) if %c%d %s %c%d goto pc%+d\n",
+					insn->code,
+					class == BPF_JMP32 ? 'w' : 'r',
+					insn->dst_reg,
+					bpf_jmp_string[BPF_OP(insn->code) >> 4],
+					class == BPF_JMP32 ? 'w' : 'r',
+					insn->src_reg, insn->off);
 		} else {
-			PRINT_LOG(env, "(%02x) if %c%d %s 0x%x goto pc%+d\n",
-				  insn->code, class == BPF_JMP32 ? 'w' : 'r',
-				  insn->dst_reg,
-				  bpf_jmp_string[BPF_OP(insn->code) >> 4],
-				  insn->imm, insn->off);
+			PRINT_LOG_DEBUG(env,
+					"(%02x) if %c%d %s 0x%x goto pc%+d\n",
+					insn->code,
+					class == BPF_JMP32 ? 'w' : 'r',
+					insn->dst_reg,
+					bpf_jmp_string[BPF_OP(insn->code) >> 4],
+					insn->imm, insn->off);
 		}
 	} else {
-		PRINT_LOG(env, "(%02x) %s\n", insn->code,
-			  bpf_class_string[class]);
+		PRINT_LOG_DEBUG(env, "(%02x) %s\n", insn->code,
+				bpf_class_string[class]);
 	}
 }

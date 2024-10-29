@@ -130,14 +130,14 @@ static void clean_cg(struct bpf_ir_env *env, struct ir_function *fun)
 static void print_ir_prog_cg_dst(struct bpf_ir_env *env,
 				 struct ir_function *fun, char *msg)
 {
-	PRINT_LOG(env, "\x1B[32m----- CG: %s -----\x1B[0m\n", msg);
+	PRINT_LOG_DEBUG(env, "\x1B[32m----- CG: %s -----\x1B[0m\n", msg);
 	print_ir_prog_advanced(env, fun, NULL, NULL, print_ir_dst);
 }
 
 static void print_ir_prog_cg_alloc(struct bpf_ir_env *env,
 				   struct ir_function *fun, char *msg)
 {
-	PRINT_LOG(env, "\x1B[32m----- CG: %s -----\x1B[0m\n", msg);
+	PRINT_LOG_DEBUG(env, "\x1B[32m----- CG: %s -----\x1B[0m\n", msg);
 	print_ir_prog_advanced(env, fun, NULL, NULL, print_ir_alloc);
 }
 
@@ -270,17 +270,17 @@ static void bpf_ir_print_interference_graph(struct bpf_ir_env *env,
 		}
 		if (extra->allocated) {
 			// Allocated VR
-			PRINT_LOG(env, "%%%zu(", insn->_insn_id);
+			PRINT_LOG_DEBUG(env, "%%%zu(", insn->_insn_id);
 			if (extra->spilled) {
-				PRINT_LOG(env, "sp+%d", extra->spilled);
+				PRINT_LOG_DEBUG(env, "sp+%d", extra->spilled);
 			} else {
-				PRINT_LOG(env, "r%u", extra->alloc_reg);
+				PRINT_LOG_DEBUG(env, "r%u", extra->alloc_reg);
 			}
-			PRINT_LOG(env, "):");
+			PRINT_LOG_DEBUG(env, "):");
 		} else {
 			// Pre-colored registers or unallocated VR
 			print_insn_ptr_base(env, insn);
-			PRINT_LOG(env, ":");
+			PRINT_LOG_DEBUG(env, ":");
 		}
 		struct ir_insn **pos2;
 		array_for(pos2, insn_cg(insn)->adj)
@@ -290,10 +290,10 @@ static void bpf_ir_print_interference_graph(struct bpf_ir_env *env,
 				// Not final value, give up
 				CRITICAL("Not Final Value!");
 			}
-			PRINT_LOG(env, " ");
+			PRINT_LOG_DEBUG(env, " ");
 			print_insn_ptr_base(env, adj_insn);
 		}
-		PRINT_LOG(env, "\n");
+		PRINT_LOG_DEBUG(env, "\n");
 	}
 }
 
@@ -335,7 +335,7 @@ static void conflict_analysis(struct bpf_ir_env *env, struct ir_function *fun)
 							  insn_dst(*pos3));
 						if (*pos2 == *pos3) {
 							// Live across CALL!
-							// PRINT_LOG("Found a VR live across CALL!\n");
+							// PRINT_LOG_DEBUG("Found a VR live across CALL!\n");
 							caller_constraint(
 								env, fun,
 								*pos2);
@@ -543,12 +543,12 @@ static bool coalescing(struct bpf_ir_env *env, struct ir_function *fun)
 							count++;
 						}
 
-						// PRINT_LOG(env, "Count: %u\n", count);
+						// PRINT_LOG_DEBUG(env, "Count: %u\n", count);
 						if (count < BPF_REG_10) {
 							// Coalesce
 							ret = true;
 
-							PRINT_LOG(
+							PRINT_LOG_DEBUG(
 								env,
 								"Coalescing %u and %u\n",
 								insn_cg(src)
@@ -710,8 +710,8 @@ static void graph_coloring(struct bpf_ir_env *env, struct ir_function *fun)
 		for (u8 i = 0; i < BPF_REG_10; i++) { // Wrong!
 			if (!used_reg[i]) {
 				extra->allocated = true;
-				PRINT_LOG(env, "Allocate r%u for %%%zu\n", i,
-					  insn->_insn_id);
+				PRINT_LOG_DEBUG(env, "Allocate r%u for %%%zu\n",
+						i, insn->_insn_id);
 				extra->alloc_reg = i;
 				need_spill = false;
 				break;
@@ -903,36 +903,36 @@ static void print_insn_extra(struct bpf_ir_env *env, struct ir_insn *insn)
 	if (insn_cg == NULL) {
 		CRITICAL("NULL user data");
 	}
-	PRINT_LOG(env, "--\nGen:");
+	PRINT_LOG_DEBUG(env, "--\nGen:");
 	struct ir_insn **pos;
 	array_for(pos, insn_cg->gen)
 	{
 		struct ir_insn *insn = *pos;
-		PRINT_LOG(env, " ");
+		PRINT_LOG_DEBUG(env, " ");
 		print_insn_ptr_base(env, insn);
 	}
-	PRINT_LOG(env, "\nKill:");
+	PRINT_LOG_DEBUG(env, "\nKill:");
 	array_for(pos, insn_cg->kill)
 	{
 		struct ir_insn *insn = *pos;
-		PRINT_LOG(env, " ");
+		PRINT_LOG_DEBUG(env, " ");
 		print_insn_ptr_base(env, insn);
 	}
-	PRINT_LOG(env, "\nIn:");
+	PRINT_LOG_DEBUG(env, "\nIn:");
 	array_for(pos, insn_cg->in)
 	{
 		struct ir_insn *insn = *pos;
-		PRINT_LOG(env, " ");
+		PRINT_LOG_DEBUG(env, " ");
 		print_insn_ptr_base(env, insn);
 	}
-	PRINT_LOG(env, "\nOut:");
+	PRINT_LOG_DEBUG(env, "\nOut:");
 	array_for(pos, insn_cg->out)
 	{
 		struct ir_insn *insn = *pos;
-		PRINT_LOG(env, " ");
+		PRINT_LOG_DEBUG(env, " ");
 		print_insn_ptr_base(env, insn);
 	}
-	PRINT_LOG(env, "\n-------------\n");
+	PRINT_LOG_DEBUG(env, "\n-------------\n");
 }
 
 static void liveness_analysis(struct bpf_ir_env *env, struct ir_function *fun)
@@ -941,7 +941,7 @@ static void liveness_analysis(struct bpf_ir_env *env, struct ir_function *fun)
 	gen_kill(env, fun);
 	in_out(env, fun);
 	if (env->opts.verbose > 2) {
-		PRINT_LOG(env, "--------------\n");
+		PRINT_LOG_DEBUG(env, "--------------\n");
 		print_ir_prog_advanced(env, fun, NULL, print_insn_extra,
 				       print_ir_dst);
 		print_ir_prog_advanced(env, fun, NULL, NULL, print_ir_dst);
@@ -1856,7 +1856,7 @@ static bool spill_cond_jump(struct bpf_ir_env *env, struct ir_function *fun,
 			return true;
 		} else {
 			// CONST
-			PRINT_LOG(
+			PRINT_LOG_WARNING(
 				env,
 				"Warning: using const as the first operand of conditional jump may impact performance.");
 
@@ -1938,7 +1938,8 @@ static void check_insn_users_use_insn_cg(struct bpf_ir_env *env,
 						       "The instruction",
 						       print_ir_dst);
 			} else {
-				PRINT_LOG(env, "The instruction is non-vr.\n");
+				PRINT_LOG_DEBUG(env,
+						"The instruction is non-vr.\n");
 			}
 			print_ir_insn_err_full(env, user,
 					       "The user of that instruction",
@@ -2774,7 +2775,7 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 	int iterations = 0;
 
 	while (need_spill) {
-		PRINT_LOG(
+		PRINT_LOG_DEBUG(
 			env,
 			"\x1B[32m----- Register allocation iteration %d -----\x1B[0m\n",
 			iterations);
@@ -2787,7 +2788,7 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 		conflict_analysis(env, fun);
 		CHECK_ERR();
 		if (env->opts.verbose > 2) {
-			PRINT_LOG(env, "Conflicting graph:\n");
+			PRINT_LOG_DEBUG(env, "Conflicting graph:\n");
 			bpf_ir_print_interference_graph(env, fun);
 		}
 
@@ -2796,7 +2797,8 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 		CHECK_ERR();
 
 		if (env->opts.verbose > 2) {
-			PRINT_LOG(env, "Conflicting graph (after coloring):\n");
+			PRINT_LOG_DEBUG(
+				env, "Conflicting graph (after coloring):\n");
 			bpf_ir_print_interference_graph(env, fun);
 		}
 		CHECK_ERR();
@@ -2806,7 +2808,7 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 			bool need_rerun = coalescing(env, fun);
 			CHECK_ERR();
 			if (need_rerun) {
-				PRINT_LOG(env, "Need to re-analyze...\n");
+				PRINT_LOG_DEBUG(env, "Need to re-analyze...\n");
 				clean_cg(env, fun);
 				CHECK_ERR();
 				continue;
@@ -2830,15 +2832,15 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 		// print_ir_prog_cg_dst(env, fun, "After Spilling");
 		if (need_spill) {
 			// Still need to spill
-			PRINT_LOG(env, "Need to spill...\n");
+			PRINT_LOG_DEBUG(env, "Need to spill...\n");
 			clean_cg(env, fun);
 			CHECK_ERR();
 		}
 	}
 
 	// Register allocation finished (All registers are fixed)
-	PRINT_LOG(env, "Register allocation finished in %d iterations\n",
-		  iterations);
+	PRINT_LOG_DEBUG(env, "Register allocation finished in %d iterations\n",
+			iterations);
 	print_ir_prog_cg_alloc(env, fun, "After RA & Spilling");
 	// Step 9: Calculate stack size
 	if (fun->cg_info.spill_callee) {

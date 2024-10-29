@@ -219,7 +219,7 @@ static void gen_bb(struct bpf_ir_env *env, struct bb_info *ret,
 	// Print the BB
 	// for (size_t i = 0; i < bb_entrance.num_elem; ++i) {
 	// 	struct bb_entrance_info entry = all_bbs[i];
-	// PRINT_LOG(env, "%ld: %ld\n", entry.entrance,
+	// PRINT_LOG_DEBUG(env, "%ld: %ld\n", entry.entrance,
 	// 	  entry.bb->preds.num_elem);
 	// }
 
@@ -243,7 +243,7 @@ static void gen_bb(struct bpf_ir_env *env, struct bb_info *ret,
 	// Allocate instructions
 	for (size_t i = 0; i < bb_entrance.num_elem; ++i) {
 		struct pre_ir_basic_block *real_bb = all_bbs[i].bb;
-		// PRINT_LOG(env, "BB Alloc: [%zu, %zu)\n", real_bb->start_pos,
+		// PRINT_LOG_DEBUG(env, "BB Alloc: [%zu, %zu)\n", real_bb->start_pos,
 		// 	  real_bb->end_pos);
 		SAFE_MALLOC(real_bb->pre_insns,
 			    sizeof(struct pre_ir_insn) *
@@ -303,25 +303,25 @@ static void print_pre_ir_cfg(struct bpf_ir_env *env,
 		return;
 	}
 	bb->visited = 1;
-	PRINT_LOG(env, "BB %ld:\n", bb->id);
+	PRINT_LOG_DEBUG(env, "BB %ld:\n", bb->id);
 	for (size_t i = 0; i < bb->len; ++i) {
 		struct pre_ir_insn insn = bb->pre_insns[i];
-		PRINT_LOG(env, "%x %x %llx\n", insn.opcode, insn.imm,
-			  insn.imm64);
+		PRINT_LOG_DEBUG(env, "%x %x %llx\n", insn.opcode, insn.imm,
+				insn.imm64);
 	}
-	PRINT_LOG(env, "preds (%ld): ", bb->preds.num_elem);
+	PRINT_LOG_DEBUG(env, "preds (%ld): ", bb->preds.num_elem);
 	for (size_t i = 0; i < bb->preds.num_elem; ++i) {
 		struct pre_ir_basic_block *pred =
 			((struct pre_ir_basic_block **)(bb->preds.data))[i];
-		PRINT_LOG(env, "%ld ", pred->id);
+		PRINT_LOG_DEBUG(env, "%ld ", pred->id);
 	}
-	PRINT_LOG(env, "\nsuccs (%ld): ", bb->succs.num_elem);
+	PRINT_LOG_DEBUG(env, "\nsuccs (%ld): ", bb->succs.num_elem);
 	for (size_t i = 0; i < bb->succs.num_elem; ++i) {
 		struct pre_ir_basic_block *succ =
 			((struct pre_ir_basic_block **)(bb->succs.data))[i];
-		PRINT_LOG(env, "%ld ", succ->id);
+		PRINT_LOG_DEBUG(env, "%ld ", succ->id);
 	}
-	PRINT_LOG(env, "\n\n");
+	PRINT_LOG_DEBUG(env, "\n\n");
 	for (size_t i = 0; i < bb->succs.num_elem; ++i) {
 		struct pre_ir_basic_block *succ =
 			((struct pre_ir_basic_block **)(bb->succs.data))[i];
@@ -710,7 +710,7 @@ static void create_cond_jmp(struct bpf_ir_env *env,
 static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 			 struct pre_ir_basic_block *bb)
 {
-	// PRINT_LOG(env, "Transforming BB%zu\n", bb->id);
+	// PRINT_LOG_DEBUG(env, "Transforming BB%zu\n", bb->id);
 	if (bb->sealed) {
 		return;
 	}
@@ -947,7 +947,7 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 				new_insn->op = IR_INSN_CALL;
 				new_insn->fid = insn.imm;
 				if (insn.imm < 0) {
-					PRINT_LOG(
+					PRINT_LOG_WARNING(
 						env,
 						"Not supported function call\n");
 					new_insn->value_num = 0;
@@ -999,8 +999,8 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 			}
 		} else {
 			// TODO
-			PRINT_LOG(env, "Class 0x%02x not supported\n",
-				  BPF_CLASS(code));
+			PRINT_LOG_ERROR(env, "Class 0x%02x not supported\n",
+					BPF_CLASS(code));
 			RAISE_ERROR("Error");
 		}
 	}
@@ -1123,8 +1123,8 @@ static void run_single_pass(struct bpf_ir_env *env, struct ir_function *fun,
 	bpf_ir_prog_check(env, fun);
 	CHECK_ERR();
 
-	PRINT_LOG(env, "\x1B[32m------ Running Pass: %s ------\x1B[0m\n",
-		  pass->name);
+	PRINT_LOG_DEBUG(env, "\x1B[32m------ Running Pass: %s ------\x1B[0m\n",
+			pass->name);
 	pass->pass(env, fun, param);
 	CHECK_ERR();
 
@@ -1215,11 +1215,13 @@ static void print_bpf_insn_simple(struct bpf_ir_env *env,
 				  const struct bpf_insn *insn)
 {
 	if (insn->off < 0) {
-		PRINT_LOG(env, "%4x       %x       %x %8x -%8x\n", insn->code,
-			  insn->src_reg, insn->dst_reg, insn->imm, -insn->off);
+		PRINT_LOG_DEBUG(env, "%4x       %x       %x %8x -%8x\n",
+				insn->code, insn->src_reg, insn->dst_reg,
+				insn->imm, -insn->off);
 	} else {
-		PRINT_LOG(env, "%4x       %x       %x %8x  %8x\n", insn->code,
-			  insn->src_reg, insn->dst_reg, insn->imm, insn->off);
+		PRINT_LOG_DEBUG(env, "%4x       %x       %x %8x  %8x\n",
+				insn->code, insn->src_reg, insn->dst_reg,
+				insn->imm, insn->off);
 	}
 }
 
@@ -1230,7 +1232,7 @@ static void print_bpf_prog_dump(struct bpf_ir_env *env,
 		const struct bpf_insn *insn = &insns[i];
 		__u64 data;
 		memcpy(&data, insn, sizeof(struct bpf_insn));
-		PRINT_LOG(env, "insn[%d]: %llu\n", i, data);
+		PRINT_LOG_DEBUG(env, "insn[%d]: %llu\n", i, data);
 	}
 }
 
@@ -1242,16 +1244,18 @@ static void print_bpf_prog(struct bpf_ir_env *env, const struct bpf_insn *insns,
 		return;
 	}
 	if (env->opts.print_mode == BPF_IR_PRINT_DETAIL) {
-		PRINT_LOG(env, "      op     src     dst      imm       off\n");
+		PRINT_LOG_DEBUG(
+			env, "      op     src     dst      imm       off\n");
 	} else if (env->opts.print_mode == BPF_IR_PRINT_BPF_DETAIL) {
-		PRINT_LOG(env, "  op     src     dst      imm       off\n");
+		PRINT_LOG_DEBUG(env,
+				"  op     src     dst      imm       off\n");
 	}
 	for (size_t i = 0; i < len; ++i) {
 		const struct bpf_insn *insn = &insns[i];
 		if (insn->code == 0) {
 			continue;
 		}
-		PRINT_LOG(env, "[%zu] ", i);
+		PRINT_LOG_DEBUG(env, "[%zu] ", i);
 		if (env->opts.print_mode == BPF_IR_PRINT_BPF ||
 		    env->opts.print_mode == BPF_IR_PRINT_BPF_DETAIL) {
 			bpf_ir_print_bpf_insn(env, insn);
@@ -1303,25 +1307,27 @@ void bpf_ir_run(struct bpf_ir_env *env)
 	bpf_ir_prog_check(env, fun);
 	CHECK_ERR();
 	print_ir_prog(env, fun);
-	PRINT_LOG(env, "Starting IR Passes...\n");
+	PRINT_LOG_DEBUG(env, "Starting IR Passes...\n");
 	// Start IR manipulation
 
 	run_passes(env, fun);
 	CHECK_ERR();
 
 	// End IR manipulation
-	PRINT_LOG(env, "IR Passes Ended!\n");
+	PRINT_LOG_DEBUG(env, "IR Passes Ended!\n");
 
 	bpf_ir_code_gen(env, fun);
 	CHECK_ERR();
 
 	// Got the bpf bytecode
 
-	PRINT_LOG(env, "--------------------\nOriginal Program, size %zu:\n",
-		  len);
+	PRINT_LOG_DEBUG(env,
+			"--------------------\nOriginal Program, size %zu:\n",
+			len);
 	print_bpf_prog(env, insns, len);
-	PRINT_LOG(env, "--------------------\nRewritten Program, size %zu:\n",
-		  env->insn_cnt);
+	PRINT_LOG_DEBUG(env,
+			"--------------------\nRewritten Program, size %zu:\n",
+			env->insn_cnt);
 	print_bpf_prog(env, env->insns, env->insn_cnt);
 
 	// Free the memory

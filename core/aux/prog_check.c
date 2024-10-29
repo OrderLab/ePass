@@ -135,7 +135,7 @@ static void check_insn(struct bpf_ir_env *env, struct ir_function *fun)
 						print_ir_insn_err(env, insn,
 								  NULL);
 
-						PRINT_LOG(
+						PRINT_LOG_DEBUG(
 							env,
 							"Constant type: %d, operand number: %d\n",
 							val->const_type,
@@ -234,7 +234,8 @@ static void check_jumping(struct bpf_ir_env *env, struct ir_function *fun)
 			if (!found) {
 				// Error
 				print_ir_bb_err(env, bb);
-				PRINT_LOG(env, "Pred: %zu\n", pred_bb->_id);
+				PRINT_LOG_ERROR(env, "Pred: %zu\n",
+						pred_bb->_id);
 				RAISE_ERROR("BB not a succ of its pred");
 			}
 		}
@@ -448,9 +449,9 @@ static void gen_end_bbs(struct bpf_ir_env *env, struct ir_function *fun)
 static void check_err_and_print(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	if (env->err) {
-		PRINT_LOG(env, "----- DUMP IR START -----\n");
+		PRINT_LOG_DEBUG(env, "----- DUMP IR START -----\n");
 		print_ir_prog_notag(env, fun);
-		PRINT_LOG(env, "----- DUMP IR END -----\n");
+		PRINT_LOG_DEBUG(env, "----- DUMP IR END -----\n");
 	}
 }
 

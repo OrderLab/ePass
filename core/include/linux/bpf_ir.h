@@ -110,8 +110,6 @@ void bpf_ir_reset_env(struct bpf_ir_env *env);
 #define PRINT_LOG_WARNING(...) bpf_ir_print_to_log(1, __VA_ARGS__)
 #define PRINT_LOG_ERROR(...) bpf_ir_print_to_log(0, __VA_ARGS__)
 
-#define PRINT_LOG(...) bpf_ir_print_to_log(1, __VA_ARGS__)
-
 #ifndef __KERNEL__
 
 #define PRINT_DBG printf
@@ -193,20 +191,20 @@ void bpf_ir_array_clone(struct bpf_ir_env *env, struct array *res,
 
 #endif
 
-#define RAISE_ERROR(str)                                              \
-	{                                                             \
-		PRINT_LOG(env, "\e[1;31mError: %s:%d <%s> %s\e[0m\n", \
-			  __FILE__, __LINE__, __FUNCTION__, str);     \
-		env->err = -ENOSYS;                                   \
-		return;                                               \
+#define RAISE_ERROR(str)                                                    \
+	{                                                                   \
+		PRINT_LOG_ERROR(env, "\e[1;31mError: %s:%d <%s> %s\e[0m\n", \
+				__FILE__, __LINE__, __FUNCTION__, str);     \
+		env->err = -ENOSYS;                                         \
+		return;                                                     \
 	}
 
-#define RAISE_ERROR_RET(str, ret)                                     \
-	{                                                             \
-		PRINT_LOG(env, "\e[1;31mError: %s:%d <%s> %s\e[0m\n", \
-			  __FILE__, __LINE__, __FUNCTION__, str);     \
-		env->err = -ENOSYS;                                   \
-		return ret;                                           \
+#define RAISE_ERROR_RET(str, ret)                                           \
+	{                                                                   \
+		PRINT_LOG_ERROR(env, "\e[1;31mError: %s:%d <%s> %s\e[0m\n", \
+				__FILE__, __LINE__, __FUNCTION__, str);     \
+		env->err = -ENOSYS;                                         \
+		return ret;                                                 \
 	}
 
 #define DBGASSERT(cond)                       \

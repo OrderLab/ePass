@@ -7,7 +7,7 @@ struct ir_insn *bpf_ir_create_insn_base(struct bpf_ir_env *env,
 	struct ir_insn *new_insn = malloc_proto(sizeof(struct ir_insn));
 	if (!new_insn) {
 		env->err = -ENOMEM;
-		PRINT_LOG(env, "Failed to allocate memory for ir_insn\n");
+		PRINT_LOG_DEBUG(env, "Failed to allocate memory for ir_insn\n");
 		return NULL;
 	}
 	new_insn->parent_bb = bb;
@@ -23,7 +23,7 @@ struct ir_insn *bpf_ir_create_insn_base_cg(struct bpf_ir_env *env,
 	struct ir_insn *new_insn = bpf_ir_create_insn_base(env, bb);
 	if (!new_insn) {
 		env->err = -ENOMEM;
-		PRINT_LOG(env, "Failed to allocate memory for ir_insn\n");
+		PRINT_LOG_DEBUG(env, "Failed to allocate memory for ir_insn\n");
 		return NULL;
 	}
 	new_insn->op = insn_type;

@@ -10,7 +10,7 @@ static void print_bpf_prog(struct bpf_ir_env *env, const struct bpf_insn *insns,
 		if (insn->code == 0) {
 			continue;
 		}
-		PRINT_LOG(env, "[%zu] ", i);
+		PRINT_LOG_DEBUG(env, "[%zu] ", i);
 		bpf_ir_print_bpf_insn(env, insn);
 	}
 }

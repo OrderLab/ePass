@@ -253,7 +253,7 @@ void translate_throw(struct bpf_ir_env *env, struct ir_function *fun,
 	// 	struct ir_basic_block *bb = *pos;
 	// 	struct bb_extra *extra = bb->user_data;
 
-	// 	PRINT_LOG(
+	// 	PRINT_LOG_DEBUG(
 	// 		env,
 	// 		"bb %d: gen size: %d, kill size: %d, in: %d, out: %d\n",
 	// 		bb->_id, extra->gen.num_elem, extra->kill.num_elem,
