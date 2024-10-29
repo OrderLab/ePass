@@ -107,26 +107,37 @@ static void get_opt(char *p, char **src)
 	*p = '\0';
 }
 
+#define GET_OPT(p, src)               \
+	while (*src && *src != ' ') { \
+		*p = *src;            \
+		p++;                  \
+		src++;                \
+	}                             \
+	*p = '\0';
+
+#define NEXT_OPT(src)  \
+	if (*src) {    \
+		src++; \
+	} else {       \
+		break; \
+	}
+
 static int load_param(const char *opt, void **param)
 {
 	struct bpf_ir_optimization_opt ropt;
 	ropt.no_dead_elim = false;
 
 	char mopt[30] = { 0 };
-	char *src = (char *)opt;
+	const char *src = opt;
 	while (*src) {
 		char *p = mopt;
-		get_opt(p, &src);
+		GET_OPT(p, src);
 
 		if (strcmp(mopt, "no_dead_elim") == 0) {
 			ropt.no_dead_elim = true;
 		}
 
-		if (*src) {
-			src++;
-		} else {
-			break;
-		}
+		NEXT_OPT(src);
 	}
 
 	*param = malloc_proto(sizeof(struct bpf_ir_optimization_opt));

@@ -22,8 +22,8 @@ add_library(epass STATIC
 )
 
 add_executable(readload userspace/readload.c)
-add_executable(read userspace/read.c userspace/test_masking.c userspace/test_pass1.c)
-add_executable(readlog userspace/readlog.c userspace/test_masking.c)
+add_executable(read userspace/read.c userspace/test_pass1.c)
+add_executable(readlog userspace/readlog.c)
 add_executable(print userspace/print.c)
 add_executable(printlog userspace/printlog.c)
 add_executable(test_kern userspace/test_kern.c)

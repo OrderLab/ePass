@@ -139,6 +139,21 @@ bool bpf_ir_builtin_pass_enabled(struct bpf_ir_env *env, const char *pass_name)
 	return false;
 }
 
+#define GET_OPT(p, src)               \
+	while (*src && *src != ',') { \
+		*p = *src;            \
+		p++;                  \
+		src++;                \
+	}                             \
+	*p = '\0';
+
+#define NEXT_OPT(src)  \
+	if (*src) {    \
+		src++; \
+	} else {       \
+		break; \
+	}
+
 /* Initialize pass configuration for kernel component
  *
  * @param env: bpf_ir_env, must be already initialized
@@ -150,63 +165,37 @@ bool bpf_ir_builtin_pass_enabled(struct bpf_ir_env *env, const char *pass_name)
 int bpf_ir_init_opts(struct bpf_ir_env *env, const char *pass_opt,
 		     const char *global_opt)
 {
+	if (!pass_opt || !global_opt) {
+		return -EINVAL;
+	}
 	// Parse global options
 	int err = 0;
-	u32 len = 0;
-	const char *p = global_opt;
+	// const char *p = global_opt;
 	char opt[64];
-	while (*p != '\0') {
-		if (len >= 64) {
-			return -EINVAL;
-		}
-		if (*p == ',') {
-			// New option
-			opt[len] = '\0';
-			err = apply_global_opt(env, opt);
-			if (err < 0) {
-				return err;
-			}
-			len = 0;
-			++p;
-			continue;
-		}
-		opt[len++] = *p;
-		++p;
-	}
-	if (len != 0) {
-		opt[len] = '\0';
+	const char *src = global_opt;
+	while (*src) {
+		char *p = opt;
+		GET_OPT(p, src);
+		PRINT_DBG("Global opt: %s\n", opt);
 		err = apply_global_opt(env, opt);
 		if (err < 0) {
 			return err;
 		}
-		len = 0;
+
+		NEXT_OPT(src);
 	}
 
-	p = pass_opt;
-	while (*p != '\0') {
-		if (len >= 64) {
-			return -EINVAL;
-		}
-		if (*p == ',') {
-			// New option
-			opt[len] = '\0';
-			err = apply_pass_opt(env, opt);
-			if (err < 0) {
-				return err;
-			}
-			len = 0;
-			++p;
-			continue;
-		}
-		opt[len++] = *p;
-		++p;
-	}
-	if (len != 0) {
-		opt[len] = '\0';
+	src = pass_opt;
+	while (*src) {
+		char *p = opt;
+		GET_OPT(p, src);
+		PRINT_DBG("Pass opt: %s\n", opt);
 		err = apply_pass_opt(env, opt);
 		if (err < 0) {
 			return err;
 		}
+
+		NEXT_OPT(src);
 	}
 	return 0;
 }
