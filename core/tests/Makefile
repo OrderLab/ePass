@@ -8,6 +8,9 @@ objnop: $(NAME).c
 s: obj
 	llvm-objdump -S output/$(NAME).o > output/$(NAME).s
 
+snop: objnop
+	llvm-objdump -S output/$(NAME).o > output/$(NAME).s
+
 load: clean obj
 	sudo bpftool prog load output/$(NAME).o /sys/fs/bpf/$(NAME)
 

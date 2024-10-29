@@ -3,6 +3,10 @@
 #include <linux/bpf_common.h>
 #include <linux/bpf_ir.h>
 
+static const int helper_func_known[] = {
+	5, 6, 131, 132, 133,
+};
+
 // TODO: Change this to real function
 static const s8 helper_func_arg_num[200] = {
 	[5] = 0,
@@ -774,10 +778,11 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 					  alu_ty);
 			} else {
 				// TODO
-				RAISE_ERROR("Not supported");
+				RAISE_ERROR(
+					"Unknown ALU instruction, not supported");
 			}
 			if (insn.off != 0) {
-				RAISE_ERROR("Not supported");
+				RAISE_ERROR("Offset not 0, invalid program");
 			}
 
 		} else if (BPF_CLASS(code) == BPF_LD &&
@@ -952,6 +957,23 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 						"Not supported function call\n");
 					new_insn->value_num = 0;
 				} else {
+					// Test if the helper function is supported
+					bool supported = false;
+					for (u32 i = 0;
+					     i <
+					     sizeof(helper_func_known) /
+						     sizeof(helper_func_known[0]);
+					     ++i) {
+						if (helper_func_known[i] ==
+						    insn.imm) {
+							supported = true;
+							break;
+						}
+					}
+					if (!supported) {
+						RAISE_ERROR(
+							"Unsupported helper function");
+					}
 					if (helper_func_arg_num[insn.imm] < 0) {
 						// Variable length, infer from previous instructions
 						new_insn->value_num = 0;
