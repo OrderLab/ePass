@@ -1,10 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include <linux/bpf.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <linux/bpf_ir.h>
-#include <string.h>
-#include "userspace.h"
+#include "epasstool.h"
 
 int readlog(struct user_opts uopts)
 {
@@ -39,7 +35,7 @@ int readlog(struct user_opts uopts)
 	if (!env) {
 		return 1;
 	}
-	int err = bpf_ir_init_opts(env, uopts.popt, uopts.gopt);
+	int err = bpf_ir_init_opts(env, uopts.gopt, uopts.popt);
 	if (err) {
 		return err;
 	}

@@ -157,13 +157,13 @@ bool bpf_ir_builtin_pass_enabled(struct bpf_ir_env *env, const char *pass_name)
 /* Initialize pass configuration for kernel component
  *
  * @param env: bpf_ir_env, must be already initialized
- * @param pass_opt: pass specific options
  * @param global_opt: global options
+ * @param pass_opt: pass specific options
  *
  * Return: 0 on success, negative on error
  */
-int bpf_ir_init_opts(struct bpf_ir_env *env, const char *pass_opt,
-		     const char *global_opt)
+int bpf_ir_init_opts(struct bpf_ir_env *env, const char *global_opt,
+		     const char *pass_opt)
 {
 	if (!pass_opt || !global_opt) {
 		return -EINVAL;

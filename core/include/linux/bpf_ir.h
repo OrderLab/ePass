@@ -1272,8 +1272,8 @@ void bpr_ir_cg_to_cssa(struct bpf_ir_env *env, struct ir_function *fun,
 
 /* Kern Utils Start */
 
-int bpf_ir_init_opts(struct bpf_ir_env *env, const char *pass_opt,
-		     const char *global_opt);
+int bpf_ir_init_opts(struct bpf_ir_env *env, const char *global_opt,
+		     const char *pass_opt);
 
 bool bpf_ir_builtin_pass_enabled(struct bpf_ir_env *env, const char *pass_name);
 

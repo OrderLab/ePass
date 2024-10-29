@@ -1,10 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include <linux/bpf.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <linux/bpf_ir.h>
-#include "userspace.h"
+#include "epasstool.h"
 
 static void print_bpf_prog(struct bpf_ir_env *env, const struct bpf_insn *insns,
 			   size_t len)

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#ifndef _USP_TEST_H_
-#define _USP_TEST_H_
+#ifndef _EPASS_TOOL_H_
+#define _EPASS_TOOL_H_
 
 #include <linux/bpf_ir.h>
 

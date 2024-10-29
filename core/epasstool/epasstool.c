@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include "bpf/libbpf.h"
-#include <linux/bpf_ir.h>
 #include <getopt.h>
-#include "userspace.h"
+#include "epasstool.h"
 
 // Userspace tool
 
