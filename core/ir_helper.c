@@ -360,6 +360,9 @@ void print_ir_insn_full(struct bpf_ir_env *env, struct ir_insn *insn,
 	case IR_INSN_LSH:
 		print_alu(env, insn, print_ir, "lsh");
 		break;
+	case IR_INSN_ARSH:
+		print_alu(env, insn, print_ir, "arsh");
+		break;
 	case IR_INSN_RSH:
 		print_alu(env, insn, print_ir, "rsh");
 		break;

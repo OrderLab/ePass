@@ -773,6 +773,9 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 			} else if (BPF_OP(code) == BPF_LSH) {
 				alu_write(env, tenv, IR_INSN_LSH, insn, bb,
 					  alu_ty);
+			} else if (BPF_OP(code) == BPF_ARSH) {
+				alu_write(env, tenv, IR_INSN_ARSH, insn, bb,
+					  alu_ty);
 			} else if (BPF_OP(code) == BPF_RSH) {
 				alu_write(env, tenv, IR_INSN_RSH, insn, bb,
 					  alu_ty);
@@ -951,6 +954,14 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 				// PC += offset if dst != src
 				create_cond_jmp(env, tenv, bb, insn,
 						IR_INSN_JNE, alu_ty);
+			} else if (BPF_OP(code) == BPF_JSGT) {
+				// PC += offset if dst s> src
+				create_cond_jmp(env, tenv, bb, insn,
+						IR_INSN_JSGT, alu_ty);
+			} else if (BPF_OP(code) == BPF_JSLT) {
+				// PC += offset if dst s< src
+				create_cond_jmp(env, tenv, bb, insn,
+						IR_INSN_JSLT, alu_ty);
 			} else if (BPF_OP(code) == BPF_CALL) {
 				// imm is the function id
 				struct ir_insn *new_insn =
@@ -1023,13 +1034,17 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 					       bpf_ir_value_insn(new_insn));
 			} else {
 				// TODO
-				RAISE_ERROR("Error");
+				PRINT_LOG_ERROR(
+					env,
+					"unknown jmp instruction %d at %d\n",
+					code, insn.pos);
+				RAISE_ERROR("Not supported jmp instruction");
 			}
 		} else {
 			// TODO
 			PRINT_LOG_ERROR(env, "Class 0x%02x not supported\n",
 					BPF_CLASS(code));
-			RAISE_ERROR("Error");
+			RAISE_ERROR("Not supported");
 		}
 	}
 	bb->filled = 1;
