@@ -26,6 +26,7 @@ int print(struct user_opts uopts)
 	size_t sz = bpf_program__insn_cnt(prog);
 	const struct bpf_insn *insn = bpf_program__insns(prog);
 	struct bpf_ir_opts opts = bpf_ir_default_opts();
+	opts.verbose = 3;
 	struct bpf_ir_env *env = bpf_ir_init_env(opts, insn, sz);
 	if (!env) {
 		return 1;

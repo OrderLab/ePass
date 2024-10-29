@@ -46,6 +46,7 @@ int printlog(struct user_opts uopts)
 	printf("Loaded program of size %zu\n", index);
 
 	struct bpf_ir_opts opts = bpf_ir_default_opts();
+	opts.verbose = 3;
 	struct bpf_ir_env *env = bpf_ir_init_env(opts, insns, index);
 	if (!env) {
 		return 1;
