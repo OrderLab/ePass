@@ -18,6 +18,20 @@ void enable_builtin(struct bpf_ir_env *env)
 	}
 }
 
+void usage(void)
+{
+	printf("Usage: epasstool --mode <mode> --prog <prog> [--sec <sec>] "
+	       "[--gopt <gopt>] [--popt <popt>]\n");
+	printf("Modes:\n");
+	printf("  read: Read BPF program from file\n");
+	printf("  readload: Read BPF program from file and load it with modified bytecode\n");
+	printf("  readlog: Read BPF program from log\n");
+	printf("  print: Print BPF program\n");
+	printf("  printlog: Print BPF program with log\n");
+
+	exit(1);
+}
+
 int main(int argc, char **argv)
 {
 	enum {
@@ -60,6 +74,8 @@ int main(int argc, char **argv)
 					mode = MODE_PRINT;
 				} else if (strcmp(optarg, "readload") == 0) {
 					mode = MODE_READLOAD;
+				} else if (strcmp(optarg, "printlog") == 0) {
+					mode = MODE_PRINT_LOG;
 				}
 				break;
 			case 'p':
@@ -75,8 +91,7 @@ int main(int argc, char **argv)
 	}
 
 	if (mode == MODE_NONE) {
-		printf("Wrong mode\n");
-		return 1;
+		usage();
 	}
 
 	if (mode == MODE_PRINT_LOG) {
