@@ -21,7 +21,4 @@ read: build
 readlog: build
 	build/readlog tests/log/${NAME}.txt
 
-test_kern: build
-	build/test_kern
-
 .PHONY: build format kernel readlog read genctor
