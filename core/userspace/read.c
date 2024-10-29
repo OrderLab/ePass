@@ -28,7 +28,7 @@ int main(int argn, char **argv)
 		// 		NULL, NULL, NULL),
 	};
 	struct bpf_ir_opts opts = bpf_ir_default_opts();
-	opts.custom_pass_num = 1;
+	opts.custom_pass_num = 0;
 	opts.custom_passes = custom_passes;
 	opts.builtin_pass_cfg_num = 1;
 	opts.builtin_pass_cfg = passes;

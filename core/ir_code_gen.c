@@ -1057,6 +1057,7 @@ static void relocate(struct bpf_ir_env *env, struct ir_function *fun)
 	}
 }
 
+// Load a constant (usually 64 bits) to a register
 static void cgir_load_const_to_reg(struct bpf_ir_env *env,
 				   struct ir_function *fun,
 				   struct ir_insn *insn, struct ir_value *val,
@@ -1651,11 +1652,26 @@ static bool spill_storeraw(struct bpf_ir_env *env, struct ir_function *fun,
 	// store stackptr stack
 	// ==> TODO!
 	enum val_type addr_ty = vtype(insn->addr_val.value);
-	if (t0 == STACK && addr_ty == STACK) {
+	if (addr_ty == CONST) {
+		CRITICAL("Not supported");
+	}
+	if (addr_ty == STACK) {
 		CRITICAL("TODO!");
 	}
+	DBGASSERT(addr_ty == REG);
 	if (t0 == CONST && v0->const_type == IR_ALU_64) {
-		CRITICAL("Not supported");
+		// store ptr const64
+		// ==>
+		// r' = const64
+		// store ptr r'
+		u8 reg = 0;
+		if (addr_ty == REG &&
+		    insn_cg(insn->addr_val.value.data.insn_d)->alloc_reg == 0) {
+			// Make sure the new register is not the same as the other register
+			reg = 1;
+		}
+		cgir_load_const_to_reg(env, fun, insn, v0, reg);
+		return true;
 	}
 	// Question: are all memory address 64 bits?
 	if (t0 == STACK) {
@@ -1666,18 +1682,6 @@ static bool spill_storeraw(struct bpf_ir_env *env, struct ir_function *fun,
 			reg = 1;
 		}
 		cgir_load_stack_to_reg(env, fun, insn, v0, IR_VR_TYPE_64, reg);
-		return true;
-	}
-	if (addr_ty == CONST) {
-		CRITICAL("Not Supported");
-	}
-	if (addr_ty == STACK) {
-		u8 reg = 0;
-		if (t0 == REG && insn_cg(v0->data.insn_d)->alloc_reg == 0) {
-			reg = 1;
-		}
-		cgir_load_stack_to_reg(env, fun, insn, &insn->addr_val.value,
-				       IR_VR_TYPE_64, reg);
 		return true;
 	}
 	return false;
