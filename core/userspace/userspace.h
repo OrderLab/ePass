@@ -4,6 +4,13 @@
 
 #include <linux/bpf_ir.h>
 
+struct user_opts {
+	char gopt[64];
+	char popt[64];
+	char prog[64];
+	char sec[64];
+};
+
 void masking_pass(struct bpf_ir_env *env, struct ir_function *fun, void *param);
 
 void test_pass1(struct bpf_ir_env *env, struct ir_function *fun, void *param);
