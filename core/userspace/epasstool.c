@@ -6,6 +6,18 @@
 
 // Userspace tool
 
+struct bpf_ir_opts common_opts;
+
+// Enable all builtin passes specified by enable_cfg
+void enable_builtin(struct bpf_ir_env *env)
+{
+	for (size_t i = 0; i < env->opts.builtin_pass_cfg_num; ++i) {
+		if (env->opts.builtin_pass_cfg[i].enable_cfg) {
+			env->opts.builtin_pass_cfg[i].enable = true;
+		}
+	}
+}
+
 int main(int argc, char **argv)
 {
 	enum {
@@ -63,23 +75,43 @@ int main(int argc, char **argv)
 	}
 
 	if (mode == MODE_NONE) {
+		printf("Wrong mode\n");
 		return 1;
 	}
 
-	if (mode == MODE_READLOG) {
+	if (mode == MODE_PRINT_LOG) {
 		return printlog(uopts);
 	}
 	if (mode == MODE_PRINT) {
 		return print(uopts);
+	}
+
+	// Initialize common options
+	common_opts = bpf_ir_default_opts();
+	struct builtin_pass_cfg passes[] = {
+		bpf_ir_kern_add_counter_pass,
+		bpf_ir_kern_optimization_pass,
+	};
+	struct custom_pass_cfg custom_passes[] = {
+		DEF_CUSTOM_PASS(DEF_FUNC_PASS(test_pass1, "test_pass1", false),
+				NULL, NULL, NULL),
+	};
+	struct bpf_ir_opts opts = bpf_ir_default_opts();
+	opts.custom_pass_num = sizeof(custom_passes) / sizeof(custom_passes[0]);
+	opts.custom_passes = custom_passes;
+	opts.builtin_pass_cfg_num = sizeof(passes) / sizeof(passes[0]);
+	opts.builtin_pass_cfg = passes;
+
+	uopts.opts = opts;
+
+	if (mode == MODE_READLOG) {
+		return readlog(uopts);
 	}
 	if (mode == MODE_READ) {
 		return read(uopts);
 	}
 	if (mode == MODE_READLOAD) {
 		return readload(uopts);
-	}
-	if (mode == MODE_PRINT_LOG) {
-		return printlog(uopts);
 	}
 
 	return 0;

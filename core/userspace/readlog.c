@@ -34,17 +34,19 @@ int readlog(struct user_opts uopts)
 		memcpy(&insns[index], &s, sizeof(struct bpf_insn));
 		index++;
 	}
-	struct bpf_ir_opts opts = bpf_ir_default_opts();
-	struct custom_pass_cfg custom_passes[] = {};
-	opts.custom_pass_num = 0;
-	opts.custom_passes = custom_passes;
-	opts.builtin_pass_cfg_num = 0;
-	struct bpf_ir_env *env = bpf_ir_init_env(opts, insns, index);
+
+	struct bpf_ir_env *env = bpf_ir_init_env(uopts.opts, insns, index);
 	if (!env) {
 		return 1;
 	}
+	int err = bpf_ir_init_opts(env, uopts.popt, uopts.gopt);
+	if (err) {
+		return err;
+	}
+	enable_builtin(env);
 	bpf_ir_run(env);
 	// bpf_ir_print_log_dbg(env);
+	bpf_ir_free_opts(env);
 	bpf_ir_free_env(env);
 
 	fclose(fp);

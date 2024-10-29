@@ -176,7 +176,7 @@ int bpf_ir_init_opts(struct bpf_ir_env *env, const char *pass_opt,
 	while (*src) {
 		char *p = opt;
 		GET_OPT(p, src);
-		PRINT_DBG("Global opt: %s\n", opt);
+		// PRINT_DBG("Global opt: %s\n", opt);
 		err = apply_global_opt(env, opt);
 		if (err < 0) {
 			return err;
@@ -189,7 +189,7 @@ int bpf_ir_init_opts(struct bpf_ir_env *env, const char *pass_opt,
 	while (*src) {
 		char *p = opt;
 		GET_OPT(p, src);
-		PRINT_DBG("Pass opt: %s\n", opt);
+		// PRINT_DBG("Pass opt: %s\n", opt);
 		err = apply_pass_opt(env, opt);
 		if (err < 0) {
 			return err;

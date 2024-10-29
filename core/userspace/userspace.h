@@ -9,6 +9,7 @@ struct user_opts {
 	char popt[64];
 	char prog[64];
 	char sec[64];
+	struct bpf_ir_opts opts;
 };
 
 void masking_pass(struct bpf_ir_env *env, struct ir_function *fun, void *param);
@@ -24,5 +25,9 @@ int read(struct user_opts uopts);
 int readload(struct user_opts uopts);
 
 int readlog(struct user_opts uopts);
+
+void enable_builtin(struct bpf_ir_env *env);
+
+extern struct bpf_ir_opts common_opts;
 
 #endif

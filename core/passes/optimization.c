@@ -79,12 +79,18 @@ static void remove_unused_alloc(struct bpf_ir_env *env, struct ir_function *fun)
 
 struct bpf_ir_optimization_opt {
 	bool no_dead_elim;
+	bool no_opt;
 };
 
 void bpf_ir_optimize_ir(struct bpf_ir_env *env, struct ir_function *fun,
 			void *param)
 {
 	struct bpf_ir_optimization_opt *opt = param;
+
+	if (opt && opt->no_opt) {
+		PRINT_LOG(env, "skip optimization\n");
+		return;
+	}
 
 	if (!(opt && opt->no_dead_elim)) {
 		remove_no_user_insn(env, fun);
@@ -126,6 +132,7 @@ static int load_param(const char *opt, void **param)
 {
 	struct bpf_ir_optimization_opt ropt;
 	ropt.no_dead_elim = false;
+	ropt.no_opt = false;
 
 	char mopt[30] = { 0 };
 	const char *src = opt;
@@ -135,6 +142,10 @@ static int load_param(const char *opt, void **param)
 
 		if (strcmp(mopt, "no_dead_elim") == 0) {
 			ropt.no_dead_elim = true;
+		}
+
+		if (strcmp(mopt, "noopt") == 0) {
+			ropt.no_opt = true;
 		}
 
 		NEXT_OPT(src);
@@ -154,4 +165,4 @@ static void unload_param(void *param)
 }
 
 const struct builtin_pass_cfg bpf_ir_kern_optimization_pass =
-	DEF_BUILTIN_PASS_CFG("optimize_ir", load_param, unload_param);
+	DEF_BUILTIN_PASS_ENABLE_CFG("optimize_ir", load_param, unload_param);

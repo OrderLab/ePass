@@ -31,6 +31,7 @@ add_executable(epasstool
     userspace/readload.c
     userspace/test_pass1.c
     userspace/readlog.c
+    userspace/read.c
     userspace/print.c
     userspace/printlog.c
 )
