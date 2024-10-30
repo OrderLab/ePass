@@ -32,7 +32,7 @@ int print(struct user_opts uopts)
 		return 1;
 	}
 	print_bpf_prog(env, insn, sz);
-	bpf_ir_print_log_dbg(env);
+	// bpf_ir_print_log_dbg(env);
 	bpf_ir_free_env(env);
 	bpf_object__close(obj);
 	return 0;

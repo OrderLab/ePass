@@ -52,7 +52,7 @@ int printlog(struct user_opts uopts)
 		return 1;
 	}
 	print_bpf_prog(env, insns, index);
-	bpf_ir_print_log_dbg(env);
+	// bpf_ir_print_log_dbg(env);
 	bpf_ir_free_env(env);
 	free(insns);
 
