@@ -1874,7 +1874,7 @@ static bool spill_cond_jump(struct bpf_ir_env *env, struct ir_function *fun,
 			// CONST
 			PRINT_LOG_WARNING(
 				env,
-				"Warning: using const as the first operand of conditional jump may impact performance.");
+				"Warning: using const as the first operand of conditional jump may impact performance.\n");
 
 			cgir_load_const_to_reg(env, fun, insn, v0, reg);
 			spill_cond_jump(env, fun, insn);
