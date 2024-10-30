@@ -3,34 +3,19 @@
 #include <linux/bpf_common.h>
 #include <linux/bpf_ir.h>
 
-static const int helper_func_known[] = {
-	1,   2,	  3,   5,   6,	 8,   9,   10,	11,  13,  14,  15,  16,	 17,
-	18,  19,  20,  21,  22,	 23,  24,  25,	26,  27,  28,  29,  30,	 31,
-	32,  33,  34,  35,  36,	 37,  38,  39,	40,  41,  42,  43,  44,	 46,
-	47,  48,  50,  52,  53,	 54,  55,  56,	58,  59,  60,  61,  62,	 63,
-	64,  65,  66,  67,  68,	 70,  71,  72,	74,  75,  76,  77,  78,	 79,
-	80,  81,  83,  84,  85,	 86,  87,  88,	89,  90,  91,  92,  93,	 94,
-	95,  96,  97,  98,  99,	 100, 101, 102, 103, 104, 105, 106, 107, 108,
-	109, 110, 112, 113, 114, 115, 116, 117, 118, 119, 120, 123, 124, 125,
-	126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139,
-	140, 141, 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156,
-	157, 158, 159, 160, 161, 162, 164, 165, 166, 167, 168, 169, 170, 171,
-	172, 174, 175, 176, 177, 178, 179, 180, 181, 182, 186, 187, 188, 189,
-	190, 191, 192, 193, 194, 195, 196, 197, 198, 199, 200, 201, 202, 203,
-	204, 205, 206, 207, 208, 209, 210, 211,
-};
-
-// TODO: Change this to real function
-static const s8 helper_func_arg_num[300] = {
+static const s8 helper_func_arg_num[] = {
 	[1] = 2, // map_lookup_elem
 	[2] = 4, // map_update_elem
 	[3] = 2, // map_delete_elem
+	[4] = 3, // bpf_probe_read
 	[5] = 0, // ktime_get_ns
 	[6] = -1, // trace_printk // 5 may cause an error. May not have 5 arguments
+	[7] = 0, // get_prandom_u32
 	[8] = 0, // get_smp_processor_id
 	[9] = 5, // skb_store_bytes
 	[10] = 5, // l3_csum_replace
 	[11] = 5, // l4_csum_replace
+	[12] = 3, // tail_call
 	[13] = 3, // clone_redirect
 	[14] = 0, // get_current_pid_tgid
 	[15] = 0, // get_current_uid_gid
@@ -63,15 +48,19 @@ static const s8 helper_func_arg_num[300] = {
 	[42] = 0, // get_numa_node_id
 	[43] = 3, // skb_change_head
 	[44] = 2, // xdp_adjust_head
+	[45] = 3, // bpf_probe_read_str
 	[46] = 1, // get_socket_cookie
 	[47] = 1, // get_socket_uid
 	[48] = 2, // set_hash
+	[49] = 5, // setsockopt
 	[50] = 4, // skb_adjust_room
+	[51] = 3, // bpf_redirect_map
 	[52] = 4, // sk_redirect_map
 	[53] = 4, // sock_map_update
 	[54] = 2, // xdp_adjust_meta
 	[55] = 4, // perf_event_read_value
 	[56] = 3, // perf_prog_read_value
+	[57] = 5, // getsockopt
 	[58] = 2, // override_return
 	[59] = 2, // sock_ops_cb_flags_set
 	[60] = 4, // msg_redirect_map
@@ -83,9 +72,11 @@ static const s8 helper_func_arg_num[300] = {
 	[66] = 5, // skb_get_xfrm_state
 	[67] = 4, // get_stack
 	[68] = 5, // skb_load_bytes_relative
+	[69] = 4, // fib_lookup
 	[70] = 4, // sock_hash_update
 	[71] = 4, // msg_redirect_hash
 	[72] = 4, // sk_redirect_hash
+	[73] = 4, // lwt_push_encap
 	[74] = 4, // lwt_seg6_store_bytes
 	[75] = 3, // lwt_seg6_adjust_srh
 	[76] = 4, // lwt_seg6_action
@@ -94,6 +85,7 @@ static const s8 helper_func_arg_num[300] = {
 	[79] = 1, // skb_cgroup_id
 	[80] = 0, // get_current_cgroup_id
 	[81] = 2, // get_local_storage
+	[82] = 4, // sk_select_reuseport
 	[83] = 2, // skb_ancestor_cgroup_id
 	[84] = 5, // sk_lookup_tcp
 	[85] = 5, // sk_lookup_udp
@@ -122,6 +114,7 @@ static const s8 helper_func_arg_num[300] = {
 	[108] = 2, // sk_storage_delete
 	[109] = 1, // send_signal
 	[110] = 5, // tcp_gen_syncookie
+	[111] = 5, // skb_output
 	[112] = 3, // probe_read_user
 	[113] = 3, // probe_read_kernel
 	[114] = 3, // probe_read_user_str
@@ -131,6 +124,8 @@ static const s8 helper_func_arg_num[300] = {
 	[118] = 0, // jiffies64
 	[119] = 4, // read_branch_records
 	[120] = 4, // get_ns_current_pid_tgid
+	[121] = 5, // xdp_output
+	[122] = 1, // get_netns_cookie
 	[123] = 1, // get_current_ancestor_cgroup_id
 	[124] = 3, // sk_assign
 	[125] = 0, // ktime_get_boot_ns
@@ -150,6 +145,9 @@ static const s8 helper_func_arg_num[300] = {
 	[139] = 1, // skc_to_tcp_request_sock
 	[140] = 1, // skc_to_udp6_sock
 	[141] = 4, // get_task_stack
+	[142] = 4, // load_hdr_opt
+	[143] = 4, // store_hdr_opt
+	[144] = 3, // reserve_hdr_opt
 	[145] = 5, // inode_storage_get
 	[146] = 2, // inode_storage_delete
 	[147] = 3, // d_path
@@ -168,6 +166,7 @@ static const s8 helper_func_arg_num[300] = {
 	[160] = 0, // ktime_get_coarse_ns
 	[161] = 3, // ima_inode_hash
 	[162] = 1, // sock_from_file
+	[163] = 5, // check_mtu
 	[164] = 4, // for_each_map_elem
 	[165] = 5, // snprintf
 	[166] = 3, // sys_bpf
@@ -177,6 +176,7 @@ static const s8 helper_func_arg_num[300] = {
 	[170] = 3, // timer_set_callback
 	[171] = 3, // timer_start
 	[172] = 1, // timer_cancel
+	[173] = 1, // get_func_ip
 	[174] = 1, // get_attach_cookie
 	[175] = 1, // task_pt_regs
 	[176] = 3, // get_branch_snapshot
@@ -186,6 +186,9 @@ static const s8 helper_func_arg_num[300] = {
 	[180] = 5, // find_vma
 	[181] = 4, // loop
 	[182] = 3, // strncmp
+	[183] = 3, // get_func_arg
+	[184] = 2, // bpf_get_func_ret
+	[185] = 1, // bpf_get_func_arg_cnt
 	[186] = 0, // get_retval
 	[187] = 1, // set_retval
 	[188] = 1, // xdp_get_buff_len
@@ -1182,19 +1185,11 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 						"Not supported function call\n");
 				} else {
 					// Test if the helper function is supported
-					bool supported = false;
-					for (u32 i = 0;
-					     i <
-					     sizeof(helper_func_known) /
-						     sizeof(helper_func_known[0]);
-					     ++i) {
-						if (helper_func_known[i] ==
-						    insn.imm) {
-							supported = true;
-							break;
-						}
-					}
-					if (!supported) {
+					if (insn.imm < 0 ||
+					    (size_t)insn.imm >=
+						    sizeof(helper_func_arg_num) /
+							    sizeof(helper_func_arg_num
+									   [0])) {
 						PRINT_LOG_ERROR(
 							env,
 							"unknown helper function %d at %d\n",
