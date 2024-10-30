@@ -26,7 +26,7 @@ static const s8 helper_func_arg_num[300] = {
 	[2] = 4, // map_update_elem
 	[3] = 2, // map_delete_elem
 	[5] = 0, // ktime_get_ns
-	[6] = -1, // trace_printk // Could be changed to 5?
+	[6] = -1, // trace_printk // 5 may cause an error. May not have 5 arguments
 	[8] = 0, // get_smp_processor_id
 	[9] = 5, // skb_store_bytes
 	[10] = 5, // l3_csum_replace
@@ -1195,6 +1195,10 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 						}
 					}
 					if (!supported) {
+						PRINT_LOG_ERROR(
+							env,
+							"unknown helper function %d at %d\n",
+							insn.imm, insn.pos);
 						RAISE_ERROR(
 							"Unsupported helper function");
 					}
