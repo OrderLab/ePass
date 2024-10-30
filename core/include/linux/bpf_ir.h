@@ -1095,6 +1095,7 @@ void msan(struct bpf_ir_env *env, struct ir_function *fun, void *param);
 
 extern const struct builtin_pass_cfg bpf_ir_kern_add_counter_pass;
 extern const struct builtin_pass_cfg bpf_ir_kern_optimization_pass;
+extern const struct builtin_pass_cfg bpf_ir_kern_msan;
 
 void translate_throw(struct bpf_ir_env *env, struct ir_function *fun,
 		     void *param);

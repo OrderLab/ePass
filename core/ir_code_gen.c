@@ -1660,7 +1660,7 @@ static bool spill_storeraw(struct bpf_ir_env *env, struct ir_function *fun,
 	if (addr_ty == STACK) {
 		CRITICAL("TODO!");
 	}
-	DBGASSERT(addr_ty == REG);
+	DBGASSERT(addr_ty == REG || addr_ty == STACKOFF);
 	if (t0 == CONST && v0->const_type == IR_ALU_64) {
 		// store ptr const64
 		// ==>
