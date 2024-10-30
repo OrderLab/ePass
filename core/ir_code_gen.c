@@ -2319,6 +2319,12 @@ static int alu_code(enum ir_insn_type insn)
 		return BPF_SUB;
 	case IR_INSN_MUL:
 		return BPF_MUL;
+	case IR_INSN_DIV:
+		return BPF_DIV;
+	case IR_INSN_OR:
+		return BPF_OR;
+	case IR_INSN_AND:
+		return BPF_AND;
 	case IR_INSN_MOD:
 		return BPF_MOD;
 	case IR_INSN_LSH:

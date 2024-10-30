@@ -357,6 +357,15 @@ void print_ir_insn_full(struct bpf_ir_env *env, struct ir_insn *insn,
 	case IR_INSN_MUL:
 		print_alu(env, insn, print_ir, "mul");
 		break;
+	case IR_INSN_DIV:
+		print_alu(env, insn, print_ir, "div");
+		break;
+	case IR_INSN_OR:
+		print_alu(env, insn, print_ir, "or");
+		break;
+	case IR_INSN_AND:
+		print_alu(env, insn, print_ir, "and");
+		break;
 	case IR_INSN_LSH:
 		print_alu(env, insn, print_ir, "lsh");
 		break;

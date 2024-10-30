@@ -3,15 +3,13 @@
 #include <linux/bpf_common.h>
 #include <linux/bpf_ir.h>
 
-static const int helper_func_known[] = {
-	5, 6, 131, 132, 133,
-};
+static const int helper_func_known[] = { 1, 5, 6, 131, 132, 133, 181 };
 
 // TODO: Change this to real function
 static const s8 helper_func_arg_num[200] = {
-	[5] = 0,
+	[1] = 2,   [5] = 0,
 	[6] = -1, // Variable length
-	[131] = 3, [132] = 2, [133] = 2,
+	[131] = 3, [132] = 2, [133] = 2, [181] = 4
 };
 
 // All function passes
@@ -525,6 +523,9 @@ static struct ir_value read_variable(struct bpf_ir_env *env,
 		} else {
 			// Invalid Program!
 			// Should throw an exception here
+			PRINT_LOG_ERROR(env,
+					"Finding def for r%d in entry block\n",
+					reg);
 			RAISE_ERROR_RET("Invalid program detected!",
 					bpf_ir_value_undef());
 		}
@@ -758,6 +759,15 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 					  alu_ty);
 			} else if (BPF_OP(code) == BPF_MUL) {
 				alu_write(env, tenv, IR_INSN_MUL, insn, bb,
+					  alu_ty);
+			} else if (BPF_OP(code) == BPF_DIV) {
+				alu_write(env, tenv, IR_INSN_DIV, insn, bb,
+					  alu_ty);
+			} else if (BPF_OP(code) == BPF_OR) {
+				alu_write(env, tenv, IR_INSN_OR, insn, bb,
+					  alu_ty);
+			} else if (BPF_OP(code) == BPF_AND) {
+				alu_write(env, tenv, IR_INSN_AND, insn, bb,
 					  alu_ty);
 			} else if (BPF_OP(code) == BPF_MOV) {
 				// Do not create instructions

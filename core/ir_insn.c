@@ -395,7 +395,8 @@ bool bpf_ir_is_alu(struct ir_insn *insn)
 bool bpf_ir_is_commutative_alu(struct ir_insn *insn)
 {
 	// TODO: Add more
-	return insn->op == IR_INSN_ADD || insn->op == IR_INSN_MUL;
+	return insn->op == IR_INSN_ADD || insn->op == IR_INSN_MUL ||
+	       insn->op == IR_INSN_OR || insn->op == IR_INSN_AND;
 }
 
 bool bpf_ir_is_void(struct ir_insn *insn)
