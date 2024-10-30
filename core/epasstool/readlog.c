@@ -11,7 +11,7 @@ int readlog(struct user_opts uopts)
 		return -1;
 	}
 	char line[256];
-	struct bpf_insn *insns = malloc_proto(sizeof(struct bpf_insn) * 1000);
+	struct bpf_insn *insns = malloc_proto(sizeof(struct bpf_insn) * 5000);
 	size_t index = 0;
 	while (fgets(line, sizeof(line), fp)) {
 		int found = 0;
