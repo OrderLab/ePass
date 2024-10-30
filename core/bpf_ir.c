@@ -18,6 +18,7 @@ static const struct function_pass pre_passes[] = {
 };
 
 static const struct function_pass post_passes[] = {
+	DEF_FUNC_PASS(msan, "msan", false),
 	DEF_FUNC_PASS(add_counter, "add_counter", false),
 	/* CG Preparation Passes */
 	DEF_NON_OVERRIDE_FUNC_PASS(translate_throw, "translate_throw"),
@@ -1238,7 +1239,7 @@ static void run_passes(struct bpf_ir_env *env, struct ir_function *fun)
 			if (strcmp(env->opts.builtin_pass_cfg[j].name,
 				   post_passes[i].name) == 0) {
 				has_override = true;
-				if (pre_passes[i].force_enable ||
+				if (post_passes[i].force_enable ||
 				    env->opts.builtin_pass_cfg[j].enable) {
 					run_single_pass(
 						env, fun, &post_passes[i],

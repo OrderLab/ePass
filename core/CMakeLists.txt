@@ -14,6 +14,7 @@ add_library(epass STATIC
     passes/translate_throw.c
     passes/optimization.c
     passes/cg_prepare.c
+    passes/msan.c
     aux/prog_check.c
     aux/disasm.c
     aux/kern_utils.c

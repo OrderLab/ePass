@@ -1091,6 +1091,8 @@ void remove_trivial_phi(struct bpf_ir_env *env, struct ir_function *fun,
 
 void add_counter(struct bpf_ir_env *env, struct ir_function *fun, void *param);
 
+void msan(struct bpf_ir_env *env, struct ir_function *fun, void *param);
+
 extern const struct builtin_pass_cfg bpf_ir_kern_add_counter_pass;
 extern const struct builtin_pass_cfg bpf_ir_kern_optimization_pass;
 
