@@ -99,6 +99,57 @@ void msan(struct bpf_ir_env *env, struct ir_function *fun, void *param)
 				bpf_ir_value_insn(res2), INSERT_BACK);
 		}
 	}
+	array_for(pos2, loadraw_insns)
+	{
+		struct ir_insn *insn = *pos2;
+		if (insn->addr_val.value.type == IR_VALUE_INSN &&
+		    insn->addr_val.value.data.insn_d == fun->sp) {
+			PRINT_LOG_DEBUG(
+				env, "Found a stack pointer load at off %d\n",
+				insn->addr_val.offset);
+			u32 x = -insn->addr_val.offset;
+			u32 b1 = x / 8 + 1;
+			u32 b2 = b1 + 1;
+			u32 off = 7 - (x % 8);
+			struct ir_insn *b1c = bpf_ir_create_loadraw_insn(
+				env, insn, IR_VR_TYPE_8,
+				bpf_ir_addr_val(bpf_ir_value_stack_ptr(fun),
+						-b1),
+				INSERT_FRONT);
+			struct ir_insn *b2c = bpf_ir_create_loadraw_insn(
+				env, b1c, IR_VR_TYPE_8,
+				bpf_ir_addr_val(bpf_ir_value_stack_ptr(fun),
+						-b2),
+				INSERT_BACK);
+			struct ir_insn *comp1 = bpf_ir_create_bin_insn(
+				env, b2c, bpf_ir_value_insn(b1c),
+				bpf_ir_value_const32(8), IR_INSN_LSH, IR_ALU_64,
+				INSERT_BACK);
+			struct ir_insn *comp2 = bpf_ir_create_bin_insn(
+				env, comp1, bpf_ir_value_insn(comp1),
+				bpf_ir_value_insn(b2c), IR_INSN_ADD, IR_ALU_64,
+				INSERT_BACK);
+			struct ir_insn *comp3 = bpf_ir_create_bin_insn(
+				env, comp2, bpf_ir_value_insn(comp2),
+				bpf_ir_value_const32(off), IR_INSN_RSH,
+				IR_ALU_64, INSERT_BACK);
+			u32 mask = (1 << vr_type_to_size(insn->vr_type)) - 1;
+			struct ir_insn *res1 = bpf_ir_create_bin_insn(
+				env, comp3, bpf_ir_value_insn(comp3),
+				bpf_ir_value_const32(mask), IR_INSN_AND,
+				IR_ALU_64, INSERT_BACK);
+
+			// struct ir_insn *res2 = bpf_ir_create_bin_insn(
+			// 	env, res1, bpf_ir_value_insn(res1),
+			// 	bpf_ir_value_const32(off), IR_INSN_LSH,
+			// 	IR_ALU_64, INSERT_BACK);
+			// bpf_ir_create_storeraw_insn(
+			// 	env, res2, IR_VR_TYPE_16,
+			// 	bpf_ir_addr_val(bpf_ir_value_stack_ptr(fun),
+			// 			-b2),
+			// 	bpf_ir_value_insn(res2), INSERT_BACK);
+		}
+	}
 
 	bpf_ir_array_free(&storeraw_insns);
 	bpf_ir_array_free(&loadraw_insns);
