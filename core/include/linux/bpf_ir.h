@@ -1301,6 +1301,10 @@ struct ir_value bpf_ir_value_const32(s32 val);
 
 struct ir_value bpf_ir_value_const64(s64 val);
 
+struct ir_value bpf_ir_value_const32_rawoff(s32 val);
+
+struct ir_value bpf_ir_value_const64_rawoff(s64 val);
+
 struct ir_value bpf_ir_value_undef(void);
 
 struct ir_address_value bpf_ir_addr_val(struct ir_value value, s16 offset);

@@ -57,6 +57,24 @@ struct ir_value bpf_ir_value_const64(s64 val)
 	return v;
 }
 
+struct ir_value bpf_ir_value_const32_rawoff(s32 val)
+{
+	struct ir_value v = value_base();
+	v.type = IR_VALUE_CONSTANT_RAWOFF;
+	v.data.constant_d = val;
+	v.const_type = IR_ALU_32;
+	return v;
+}
+
+struct ir_value bpf_ir_value_const64_rawoff(s64 val)
+{
+	struct ir_value v = value_base();
+	v.type = IR_VALUE_CONSTANT_RAWOFF;
+	v.data.constant_d = val;
+	v.const_type = IR_ALU_64;
+	return v;
+}
+
 struct ir_address_value bpf_ir_addr_val(struct ir_value value, s16 offset)
 {
 	return (struct ir_address_value){ .value = value,

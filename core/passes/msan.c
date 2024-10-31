@@ -56,8 +56,13 @@ void msan(struct bpf_ir_env *env, struct ir_function *fun, void *param)
 			PRINT_LOG_DEBUG(
 				env, "Found a stack pointer store at off %d\n",
 				insn->addr_val.offset);
+			struct ir_insn *s1 = bpf_ir_create_neg_insn(
+				env, insn, IR_ALU_64,
+				bpf_ir_value_const32_rawoff(
+					insn->addr_val.offset),
+				INSERT_BACK);
 			u32 x = -insn->addr_val.offset;
-			u32 b1 = x / 8 + 1;
+			u32 b1 = x / 8;
 			u32 b2 = b1 + 1;
 			u32 off = 7 - (x % 8);
 			struct ir_insn *b1c = bpf_ir_create_loadraw_insn(
