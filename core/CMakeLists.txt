@@ -1,0 +1,31 @@
+cmake_minimum_required(VERSION 3.20)
+project(epass)
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror -Wstrict-prototypes -Wenum-compare -Wunused-variable -Wunused-but-set-variable -Wsign-compare -O3")
+
+add_library(epass STATIC
+    bpf_ir.c
+    array.c
+    ir_helper.c
+    ir_value.c
+    ir_bb.c
+    ir_insn.c
+    passes/phi_pass.c
+    passes/add_counter_pass.c
+    passes/translate_throw.c
+    passes/optimization.c
+    passes/cg_prepare.c
+    passes/msan.c
+    aux/prog_check.c
+    aux/disasm.c
+    aux/kern_utils.c
+    ir_code_gen.c
+    lii.c
+)
+
+include_directories(include)
+
+add_subdirectory(epasstool)
+
+INSTALL(TARGETS epass
+        LIBRARY DESTINATION usr/local/lib
+)
