@@ -189,6 +189,9 @@ void print_address_value_full(struct bpf_ir_env *env, struct ir_address_value v,
 	print_ir_value_full(env, v.value, print_ir);
 	if (v.offset != 0) {
 		PRINT_LOG_DEBUG(env, "+%d", v.offset);
+		if (v.offset_type == IR_VALUE_CONSTANT_RAWOFF) {
+			PRINT_LOG_DEBUG(env, "(+off)");
+		}
 	}
 }
 

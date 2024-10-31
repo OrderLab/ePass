@@ -2310,11 +2310,11 @@ static void add_stack_offset(struct bpf_ir_env *env, struct ir_function *fun,
 		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
 			if (insn->op == IR_INSN_LOADRAW ||
 			    insn->op == IR_INSN_STORERAW) {
-				if (insn->addr_val.value.type ==
-					    IR_VALUE_INSN &&
-				    insn->addr_val.value.data.insn_d ==
-					    fun->sp) {
+				if (insn->addr_val.offset_type ==
+				    IR_VALUE_CONSTANT_RAWOFF) {
 					insn->addr_val.offset += offset;
+					insn->addr_val.offset_type =
+						IR_VALUE_CONSTANT;
 					continue;
 				}
 			}

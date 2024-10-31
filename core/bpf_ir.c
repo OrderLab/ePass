@@ -1114,6 +1114,11 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 			set_value_raw_pos(&addr_val.value, insn.pos,
 					  IR_RAW_POS_SRC);
 			addr_val.offset = insn.off;
+			if (insn.src_reg == BPF_REG_10) {
+				addr_val.offset_type = IR_VALUE_CONSTANT_RAWOFF;
+			} else {
+				addr_val.offset_type = IR_VALUE_CONSTANT;
+			}
 			new_insn->vr_type = to_ir_ld_u(BPF_SIZE(code));
 			new_insn->addr_val = addr_val;
 
@@ -1129,6 +1134,11 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 			struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
 			new_insn->op = IR_INSN_LOADRAW;
 			struct ir_address_value addr_val;
+			if (insn.src_reg == BPF_REG_10) {
+				addr_val.offset_type = IR_VALUE_CONSTANT_RAWOFF;
+			} else {
+				addr_val.offset_type = IR_VALUE_CONSTANT;
+			}
 			addr_val.value =
 				read_variable(env, tenv, insn.src_reg, bb);
 			set_value_raw_pos(&addr_val.value, insn.pos,
@@ -1147,6 +1157,11 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 			struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
 			new_insn->op = IR_INSN_STORERAW;
 			struct ir_address_value addr_val;
+			if (insn.dst_reg == BPF_REG_10) {
+				addr_val.offset_type = IR_VALUE_CONSTANT_RAWOFF;
+			} else {
+				addr_val.offset_type = IR_VALUE_CONSTANT;
+			}
 			addr_val.value =
 				read_variable(env, tenv, insn.dst_reg, bb);
 			set_value_raw_pos(&addr_val.value, insn.pos,
@@ -1166,6 +1181,11 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 			struct ir_insn *new_insn = create_insn_back(bb->ir_bb);
 			new_insn->op = IR_INSN_STORERAW;
 			struct ir_address_value addr_val;
+			if (insn.dst_reg == BPF_REG_10) {
+				addr_val.offset_type = IR_VALUE_CONSTANT_RAWOFF;
+			} else {
+				addr_val.offset_type = IR_VALUE_CONSTANT;
+			}
 			addr_val.value =
 				read_variable(env, tenv, insn.dst_reg, bb);
 			set_value_raw_pos(&addr_val.value, insn.pos,

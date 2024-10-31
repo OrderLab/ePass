@@ -340,6 +340,7 @@ struct ir_address_value {
 	// The value might be stack pointer
 	struct ir_value value;
 	s16 offset;
+	enum ir_value_type offset_type;
 };
 
 /*
