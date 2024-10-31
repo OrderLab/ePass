@@ -812,7 +812,7 @@ bool bpf_ir_is_commutative_alu(struct ir_insn *insn);
 
 bool bpf_ir_is_cond_jmp(struct ir_insn *insn);
 
-bool bpf_ir_is_alu(struct ir_insn *insn);
+bool bpf_ir_is_bin_alu(struct ir_insn *insn);
 
 struct ir_insn *bpf_ir_prev_insn(struct ir_insn *insn);
 

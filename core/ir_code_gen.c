@@ -1444,7 +1444,7 @@ static void normalize(struct bpf_ir_env *env, struct ir_function *fun)
 				// OK
 			} else if (insn->op == IR_INSN_STORERAW) {
 				normalize_stackoff(env, fun, insn);
-			} else if (bpf_ir_is_alu(insn)) {
+			} else if (bpf_ir_is_bin_alu(insn)) {
 				normalize_alu(env, fun, insn);
 			} else if (insn->op == IR_INSN_ASSIGN) {
 				normalize_assign(env, fun, insn);
@@ -2108,7 +2108,7 @@ static bool check_need_spill(struct bpf_ir_env *env, struct ir_function *fun)
 					spill_loadrawextra(env, fun, insn);
 			} else if (insn->op == IR_INSN_STORERAW) {
 				need_modify |= spill_storeraw(env, fun, insn);
-			} else if (bpf_ir_is_alu(insn)) {
+			} else if (bpf_ir_is_bin_alu(insn)) {
 				need_modify |= spill_alu(env, fun, insn);
 			} else if (insn->op == IR_INSN_ASSIGN) {
 				need_modify |= spill_assign(env, fun, insn);
@@ -2705,7 +2705,7 @@ static void translate(struct bpf_ir_env *env, struct ir_function *fun)
 				translate_loadimm_extra(insn);
 			} else if (insn->op == IR_INSN_STORERAW) {
 				translate_storeraw(insn);
-			} else if (bpf_ir_is_alu(insn)) {
+			} else if (bpf_ir_is_bin_alu(insn)) {
 				translate_alu(insn);
 			} else if (insn->op == IR_INSN_ASSIGN) {
 				translate_assign(insn);

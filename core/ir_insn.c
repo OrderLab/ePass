@@ -387,7 +387,7 @@ bool bpf_ir_is_cond_jmp(struct ir_insn *insn)
 	return (insn->op >= IR_INSN_JEQ && insn->op < IR_INSN_PHI);
 }
 
-bool bpf_ir_is_alu(struct ir_insn *insn)
+bool bpf_ir_is_bin_alu(struct ir_insn *insn)
 {
 	return insn->op >= IR_INSN_ADD && insn->op < IR_INSN_CALL;
 }

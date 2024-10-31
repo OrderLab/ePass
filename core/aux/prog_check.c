@@ -73,7 +73,7 @@ static void check_insn(struct bpf_ir_env *env, struct ir_function *fun)
 			}
 
 			if (insn->op == IR_INSN_STORE ||
-			    (bpf_ir_is_alu(insn)) ||
+			    (bpf_ir_is_bin_alu(insn)) ||
 			    (bpf_ir_is_cond_jmp(insn)) ||
 			    insn->op == IR_INSN_GETELEMPTR) {
 				if (!(insn->value_num == 2)) {
@@ -106,7 +106,8 @@ static void check_insn(struct bpf_ir_env *env, struct ir_function *fun)
 
 			// TODO: Check: users of alloc instructions must be STORE/LOAD
 
-			if (bpf_ir_is_alu(insn) || bpf_ir_is_cond_jmp(insn)) {
+			if (bpf_ir_is_bin_alu(insn) ||
+			    bpf_ir_is_cond_jmp(insn)) {
 				// Binary ALU
 				if (!bpf_ir_valid_alu_type(insn->alu_op)) {
 					print_ir_insn_err(env, insn, NULL);
