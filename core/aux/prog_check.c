@@ -64,11 +64,25 @@ static void check_insn(struct bpf_ir_env *env, struct ir_function *fun)
 			}
 			if (insn->op == IR_INSN_STORERAW ||
 			    insn->op == IR_INSN_LOAD ||
-			    insn->op == IR_INSN_RET) {
+			    insn->op == IR_INSN_RET ||
+			    insn->op == IR_INSN_NEG ||
+			    insn->op == IR_INSN_HTOBE ||
+			    insn->op == IR_INSN_HTOLE) {
 				if (!(insn->value_num == 1)) {
 					print_ir_insn_err(env, insn, NULL);
 					RAISE_ERROR(
 						"Instruction should have 1 values");
+				}
+			}
+
+			if (insn->op == IR_INSN_HTOBE ||
+			    insn->op == IR_INSN_HTOLE) {
+				if (!(insn->swap_width == 16 ||
+				      insn->swap_width == 32 ||
+				      insn->swap_width == 64)) {
+					print_ir_insn_err(env, insn, NULL);
+					RAISE_ERROR(
+						"BPF_END instruction must have a valid swap width (16, 32 or 64)");
 				}
 			}
 
