@@ -348,6 +348,18 @@ void print_ir_insn_full(struct bpf_ir_env *env, struct ir_insn *insn,
 		PRINT_LOG_DEBUG(env, "+");
 		print_ir_value_full(env, insn->values[0], print_ir);
 		break;
+	case IR_INSN_NEG:
+		PRINT_LOG_DEBUG(env, "-");
+		print_ir_value_full(env, insn->values[0], print_ir);
+		break;
+	case IR_INSN_HTOBE:
+		PRINT_LOG_DEBUG(env, "htobe ");
+		print_ir_value_full(env, insn->values[0], print_ir);
+		break;
+	case IR_INSN_HTOLE:
+		PRINT_LOG_DEBUG(env, "htole ");
+		print_ir_value_full(env, insn->values[0], print_ir);
+		break;
 	case IR_INSN_ADD:
 		print_alu(env, insn, print_ir, "add");
 		break;

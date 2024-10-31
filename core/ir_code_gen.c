@@ -1427,6 +1427,16 @@ static void normalize_neg(struct bpf_ir_env *env, struct ir_function *fun,
 	struct ir_insn *dst_insn = insn_dst(insn);
 	DBGASSERT(tdst == REG);
 	// reg = neg reg ==> OK!
+	if (t0 == REG && allocated_reg(*v0) != allocated_reg_insn(dst_insn)) {
+		// reg1 = neg reg2
+		// ==>
+		// reg1 = reg2
+		// reg1 = neg reg1
+		struct ir_insn *new_insn = bpf_ir_create_assign_insn_cg(
+			env, insn, *v0, INSERT_FRONT);
+		set_insn_dst(env, new_insn, dst_insn);
+		bpf_ir_change_value(env, insn, v0, bpf_ir_value_insn(dst_insn));
+	}
 	if (t0 == CONST) {
 		// reg = neg const
 		if (v0->const_type == IR_ALU_64) {
@@ -1440,8 +1450,6 @@ static void normalize_neg(struct bpf_ir_env *env, struct ir_function *fun,
 		// reg = neg reg
 		cgir_load_stack_to_reg(env, fun, insn, v0, IR_VR_TYPE_64,
 				       allocated_reg_insn(dst_insn));
-	} else {
-		RAISE_ERROR("Not supported");
 	}
 }
 
@@ -1474,8 +1482,6 @@ static void normalize_end(struct bpf_ir_env *env, struct ir_function *fun,
 		// reg = end reg
 		cgir_load_stack_to_reg(env, fun, insn, v0, IR_VR_TYPE_64,
 				       allocated_reg_insn(dst_insn));
-	} else {
-		RAISE_ERROR("Not supported");
 	}
 }
 
@@ -2442,6 +2448,8 @@ static int end_code(enum ir_insn_type insn)
 static int alu_code(enum ir_insn_type insn)
 {
 	switch (insn) {
+	case IR_INSN_NEG:
+		return BPF_NEG;
 	case IR_INSN_ADD:
 		return BPF_ADD;
 	case IR_INSN_SUB:
@@ -2501,6 +2509,16 @@ static struct pre_ir_insn alu_reg(u8 dst, u8 src, enum ir_alu_op_type type,
 	insn.src_reg = src;
 	int alu_class = type == IR_ALU_64 ? BPF_ALU64 : BPF_ALU;
 	insn.opcode = opcode | BPF_X | alu_class;
+	return insn;
+}
+
+static struct pre_ir_insn alu_neg(u8 dst, u8 src, enum ir_alu_op_type type)
+{
+	struct pre_ir_insn insn = { 0 };
+	insn.dst_reg = dst;
+	insn.src_reg = src;
+	int alu_class = type == IR_ALU_64 ? BPF_ALU64 : BPF_ALU;
+	insn.opcode = BPF_NEG | BPF_K | alu_class;
 	return insn;
 }
 
@@ -2701,10 +2719,9 @@ static void translate_neg(struct ir_insn *insn)
 	struct ir_insn *dst_insn = insn_dst(insn);
 	DBGASSERT(tdst == REG);
 	if (t0 == REG) {
-		extra->translated[0] = alu_reg(get_alloc_reg(dst_insn),
+		extra->translated[0] = alu_neg(get_alloc_reg(dst_insn),
 					       get_alloc_reg(v0.data.insn_d),
-					       insn->alu_op,
-					       alu_code(insn->op));
+					       insn->alu_op);
 	} else if (t0 == CONST) {
 		extra->translated[0] = alu_imm(get_alloc_reg(dst_insn),
 					       v0.data.constant_d, insn->alu_op,

@@ -918,12 +918,12 @@ static void bpf_neg_write(struct bpf_ir_env *env,
 			  enum ir_alu_op_type alu_ty)
 {
 	struct ir_insn *new_insn = create_alu_nonbin(
-		env, bb->ir_bb, get_src_value(env, tenv, bb, insn), IR_INSN_NEG,
-		alu_ty);
+		env, bb->ir_bb, read_variable(env, tenv, insn.dst_reg, bb),
+		IR_INSN_NEG, alu_ty);
 	struct ir_value v = bpf_ir_value_insn(new_insn);
 	set_insn_raw_pos(new_insn, insn.pos);
 	set_value_raw_pos(&v, insn.pos, IR_RAW_POS_INSN);
-	set_value_raw_pos(&new_insn->values[0], insn.pos, IR_RAW_POS_SRC);
+	set_value_raw_pos(&new_insn->values[0], insn.pos, IR_RAW_POS_DST);
 	write_variable(env, tenv, insn.dst_reg, bb, v);
 }
 
@@ -1065,7 +1065,10 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 						"Unknown BPF_END instruction");
 				}
 			} else if (BPF_OP(code) == BPF_NEG) {
-				// dst = -src
+				// dst = -dst
+				if (BPF_SRC(insn.opcode) != BPF_K) {
+					RAISE_ERROR("Neg with src != BPF_K");
+				}
 				bpf_neg_write(env, tenv, insn, bb, alu_ty);
 			} else {
 				// TODO
