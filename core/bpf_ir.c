@@ -1047,6 +1047,10 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 				// dst = (src != 0) ? (dst % src) : dst
 				alu_write_bin(env, tenv, IR_INSN_MOD, insn, bb,
 					      alu_ty);
+			} else if (BPF_OP(code) == BPF_XOR) {
+				// dst = dst ^ src
+				alu_write_bin(env, tenv, IR_INSN_XOR, insn, bb,
+					      alu_ty);
 			} else if (BPF_OP(code) ==
 				   BPF_END) { /* Non-binary ALU operations */
 				if (alu_ty == IR_ALU_64) {

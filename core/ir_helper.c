@@ -393,6 +393,9 @@ void print_ir_insn_full(struct bpf_ir_env *env, struct ir_insn *insn,
 	case IR_INSN_MOD:
 		print_alu(env, insn, print_ir, "mod");
 		break;
+	case IR_INSN_XOR:
+		print_alu(env, insn, print_ir, "xor");
+		break;
 	case IR_INSN_CALL:
 		PRINT_LOG_DEBUG(env, "call __built_in_func_%d(", insn->fid);
 		if (insn->value_num >= 1) {

@@ -167,7 +167,7 @@ void msan(struct bpf_ir_env *env, struct ir_function *fun, void *param)
 			// 	bpf_ir_addr_val(bpf_ir_value_stack_ptr(fun),
 			// 			-b2),
 			// 	bpf_ir_value_insn(res2), INSERT_BACK);
-		}else if (insn->addr_val.value.type == IR_VALUE_INSN) {
+		} else if (insn->addr_val.value.type == IR_VALUE_INSN) {
 			// Non-sp memory access
 		}
 	}

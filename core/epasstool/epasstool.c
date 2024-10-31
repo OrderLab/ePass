@@ -16,10 +16,11 @@ void enable_builtin(struct bpf_ir_env *env)
 	}
 }
 
-void usage(void)
+static void usage(char *prog)
 {
-	printf("Usage: epasstool --mode <mode> --prog <prog> [--sec <sec>] "
-	       "[--gopt <gopt>] [--popt <popt>]\n");
+	printf("Usage: %s --mode <mode> --prog <prog> [--sec <sec>] "
+	       "[--gopt <gopt>] [--popt <popt>]\n",
+	       prog);
 	printf("Modes:\n");
 	printf("  read: Read BPF program from file\n");
 	printf("  readload: Read BPF program from file and load it with modified bytecode\n");
@@ -47,11 +48,12 @@ int main(int argc, char **argv)
 		{ "popt", required_argument, NULL, 0 },
 		{ "prog", required_argument, NULL, 'p' },
 		{ "sec", required_argument, NULL, 's' },
+		{ "help", no_argument, NULL, 'h' },
 		{ NULL, 0, NULL, 0 }
 	};
 	int ch = 0;
 	int opt_index = 0;
-	while ((ch = getopt_long(argc, argv, "m:p:s:", long_options,
+	while ((ch = getopt_long(argc, argv, "m:p:s:h", long_options,
 				 &opt_index)) != -1) {
 		if (ch == 0) {
 			// printf("option %s\n", long_options[opt_index].name);
@@ -82,6 +84,10 @@ int main(int argc, char **argv)
 			case 's':
 				strcpy(uopts.sec, optarg);
 				break;
+			case 'h':
+				usage(argv[0]);
+				return 0;
+				break;
 			default:
 				break;
 			}
@@ -89,7 +95,7 @@ int main(int argc, char **argv)
 	}
 
 	if (mode == MODE_NONE) {
-		usage();
+		usage(argv[0]);
 	}
 
 	if (mode == MODE_PRINT_LOG) {
