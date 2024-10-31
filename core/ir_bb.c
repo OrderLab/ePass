@@ -96,6 +96,9 @@ struct ir_basic_block *bpf_ir_split_bb(struct bpf_ir_env *env,
 	} else {
 		RAISE_ERROR_RET("Unknown insert position", NULL);
 	}
+	if (p == &bb->ir_insn_head) {
+		RAISE_ERROR_RET("Cannot split at the end/start of a BB", NULL);
+	}
 	while (p != &bb->ir_insn_head) {
 		struct ir_insn *cur = list_entry(p, struct ir_insn, list_ptr);
 		p = p->next;

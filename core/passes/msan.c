@@ -99,9 +99,15 @@ void msan(struct bpf_ir_env *env, struct ir_function *fun, void *param)
 				bpf_ir_value_insn(res2), INSERT_BACK);
 		}
 	}
+
 	array_for(pos2, loadraw_insns)
 	{
 		struct ir_insn *insn = *pos2;
+		struct ir_basic_block *bb = insn->parent_bb;
+		if (bpf_ir_get_last_insn(bb) == insn) {
+			PRINT_LOG_WARNING(env, "Last insn is a loadraw insn\n");
+			continue;
+		}
 		if (insn->addr_val.value.type == IR_VALUE_INSN &&
 		    insn->addr_val.value.data.insn_d == fun->sp) {
 			PRINT_LOG_DEBUG(
@@ -115,7 +121,7 @@ void msan(struct bpf_ir_env *env, struct ir_function *fun, void *param)
 				env, insn, IR_VR_TYPE_8,
 				bpf_ir_addr_val(bpf_ir_value_stack_ptr(fun),
 						-b1),
-				INSERT_FRONT);
+				INSERT_BACK);
 			struct ir_insn *b2c = bpf_ir_create_loadraw_insn(
 				env, b1c, IR_VR_TYPE_8,
 				bpf_ir_addr_val(bpf_ir_value_stack_ptr(fun),
@@ -139,6 +145,19 @@ void msan(struct bpf_ir_env *env, struct ir_function *fun, void *param)
 				bpf_ir_value_const32(mask), IR_INSN_AND,
 				IR_ALU_64, INSERT_BACK);
 
+			struct ir_basic_block *new_bb =
+				bpf_ir_split_bb(env, fun, res1, INSERT_BACK);
+			struct ir_basic_block *err_bb =
+				bpf_ir_create_bb(env, fun);
+			bpf_ir_create_throw_insn_bb(env, err_bb, INSERT_BACK);
+			bpf_ir_create_jbin_insn(env, res1,
+						bpf_ir_value_insn(res1),
+						bpf_ir_value_const32(mask),
+						new_bb, err_bb, IR_INSN_JNE,
+						IR_ALU_64, INSERT_BACK);
+			// Manually connect BBs
+			bpf_ir_connect_bb(env, bb, err_bb);
+
 			// struct ir_insn *res2 = bpf_ir_create_bin_insn(
 			// 	env, res1, bpf_ir_value_insn(res1),
 			// 	bpf_ir_value_const32(off), IR_INSN_LSH,
@@ -148,6 +167,8 @@ void msan(struct bpf_ir_env *env, struct ir_function *fun, void *param)
 			// 	bpf_ir_addr_val(bpf_ir_value_stack_ptr(fun),
 			// 			-b2),
 			// 	bpf_ir_value_insn(res2), INSERT_BACK);
+		}else if (insn->addr_val.value.type == IR_VALUE_INSN) {
+			// Non-sp memory access
 		}
 	}
 
