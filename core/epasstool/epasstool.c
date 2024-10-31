@@ -22,11 +22,11 @@ static void usage(char *prog)
 	       "[--gopt <gopt>] [--popt <popt>]\n",
 	       prog);
 	printf("Modes:\n");
-	printf("  read: Read BPF program from file\n");
-	printf("  readload: Read BPF program from file and load it with modified bytecode\n");
-	printf("  readlog: Read BPF program from log\n");
+	printf("  read: Run ePass from object file\n");
+	printf("  readload: Run ePass from object file and load it with modified bytecode\n");
+	printf("  readlog: Run ePass from log\n");
 	printf("  print: Print BPF program\n");
-	printf("  printlog: Print BPF program with log\n");
+	printf("  printlog: Print BPF program from log\n");
 
 	exit(1);
 }
