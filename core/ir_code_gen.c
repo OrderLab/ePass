@@ -1925,6 +1925,53 @@ static bool spill_getelemptr(struct bpf_ir_env *env, struct ir_function *fun,
 	return false;
 }
 
+static bool spill_neg(struct bpf_ir_env *env, struct ir_function *fun,
+		      struct ir_insn *insn)
+{
+	struct ir_value *v0 = &insn->values[0];
+	enum val_type tdst = vtype_insn(insn);
+	// dst = neg v0
+	// reg = neg stack ==> OK
+	// reg = neg reg ==> OK
+	if (tdst == STACK) {
+		// stack = neg ?
+		// ==>
+		// R0 = neg ?
+		// stack = R0
+		struct ir_insn *new_insn = bpf_ir_create_neg_insn_cg(
+			env, insn, insn->alu_op, *v0, INSERT_FRONT);
+		bpf_ir_change_value(env, insn, v0,
+				    bpf_ir_value_insn(fun->cg_info.regs[0]));
+		set_insn_dst(env, new_insn, fun->cg_info.regs[0]);
+		return true;
+	}
+	return false;
+}
+
+static bool spill_end(struct bpf_ir_env *env, struct ir_function *fun,
+		      struct ir_insn *insn)
+{
+	struct ir_value *v0 = &insn->values[0];
+	enum val_type tdst = vtype_insn(insn);
+	// dst = end v0
+	// reg = end stack ==> OK
+	// reg = end reg ==> OK
+	if (tdst == STACK) {
+		// stack = end ?
+		// ==>
+		// R0 = end ?
+		// stack = R0
+		struct ir_insn *new_insn = bpf_ir_create_end_insn_cg(
+			env, insn, insn->op, insn->swap_width, *v0,
+			INSERT_FRONT);
+		bpf_ir_change_value(env, insn, v0,
+				    bpf_ir_value_insn(fun->cg_info.regs[0]));
+		set_insn_dst(env, new_insn, fun->cg_info.regs[0]);
+		return true;
+	}
+	return false;
+}
+
 static void check_insn_users_use_insn_cg(struct bpf_ir_env *env,
 					 struct ir_insn *insn)
 {
@@ -2108,6 +2155,11 @@ static bool check_need_spill(struct bpf_ir_env *env, struct ir_function *fun)
 					spill_loadrawextra(env, fun, insn);
 			} else if (insn->op == IR_INSN_STORERAW) {
 				need_modify |= spill_storeraw(env, fun, insn);
+			} else if (insn->op == IR_INSN_NEG) {
+				need_modify |= spill_neg(env, fun, insn);
+			} else if (insn->op == IR_INSN_HTOBE ||
+				   insn->op == IR_INSN_HTOLE) {
+				need_modify |= spill_end(env, fun, insn);
 			} else if (bpf_ir_is_bin_alu(insn)) {
 				need_modify |= spill_alu(env, fun, insn);
 			} else if (insn->op == IR_INSN_ASSIGN) {

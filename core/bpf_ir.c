@@ -935,6 +935,7 @@ static void bpf_end_write(struct bpf_ir_env *env,
 	struct ir_insn *new_insn = create_alu_nonbin(
 		env, bb->ir_bb, read_variable(env, tenv, insn.dst_reg, bb), ty,
 		IR_ALU_32);
+	new_insn->swap_width = insn.imm;
 	struct ir_value v = bpf_ir_value_insn(new_insn);
 	set_insn_raw_pos(new_insn, insn.pos);
 	set_value_raw_pos(&v, insn.pos, IR_RAW_POS_INSN);
