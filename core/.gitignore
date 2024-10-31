@@ -1,4 +1,5 @@
 read
 probe_insn
 build
+out
 .cache
