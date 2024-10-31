@@ -95,6 +95,7 @@ int main(int argc, char **argv)
 	}
 
 	if (mode == MODE_NONE) {
+		printf("Mode not specified\n");
 		usage(argv[0]);
 	}
 
