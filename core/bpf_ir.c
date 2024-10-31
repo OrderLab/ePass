@@ -864,6 +864,21 @@ static struct ir_value get_src_value(struct bpf_ir_env *env,
 	}
 }
 
+static struct ir_insn *create_alu_nonbin(struct bpf_ir_env *env,
+					 struct ir_basic_block *bb,
+					 struct ir_value val1,
+					 enum ir_insn_type ty,
+					 enum ir_alu_op_type alu_ty)
+{
+	struct ir_insn *new_insn = create_insn_back(bb);
+	new_insn->op = ty;
+	new_insn->values[0] = val1;
+	new_insn->value_num = 1;
+	new_insn->alu_op = alu_ty;
+	add_user(env, new_insn, new_insn->values[0]);
+	return new_insn;
+}
+
 static struct ir_insn *
 create_alu_bin(struct bpf_ir_env *env, struct ir_basic_block *bb,
 	       struct ir_value val1, struct ir_value val2, enum ir_insn_type ty,
@@ -880,15 +895,47 @@ create_alu_bin(struct bpf_ir_env *env, struct ir_basic_block *bb,
 	return new_insn;
 }
 
-static void alu_write(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
-		      enum ir_insn_type ty, struct pre_ir_insn insn,
-		      struct pre_ir_basic_block *bb, enum ir_alu_op_type alu_ty)
+static void alu_write_bin(struct bpf_ir_env *env,
+			  struct ssa_transform_env *tenv, enum ir_insn_type ty,
+			  struct pre_ir_insn insn,
+			  struct pre_ir_basic_block *bb,
+			  enum ir_alu_op_type alu_ty)
 {
 	struct ir_insn *new_insn = create_alu_bin(
 		env, bb->ir_bb, read_variable(env, tenv, insn.dst_reg, bb),
 		get_src_value(env, tenv, bb, insn), ty, alu_ty);
 	struct ir_value v = bpf_ir_value_insn(new_insn);
-	new_insn->raw_pos.pos = insn.pos;
+	set_insn_raw_pos(new_insn, insn.pos);
+	set_value_raw_pos(&v, insn.pos, IR_RAW_POS_INSN);
+	set_value_raw_pos(&new_insn->values[0], insn.pos, IR_RAW_POS_DST);
+	write_variable(env, tenv, insn.dst_reg, bb, v);
+}
+
+static void bpf_neg_write(struct bpf_ir_env *env,
+			  struct ssa_transform_env *tenv,
+			  struct pre_ir_insn insn,
+			  struct pre_ir_basic_block *bb,
+			  enum ir_alu_op_type alu_ty)
+{
+	struct ir_insn *new_insn = create_alu_nonbin(
+		env, bb->ir_bb, get_src_value(env, tenv, bb, insn), IR_INSN_NEG,
+		alu_ty);
+	struct ir_value v = bpf_ir_value_insn(new_insn);
+	set_insn_raw_pos(new_insn, insn.pos);
+	set_value_raw_pos(&v, insn.pos, IR_RAW_POS_INSN);
+	set_value_raw_pos(&new_insn->values[0], insn.pos, IR_RAW_POS_SRC);
+	write_variable(env, tenv, insn.dst_reg, bb, v);
+}
+
+static void bpf_end_write(struct bpf_ir_env *env,
+			  struct ssa_transform_env *tenv,
+			  struct pre_ir_insn insn,
+			  struct pre_ir_basic_block *bb, enum ir_insn_type ty)
+{
+	struct ir_insn *new_insn = create_alu_nonbin(
+		env, bb->ir_bb, read_variable(env, tenv, insn.dst_reg, bb), ty,
+		IR_ALU_32);
+	struct ir_value v = bpf_ir_value_insn(new_insn);
 	set_insn_raw_pos(new_insn, insn.pos);
 	set_value_raw_pos(&v, insn.pos, IR_RAW_POS_INSN);
 	set_value_raw_pos(&new_insn->values[0], insn.pos, IR_RAW_POS_DST);
@@ -958,23 +1005,23 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 				alu_ty = IR_ALU_64;
 			}
 			if (BPF_OP(code) == BPF_ADD) {
-				alu_write(env, tenv, IR_INSN_ADD, insn, bb,
-					  alu_ty);
+				alu_write_bin(env, tenv, IR_INSN_ADD, insn, bb,
+					      alu_ty);
 			} else if (BPF_OP(code) == BPF_SUB) {
-				alu_write(env, tenv, IR_INSN_SUB, insn, bb,
-					  alu_ty);
+				alu_write_bin(env, tenv, IR_INSN_SUB, insn, bb,
+					      alu_ty);
 			} else if (BPF_OP(code) == BPF_MUL) {
-				alu_write(env, tenv, IR_INSN_MUL, insn, bb,
-					  alu_ty);
+				alu_write_bin(env, tenv, IR_INSN_MUL, insn, bb,
+					      alu_ty);
 			} else if (BPF_OP(code) == BPF_DIV) {
-				alu_write(env, tenv, IR_INSN_DIV, insn, bb,
-					  alu_ty);
+				alu_write_bin(env, tenv, IR_INSN_DIV, insn, bb,
+					      alu_ty);
 			} else if (BPF_OP(code) == BPF_OR) {
-				alu_write(env, tenv, IR_INSN_OR, insn, bb,
-					  alu_ty);
+				alu_write_bin(env, tenv, IR_INSN_OR, insn, bb,
+					      alu_ty);
 			} else if (BPF_OP(code) == BPF_AND) {
-				alu_write(env, tenv, IR_INSN_AND, insn, bb,
-					  alu_ty);
+				alu_write_bin(env, tenv, IR_INSN_AND, insn, bb,
+					      alu_ty);
 			} else if (BPF_OP(code) == BPF_MOV) {
 				// Do not create instructions
 				struct ir_value v =
@@ -987,18 +1034,38 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 				}
 				write_variable(env, tenv, insn.dst_reg, bb, v);
 			} else if (BPF_OP(code) == BPF_LSH) {
-				alu_write(env, tenv, IR_INSN_LSH, insn, bb,
-					  alu_ty);
+				alu_write_bin(env, tenv, IR_INSN_LSH, insn, bb,
+					      alu_ty);
 			} else if (BPF_OP(code) == BPF_ARSH) {
-				alu_write(env, tenv, IR_INSN_ARSH, insn, bb,
-					  alu_ty);
+				alu_write_bin(env, tenv, IR_INSN_ARSH, insn, bb,
+					      alu_ty);
 			} else if (BPF_OP(code) == BPF_RSH) {
-				alu_write(env, tenv, IR_INSN_RSH, insn, bb,
-					  alu_ty);
+				alu_write_bin(env, tenv, IR_INSN_RSH, insn, bb,
+					      alu_ty);
 			} else if (BPF_OP(code) == BPF_MOD) {
 				// dst = (src != 0) ? (dst % src) : dst
-				alu_write(env, tenv, IR_INSN_MOD, insn, bb,
-					  alu_ty);
+				alu_write_bin(env, tenv, IR_INSN_MOD, insn, bb,
+					      alu_ty);
+			} else if (BPF_OP(code) ==
+				   BPF_END) { /* Non-binary ALU operations */
+				if (alu_ty == IR_ALU_64) {
+					// Wrong instruction
+					RAISE_ERROR(
+						"BPF_END is not supported in 64-bit mode");
+				}
+				if (BPF_SRC(code) == BPF_TO_BE) {
+					bpf_end_write(env, tenv, insn, bb,
+						      IR_INSN_HTOBE);
+				} else if (BPF_SRC(code) == BPF_TO_LE) {
+					bpf_end_write(env, tenv, insn, bb,
+						      IR_INSN_HTOLE);
+				} else {
+					RAISE_ERROR(
+						"Unknown BPF_END instruction");
+				}
+			} else if (BPF_OP(code) == BPF_NEG) {
+				// dst = -src
+				bpf_neg_write(env, tenv, insn, bb, alu_ty);
 			} else {
 				// TODO
 				PRINT_LOG_ERROR(

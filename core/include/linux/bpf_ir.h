@@ -386,7 +386,11 @@ enum ir_insn_type {
 	IR_INSN_LOADIMM_EXTRA,
 	IR_INSN_STORERAW,
 	IR_INSN_LOADRAW,
-	// ALU
+	// Non-binary ALU
+	IR_INSN_NEG,
+	IR_INSN_HTOLE,
+	IR_INSN_HTOBE,
+	// Binay ALU
 	IR_INSN_ADD,
 	IR_INSN_SUB,
 	IR_INSN_MUL,
@@ -479,6 +483,7 @@ struct ir_insn {
 		s32 fun_arg_id; // Function argument ID
 		s32 reg_id; // Register ID
 		u32 array_num; // Array number
+		u32 swap_width; // Swap width for BPF_END
 	};
 
 	enum ir_loadimm_extra_type imm_extra_type; // For 64 imm load
