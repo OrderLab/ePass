@@ -1439,10 +1439,7 @@ static void normalize_neg(struct bpf_ir_env *env, struct ir_function *fun,
 	}
 	if (t0 == CONST) {
 		// reg = neg const
-		if (v0->const_type == IR_ALU_64) {
-			cgir_load_const_to_reg(env, fun, insn, v0,
-					       allocated_reg_insn(dst_insn));
-		}
+		RAISE_ERROR("Not supported");
 	} else if (t0 == STACK) {
 		// reg = neg stack
 		// ==>
@@ -2512,11 +2509,10 @@ static struct pre_ir_insn alu_reg(u8 dst, u8 src, enum ir_alu_op_type type,
 	return insn;
 }
 
-static struct pre_ir_insn alu_neg(u8 dst, u8 src, enum ir_alu_op_type type)
+static struct pre_ir_insn alu_neg(u8 dst, enum ir_alu_op_type type)
 {
 	struct pre_ir_insn insn = { 0 };
 	insn.dst_reg = dst;
-	insn.src_reg = src;
 	int alu_class = type == IR_ALU_64 ? BPF_ALU64 : BPF_ALU;
 	insn.opcode = BPF_NEG | BPF_K | alu_class;
 	return insn;
@@ -2717,18 +2713,9 @@ static void translate_neg(struct ir_insn *insn)
 	enum val_type tdst = vtype_insn(insn);
 	struct ir_insn_cg_extra *extra = insn_cg(insn);
 	struct ir_insn *dst_insn = insn_dst(insn);
-	DBGASSERT(tdst == REG);
-	if (t0 == REG) {
-		extra->translated[0] = alu_neg(get_alloc_reg(dst_insn),
-					       get_alloc_reg(v0.data.insn_d),
-					       insn->alu_op);
-	} else if (t0 == CONST) {
-		extra->translated[0] = alu_imm(get_alloc_reg(dst_insn),
-					       v0.data.constant_d, insn->alu_op,
-					       alu_code(insn->op));
-	} else {
-		CRITICAL("Error");
-	}
+	DBGASSERT(tdst == REG && t0 == REG);
+	DBGASSERT(get_alloc_reg(dst_insn) == get_alloc_reg(v0.data.insn_d));
+	extra->translated[0] = alu_neg(get_alloc_reg(dst_insn), insn->alu_op);
 }
 
 static void translate_end(struct ir_insn *insn)
