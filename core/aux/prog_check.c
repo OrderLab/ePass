@@ -64,7 +64,10 @@ static void check_insn(struct bpf_ir_env *env, struct ir_function *fun)
 			}
 			if (insn->op == IR_INSN_STORERAW ||
 			    insn->op == IR_INSN_LOAD ||
-			    insn->op == IR_INSN_RET) {
+			    insn->op == IR_INSN_RET ||
+			    insn->op == IR_INSN_NEG ||
+			    insn->op == IR_INSN_HTOBE ||
+			    insn->op == IR_INSN_HTOLE) {
 				if (!(insn->value_num == 1)) {
 					print_ir_insn_err(env, insn, NULL);
 					RAISE_ERROR(
@@ -72,8 +75,19 @@ static void check_insn(struct bpf_ir_env *env, struct ir_function *fun)
 				}
 			}
 
+			if (insn->op == IR_INSN_HTOBE ||
+			    insn->op == IR_INSN_HTOLE) {
+				if (!(insn->swap_width == 16 ||
+				      insn->swap_width == 32 ||
+				      insn->swap_width == 64)) {
+					print_ir_insn_err(env, insn, NULL);
+					RAISE_ERROR(
+						"BPF_END instruction must have a valid swap width (16, 32 or 64)");
+				}
+			}
+
 			if (insn->op == IR_INSN_STORE ||
-			    (bpf_ir_is_alu(insn)) ||
+			    (bpf_ir_is_bin_alu(insn)) ||
 			    (bpf_ir_is_cond_jmp(insn)) ||
 			    insn->op == IR_INSN_GETELEMPTR) {
 				if (!(insn->value_num == 2)) {
@@ -106,7 +120,8 @@ static void check_insn(struct bpf_ir_env *env, struct ir_function *fun)
 
 			// TODO: Check: users of alloc instructions must be STORE/LOAD
 
-			if (bpf_ir_is_alu(insn) || bpf_ir_is_cond_jmp(insn)) {
+			if (bpf_ir_is_bin_alu(insn) ||
+			    bpf_ir_is_cond_jmp(insn)) {
 				// Binary ALU
 				if (!bpf_ir_valid_alu_type(insn->alu_op)) {
 					print_ir_insn_err(env, insn, NULL);

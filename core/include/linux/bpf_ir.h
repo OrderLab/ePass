@@ -340,6 +340,7 @@ struct ir_address_value {
 	// The value might be stack pointer
 	struct ir_value value;
 	s16 offset;
+	enum ir_value_type offset_type;
 };
 
 /*
@@ -386,7 +387,11 @@ enum ir_insn_type {
 	IR_INSN_LOADIMM_EXTRA,
 	IR_INSN_STORERAW,
 	IR_INSN_LOADRAW,
-	// ALU
+	// Non-binary ALU
+	IR_INSN_NEG,
+	IR_INSN_HTOLE,
+	IR_INSN_HTOBE,
+	// Binay ALU
 	IR_INSN_ADD,
 	IR_INSN_SUB,
 	IR_INSN_MUL,
@@ -479,6 +484,7 @@ struct ir_insn {
 		s32 fun_arg_id; // Function argument ID
 		s32 reg_id; // Register ID
 		u32 array_num; // Array number
+		u32 swap_width; // Swap width for BPF_END
 	};
 
 	enum ir_loadimm_extra_type imm_extra_type; // For 64 imm load
@@ -812,7 +818,7 @@ bool bpf_ir_is_commutative_alu(struct ir_insn *insn);
 
 bool bpf_ir_is_cond_jmp(struct ir_insn *insn);
 
-bool bpf_ir_is_alu(struct ir_insn *insn);
+bool bpf_ir_is_bin_alu(struct ir_insn *insn);
 
 struct ir_insn *bpf_ir_prev_insn(struct ir_insn *insn);
 
@@ -878,6 +884,55 @@ struct ir_insn *bpf_ir_create_getelemptr_insn_bb_cg(
 	struct bpf_ir_env *env, struct ir_basic_block *pos_bb,
 	struct ir_insn *alloca_insn, struct ir_value offset,
 	enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_neg_insn(struct bpf_ir_env *env,
+				       struct ir_insn *pos_insn,
+				       enum ir_alu_op_type alu_type,
+				       struct ir_value val,
+				       enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_neg_insn_bb(struct bpf_ir_env *env,
+					  struct ir_basic_block *pos_bb,
+					  enum ir_alu_op_type alu_type,
+					  struct ir_value val,
+					  enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_neg_insn_cg(struct bpf_ir_env *env,
+					  struct ir_insn *pos_insn,
+					  enum ir_alu_op_type alu_type,
+					  struct ir_value val,
+					  enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_neg_insn_bb_cg(struct bpf_ir_env *env,
+					     struct ir_basic_block *pos_bb,
+					     enum ir_alu_op_type alu_type,
+					     struct ir_value val,
+					     enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_end_insn(struct bpf_ir_env *env,
+				       struct ir_insn *pos_insn,
+				       enum ir_insn_type ty, u32 swap_width,
+				       struct ir_value val,
+				       enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_end_insn_bb(struct bpf_ir_env *env,
+					  struct ir_basic_block *pos_bb,
+					  enum ir_insn_type ty, u32 swap_width,
+					  struct ir_value val,
+					  enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_end_insn_cg(struct bpf_ir_env *env,
+					  struct ir_insn *pos_insn,
+					  enum ir_insn_type ty, u32 swap_width,
+					  struct ir_value val,
+					  enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_end_insn_bb_cg(struct bpf_ir_env *env,
+					     struct ir_basic_block *pos_bb,
+					     enum ir_insn_type ty,
+					     u32 swap_width,
+					     struct ir_value val,
+					     enum insert_position pos);
 
 struct ir_insn *bpf_ir_create_store_insn(struct bpf_ir_env *env,
 					 struct ir_insn *pos_insn,

@@ -59,7 +59,9 @@ struct ir_value bpf_ir_value_const64(s64 val)
 
 struct ir_address_value bpf_ir_addr_val(struct ir_value value, s16 offset)
 {
-	return (struct ir_address_value){ .value = value, .offset = offset };
+	return (struct ir_address_value){ .value = value,
+					  .offset = offset,
+					  .offset_type = IR_VALUE_CONSTANT };
 }
 
 struct ir_value bpf_ir_value_stack_ptr(struct ir_function *fun)

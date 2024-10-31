@@ -8,38 +8,6 @@ To start with, a simple constraint would be "range constraint", meaning a regist
 
 One opinion, one benefit of designing the raw constraint from is that our runtime-check system will not depend heavily on the current linux verifier and will be portable to other verifiers.
 
-## Roadmap
-
-- [x] Register spilling
-- [x] Caller-saved/callee-saved register
-- [x] Fix: stack offset should be changed before CG
-- [x] VR type & Constant type (inference)
-- [x] Translation
-- [x] Logging
-- [x] Env
-- [x] If ALU ops (including cond jmp) use 64 bits const, load it to register
-- [x] Switch back for ALU spill
-- [x] Test adding counter & print some result
-- [x] CGIR-I and CGIR-II formalization
-- [x] CONSTOFF: add r10 const optimization
-- [x] Fix: mask
-- [ ] signed right shift
-
-## TODO
-
-- [ ] Support Configuration: pass config
-- [ ] libbpf integration
-- [ ] Optimize counter pass
-- [ ] Termination point (Exception handler)
-- [ ] Exception instruction
-- [ ] Helper function to handle the exception
-- [ ] Testing the framework using buzzer or similar fuzzing tools
-- [ ] Measure the performance
-
-Ask gpt for advise on type I?
-
-runtime write/read wrapper?
-
 ## Bugs
 
 ### SplitBB operation may not work properly if it's at the top of a BB
@@ -48,12 +16,8 @@ runtime write/read wrapper?
 
 ## Errors
 
-- Found error with output/test_asm.c.o
-
 Reproduce: `ringbuf.c` enable coalesce will cause some error in CG
 
 # TODO
 
-- More instructions
 - bpf-to-bpf calls
-- tail calls

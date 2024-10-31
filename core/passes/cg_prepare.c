@@ -62,7 +62,7 @@ void bpf_ir_cg_add_stack_offset_pre_cg(struct bpf_ir_env *env,
 			// insn->addr_val.offset += offset;
 			continue;
 		}
-		if (bpf_ir_is_alu(insn) &&
+		if (bpf_ir_is_bin_alu(insn) &&
 		    insn->values[0].type == IR_VALUE_INSN &&
 		    insn->values[0].data.insn_d == fun->sp &&
 		    insn->values[1].type == IR_VALUE_CONSTANT) {
