@@ -1,13 +1,27 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include <linux/bpf_ir.h>
 
+bool bpf_ir_const_equal(struct ir_constant a, struct ir_constant b)
+{
+	if (a.const_type != b.const_type) {
+		return false;
+	}
+	if (a.num != b.num) {
+		return false;
+	}
+	if (a.pp != b.pp) {
+		return false;
+	}
+	return true;
+}
+
 bool bpf_ir_value_equal(struct ir_value a, struct ir_value b)
 {
 	if (a.type != b.type) {
 		return false;
 	}
 	if (a.type == IR_VALUE_CONSTANT) {
-		return a.data.constant_d == b.data.constant_d;
+		return bpf_ir_const_equal(a.data.constant_d, b.data.constant_d);
 	}
 	if (a.type == IR_VALUE_INSN) {
 		return a.data.insn_d == b.data.insn_d;
@@ -19,9 +33,7 @@ static struct ir_value value_base(void)
 {
 	// Create a new value
 	return (struct ir_value){ .type = IR_VALUE_UNDEF,
-				  .raw_pos = { .valid = false },
-				  .const_type = IR_ALU_UNKNOWN,
-				  .builtin_const = IR_BUILTIN_NONE };
+				  .raw_pos = { .valid = false } };
 }
 
 struct ir_value bpf_ir_value_insn(struct ir_insn *insn)
@@ -39,12 +51,27 @@ struct ir_value bpf_ir_value_undef(void)
 	return v;
 }
 
+struct ir_constant bpf_ir_const32(s32 val){
+	return (struct ir_constant){
+		.const_type = IR_ALU_32,
+		.num = val,
+		.pp = NULL,
+	};
+}
+
+struct ir_constant bpf_ir_const64(s64 val){
+	return (struct ir_constant){
+		.const_type = IR_ALU_64,
+		.num = val,
+		.pp = NULL,
+	};
+}
+
 struct ir_value bpf_ir_value_const32(s32 val)
 {
 	struct ir_value v = value_base();
 	v.type = IR_VALUE_CONSTANT;
-	v.data.constant_d = val;
-	v.const_type = IR_ALU_32;
+	v.data.constant_d = bpf_ir_const32(val);
 	return v;
 }
 
@@ -52,34 +79,38 @@ struct ir_value bpf_ir_value_const64(s64 val)
 {
 	struct ir_value v = value_base();
 	v.type = IR_VALUE_CONSTANT;
-	v.data.constant_d = val;
-	v.const_type = IR_ALU_64;
+	v.data.constant_d = bpf_ir_const64(val);
 	return v;
 }
 
 struct ir_value bpf_ir_value_const32_rawoff(s32 val)
 {
 	struct ir_value v = value_base();
-	v.type = IR_VALUE_CONSTANT_RAWOFF;
-	v.data.constant_d = val;
-	v.const_type = IR_ALU_32;
+	v.type = IR_VALUE_CONSTANT;
+	v.data.constant_d = (struct ir_constant){
+		.const_type = IR_ALU_32,
+		.num = val,
+		.pp = bpf_ir_insnpp_rawoff,
+	};
 	return v;
 }
 
 struct ir_value bpf_ir_value_const64_rawoff(s64 val)
 {
 	struct ir_value v = value_base();
-	v.type = IR_VALUE_CONSTANT_RAWOFF;
-	v.data.constant_d = val;
-	v.const_type = IR_ALU_64;
+	v.type = IR_VALUE_CONSTANT;
+	v.data.constant_d = (struct ir_constant){
+		.const_type = IR_ALU_64,
+		.num = val,
+		.pp = bpf_ir_insnpp_rawoff,
+	};
 	return v;
 }
 
 struct ir_address_value bpf_ir_addr_val(struct ir_value value, s16 offset)
 {
 	return (struct ir_address_value){ .value = value,
-					  .offset = offset,
-					  .offset_type = IR_VALUE_CONSTANT };
+					  .offset = offset };
 }
 
 struct ir_value bpf_ir_value_stack_ptr(struct ir_function *fun)

@@ -99,32 +99,22 @@ void print_bb_ptr(struct bpf_ir_env *env, struct ir_basic_block *insn)
 	PRINT_LOG_DEBUG(env, "b%zu", insn->_id);
 }
 
-static void print_const(struct bpf_ir_env *env, struct ir_value v)
+static void print_const(struct bpf_ir_env *env, struct ir_constant v)
 {
-	if (v.builtin_const == IR_BUILTIN_NONE) {
-		if (v.const_type == IR_ALU_64) {
-			PRINT_LOG_DEBUG(env, "0x%llx", v.data.constant_d);
-			PRINT_LOG_DEBUG(env, "(64)");
-		} else if (v.const_type == IR_ALU_32) {
-			PRINT_LOG_DEBUG(env, "0x%x",
-					v.data.constant_d & 0xFFFFFFFF);
-			PRINT_LOG_DEBUG(env, "(32)");
-		} else {
-			PRINT_LOG_DEBUG(env, "(unknown)");
-			env->err = -1;
-			return;
-		}
+	if (v.const_type == IR_ALU_64) {
+		PRINT_LOG_DEBUG(env, "0x%llx", v.num);
+		PRINT_LOG_DEBUG(env, "(64)");
+	} else if (v.const_type == IR_ALU_32) {
+		PRINT_LOG_DEBUG(env, "0x%x", v.num & 0xFFFFFFFF);
+		PRINT_LOG_DEBUG(env, "(32)");
 	} else {
-		// Builtin constant
-		if (v.builtin_const == IR_BUILTIN_BB_INSN_CNT) {
-			PRINT_LOG_DEBUG(env, "__BB_INSN_CNT__");
-		} else if (v.builtin_const == IR_BUILTIN_BB_INSN_CRITICAL_CNT) {
-			PRINT_LOG_DEBUG(env, "__BB_INSN_CRITICAL_CNT__");
-		} else {
-			PRINT_LOG_DEBUG(env, "(unknown)");
-			env->err = -1;
-			return;
-		}
+		PRINT_LOG_DEBUG(env, "(unknown)");
+		env->err = -1;
+		return;
+	}
+
+	if (v.pp) {
+		PRINT_LOG_DEBUG(env, "(pp)");
 	}
 }
 
@@ -161,12 +151,7 @@ static void print_ir_value_full(struct bpf_ir_env *env, struct ir_value v,
 		print_insn_ptr(env, v.data.insn_d, print_ir);
 		break;
 	case IR_VALUE_CONSTANT:
-		print_const(env, v);
-		break;
-	case IR_VALUE_CONSTANT_RAWOFF:
-		PRINT_LOG_DEBUG(env, "hole(");
-		print_const(env, v);
-		PRINT_LOG_DEBUG(env, ")");
+		print_const(env, v.data.constant_d);
 		break;
 	case IR_VALUE_UNDEF:
 		PRINT_LOG_DEBUG(env, "undef");
@@ -187,11 +172,9 @@ void print_address_value_full(struct bpf_ir_env *env, struct ir_address_value v,
 					       struct ir_insn *))
 {
 	print_ir_value_full(env, v.value, print_ir);
-	if (v.offset != 0) {
-		PRINT_LOG_DEBUG(env, "+%d", v.offset);
-		if (v.offset_type == IR_VALUE_CONSTANT_RAWOFF) {
-			PRINT_LOG_DEBUG(env, "(+off)");
-		}
+	if (v.offset.num != 0) {
+		PRINT_LOG_DEBUG(env, "+", v.offset.num);
+		print_const(env, v.offset);
 	}
 }
 

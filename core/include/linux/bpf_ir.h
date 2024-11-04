@@ -289,19 +289,23 @@ enum ir_alu_op_type {
 	IR_ALU_64,
 };
 
-enum ir_builtin_constant {
-	IR_BUILTIN_NONE, // Not a builtin constant
-	IR_BUILTIN_BB_INSN_CNT, // The number of instructions in the basic block (computed during code generation)
-	IR_BUILTIN_BB_INSN_CRITICAL_CNT, // The number of instructions from the nearest critical block
-};
-
 enum ir_value_type {
 	IR_VALUE_CONSTANT,
-	// A constant value in raw operations to be added during code generation
-	IR_VALUE_CONSTANT_RAWOFF,
 	IR_VALUE_INSN,
 	IR_VALUE_UNDEF,
 };
+
+struct ir_insn;
+struct ir_function;
+struct ir_constant {
+	enum ir_alu_op_type const_type; // Whether it's 32 or 64 bit
+	s64 num;
+	void (*pp)(struct bpf_ir_env *env, struct ir_function *fun,
+		   struct ir_insn *insn, struct ir_constant *c);
+};
+
+void bpf_ir_insnpp_rawoff(struct bpf_ir_env *env, struct ir_function *fun,
+			  struct ir_insn *insn, struct ir_constant *constant);
 
 enum ir_raw_pos_type {
 	IR_RAW_POS_IMM,
@@ -324,12 +328,10 @@ struct ir_raw_pos {
  */
 struct ir_value {
 	union {
-		s64 constant_d;
+		struct ir_constant constant_d;
 		struct ir_insn *insn_d;
 	} data;
 	enum ir_value_type type;
-	enum ir_alu_op_type const_type; // Used when type is a constant
-	enum ir_builtin_constant builtin_const;
 	struct ir_raw_pos raw_pos;
 };
 
@@ -339,8 +341,7 @@ struct ir_value {
 struct ir_address_value {
 	// The value might be stack pointer
 	struct ir_value value;
-	s16 offset;
-	enum ir_value_type offset_type;
+	struct ir_constant offset;
 };
 
 /*
@@ -1296,6 +1297,10 @@ enum val_type {
 bool bpf_ir_value_equal(struct ir_value a, struct ir_value b);
 
 struct ir_value bpf_ir_value_insn(struct ir_insn *);
+
+struct ir_constant bpf_ir_const32(s32 val);
+
+struct ir_constant bpf_ir_const64(s64 val);
 
 struct ir_value bpf_ir_value_const32(s32 val);
 

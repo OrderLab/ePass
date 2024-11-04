@@ -55,7 +55,8 @@ void add_counter(struct bpf_ir_env *env, struct ir_function *fun, void *param)
 				env, bb, bpf_ir_value_insn(alloc_insn),
 				INSERT_BACK);
 			struct ir_value cv = bpf_ir_value_const32(-1);
-			cv.builtin_const = IR_BUILTIN_BB_INSN_CRITICAL_CNT;
+			// cv.builtin_const = IR_BUILTIN_BB_INSN_CRITICAL_CNT;
+			// TODO
 			struct ir_insn *added = bpf_ir_create_bin_insn(
 				env, load_insn, bpf_ir_value_insn(load_insn),
 				cv, IR_INSN_ADD, IR_ALU_64, INSERT_BACK);
@@ -77,7 +78,8 @@ void add_counter(struct bpf_ir_env *env, struct ir_function *fun, void *param)
 		struct ir_insn *load_insn = bpf_ir_create_load_insn(
 			env, last, bpf_ir_value_insn(alloc_insn), INSERT_FRONT);
 		struct ir_value cv = bpf_ir_value_const32(-1);
-		cv.builtin_const = IR_BUILTIN_BB_INSN_CRITICAL_CNT;
+		// TODO: Add critical couunter pp
+		// cv.builtin_const = IR_BUILTIN_BB_INSN_CRITICAL_CNT;
 		struct ir_insn *added = bpf_ir_create_bin_insn(
 			env, load_insn, bpf_ir_value_insn(load_insn), cv,
 			IR_INSN_ADD, IR_ALU_64, INSERT_BACK);

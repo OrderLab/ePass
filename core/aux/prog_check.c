@@ -146,14 +146,14 @@ static void check_insn(struct bpf_ir_env *env, struct ir_function *fun)
 				struct ir_value *val = *vpos;
 				if (val->type == IR_VALUE_CONSTANT) {
 					if (!bpf_ir_valid_alu_type(
-						    val->const_type)) {
+						    val->data.constant_d.const_type)) {
 						print_ir_insn_err(env, insn,
 								  NULL);
 
 						PRINT_LOG_DEBUG(
 							env,
 							"Constant type: %d, operand number: %d\n",
-							val->const_type,
+							val->data.constant_d.const_type,
 							operands.num_elem);
 						RAISE_ERROR(
 							"Invalid Constant type");
