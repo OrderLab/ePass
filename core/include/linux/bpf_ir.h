@@ -295,6 +295,40 @@ enum ir_builtin_constant {
 	IR_BUILTIN_BB_INSN_CRITICAL_CNT, // The number of instructions from the nearest critical block
 };
 
+enum ir_constant_value_ty {
+	IR_CONST_VALUE_NUM,
+	IR_CONST_VALUE_CONSTEXPR,
+	IR_CONST_VALUE_SPOFF,
+	IR_CONST_VALUE_BB_INSN_CNT,
+	IR_CONST_VALUE_BB_INSN_CRITICAL_CNT,
+};
+
+struct ir_constant_expr;
+struct ir_constant_value {
+	enum ir_constant_value_ty cvty;
+	enum ir_alu_op_type const_type; // A 32 bits constant or a 64 bits constant
+
+	union {
+		s64 num;
+		struct ir_constant_expr *expr;
+	};
+};
+
+enum ir_constant_expr_ty {
+	IR_CONSTEXPR_VALUE,
+	IR_CONSTEXPR_ADD,
+	IR_CONSTEXPR_DIV,
+	IR_CONSTEXPR_MUL,
+};
+
+struct ir_constant_expr {
+	enum ir_constant_expr_ty cety;
+	struct ir_constant_value *v0; // Must be cleaned when not NULL
+	struct ir_constant_value *v1; // Must be cleaned when not NULL
+};
+
+void bpf_ir_erase_constexpr(struct ir_constant_expr *expr);
+
 enum ir_value_type {
 	IR_VALUE_CONSTANT,
 	// A constant value in raw operations to be added during code generation
@@ -324,12 +358,10 @@ struct ir_raw_pos {
  */
 struct ir_value {
 	union {
-		s64 constant_d;
+		struct ir_constant_value constant_d;
 		struct ir_insn *insn_d;
 	} data;
 	enum ir_value_type type;
-	enum ir_alu_op_type const_type; // Used when type is a constant
-	enum ir_builtin_constant builtin_const;
 	struct ir_raw_pos raw_pos;
 };
 
@@ -339,8 +371,7 @@ struct ir_value {
 struct ir_address_value {
 	// The value might be stack pointer
 	struct ir_value value;
-	s16 offset;
-	enum ir_value_type offset_type;
+	struct ir_constant_value offset;
 };
 
 /*

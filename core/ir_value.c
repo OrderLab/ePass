@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include <linux/bpf_ir.h>
+#include <time.h>
 
 bool bpf_ir_value_equal(struct ir_value a, struct ir_value b)
 {
@@ -93,4 +94,54 @@ void bpf_ir_change_value(struct bpf_ir_env *env, struct ir_insn *insn,
 	bpf_ir_val_remove_user(*old, insn);
 	*old = new;
 	bpf_ir_val_add_user(env, new, insn);
+}
+
+// Const expr
+
+s64 evaluate_const_expr(struct ir_constant_value *ctx, s64 *built_in_const)
+{
+	if (ctx) {
+		return 0;
+	}
+	if (ctx->cvty == IR_CONST_VALUE_NUM) {
+		return ctx->num;
+	} else if (ctx->cvty == IR_CONST_VALUE_CONSTEXPR) {
+		struct ir_constant_expr expr = *ctx->expr;
+		switch (expr.cety) {
+		case IR_CONSTEXPR_ADD:
+			return evaluate_const_expr(expr.v0, built_in_const) +
+			       evaluate_const_expr(expr.v1, built_in_const);
+		case IR_CONSTEXPR_MUL:
+			return evaluate_const_expr(expr.v0, built_in_const) *
+			       evaluate_const_expr(expr.v1, built_in_const);
+		case IR_CONSTEXPR_DIV:
+			return evaluate_const_expr(expr.v0, built_in_const) /
+			       evaluate_const_expr(expr.v1, built_in_const);
+		default:
+			CRITICAL("Error");
+		}
+	} else {
+		return built_in_const[(size_t)ctx->cvty];
+	}
+}
+
+static void erase_const(struct ir_constant_value *ctx){
+	if (!ctx) {
+		return;
+	}
+	// Clean up resources
+	if (ctx->cvty == IR_CONST_VALUE_CONSTEXPR) {
+		bpf_ir_erase_constexpr(ctx->expr);
+	}
+	free_proto(ctx);
+}
+
+// Clean up the constant expression
+void bpf_ir_erase_constexpr(struct ir_constant_expr *expr){
+	if(!expr){
+		return;
+	}
+	erase_const(expr->v0);
+	erase_const(expr->v1);
+	free_proto(expr);
 }
