@@ -24,8 +24,8 @@ add_library(epass STATIC
 
 include_directories(include)
 
+set_target_properties(epass PROPERTIES PUBLIC_HEADER "include/linux/bpf_ir.h")
+
 add_subdirectory(epasstool)
 
-INSTALL(TARGETS epass
-        LIBRARY DESTINATION usr/local/lib
-)
+INSTALL(TARGETS epass)
