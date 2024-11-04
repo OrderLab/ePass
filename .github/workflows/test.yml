@@ -14,6 +14,9 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Dependency
+      run: sudo apt-get install -y libbpf-dev
+
     - name: Configure CMake
       run: cmake -S core -B build -DCMAKE_BUILD_TYPE=Release
 
