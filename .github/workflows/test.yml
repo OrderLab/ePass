@@ -18,7 +18,10 @@ jobs:
       run: cmake -S core -B build -DCMAKE_BUILD_TYPE=Release
 
     - name: Build
-      run: cmake --install build --config Release
+      run: cmake --build build --config Release
+
+    - name: Install
+      run: sudo cmake --install build --config Release
 
     - name: Test
       working-directory: ${{github.workspace}}/test
