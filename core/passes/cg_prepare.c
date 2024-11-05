@@ -76,7 +76,7 @@ void bpf_ir_cg_add_stack_offset_pre_cg(struct bpf_ir_env *env,
 		{
 			struct ir_value *val = *pos2;
 			if (val->type == IR_VALUE_INSN &&
-			    val->data.insn_d == fun->sp) {
+			    val->data.insn_d == fun->sp && !val->raw_stack) {
 				// Stack pointer as value
 				struct ir_value new_val;
 				new_val.type = IR_VALUE_CONSTANT_RAWOFF;

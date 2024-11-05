@@ -25,7 +25,8 @@ static struct ir_value value_base(void)
 	return (struct ir_value){ .type = IR_VALUE_UNDEF,
 				  .raw_pos = { .valid = false },
 				  .const_type = IR_ALU_UNKNOWN,
-				  .builtin_const = IR_BUILTIN_NONE };
+				  .builtin_const = IR_BUILTIN_NONE,
+				  .raw_stack = false };
 }
 
 struct ir_value bpf_ir_value_insn(struct ir_insn *insn)

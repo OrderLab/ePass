@@ -332,6 +332,7 @@ struct ir_value {
 	enum ir_alu_op_type const_type; // Used when type is a constant
 	enum ir_builtin_constant builtin_const;
 	struct ir_raw_pos raw_pos;
+	bool raw_stack; // If this is a SP, whether it is a raw stack pointer
 };
 
 /*
