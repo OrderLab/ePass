@@ -18,18 +18,6 @@ One opinion, one benefit of designing the raw constraint from is that our runtim
 
 Reproduce: `ringbuf.c` enable coalesce will cause some error in CG
 
-In msan loadraw,
-
-```c
-v.raw_stack = true;
-			bpf_ir_create_bin_insn(env, insn, v,
-					       insn->addr_val.value,
-					       IR_INSN_SUB, IR_ALU_64,
-					       INSERT_FRONT);
-```
-
-If it is not raw stack then the adding stack offset will cause an error.
-
 # TODO
 
 - bpf-to-bpf calls

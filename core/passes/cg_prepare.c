@@ -78,18 +78,14 @@ void bpf_ir_cg_add_stack_offset_pre_cg(struct bpf_ir_env *env,
 			if (val->type == IR_VALUE_INSN &&
 			    val->data.insn_d == fun->sp && !val->raw_stack) {
 				// Stack pointer as value
-				struct ir_value new_val;
-				new_val.type = IR_VALUE_CONSTANT_RAWOFF;
-				new_val.const_type = IR_ALU_32;
-				new_val.data.constant_d = 0;
 				// tmp = SP + hole(0)
 				// ... val ==> tmp
 				struct ir_insn *new_insn =
-					bpf_ir_create_bin_insn(env, insn, *val,
-							       new_val,
-							       IR_INSN_ADD,
-							       IR_ALU_64,
-							       INSERT_FRONT);
+					bpf_ir_create_bin_insn(
+						env, insn, *val,
+						bpf_ir_value_const32_rawoff(0),
+						IR_INSN_ADD, IR_ALU_64,
+						INSERT_FRONT);
 				bpf_ir_change_value(
 					env, insn, val,
 					bpf_ir_value_insn(new_insn));
