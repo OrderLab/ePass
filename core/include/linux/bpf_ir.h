@@ -299,6 +299,7 @@ enum ir_value_type {
 	IR_VALUE_CONSTANT,
 	// A constant value in raw operations to be added during code generation
 	IR_VALUE_CONSTANT_RAWOFF,
+	IR_VALUE_CONSTANT_RAWOFF_REV,
 	IR_VALUE_INSN,
 	IR_VALUE_UNDEF,
 };

@@ -9,7 +9,8 @@ bool bpf_ir_value_equal(struct ir_value a, struct ir_value b)
 	if (a.type == IR_VALUE_CONSTANT) {
 		return a.data.constant_d == b.data.constant_d;
 	}
-	if (a.type == IR_VALUE_CONSTANT_RAWOFF) {
+	if (a.type == IR_VALUE_CONSTANT_RAWOFF ||
+	    a.type == IR_VALUE_CONSTANT_RAWOFF_REV) {
 		return a.data.constant_d == b.data.constant_d;
 	}
 	if (a.type == IR_VALUE_INSN) {

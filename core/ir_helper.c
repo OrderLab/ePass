@@ -168,6 +168,11 @@ static void print_ir_value_full(struct bpf_ir_env *env, struct ir_value v,
 		print_const(env, v);
 		PRINT_LOG_DEBUG(env, ")");
 		break;
+	case IR_VALUE_CONSTANT_RAWOFF_REV:
+		PRINT_LOG_DEBUG(env, "hole(-");
+		print_const(env, v);
+		PRINT_LOG_DEBUG(env, ")");
+		break;
 	case IR_VALUE_UNDEF:
 		PRINT_LOG_DEBUG(env, "undef");
 		break;
@@ -191,6 +196,8 @@ void print_address_value_full(struct bpf_ir_env *env, struct ir_address_value v,
 		PRINT_LOG_DEBUG(env, "+%d", v.offset);
 		if (v.offset_type == IR_VALUE_CONSTANT_RAWOFF) {
 			PRINT_LOG_DEBUG(env, "(+off)");
+		} else if (v.offset_type == IR_VALUE_CONSTANT_RAWOFF_REV) {
+			PRINT_LOG_DEBUG(env, "(-off)");
 		}
 	}
 }
