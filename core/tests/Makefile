@@ -1,9 +1,9 @@
 
 obj: $(NAME).c
-	clang -O2 -I/usr/include/$(shell uname -m)-linux-gnu -target bpf -g -c $< -o output/$(NAME).o
+	clang -O2 -I/usr/include/$(shell uname -m)-linux-gnu -target bpf -c $< -o output/$(NAME).o
 
 objnop: $(NAME).c
-	clang -O0 -I/usr/include/$(shell uname -m)-linux-gnu -target bpf -g -c $< -o output/$(NAME).o
+	clang -O0 -I/usr/include/$(shell uname -m)-linux-gnu -target bpf -c $< -o output/$(NAME).o
 
 s: obj
 	llvm-objdump -S output/$(NAME).o > output/$(NAME).s
