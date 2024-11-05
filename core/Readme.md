@@ -18,6 +18,8 @@ One opinion, one benefit of designing the raw constraint from is that our runtim
 
 Reproduce: `ringbuf.c` enable coalesce will cause some error in CG
 
+Raw libbpf library loader doesn't change the "imm" value when calling the `callback_fn`. It doesn't support calling it after changing the resources.
+
 # TODO
 
 - bpf-to-bpf calls
