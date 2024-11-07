@@ -972,7 +972,8 @@ static enum val_type vtype(struct ir_value val)
 	if (val.type == IR_VALUE_INSN) {
 		return vtype_insn(val.data.insn_d);
 	} else if (val.type == IR_VALUE_CONSTANT ||
-		   val.type == IR_VALUE_CONSTANT_RAWOFF) {
+		   val.type == IR_VALUE_CONSTANT_RAWOFF ||
+		   val.type == IR_VALUE_CONSTANT_RAWOFF_REV) {
 		return CONST;
 	} else {
 		CRITICAL("No such value type for dst");
@@ -2316,6 +2317,12 @@ static void add_stack_offset(struct bpf_ir_env *env, struct ir_function *fun,
 					insn->addr_val.offset_type =
 						IR_VALUE_CONSTANT;
 					continue;
+				} else if (insn->addr_val.offset_type ==
+					   IR_VALUE_CONSTANT_RAWOFF_REV) {
+					insn->addr_val.offset -= offset;
+					insn->addr_val.offset_type =
+						IR_VALUE_CONSTANT;
+					continue;
 				}
 			}
 			struct array value_uses =
@@ -2327,6 +2334,10 @@ static void add_stack_offset(struct bpf_ir_env *env, struct ir_function *fun,
 				if (val->type == IR_VALUE_CONSTANT_RAWOFF) {
 					// Stack pointer as value
 					val->data.constant_d += offset;
+					val->type = IR_VALUE_CONSTANT;
+				} else if (val->type ==
+					   IR_VALUE_CONSTANT_RAWOFF_REV) {
+					val->data.constant_d -= offset;
 					val->type = IR_VALUE_CONSTANT;
 				}
 			}

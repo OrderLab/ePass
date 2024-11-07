@@ -10,7 +10,7 @@ files=$(find output -iname '*.o')
 for file in $files; do
     tot=$((tot+1))
     printf "Testing $file ..."
-    epasstool -m read -p $file -s "prog"
+    epass -m read -p $file -s "prog"
     retVal=$?
     if [ $retVal -ne 0 ]; then
         echo "FAILED"
@@ -27,7 +27,7 @@ files=$(find progs/txt -iname '*.txt')
 for file in $files; do
     tot=$((tot+1))
     printf "Testing $file ..."
-    epasstool -m readlog -p $file -s "prog"
+    epass -m readlog -p $file -s "prog"
     retVal=$?
     if [ $retVal -ne 0 ]; then
         echo "FAILED"

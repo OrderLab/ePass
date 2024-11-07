@@ -299,6 +299,7 @@ enum ir_value_type {
 	IR_VALUE_CONSTANT,
 	// A constant value in raw operations to be added during code generation
 	IR_VALUE_CONSTANT_RAWOFF,
+	IR_VALUE_CONSTANT_RAWOFF_REV,
 	IR_VALUE_INSN,
 	IR_VALUE_UNDEF,
 };
@@ -331,6 +332,7 @@ struct ir_value {
 	enum ir_alu_op_type const_type; // Used when type is a constant
 	enum ir_builtin_constant builtin_const;
 	struct ir_raw_pos raw_pos;
+	bool raw_stack; // If this is a SP, whether it is a raw stack pointer
 };
 
 /*
@@ -1150,9 +1152,13 @@ void add_counter(struct bpf_ir_env *env, struct ir_function *fun, void *param);
 
 void msan(struct bpf_ir_env *env, struct ir_function *fun, void *param);
 
+void bpf_ir_div_by_zero(struct bpf_ir_env *env, struct ir_function *fun,
+			void *param);
+
 extern const struct builtin_pass_cfg bpf_ir_kern_add_counter_pass;
 extern const struct builtin_pass_cfg bpf_ir_kern_optimization_pass;
 extern const struct builtin_pass_cfg bpf_ir_kern_msan;
+extern const struct builtin_pass_cfg bpf_ir_kern_div_by_zero_pass;
 
 void translate_throw(struct bpf_ir_env *env, struct ir_function *fun,
 		     void *param);
@@ -1300,6 +1306,10 @@ struct ir_value bpf_ir_value_insn(struct ir_insn *);
 struct ir_value bpf_ir_value_const32(s32 val);
 
 struct ir_value bpf_ir_value_const64(s64 val);
+
+struct ir_value bpf_ir_value_const32_rawoff(s32 val);
+
+struct ir_value bpf_ir_value_const64_rawoff(s64 val);
 
 struct ir_value bpf_ir_value_undef(void);
 

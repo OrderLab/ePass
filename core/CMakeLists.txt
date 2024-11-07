@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(epass)
+project(epass C)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror -Wstrict-prototypes -Wenum-compare -Wunused-variable -Wunused-but-set-variable -Wsign-compare -O3")
 
 add_library(epass STATIC
@@ -15,6 +15,7 @@ add_library(epass STATIC
     passes/optimization.c
     passes/cg_prepare.c
     passes/msan.c
+    passes/div_by_zero.c
     aux/prog_check.c
     aux/disasm.c
     aux/kern_utils.c
@@ -24,8 +25,8 @@ add_library(epass STATIC
 
 include_directories(include)
 
+set_target_properties(epass PROPERTIES PUBLIC_HEADER "include/linux/bpf_ir.h")
+
 add_subdirectory(epasstool)
 
-INSTALL(TARGETS epass
-        LIBRARY DESTINATION usr/local/lib
-)
+INSTALL(TARGETS epass)

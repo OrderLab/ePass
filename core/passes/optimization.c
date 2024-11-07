@@ -103,16 +103,6 @@ void bpf_ir_optimize_ir(struct bpf_ir_env *env, struct ir_function *fun,
 	CHECK_ERR();
 }
 
-static void get_opt(char *p, char **src)
-{
-	while (**src && **src != ' ') {
-		*p = **src;
-		p++;
-		(*src)++;
-	}
-	*p = '\0';
-}
-
 #define GET_OPT(p, src)               \
 	while (*src && *src != ' ') { \
 		*p = *src;            \

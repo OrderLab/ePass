@@ -223,6 +223,7 @@ static const struct function_pass pre_passes[] = {
 };
 
 static const struct function_pass post_passes[] = {
+	DEF_FUNC_PASS(bpf_ir_div_by_zero, "div_by_zero", false),
 	DEF_FUNC_PASS(msan, "msan", false),
 	DEF_FUNC_PASS(add_counter, "add_counter", false),
 	/* CG Preparation Passes */
