@@ -35,7 +35,7 @@ int readload(struct user_opts uopts)
 		return err;
 	}
 	enable_builtin(env);
-	bpf_ir_run(env);
+	bpf_ir_autorun(env);
 
 	struct libbpf_prog_handler_opts handler_opts;
 	handler_opts.sz = sizeof(handler_opts);

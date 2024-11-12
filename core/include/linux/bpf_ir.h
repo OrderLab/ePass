@@ -14,6 +14,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <time.h>
 
 typedef __s8 s8;
 typedef __u8 u8;
@@ -90,6 +91,12 @@ struct bpf_ir_env {
 	size_t log_pos;
 
 	struct bpf_ir_opts opts;
+
+	// Stats
+
+	u64 lift_time;
+	u64 run_time;
+	u64 cg_time;
 
 	// Verifier information
 
@@ -246,6 +253,8 @@ void *malloc_proto(size_t size);
 void free_proto(void *ptr);
 
 int parse_int(const char *str, int *val);
+
+u64 get_cur_time_ns(void);
 
 #define SAFE_MALLOC(dst, size)                            \
 	{                                                 \
@@ -628,7 +637,7 @@ struct ssa_transform_env {
 struct ir_basic_block *bpf_ir_init_bb_raw(void);
 
 // Main interface
-void bpf_ir_run(struct bpf_ir_env *env);
+void bpf_ir_autorun(struct bpf_ir_env *env);
 
 void bpf_ir_print_bpf_insn(struct bpf_ir_env *env, const struct bpf_insn *insn);
 
@@ -1241,7 +1250,7 @@ struct builtin_pass_cfg {
 
 void bpf_ir_init_insn_cg(struct bpf_ir_env *env, struct ir_insn *insn);
 
-void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun);
+void bpf_ir_compile(struct bpf_ir_env *env, struct ir_function *fun);
 
 void bpf_ir_free_insn_cg(struct ir_insn *insn);
 

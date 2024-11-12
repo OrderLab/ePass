@@ -1483,6 +1483,7 @@ static void run_single_pass(struct bpf_ir_env *env, struct ir_function *fun,
 
 static void run_passes(struct bpf_ir_env *env, struct ir_function *fun)
 {
+	u64 starttime = get_cur_time_ns();
 	for (size_t i = 0; i < sizeof(pre_passes) / sizeof(pre_passes[0]);
 	     ++i) {
 		bool has_override = false;
@@ -1554,6 +1555,8 @@ static void run_passes(struct bpf_ir_env *env, struct ir_function *fun)
 		}
 		CHECK_ERR();
 	}
+
+	env->run_time += get_cur_time_ns() - starttime;
 }
 
 static void print_bpf_insn_simple(struct bpf_ir_env *env,
@@ -1617,6 +1620,7 @@ static void print_bpf_prog(struct bpf_ir_env *env, const struct bpf_insn *insns,
 struct ir_function *bpf_ir_lift(struct bpf_ir_env *env,
 				const struct bpf_insn *insns, size_t len)
 {
+	u64 starttime = get_cur_time_ns();
 	struct bb_info info;
 	gen_bb(env, &info, insns, len);
 	CHECK_ERR(NULL);
@@ -1638,10 +1642,12 @@ struct ir_function *bpf_ir_lift(struct bpf_ir_env *env,
 	SAFE_MALLOC_RET_NULL(fun, sizeof(struct ir_function));
 	init_function(env, fun, &trans_env);
 
+	env->lift_time += get_cur_time_ns() - starttime;
+
 	return fun;
 }
 
-void bpf_ir_run(struct bpf_ir_env *env)
+void bpf_ir_autorun(struct bpf_ir_env *env)
 {
 	env->executed = true;
 	const struct bpf_insn *insns = env->insns;
@@ -1661,7 +1667,7 @@ void bpf_ir_run(struct bpf_ir_env *env)
 	// End IR manipulation
 	PRINT_LOG_DEBUG(env, "IR Passes Ended!\n");
 
-	bpf_ir_code_gen(env, fun);
+	bpf_ir_compile(env, fun);
 	CHECK_ERR();
 
 	// Got the bpf bytecode
@@ -1707,6 +1713,9 @@ struct bpf_ir_env *bpf_ir_init_env(struct bpf_ir_opts opts,
 	env->venv = NULL;
 	env->verifier_log_end_pos = 0;
 	env->prog_type = 0; // Unspecified
+	env->lift_time = 0;
+	env->cg_time = 0;
+	env->run_time = 0;
 
 	return env;
 }

@@ -2953,8 +2953,9 @@ static void spill_array(struct bpf_ir_env *env, struct ir_function *fun)
 
 // Interface Implementation
 
-void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
+void bpf_ir_compile(struct bpf_ir_env *env, struct ir_function *fun)
 {
+	u64 starttime = get_cur_time_ns();
 	// Init CG, start code generation
 	init_cg(env, fun);
 	CHECK_ERR();
@@ -3113,6 +3114,7 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 
 	// Free CG resources
 	free_cg_res(fun);
+	env->cg_time += get_cur_time_ns() - starttime;
 }
 
 void bpf_ir_init_insn_cg(struct bpf_ir_env *env, struct ir_insn *insn)

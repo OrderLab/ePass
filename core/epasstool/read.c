@@ -27,7 +27,7 @@ int read(struct user_opts uopts)
 		return err;
 	}
 	enable_builtin(env);
-	bpf_ir_run(env);
+	bpf_ir_autorun(env);
 
 	if (env->err) {
 		return env->err;
