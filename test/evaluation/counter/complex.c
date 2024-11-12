@@ -17,7 +17,7 @@ struct server_name {
 #define HEADER_LEN             6
 
 SEC("xdp")
-int collect_ips_prog(struct xdp_md *ctx) {
+int prog(struct xdp_md *ctx) {
     char *data_end          = (char *)(long)ctx->data_end;
     char *data              = (char *)(long)ctx->data;
     int   host_header_found = 0;
