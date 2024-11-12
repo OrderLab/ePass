@@ -729,7 +729,6 @@ void print_ir_bb_err(struct bpf_ir_env *env, struct ir_basic_block *bb)
 
 void bpf_ir_reset_env(struct bpf_ir_env *env)
 {
-	env->log_pos = 0;
 	env->venv = NULL;
 	env->err = 0;
 	env->verifier_err = 0;

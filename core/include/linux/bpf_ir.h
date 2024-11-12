@@ -80,12 +80,6 @@ struct bpf_ir_env {
 	// Internal error code
 	int err;
 
-	// Verifier error
-	int verifier_err;
-
-	// Whether executed, used in verifier
-	bool executed;
-
 	// Number of instructions
 	size_t insn_cnt;
 
@@ -96,6 +90,21 @@ struct bpf_ir_env {
 	size_t log_pos;
 
 	struct bpf_ir_opts opts;
+
+	// Verifier information
+
+	// Whether executed, used in verifier
+	bool executed;
+
+	// Verifier error
+	int verifier_err;
+
+	// Verifier log end pos in ubuf
+	u64 verifier_log_end_pos;
+
+	// Prog type
+	// May not be specified in user space
+	enum bpf_prog_type prog_type;
 
 	// Verifier env
 	void *venv;

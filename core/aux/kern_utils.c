@@ -132,6 +132,9 @@ static int apply_global_opt(struct bpf_ir_env *env, const char *opt)
 // Check if a builtin pass is enabled (by cfg)
 bool bpf_ir_builtin_pass_enabled(struct bpf_ir_env *env, const char *pass_name)
 {
+	if (!env) {
+		return false;
+	}
 	for (size_t i = 0; i < env->opts.builtin_pass_cfg_num; ++i) {
 		if (strcmp(env->opts.builtin_pass_cfg[i].name, pass_name) ==
 		    0) {
