@@ -42,6 +42,8 @@ int main(int argc, char **argv)
 		MODE_PRINT_LOG,
 	} mode = MODE_NONE;
 	struct user_opts uopts;
+	uopts.gopt[0] = 0;
+	uopts.popt[0] = 0;
 	static struct option long_options[] = {
 		{ "mode", required_argument, NULL, 'm' },
 		{ "gopt", required_argument, NULL, 0 },
