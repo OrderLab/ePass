@@ -83,7 +83,7 @@ static int apply_pass_opt(struct bpf_ir_env *env, const char *opt)
 		}
 	}
 	if (!found_pass) {
-		PRINT_LOG_ERROR(env, "No such pass found");
+		PRINT_LOG_ERROR(env, "Pass %s not found\n", pass_name);
 		return -EINVAL;
 	}
 	return 0;
