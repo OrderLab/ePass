@@ -4,11 +4,13 @@
 SEC("xdp")
 int prog(void *ctx)
 {
-	for (__u64 i = 0; i < 100; ++i) {
-		__u64 k = bpf_ktime_get_ns() % 100;
-		k = k/10 + k/3 + k/7 - i;
-		bpf_printk("%llu", k);
+	int tot = 0;
+	__u64 t = bpf_ktime_get_ns() % 10;
+	for (__u64 i = 0; i < t; ++i) {
+		__u64 tmp = bpf_ktime_get_ns() % 7;
+		tot += tmp;
 	}
+	bpf_printk("%d", tot);
 	return XDP_PASS;
 }
 
