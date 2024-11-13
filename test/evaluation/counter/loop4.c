@@ -15,6 +15,3 @@ int prog(void *ctx)
 }
 
 char _license[] SEC("license") = "GPL";
-
-// Plain avg: 14260 ns
-// Add counter: 18303 ns
