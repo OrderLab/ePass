@@ -1512,22 +1512,58 @@ static void add_reach(struct bpf_ir_env *env, struct ir_function *fun,
 	if (bb->_visited) {
 		return;
 	}
-	bb->_visited = 1;
-	bpf_ir_array_push(env, &fun->reachable_bbs, &bb);
+	// bb->_visited = 1;
+	// bpf_ir_array_push(env, &fun->reachable_bbs, &bb);
+	struct array todo;
+	INIT_ARRAY(&todo, struct ir_basic_block *);
 
-	struct ir_basic_block **succ;
-	bool first = false;
-	array_for(succ, bb->succs)
-	{
-		if (!first && bb->succs.num_elem > 1) {
-			first = true;
-			// Check if visited
-			if ((*succ)->_visited) {
-				RAISE_ERROR("Loop BB detected");
-			}
+	// struct ir_basic_block **succ;
+	// bool first = false;
+	// array_for(succ, bb->succs)
+	// {
+	// 	if (!first && bb->succs.num_elem > 1) {
+	// 		first = true;
+	// 		// Check if visited
+	// 		if ((*succ)->_visited) {
+	// 			RAISE_ERROR("Loop BB detected");
+	// 		}
+	// 	}
+	// 	add_reach(env, fun, *succ);
+	// }
+
+	// First Test sanity ... TODO!
+
+	struct ir_basic_block *cur_bb = bb;
+
+	while (1) {
+		cur_bb->_visited = 1;
+		bpf_ir_array_push(env, &fun->reachable_bbs, &cur_bb);
+		if (cur_bb->succs.num_elem == 0) {
+			break;
 		}
-		add_reach(env, fun, *succ);
+
+		struct ir_basic_block **succ1 =
+			bpf_ir_array_get_void(&cur_bb->succs, 0);
+		if ((*succ1)->_visited) {
+			break;
+		}
+		if (cur_bb->succs.num_elem == 1) {
+		} else if (cur_bb->succs.num_elem == 2) {
+			struct ir_basic_block **succ2 =
+				bpf_ir_array_get_void(&cur_bb->succs, 1);
+			bpf_ir_array_push(env, &todo, succ2);
+		} else {
+			CRITICAL("Not possible: BB with >2 succs");
+		}
+		cur_bb = *succ1;
 	}
+
+	struct ir_basic_block **pos;
+	array_for(pos, todo){
+		add_reach(env, fun, *pos);
+	}
+
+	bpf_ir_array_free(&todo);
 }
 
 static void gen_reachable_bbs(struct bpf_ir_env *env, struct ir_function *fun)
