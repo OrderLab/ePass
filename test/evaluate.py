@@ -35,7 +35,7 @@ def measure_cmd_time_avg(cmd: str):
         rec = re.compile(r"Real Time: (.*?) nanoseconds")
         times.append(int(rec.findall(out.decode())[0]))
 
-    return sum(times) / len(times)
+    return sum(times) / len(times) / 1000000
 
 
 def measure_epass_time_avg(prog, sec, gopt="", popt=""):
@@ -72,10 +72,10 @@ def measure_epass_time_avg(prog, sec, gopt="", popt=""):
         run_times.append(int(runt))
         compile_times.append(int(compilet))
 
-    mean_tot = sum(tot_times) / len(tot_times)
-    mean_lift = sum(lift_times) / len(lift_times)
-    mean_run = sum(run_times) / len(run_times)
-    mean_compile = sum(compile_times) / len(compile_times)
+    mean_tot = sum(tot_times) / len(tot_times) / 1000000
+    mean_lift = sum(lift_times) / len(lift_times) / 1000000
+    mean_run = sum(run_times) / len(run_times) / 1000000
+    mean_compile = sum(compile_times) / len(compile_times) / 1000000
     return mean_tot, mean_lift, mean_run, mean_compile
 
 
@@ -130,9 +130,9 @@ def evaluate_compile_speed():
 
     # x positions for each group of bars
     x = np.arange(len(categories))
-    x1 = x - bar_width
+    x1 = x - bar_width - 0.02
     x2 = x
-    x3 = x + bar_width
+    x3 = x + bar_width + 0.02
 
     x1region1 = [epass_compile_20o, epass_compile_50o, epass_compile_100o]
     x1region2 = [epass_lift_20o, epass_lift_50o, epass_lift_100o]
@@ -144,14 +144,12 @@ def evaluate_compile_speed():
     x2region3 = [epass_run_20, epass_run_50, epass_run_100]
     x2region4 = [epass_other_20, epass_other_50, epass_other_100]
 
-    color1 = (0.1, 0.1, 0.4, 1)
-    color2 = (0, 0, 0, 0.3)
-    color3 = (0, 0, 0, 0.2)
+    color1 = (0.2, 0.6, 0.9, 0.8)
+    color2 = (0.2, 0.8, 0.6, 0.8)
+    color3 = (1.0, 0.6, 0.2, 0.8)
     color4 = (0, 0, 0, 0.1)
-    color5 = (0.6, 0.1, 0.1, 1)
+    color5 = (0.6, 0.3, 0.8, 0.8)
 
-    fig = matplotlib.pyplot.gcf()
-    fig.set_size_inches(5, 4)
 
     # Plotting
     plt.bar(x1, x1region1, width=bar_width, label="Compile", color=color1)
@@ -197,15 +195,17 @@ def evaluate_compile_speed():
     plt.bar(x3, group3, width=bar_width, label="llc", color=color5)
 
     # Adding labels and title
-    plt.xlabel("Tests")
-    plt.ylabel("Time (ns)")
+    # plt.xlabel("Tests")
+    plt.ylabel("Time (ms)")
     # plt.title("")
     plt.xticks(x, categories)
     plt.legend(fontsize=8)
 
     # Show plot
-    plt.tight_layout()
     # plt.show()
+    fig = matplotlib.pyplot.gcf()
+    fig.set_size_inches(3, 2)
+    plt.tight_layout()
     fig.savefig("compile_speed.pdf", dpi=200)
 
 
