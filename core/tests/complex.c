@@ -39,7 +39,6 @@ int prog(struct xdp_md *ctx)
 		struct server_name sn = { "a", 0 };
 
 		for (__u16 j = 0; j < MAX_SERVER_NAME_LENGTH; j++) {
-
 			if (*data == '\r') {
 				break;
 			}

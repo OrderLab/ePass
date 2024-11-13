@@ -1581,7 +1581,7 @@ static void run_single_pass(struct bpf_ir_env *env, struct ir_function *fun,
 	CHECK_ERR();
 }
 
-static void run_passes(struct bpf_ir_env *env, struct ir_function *fun)
+void bpf_ir_run(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	u64 starttime = get_cur_time_ns();
 	for (size_t i = 0; i < sizeof(pre_passes) / sizeof(pre_passes[0]);
@@ -1761,7 +1761,7 @@ void bpf_ir_autorun(struct bpf_ir_env *env)
 	PRINT_LOG_DEBUG(env, "Starting IR Passes...\n");
 	// Start IR manipulation
 
-	run_passes(env, fun);
+	bpf_ir_run(env, fun);
 	CHECK_ERR();
 
 	// End IR manipulation

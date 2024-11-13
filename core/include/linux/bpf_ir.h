@@ -1248,6 +1248,11 @@ struct builtin_pass_cfg {
 
 /* Passes End */
 
+struct ir_function *bpf_ir_lift(struct bpf_ir_env *env,
+				const struct bpf_insn *insns, size_t len);
+
+void bpf_ir_run(struct bpf_ir_env *env, struct ir_function *fun);
+
 /* Code Gen Start */
 
 void bpf_ir_init_insn_cg(struct bpf_ir_env *env, struct ir_insn *insn);
