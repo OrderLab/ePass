@@ -25,14 +25,8 @@ int prog(struct xdp_md *ctx)
 
 	for (__u16 i = 0; i <= 512 - HEADER_LEN; i++) {
 		host_header_found = 0;
-
-		if (data_end < data + HEADER_LEN) {
-			goto end;
-		}
-
 		// Elf loader does not allow NULL terminated strings, so have to check each char manually
-		if (data[0] == 'H' && data[1] == 'o' && data[2] == 's' &&
-		    data[3] == 't' && data[4] == ':' && data[5] == ' ') {
+		if (data[0] == 'H') {
 			host_header_found = 1;
 			data += HEADER_LEN;
 			break;
@@ -45,9 +39,6 @@ int prog(struct xdp_md *ctx)
 		struct server_name sn = { "a", 0 };
 
 		for (__u16 j = 0; j < MAX_SERVER_NAME_LENGTH; j++) {
-			if (data_end < data + 1) {
-				goto end;
-			}
 
 			if (*data == '\r') {
 				break;
@@ -58,6 +49,5 @@ int prog(struct xdp_md *ctx)
 		}
 	}
 
-end:
 	return XDP_PASS;
 }

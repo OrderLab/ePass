@@ -412,7 +412,6 @@ static void gen_bb(struct bpf_ir_env *env, struct bb_info *ret,
 				size_t pos = (s16)i + insn.off + 1;
 				add_entrance_info(env, insns, &bb_entrance, pos,
 						  i);
-				PRINT_LOG_DEBUG(env, "adding pos %d\n", pos);
 				CHECK_ERR();
 				add_entrance_info(env, insns, &bb_entrance,
 						  i + 1, i);
