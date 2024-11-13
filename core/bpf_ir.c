@@ -264,6 +264,20 @@ static int compare_num(const void *a, const void *b)
 	return 0;
 }
 
+static bool is_raw_insn_breakpoint(u8 code)
+{
+	// exit, jmp (not call) is breakpoint
+	if (BPF_CLASS(code) == BPF_JMP || BPF_CLASS(code) == BPF_JMP32) {
+		if (BPF_OP(code) != BPF_CALL) {
+			return true;
+		} else {
+			// call is not a breakpoint
+			return false;
+		}
+	}
+	return false;
+}
+
 // Add current_pos --> entrance_pos in bb_entrances
 static void add_entrance_info(struct bpf_ir_env *env,
 			      const struct bpf_insn *insns,
@@ -283,11 +297,16 @@ static void add_entrance_info(struct bpf_ir_env *env,
 	// New entrance
 	struct array preds;
 	INIT_ARRAY(&preds, size_t);
-	size_t last_pos = entrance_pos - 1;
-	u8 code = insns[last_pos].code;
-	if (!(BPF_OP(code) == BPF_JA || BPF_OP(code) == BPF_EXIT)) {
-		// BPF_EXIT
-		bpf_ir_array_push_unique(env, &preds, &last_pos);
+	if (entrance_pos >= 1) {
+		size_t last_pos = entrance_pos - 1;
+		u8 code = insns[last_pos].code;
+		if (!is_raw_insn_breakpoint(code)) { // Error!
+			// Breaking point
+			// rx = ...
+			// BB Entrance
+			// ==> Add preds
+			bpf_ir_array_push_unique(env, &preds, &last_pos);
+		}
 	}
 	bpf_ir_array_push_unique(env, &preds, &current_pos);
 	struct bb_entrance_info new_bb;
@@ -393,6 +412,7 @@ static void gen_bb(struct bpf_ir_env *env, struct bb_info *ret,
 				size_t pos = (s16)i + insn.off + 1;
 				add_entrance_info(env, insns, &bb_entrance, pos,
 						  i);
+				PRINT_LOG_DEBUG(env, "adding pos %d\n", pos);
 				CHECK_ERR();
 				add_entrance_info(env, insns, &bb_entrance,
 						  i + 1, i);
