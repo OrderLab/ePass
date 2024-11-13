@@ -10,15 +10,14 @@ import re
 import matplotlib.pyplot as plt
 import matplotlib
 import numpy as np
-
+from pathlib import Path
 
 EXPERIMENT_TIMES = 1
+CARD = "wlp0s20f3"
 
 
-def init(fisrt_time: bool = False):
-    if fisrt_time:
-        print("init...")
-        os.system("sudo /sbin/sysctl -w kernel.bpf_stats_enabled=1")
+def init():
+    print("init...")
     os.system("./gen_tests.sh")
     os.system("make all -j$(nproc)")
 
@@ -79,6 +78,42 @@ def measure_epass_time_avg(prog, sec, gopt="", popt=""):
     return mean_tot, mean_lift, mean_run, mean_compile
 
 
+def load_prog_epass(prog, gopt="", popt=""):
+    bname = Path(prog).stem
+    # bpftool prog load {prog} /sys/fs/bpf/{bname} epass {gopt} {popt}
+    ret = os.system(
+        f"sudo bpftool prog load {prog} /sys/fs/bpf/{bname} epass {gopt} {popt}"
+    )
+    return ret
+
+
+def attach_prog_epass():
+    os.system(f"sudo bpftool net attach xdp name prog dev {CARD}")
+
+
+def collect_info():
+    cmds = "sudo bpftool prog show name prog"
+    process = subprocess.Popen(
+        cmds.split(" "), stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
+    out, _ = process.communicate()
+    out = out.decode()
+    rec = re.compile(r"run_time_ns (.*?) run_cnt (.*?)\s")
+    res = rec.findall(out)[0]
+    tot = int(res[0])
+    cnt = int(res[1])
+    return tot / cnt
+
+
+def dettach_prog_epass():
+    os.system(f"sudo bpftool net detach xdp dev {CARD}")
+
+
+def remove_prog_epass(prog):
+    bname = Path(prog).stem
+    os.system(f"sudo rm -f /sys/fs/bpf/{bname}")
+
+
 def evaluate_compile_speed():
     llc_time_20 = measure_cmd_time_avg(
         "llc -march=bpf output/evaluation_compile_speed_speed_20.ll -o /dev/null"
@@ -116,7 +151,9 @@ def evaluate_compile_speed():
             "output/evaluation_compile_speed_speed_100.o", "prog", "no_prog_check"
         )
     )
-    epass_other_100o = epass_tot_100o - epass_lift_100o - epass_run_100o - epass_compile_100o
+    epass_other_100o = (
+        epass_tot_100o - epass_lift_100o - epass_run_100o - epass_compile_100o
+    )
     (epass_tot_100, epass_lift_100, epass_run_100, epass_compile_100) = (
         measure_epass_time_avg("output/evaluation_compile_speed_speed_100.o", "prog")
     )
@@ -150,7 +187,6 @@ def evaluate_compile_speed():
     color4 = (0, 0, 0, 0.1)
     color5 = (0.6, 0.3, 0.8, 0.8)
 
-
     # Plotting
     plt.bar(x1, x1region1, width=bar_width, label="Compile", color=color1)
     plt.bar(
@@ -174,9 +210,7 @@ def evaluate_compile_speed():
     )
 
     plt.bar(x2, x2region1, width=bar_width, color=color1)
-    plt.bar(
-        x2, x2region2, width=bar_width, bottom=x2region1, color=color2
-    )
+    plt.bar(x2, x2region2, width=bar_width, bottom=x2region1, color=color2)
     plt.bar(
         x2,
         x2region3,
@@ -206,9 +240,21 @@ def evaluate_compile_speed():
     fig = matplotlib.pyplot.gcf()
     fig.set_size_inches(3, 2)
     plt.tight_layout()
-    fig.savefig("compile_speed.pdf", dpi=200)
+    fig.savefig("evalout/compile_speed.pdf", dpi=200)
+
+
+def evaluate_counter_pass():
+    pass
 
 
 if __name__ == "__main__":
-    init()
-    evaluate_compile_speed()
+    import sys
+
+    arg = sys.argv[1]
+    os.system("sudo /sbin/sysctl -w kernel.bpf_stats_enabled=1")
+    if arg == "init":
+        init()
+    if arg == "speed":
+        evaluate_compile_speed()
+    if arg == "counter":
+        collect_info()
