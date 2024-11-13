@@ -38,7 +38,7 @@ int read(struct user_opts uopts)
 	}
 
 	printf("ePass finished in %lluns\n", tot);
-	printf("lift %lluns\trun %lluns\tcompile %lluns\tsum %llu\n",
+	printf("lift %lluns\trun %lluns\tcompile %lluns\tsum %lluns\n",
 	       env->lift_time, env->run_time, env->cg_time,
 	       env->lift_time + env->run_time + env->cg_time);
 

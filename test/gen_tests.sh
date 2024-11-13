@@ -4,7 +4,7 @@
 
 mkdir -p output
 
-files=$(find . -iname '*.c')
+files=$(find . -iname '*.c' -not -path "./env/*")
 
 rm Makefile
 all_objs=""
