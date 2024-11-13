@@ -59,6 +59,8 @@ struct bpf_ir_opts {
 	// Verbose level
 	int verbose;
 
+	bool disable_prog_check;
+
 	u32 max_iteration;
 
 	enum {

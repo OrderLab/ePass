@@ -9,5 +9,5 @@ files=$(find . -iname '*.c')
 for file in $files; do
     base_name=$(echo $file | sed -r 's/\.c//g' | sed -r 's/\.\///g' | tr '/' '_')
     clang -O2 -I./progs -I/usr/include/$(uname -m)-linux-gnu -D__TARGET_ARCH_x86 -target bpf -g -c $file -o output/$base_name.o
-    #clang -O0 -I/usr/include/$(uname -m)-linux-gnu -target bpf -g -c $file -o output/$base_name.nop.o
+    clang -O2 -I./progs -I/usr/include/$(uname -m)-linux-gnu -D__TARGET_ARCH_x86 -target bpf -g -emit-llvm -S -c $file -o output/$base_name.ll
 done

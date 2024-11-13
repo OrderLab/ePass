@@ -2147,6 +2147,9 @@ static void check_insn_operand_cg(struct bpf_ir_env *env, struct ir_insn *insn)
 
 static void prog_check_cg(struct bpf_ir_env *env, struct ir_function *fun)
 {
+	if (env->opts.disable_prog_check) {
+		return;
+	}
 	// CG IR check
 	// Available to run while dst is maintained
 
