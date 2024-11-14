@@ -2964,12 +2964,12 @@ static void spill_array(struct bpf_ir_env *env, struct ir_function *fun)
 	}
 }
 
-static void vreg_to_rreg(struct bpf_ir_env *env, struct ir_function *fun)
-{
-	// Change all virtual registers to real registers
-	// Make sure the VRs are all allocated
-	// TODO
-}
+// static void vreg_to_rreg(struct bpf_ir_env *env, struct ir_function *fun)
+// {
+// 	// Change all virtual registers to real registers
+// 	// Make sure the VRs are all allocated
+// 	// TODO
+// }
 
 // Interface Implementation
 
