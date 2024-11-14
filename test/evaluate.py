@@ -303,6 +303,38 @@ def evaluate_counter_pass():
     (l2, l2c) = evaluate_counter_pass_single("evaluation_counter_loop4")
     print(l2, l2c)
 
+    categories = ["counter_1", "counter_2"]
+    group1 = [l1, l2]
+    group2 = [l1c, l2c]
+    # group3 = [4, 6, 0]
+
+    # Bar width
+    bar_width = 0.25
+
+    # x positions for each group of bars
+    x = np.arange(len(categories))
+    x1 = x - bar_width/2
+    x2 = x + bar_width/2
+    # x3 = x + bar_width
+
+    # Plotting
+    plt.bar(x1, group1, width=bar_width, label="Group 1")
+    plt.bar(x2, group2, width=bar_width, label="Group 2")
+    # plt.bar(x3, group3, width=bar_width, label='Group 3')
+
+    # Adding labels and title
+    plt.ylabel("Time (ns)")
+    # plt.title("")
+    plt.xticks(x, categories)
+    plt.legend(fontsize=8)
+
+    # Show plot
+    # plt.show()
+    fig = matplotlib.pyplot.gcf()
+    fig.set_size_inches(3, 2)
+    plt.tight_layout()
+    fig.savefig("evalout/add_counter.pdf", dpi=200)
+
 
 if __name__ == "__main__":
     import sys
