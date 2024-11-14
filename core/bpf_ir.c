@@ -1559,7 +1559,8 @@ static void add_reach(struct bpf_ir_env *env, struct ir_function *fun,
 	}
 
 	struct ir_basic_block **pos;
-	array_for(pos, todo){
+	array_for(pos, todo)
+	{
 		add_reach(env, fun, *pos);
 	}
 
