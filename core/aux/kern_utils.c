@@ -82,6 +82,10 @@ static int apply_pass_opt(struct bpf_ir_env *env, const char *opt)
 			}
 		}
 	}
+	if (!found_pass) {
+		PRINT_LOG_ERROR(env, "Pass %s not found\n", pass_name);
+		return -EINVAL;
+	}
 	return 0;
 }
 
@@ -97,6 +101,8 @@ static int apply_global_opt(struct bpf_ir_env *env, const char *opt)
 		env->opts.print_mode = BPF_IR_PRINT_DUMP;
 	} else if (strcmp(opt, "print_detail") == 0) {
 		env->opts.print_mode = BPF_IR_PRINT_DETAIL;
+	} else if (strcmp(opt, "no_prog_check") == 0) {
+		env->opts.disable_prog_check = true;
 	} else if (strcmp(opt, "print_bpf_detail") == 0) {
 		env->opts.print_mode = BPF_IR_PRINT_BPF_DETAIL;
 	} else if (strncmp(opt, "verbose=", 8) == 0) {
@@ -128,6 +134,9 @@ static int apply_global_opt(struct bpf_ir_env *env, const char *opt)
 // Check if a builtin pass is enabled (by cfg)
 bool bpf_ir_builtin_pass_enabled(struct bpf_ir_env *env, const char *pass_name)
 {
+	if (!env) {
+		return false;
+	}
 	for (size_t i = 0; i < env->opts.builtin_pass_cfg_num; ++i) {
 		if (strcmp(env->opts.builtin_pass_cfg[i].name, pass_name) ==
 		    0) {

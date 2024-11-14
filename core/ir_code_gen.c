@@ -1202,6 +1202,11 @@ static struct ir_insn *normalize_load_const(struct bpf_ir_env *env,
 	return new_insn;
 }
 
+static void bpf_ir_erase_insn_cg_shallow(struct ir_insn *insn)
+{
+	list_del(&insn->list_ptr);
+}
+
 static void normalize_assign(struct bpf_ir_env *env, struct ir_function *fun,
 			     struct ir_insn *insn)
 {
@@ -1242,7 +1247,9 @@ static void normalize_assign(struct bpf_ir_env *env, struct ir_function *fun,
 	if (tdst == REG && t0 == REG) {
 		if (allocated_reg_insn(dst_insn) == allocated_reg(*v0)) {
 			// The same, erase this instruction
-			erase_same_reg_assign(env, fun, insn);
+			// erase_same_reg_assign(env, fun, insn);
+			// Needs garbage collection for instructions
+			bpf_ir_erase_insn_cg_shallow(insn);
 		}
 	}
 }
@@ -1300,6 +1307,9 @@ static void normalize_alu(struct bpf_ir_env *env, struct ir_function *fun,
 			// ==>
 			// reg1 = reg2
 			// reg1 = add reg1 reg3
+			PRINT_LOG_DEBUG(env, "v0:");
+			print_ir_insn(env, v0->data.insn_d);
+			PRINT_LOG_DEBUG(env, "\n");
 			struct ir_insn *new_insn = bpf_ir_create_assign_insn_cg(
 				env, insn, *v0, INSERT_FRONT);
 			// DBGASSERT(dst_insn ==
@@ -2147,6 +2157,9 @@ static void check_insn_operand_cg(struct bpf_ir_env *env, struct ir_insn *insn)
 
 static void prog_check_cg(struct bpf_ir_env *env, struct ir_function *fun)
 {
+	if (env->opts.disable_prog_check) {
+		return;
+	}
 	// CG IR check
 	// Available to run while dst is maintained
 
@@ -2951,10 +2964,18 @@ static void spill_array(struct bpf_ir_env *env, struct ir_function *fun)
 	}
 }
 
+// static void vreg_to_rreg(struct bpf_ir_env *env, struct ir_function *fun)
+// {
+// 	// Change all virtual registers to real registers
+// 	// Make sure the VRs are all allocated
+// 	// TODO
+// }
+
 // Interface Implementation
 
-void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
+void bpf_ir_compile(struct bpf_ir_env *env, struct ir_function *fun)
 {
+	u64 starttime = get_cur_time_ns();
 	// Init CG, start code generation
 	init_cg(env, fun);
 	CHECK_ERR();
@@ -3090,8 +3111,8 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 	normalize(env, fun);
 	CHECK_ERR();
 	print_ir_prog_cg_alloc(env, fun, "Normalization");
-	prog_check_cg(env, fun);
-	CHECK_ERR();
+	// prog_check_cg(env, fun);
+	// CHECK_ERR();
 
 	replace_builtin_const(env, fun);
 	CHECK_ERR();
@@ -3113,6 +3134,7 @@ void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun)
 
 	// Free CG resources
 	free_cg_res(fun);
+	env->cg_time += get_cur_time_ns() - starttime;
 }
 
 void bpf_ir_init_insn_cg(struct bpf_ir_env *env, struct ir_insn *insn)

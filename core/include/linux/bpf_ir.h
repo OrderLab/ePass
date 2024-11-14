@@ -14,6 +14,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <time.h>
 
 typedef __s8 s8;
 typedef __u8 u8;
@@ -58,6 +59,8 @@ struct bpf_ir_opts {
 	// Verbose level
 	int verbose;
 
+	bool disable_prog_check;
+
 	u32 max_iteration;
 
 	enum {
@@ -80,12 +83,6 @@ struct bpf_ir_env {
 	// Internal error code
 	int err;
 
-	// Verifier error
-	int verifier_err;
-
-	// Whether executed, used in verifier
-	bool executed;
-
 	// Number of instructions
 	size_t insn_cnt;
 
@@ -96,6 +93,27 @@ struct bpf_ir_env {
 	size_t log_pos;
 
 	struct bpf_ir_opts opts;
+
+	// Stats
+
+	u64 lift_time;
+	u64 run_time;
+	u64 cg_time;
+
+	// Verifier information
+
+	// Whether executed, used in verifier
+	bool executed;
+
+	// Verifier error
+	int verifier_err;
+
+	// Verifier log end pos in ubuf
+	u64 verifier_log_end_pos;
+
+	// Prog type
+	// May not be specified in user space
+	enum bpf_prog_type prog_type;
 
 	// Verifier env
 	void *venv;
@@ -237,6 +255,8 @@ void *malloc_proto(size_t size);
 void free_proto(void *ptr);
 
 int parse_int(const char *str, int *val);
+
+u64 get_cur_time_ns(void);
 
 #define SAFE_MALLOC(dst, size)                            \
 	{                                                 \
@@ -619,7 +639,7 @@ struct ssa_transform_env {
 struct ir_basic_block *bpf_ir_init_bb_raw(void);
 
 // Main interface
-void bpf_ir_run(struct bpf_ir_env *env);
+void bpf_ir_autorun(struct bpf_ir_env *env);
 
 void bpf_ir_print_bpf_insn(struct bpf_ir_env *env, const struct bpf_insn *insn);
 
@@ -1228,11 +1248,16 @@ struct builtin_pass_cfg {
 
 /* Passes End */
 
+struct ir_function *bpf_ir_lift(struct bpf_ir_env *env,
+				const struct bpf_insn *insns, size_t len);
+
+void bpf_ir_run(struct bpf_ir_env *env, struct ir_function *fun);
+
 /* Code Gen Start */
 
 void bpf_ir_init_insn_cg(struct bpf_ir_env *env, struct ir_insn *insn);
 
-void bpf_ir_code_gen(struct bpf_ir_env *env, struct ir_function *fun);
+void bpf_ir_compile(struct bpf_ir_env *env, struct ir_function *fun);
 
 void bpf_ir_free_insn_cg(struct ir_insn *insn);
 

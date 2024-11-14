@@ -264,6 +264,20 @@ static int compare_num(const void *a, const void *b)
 	return 0;
 }
 
+static bool is_raw_insn_breakpoint(u8 code)
+{
+	// exit, jmp (not call) is breakpoint
+	if (BPF_CLASS(code) == BPF_JMP || BPF_CLASS(code) == BPF_JMP32) {
+		if (BPF_OP(code) != BPF_CALL) {
+			return true;
+		} else {
+			// call is not a breakpoint
+			return false;
+		}
+	}
+	return false;
+}
+
 // Add current_pos --> entrance_pos in bb_entrances
 static void add_entrance_info(struct bpf_ir_env *env,
 			      const struct bpf_insn *insns,
@@ -283,11 +297,16 @@ static void add_entrance_info(struct bpf_ir_env *env,
 	// New entrance
 	struct array preds;
 	INIT_ARRAY(&preds, size_t);
-	size_t last_pos = entrance_pos - 1;
-	u8 code = insns[last_pos].code;
-	if (!(BPF_OP(code) == BPF_JA || BPF_OP(code) == BPF_EXIT)) {
-		// BPF_EXIT
-		bpf_ir_array_push_unique(env, &preds, &last_pos);
+	if (entrance_pos >= 1) {
+		size_t last_pos = entrance_pos - 1;
+		u8 code = insns[last_pos].code;
+		if (!is_raw_insn_breakpoint(code)) { // Error!
+			// Breaking point
+			// rx = ...
+			// BB Entrance
+			// ==> Add preds
+			bpf_ir_array_push_unique(env, &preds, &last_pos);
+		}
 	}
 	bpf_ir_array_push_unique(env, &preds, &current_pos);
 	struct bb_entrance_info new_bb;
@@ -1462,27 +1481,146 @@ static void init_function(struct bpf_ir_env *env, struct ir_function *fun,
 	}
 }
 
+static void bpf_ir_fix_bb_succ(struct bpf_ir_env *env, struct ir_function *fun)
+{
+	struct ir_basic_block **pos;
+	array_for(pos, fun->all_bbs)
+	{
+		struct ir_basic_block *bb = *pos;
+		struct ir_insn *insn = bpf_ir_get_last_insn(bb);
+		if (insn && bpf_ir_is_cond_jmp(insn)) {
+			// Conditional jmp
+			if (bb->succs.num_elem != 2) {
+				print_ir_insn_err(env, insn,
+						  "Jump instruction");
+				RAISE_ERROR(
+					"Conditional jmp with != 2 successors");
+			}
+			struct ir_basic_block **s1 = array_get(
+				&bb->succs, 0, struct ir_basic_block *);
+			struct ir_basic_block **s2 = array_get(
+				&bb->succs, 1, struct ir_basic_block *);
+			*s1 = insn->bb1;
+			*s2 = insn->bb2;
+		}
+	}
+}
+
+static void add_reach(struct bpf_ir_env *env, struct ir_function *fun,
+		      struct ir_basic_block *bb)
+{
+	if (bb->_visited) {
+		return;
+	}
+	// bb->_visited = 1;
+	// bpf_ir_array_push(env, &fun->reachable_bbs, &bb);
+	struct array todo;
+	INIT_ARRAY(&todo, struct ir_basic_block *);
+
+	// struct ir_basic_block **succ;
+	// bool first = false;
+	// array_for(succ, bb->succs)
+	// {
+	// 	if (!first && bb->succs.num_elem > 1) {
+	// 		first = true;
+	// 		// Check if visited
+	// 		if ((*succ)->_visited) {
+	// 			RAISE_ERROR("Loop BB detected");
+	// 		}
+	// 	}
+	// 	add_reach(env, fun, *succ);
+	// }
+
+	// First Test sanity ... TODO!
+
+	struct ir_basic_block *cur_bb = bb;
+
+	while (1) {
+		cur_bb->_visited = 1;
+		bpf_ir_array_push(env, &fun->reachable_bbs, &cur_bb);
+		if (cur_bb->succs.num_elem == 0) {
+			break;
+		}
+
+		struct ir_basic_block **succ1 =
+			bpf_ir_array_get_void(&cur_bb->succs, 0);
+		if ((*succ1)->_visited) {
+			break;
+		}
+		if (cur_bb->succs.num_elem == 1) {
+		} else if (cur_bb->succs.num_elem == 2) {
+			struct ir_basic_block **succ2 =
+				bpf_ir_array_get_void(&cur_bb->succs, 1);
+			bpf_ir_array_push(env, &todo, succ2);
+		} else {
+			CRITICAL("Not possible: BB with >2 succs");
+		}
+		cur_bb = *succ1;
+	}
+
+	struct ir_basic_block **pos;
+	array_for(pos, todo)
+	{
+		add_reach(env, fun, *pos);
+	}
+
+	bpf_ir_array_free(&todo);
+}
+
+static void gen_reachable_bbs(struct bpf_ir_env *env, struct ir_function *fun)
+{
+	bpf_ir_clean_visited(fun);
+	bpf_ir_array_clear(env, &fun->reachable_bbs);
+	add_reach(env, fun, fun->entry);
+}
+
+static void gen_end_bbs(struct bpf_ir_env *env, struct ir_function *fun)
+{
+	struct ir_basic_block **pos;
+	bpf_ir_array_clear(env, &fun->end_bbs);
+	array_for(pos, fun->reachable_bbs)
+	{
+		struct ir_basic_block *bb = *pos;
+		if (bb->succs.num_elem == 0) {
+			bpf_ir_array_push(env, &fun->end_bbs, &bb);
+		}
+	}
+}
+
+static void bpf_ir_pass_postprocess(struct bpf_ir_env *env,
+				    struct ir_function *fun)
+{
+	bpf_ir_fix_bb_succ(env, fun);
+	CHECK_ERR();
+	bpf_ir_clean_metadata_all(fun);
+	gen_reachable_bbs(env, fun);
+	CHECK_ERR();
+	gen_end_bbs(env, fun);
+	CHECK_ERR();
+	if (!env->opts.disable_prog_check) {
+		bpf_ir_prog_check(env, fun);
+	}
+}
+
 static void run_single_pass(struct bpf_ir_env *env, struct ir_function *fun,
 			    const struct function_pass *pass, void *param)
 {
-	bpf_ir_prog_check(env, fun);
-	CHECK_ERR();
-
 	PRINT_LOG_DEBUG(env, "\x1B[32m------ Running Pass: %s ------\x1B[0m\n",
 			pass->name);
 	pass->pass(env, fun, param);
 	CHECK_ERR();
 
 	// Validate the IR
-	bpf_ir_prog_check(env, fun);
+	bpf_ir_pass_postprocess(env, fun);
 	CHECK_ERR();
 
 	print_ir_prog(env, fun);
 	CHECK_ERR();
 }
 
-static void run_passes(struct bpf_ir_env *env, struct ir_function *fun)
+void bpf_ir_run(struct bpf_ir_env *env, struct ir_function *fun)
 {
+	u64 starttime = get_cur_time_ns();
 	for (size_t i = 0; i < sizeof(pre_passes) / sizeof(pre_passes[0]);
 	     ++i) {
 		bool has_override = false;
@@ -1554,6 +1692,8 @@ static void run_passes(struct bpf_ir_env *env, struct ir_function *fun)
 		}
 		CHECK_ERR();
 	}
+
+	env->run_time += get_cur_time_ns() - starttime;
 }
 
 static void print_bpf_insn_simple(struct bpf_ir_env *env,
@@ -1617,6 +1757,7 @@ static void print_bpf_prog(struct bpf_ir_env *env, const struct bpf_insn *insns,
 struct ir_function *bpf_ir_lift(struct bpf_ir_env *env,
 				const struct bpf_insn *insns, size_t len)
 {
+	u64 starttime = get_cur_time_ns();
 	struct bb_info info;
 	gen_bb(env, &info, insns, len);
 	CHECK_ERR(NULL);
@@ -1638,10 +1779,12 @@ struct ir_function *bpf_ir_lift(struct bpf_ir_env *env,
 	SAFE_MALLOC_RET_NULL(fun, sizeof(struct ir_function));
 	init_function(env, fun, &trans_env);
 
+	env->lift_time += get_cur_time_ns() - starttime;
+
 	return fun;
 }
 
-void bpf_ir_run(struct bpf_ir_env *env)
+void bpf_ir_autorun(struct bpf_ir_env *env)
 {
 	env->executed = true;
 	const struct bpf_insn *insns = env->insns;
@@ -1649,19 +1792,19 @@ void bpf_ir_run(struct bpf_ir_env *env)
 	struct ir_function *fun = bpf_ir_lift(env, insns, len);
 	CHECK_ERR();
 
-	bpf_ir_prog_check(env, fun);
+	bpf_ir_pass_postprocess(env, fun);
 	CHECK_ERR();
 	print_ir_prog(env, fun);
 	PRINT_LOG_DEBUG(env, "Starting IR Passes...\n");
 	// Start IR manipulation
 
-	run_passes(env, fun);
+	bpf_ir_run(env, fun);
 	CHECK_ERR();
 
 	// End IR manipulation
 	PRINT_LOG_DEBUG(env, "IR Passes Ended!\n");
 
-	bpf_ir_code_gen(env, fun);
+	bpf_ir_compile(env, fun);
 	CHECK_ERR();
 
 	// Got the bpf bytecode
@@ -1689,6 +1832,7 @@ struct bpf_ir_opts bpf_ir_default_opts(void)
 	opts.force = false;
 	opts.verbose = 1;
 	opts.max_iteration = 10;
+	opts.disable_prog_check = false;
 	return opts;
 }
 
@@ -1705,6 +1849,11 @@ struct bpf_ir_env *bpf_ir_init_env(struct bpf_ir_opts opts,
 	env->verifier_err = -1;
 	env->executed = false;
 	env->venv = NULL;
+	env->verifier_log_end_pos = 0;
+	env->prog_type = 0; // Unspecified
+	env->lift_time = 0;
+	env->cg_time = 0;
+	env->run_time = 0;
 
 	return env;
 }

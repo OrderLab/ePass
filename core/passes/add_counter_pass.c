@@ -100,21 +100,61 @@ void add_counter(struct bpf_ir_env *env, struct ir_function *fun, void *param)
 	bpf_ir_array_free(&critical_bbs);
 }
 
+struct bpf_ir_counter_opt {
+	int counter_limit;
+	bool accurate;
+};
+
+#define GET_OPT(p, src)               \
+	while (*src && *src != ' ') { \
+		*p = *src;            \
+		p++;                  \
+		src++;                \
+	}                             \
+	*p = '\0';
+
+#define NEXT_OPT(src)  \
+	if (*src) {    \
+		src++; \
+	} else {       \
+		break; \
+	}
+
 static int load_param(const char *opt, void **param)
 {
-	int res = 0;
-	int err = parse_int(opt, &res);
-	if (err) {
-		return err;
+	struct bpf_ir_counter_opt res;
+	res.counter_limit = 1000000;
+	res.accurate = false;
+
+	char mopt[30] = { 0 };
+	const char *src = opt;
+	while (*src) {
+		char *p = mopt;
+		GET_OPT(p, src);
+
+		if (strcmp(mopt, "accurate") == 0) {
+			res.accurate = true;
+		}
+
+		if (strncmp(mopt, "limit=", 6) == 0) {
+			res.accurate = true;
+			int err = parse_int(mopt + 6, &res.counter_limit);
+			if (err) {
+				return err;
+			}
+		}
+
+		NEXT_OPT(src);
 	}
-	if (res > 1000000) {
+
+	if (res.counter_limit > 1000000) { // Could be configurable
 		return -EINVAL;
 	}
-	*param = malloc_proto(sizeof(int));
+	*param = malloc_proto(sizeof(struct bpf_ir_counter_opt));
 	if (!*param) {
 		return -ENOMEM;
 	}
-	*(int *)(*param) = res;
+	*(struct bpf_ir_counter_opt *)(*param) = res;
 	return 0;
 }
 
