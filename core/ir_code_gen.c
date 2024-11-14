@@ -1245,12 +1245,12 @@ static void normalize_assign(struct bpf_ir_env *env, struct ir_function *fun,
 		}
 	}
 	if (tdst == REG && t0 == REG) {
-		// if (allocated_reg_insn(dst_insn) == allocated_reg(*v0)) {
-		// 	// The same, erase this instruction
-		// 	erase_same_reg_assign(env, fun, insn);
-		// }
-		// Needs garbage collection for instructions
-		bpf_ir_erase_insn_cg_shallow(insn);
+		if (allocated_reg_insn(dst_insn) == allocated_reg(*v0)) {
+			// The same, erase this instruction
+			// erase_same_reg_assign(env, fun, insn);
+			// Needs garbage collection for instructions
+			bpf_ir_erase_insn_cg_shallow(insn);
+		}
 	}
 }
 
