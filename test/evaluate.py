@@ -87,7 +87,13 @@ def load_prog_epass(prog, gopt="", popt=""):
     return ret
 
 
-def attach_prog_epass():
+def load_prog_no_epass(prog):
+    bname = Path(prog).stem
+    ret = os.system(f"sudo bpftool prog load {prog} /sys/fs/bpf/{bname}")
+    return ret
+
+
+def attach_prog():
     os.system(f"sudo bpftool net attach xdp name prog dev {CARD}")
 
 
@@ -105,11 +111,11 @@ def collect_info():
     return tot / cnt
 
 
-def dettach_prog_epass():
+def dettach_prog():
     os.system(f"sudo bpftool net detach xdp dev {CARD}")
 
 
-def remove_prog_epass(prog):
+def remove_prog(prog):
     bname = Path(prog).stem
     os.system(f"sudo rm -f /sys/fs/bpf/{bname}")
 
@@ -244,7 +250,11 @@ def evaluate_compile_speed():
 
 
 def evaluate_counter_pass():
-    pass
+    prog = "output/evaluation_counter_loop3.o"
+    load_prog_no_epass(prog)
+    attach_prog()
+    dettach_prog()
+    remove_prog(prog)
 
 
 if __name__ == "__main__":
