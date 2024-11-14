@@ -11,7 +11,7 @@ int prog(void *ctx)
 	}
 	a[5] = 0;
 	if (a[id]) {
-		bpf_printk("aba\n");
+		bpf_printk("%p\n", &a[id]);
 	}
 	return 0;
 }
