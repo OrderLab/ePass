@@ -2,3 +2,5 @@ output/
 env/
 *.pdf
 evalout/
+env.py
+__pycache__/

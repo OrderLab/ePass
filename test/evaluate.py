@@ -10,10 +10,28 @@ import re
 import matplotlib.pyplot as plt
 import matplotlib
 import numpy as np
+import requests
 from pathlib import Path
+import env
+import time
 
-EXPERIMENT_TIMES = 1
-CARD = "wlp0s20f3"
+EXPERIMENT_TIMES = env.EXPERIMENT_TIMES
+CARD = env.CARD
+
+urls = [
+    "https://www.google.com",
+    "https://1.1.1.1",
+    "https://208.67.222.222",
+    "https://www.github.com",
+    "https://www.wikipedia.org",
+]
+
+
+def check_connectivity(url):
+    try:
+        requests.get(url, timeout=0.1)
+    except:
+        print(f"Connection failed for {url}")
 
 
 def init():
@@ -82,7 +100,7 @@ def load_prog_epass(prog, gopt="", popt=""):
     bname = Path(prog).stem
     # bpftool prog load {prog} /sys/fs/bpf/{bname} epass {gopt} {popt}
     ret = os.system(
-        f"sudo bpftool prog load {prog} /sys/fs/bpf/{bname} epass {gopt} {popt}"
+        f'sudo bpftool prog load {prog} /sys/fs/bpf/{bname} epass "{gopt}" "{popt}"'
     )
     return ret
 
@@ -97,6 +115,12 @@ def attach_prog():
     os.system(f"sudo bpftool net attach xdp name prog dev {CARD}")
 
 
+def test_network():
+    for _ in range(10):
+        for u in urls:
+            check_connectivity(u)
+
+
 def collect_info():
     cmds = "sudo bpftool prog show name prog"
     process = subprocess.Popen(
@@ -108,7 +132,7 @@ def collect_info():
     res = rec.findall(out)[0]
     tot = int(res[0])
     cnt = int(res[1])
-    return tot / cnt
+    return tot / cnt, cnt
 
 
 def dettach_prog():
@@ -249,12 +273,35 @@ def evaluate_compile_speed():
     fig.savefig("evalout/compile_speed.pdf", dpi=200)
 
 
-def evaluate_counter_pass():
-    prog = "output/evaluation_counter_loop3.o"
+def evaluate_counter_pass_single(prog_name):
+    prog = f"output/{prog_name}.o"
+    remove_prog(prog)
     load_prog_no_epass(prog)
     attach_prog()
+    print(f"test {prog_name}...")
+    test_network()
+    (avg1, cnt) = collect_info()
+    print(avg1, cnt)
     dettach_prog()
     remove_prog(prog)
+    time.sleep(1)
+    print(f"test {prog_name} with add_counter...")
+    load_prog_epass(prog, popt="add_counter")
+    attach_prog()
+    test_network()
+    (avg2, cnt) = collect_info()
+    print(avg2, cnt)
+    dettach_prog()
+    remove_prog(prog)
+    return avg1, avg2
+
+
+def evaluate_counter_pass():
+    (l1, l1c) = evaluate_counter_pass_single("evaluation_counter_loop3")
+    print(l1, l1c)
+    time.sleep(1)
+    (l2, l2c) = evaluate_counter_pass_single("evaluation_counter_loop4")
+    print(l2, l2c)
 
 
 if __name__ == "__main__":
@@ -267,4 +314,4 @@ if __name__ == "__main__":
     if arg == "speed":
         evaluate_compile_speed()
     if arg == "counter":
-        collect_info()
+        evaluate_counter_pass()
