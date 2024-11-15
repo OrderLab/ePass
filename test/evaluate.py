@@ -38,6 +38,7 @@ def init():
     print("init...")
     os.system("./gen_tests.sh")
     os.system("make all -j$(nproc)")
+    os.mkdir("evalout")
 
 
 def measure_cmd_time_avg(cmd: str):
@@ -116,7 +117,7 @@ def attach_prog():
 
 
 def test_network():
-    for _ in range(10):
+    for _ in range(50):
         for u in urls:
             check_connectivity(u)
 
