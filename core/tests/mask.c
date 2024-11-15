@@ -1,13 +1,13 @@
 #include <linux/bpf.h>
 #include <bpf/bpf_helpers.h>
 
-#define SIZE 100
+#define SIZE 10
 
 SEC("xdp")
 int prog(void *ctx)
 {
 	int t = bpf_ktime_get_ns() % SIZE;
-	static int a[SIZE] = { 0 };
+	static int a[SIZE];
 	for (int i = 0; i < SIZE; ++i) {
 		a[i] = i;
 	}
