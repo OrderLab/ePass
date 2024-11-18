@@ -19,7 +19,7 @@ static __always_inline void store_flags(struct value *value){
         value->flags[index] = ',';
         index++;
     }
-    index = value->index;
+    
     if (index < sizeof(value->flags)){
         value->flags[index] = ',';
         index++;
