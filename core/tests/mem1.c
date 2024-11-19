@@ -4,8 +4,8 @@
 SEC("xdp")
 int prog(void *ctx)
 {
-    int arr[10] = {0};
-    bpf_printk("%d", arr[-100]);
+	int arr[10] = { 0 };
+	bpf_printk("%d", arr[-100]);
 	return XDP_PASS;
 }
 

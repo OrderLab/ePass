@@ -31,7 +31,8 @@ int read(struct user_opts uopts)
 	enable_builtin(env);
 	u64 starttime = get_cur_time_ns();
 	if (uopts.no_compile) {
-		struct ir_function *fun = bpf_ir_lift(env, env->insns, env->insn_cnt);
+		struct ir_function *fun =
+			bpf_ir_lift(env, env->insns, env->insn_cnt);
 		CHECK_ERR(0);
 		bpf_ir_run(env, fun);
 		bpf_ir_free_function(fun);
