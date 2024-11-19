@@ -19,7 +19,7 @@ void enable_builtin(struct bpf_ir_env *env)
 static void usage(char *prog)
 {
 	printf("Usage: %s --mode <mode> --prog <prog> [--sec <sec>] "
-	       "[--gopt <gopt>] [--popt <popt>]\n",
+	       "[--gopt <gopt>] [--popt <popt>] --pass-only\n",
 	       prog);
 	printf("Modes:\n");
 	printf("  read: Run ePass from object file\n");
