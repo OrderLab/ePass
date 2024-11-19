@@ -3,7 +3,7 @@
 
 SEC("xdp")
 int prog(void *ctx) {
-    __u64 t = bpf_ktime_get_ns();
+    __u64 t = bpf_ktime_get_ns() % 100;
     for (__u64 i = 0; i < t; ++i) {
 		if (i > 100000) {
 			return 1;
