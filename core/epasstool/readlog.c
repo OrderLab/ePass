@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include <linux/bpf.h>
+
 #include "epasstool.h"
 
 int readlog(struct user_opts uopts)
