@@ -1778,6 +1778,8 @@ struct ir_function *bpf_ir_lift(struct bpf_ir_env *env,
 	struct ir_function *fun;
 	SAFE_MALLOC_RET_NULL(fun, sizeof(struct ir_function));
 	init_function(env, fun, &trans_env);
+	bpf_ir_pass_postprocess(env, fun);
+	CHECK_ERR(NULL);
 
 	env->lift_time += get_cur_time_ns() - starttime;
 
@@ -1792,8 +1794,6 @@ void bpf_ir_autorun(struct bpf_ir_env *env)
 	struct ir_function *fun = bpf_ir_lift(env, insns, len);
 	CHECK_ERR();
 
-	bpf_ir_pass_postprocess(env, fun);
-	CHECK_ERR();
 	print_ir_prog(env, fun);
 	PRINT_LOG_DEBUG(env, "Starting IR Passes...\n");
 	// Start IR manipulation
