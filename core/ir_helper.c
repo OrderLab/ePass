@@ -459,6 +459,7 @@ void print_ir_insn_full(struct bpf_ir_env *env, struct ir_insn *insn,
 		print_ir_value_full(env, insn->values[0], print_ir);
 		break;
 	default:
+		PRINT_LOG_ERROR(env, "Insn code: %d\n", insn->op);
 		CRITICAL("Unknown IR insn");
 	}
 	if (insn->raw_pos.valid) {

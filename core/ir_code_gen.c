@@ -1307,9 +1307,9 @@ static void normalize_alu(struct bpf_ir_env *env, struct ir_function *fun,
 			// ==>
 			// reg1 = reg2
 			// reg1 = add reg1 reg3
-			PRINT_LOG_DEBUG(env, "v0:");
-			print_ir_insn(env, v0->data.insn_d);
-			PRINT_LOG_DEBUG(env, "\n");
+			// PRINT_LOG_DEBUG(env, "v0:");
+			// print_ir_insn(env, v0->data.insn_d);
+			// PRINT_LOG_DEBUG(env, "\n");
 			struct ir_insn *new_insn = bpf_ir_create_assign_insn_cg(
 				env, insn, *v0, INSERT_FRONT);
 			// DBGASSERT(dst_insn ==
@@ -3106,7 +3106,6 @@ void bpf_ir_compile(struct bpf_ir_env *env, struct ir_function *fun)
 		prog_check_cg(env, fun);
 		CHECK_ERR();
 	}
-
 	// Step 12: Normalize
 	normalize(env, fun);
 	CHECK_ERR();
