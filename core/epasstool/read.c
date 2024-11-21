@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "bpf/libbpf.h"
 #include "epasstool.h"
+#include "linux/bpf_ir.h"
+#include <stdio.h>
 
 int read(struct user_opts uopts)
 {
@@ -27,11 +29,26 @@ int read(struct user_opts uopts)
 		return err;
 	}
 	enable_builtin(env);
-	bpf_ir_run(env);
+	u64 starttime = get_cur_time_ns();
+	if (uopts.no_compile) {
+		struct ir_function *fun =
+			bpf_ir_lift(env, env->insns, env->insn_cnt);
+		CHECK_ERR(0);
+		bpf_ir_run(env, fun);
+		bpf_ir_free_function(fun);
+	} else {
+		bpf_ir_autorun(env);
+	}
+	u64 tot = get_cur_time_ns() - starttime;
 
 	if (env->err) {
 		return env->err;
 	}
+
+	printf("ePass finished in %lluns\n", tot);
+	printf("lift %lluns\trun %lluns\tcompile %lluns\tsum %lluns\n",
+	       env->lift_time, env->run_time, env->cg_time,
+	       env->lift_time + env->run_time + env->cg_time);
 
 	bpf_ir_free_opts(env);
 	bpf_ir_free_env(env);

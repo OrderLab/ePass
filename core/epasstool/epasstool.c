@@ -16,16 +16,17 @@ void enable_builtin(struct bpf_ir_env *env)
 	}
 }
 
-void usage(void)
+static void usage(char *prog)
 {
-	printf("Usage: epasstool --mode <mode> --prog <prog> [--sec <sec>] "
-	       "[--gopt <gopt>] [--popt <popt>]\n");
+	printf("Usage: %s --mode <mode> --prog <prog> [--sec <sec>] "
+	       "[--gopt <gopt>] [--popt <popt>] --pass-only\n",
+	       prog);
 	printf("Modes:\n");
-	printf("  read: Read BPF program from file\n");
-	printf("  readload: Read BPF program from file and load it with modified bytecode\n");
-	printf("  readlog: Read BPF program from log\n");
+	printf("  read: Run ePass from object file\n");
+	printf("  readload: Run ePass from object file and load it with modified bytecode\n");
+	printf("  readlog: Run ePass from log\n");
 	printf("  print: Print BPF program\n");
-	printf("  printlog: Print BPF program with log\n");
+	printf("  printlog: Print BPF program from log\n");
 
 	exit(1);
 }
@@ -41,17 +42,22 @@ int main(int argc, char **argv)
 		MODE_PRINT_LOG,
 	} mode = MODE_NONE;
 	struct user_opts uopts;
+	uopts.gopt[0] = 0;
+	uopts.popt[0] = 0;
+	uopts.no_compile = false;
 	static struct option long_options[] = {
 		{ "mode", required_argument, NULL, 'm' },
 		{ "gopt", required_argument, NULL, 0 },
 		{ "popt", required_argument, NULL, 0 },
 		{ "prog", required_argument, NULL, 'p' },
 		{ "sec", required_argument, NULL, 's' },
+		{ "help", no_argument, NULL, 'h' },
+		{ "pass-only", no_argument, NULL, 0 },
 		{ NULL, 0, NULL, 0 }
 	};
 	int ch = 0;
 	int opt_index = 0;
-	while ((ch = getopt_long(argc, argv, "m:p:s:", long_options,
+	while ((ch = getopt_long(argc, argv, "m:p:s:h", long_options,
 				 &opt_index)) != -1) {
 		if (ch == 0) {
 			// printf("option %s\n", long_options[opt_index].name);
@@ -60,6 +66,9 @@ int main(int argc, char **argv)
 			} else if (strcmp(long_options[opt_index].name,
 					  "popt") == 0) {
 				strcpy(uopts.popt, optarg);
+			} else if (strcmp(long_options[opt_index].name,
+					  "pass-only") == 0) {
+				uopts.no_compile = true;
 			}
 		} else {
 			switch (ch) {
@@ -82,6 +91,10 @@ int main(int argc, char **argv)
 			case 's':
 				strcpy(uopts.sec, optarg);
 				break;
+			case 'h':
+				usage(argv[0]);
+				return 0;
+				break;
 			default:
 				break;
 			}
@@ -89,7 +102,8 @@ int main(int argc, char **argv)
 	}
 
 	if (mode == MODE_NONE) {
-		usage();
+		printf("Mode not specified\n");
+		usage(argv[0]);
 	}
 
 	if (mode == MODE_PRINT_LOG) {

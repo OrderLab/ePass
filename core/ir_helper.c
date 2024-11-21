@@ -168,6 +168,11 @@ static void print_ir_value_full(struct bpf_ir_env *env, struct ir_value v,
 		print_const(env, v);
 		PRINT_LOG_DEBUG(env, ")");
 		break;
+	case IR_VALUE_CONSTANT_RAWOFF_REV:
+		PRINT_LOG_DEBUG(env, "hole(-");
+		print_const(env, v);
+		PRINT_LOG_DEBUG(env, ")");
+		break;
 	case IR_VALUE_UNDEF:
 		PRINT_LOG_DEBUG(env, "undef");
 		break;
@@ -191,6 +196,8 @@ void print_address_value_full(struct bpf_ir_env *env, struct ir_address_value v,
 		PRINT_LOG_DEBUG(env, "+%d", v.offset);
 		if (v.offset_type == IR_VALUE_CONSTANT_RAWOFF) {
 			PRINT_LOG_DEBUG(env, "(+off)");
+		} else if (v.offset_type == IR_VALUE_CONSTANT_RAWOFF_REV) {
+			PRINT_LOG_DEBUG(env, "(-off)");
 		}
 	}
 }
@@ -393,6 +400,9 @@ void print_ir_insn_full(struct bpf_ir_env *env, struct ir_insn *insn,
 	case IR_INSN_MOD:
 		print_alu(env, insn, print_ir, "mod");
 		break;
+	case IR_INSN_XOR:
+		print_alu(env, insn, print_ir, "xor");
+		break;
 	case IR_INSN_CALL:
 		PRINT_LOG_DEBUG(env, "call __built_in_func_%d(", insn->fid);
 		if (insn->value_num >= 1) {
@@ -449,6 +459,7 @@ void print_ir_insn_full(struct bpf_ir_env *env, struct ir_insn *insn,
 		print_ir_value_full(env, insn->values[0], print_ir);
 		break;
 	default:
+		PRINT_LOG_ERROR(env, "Insn code: %d\n", insn->op);
 		CRITICAL("Unknown IR insn");
 	}
 	if (insn->raw_pos.valid) {
@@ -719,7 +730,6 @@ void print_ir_bb_err(struct bpf_ir_env *env, struct ir_basic_block *bb)
 
 void bpf_ir_reset_env(struct bpf_ir_env *env)
 {
-	env->log_pos = 0;
 	env->venv = NULL;
 	env->err = 0;
 	env->verifier_err = 0;

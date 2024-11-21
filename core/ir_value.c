@@ -9,6 +9,10 @@ bool bpf_ir_value_equal(struct ir_value a, struct ir_value b)
 	if (a.type == IR_VALUE_CONSTANT) {
 		return a.data.constant_d == b.data.constant_d;
 	}
+	if (a.type == IR_VALUE_CONSTANT_RAWOFF ||
+	    a.type == IR_VALUE_CONSTANT_RAWOFF_REV) {
+		return a.data.constant_d == b.data.constant_d;
+	}
 	if (a.type == IR_VALUE_INSN) {
 		return a.data.insn_d == b.data.insn_d;
 	}
@@ -21,7 +25,8 @@ static struct ir_value value_base(void)
 	return (struct ir_value){ .type = IR_VALUE_UNDEF,
 				  .raw_pos = { .valid = false },
 				  .const_type = IR_ALU_UNKNOWN,
-				  .builtin_const = IR_BUILTIN_NONE };
+				  .builtin_const = IR_BUILTIN_NONE,
+				  .raw_stack = false };
 }
 
 struct ir_value bpf_ir_value_insn(struct ir_insn *insn)
@@ -52,6 +57,24 @@ struct ir_value bpf_ir_value_const64(s64 val)
 {
 	struct ir_value v = value_base();
 	v.type = IR_VALUE_CONSTANT;
+	v.data.constant_d = val;
+	v.const_type = IR_ALU_64;
+	return v;
+}
+
+struct ir_value bpf_ir_value_const32_rawoff(s32 val)
+{
+	struct ir_value v = value_base();
+	v.type = IR_VALUE_CONSTANT_RAWOFF;
+	v.data.constant_d = val;
+	v.const_type = IR_ALU_32;
+	return v;
+}
+
+struct ir_value bpf_ir_value_const64_rawoff(s64 val)
+{
+	struct ir_value v = value_base();
+	v.type = IR_VALUE_CONSTANT_RAWOFF;
 	v.data.constant_d = val;
 	v.const_type = IR_ALU_64;
 	return v;

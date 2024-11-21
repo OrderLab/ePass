@@ -8,15 +8,31 @@ To start with, a simple constraint would be "range constraint", meaning a regist
 
 One opinion, one benefit of designing the raw constraint from is that our runtime-check system will not depend heavily on the current linux verifier and will be portable to other verifiers.
 
+## Future work
+
+Rewrite Normalization. Plain the IR.
+
+Just store the allocated position in value. Not track users. No references.
+
+All VRs are changed to Real Registers.
+
+Automatically connect BB based on JMP instructions.
+
 ## Bugs
 
 ### SplitBB operation may not work properly if it's at the top of a BB
 
+Resolved.
+
 ### Coalesce has some bugs
+
+Found root cause: you may not directly remove instructions like r1 = r1.
 
 ## Errors
 
 Reproduce: `ringbuf.c` enable coalesce will cause some error in CG
+
+Raw libbpf library loader doesn't change the "imm" value when calling the `callback_fn`. It doesn't support calling it after changing the resources.
 
 # TODO
 

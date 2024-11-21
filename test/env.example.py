@@ -1,0 +1,2 @@
+CARD = "enp0s3"
+EXPERIMENT_TIMES = 1

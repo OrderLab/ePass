@@ -20,6 +20,11 @@ int parse_int(const char *str, int *val)
 	return kstrtoint(str, 10, val);
 }
 
+u64 get_cur_time_ns(void)
+{
+	return ktime_get_ns();
+}
+
 #else
 
 void *malloc_proto(size_t size)
@@ -44,6 +49,13 @@ int parse_int(const char *str, int *val)
 		return -EINVAL;
 	}
 	return 0;
+}
+
+u64 get_cur_time_ns(void)
+{
+	struct timespec t = { 0, 0 };
+	clock_gettime(CLOCK_MONOTONIC, &t);
+	return 1e9 * t.tv_sec + t.tv_nsec;
 }
 
 #endif

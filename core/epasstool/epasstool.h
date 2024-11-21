@@ -10,6 +10,7 @@ struct user_opts {
 	char prog[64];
 	char sec[64];
 	struct bpf_ir_opts opts;
+	bool no_compile;
 };
 
 void masking_pass(struct bpf_ir_env *env, struct ir_function *fun, void *param);

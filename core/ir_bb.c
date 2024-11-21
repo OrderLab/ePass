@@ -71,7 +71,8 @@ void bpf_ir_disconnect_bb(struct ir_basic_block *from,
 
 struct ir_basic_block *bpf_ir_split_bb(struct bpf_ir_env *env,
 				       struct ir_function *fun,
-				       struct ir_insn *insn, bool split_front)
+				       struct ir_insn *insn,
+				       enum insert_position insert_pos)
 {
 	struct ir_basic_block *bb = insn->parent_bb;
 	struct ir_basic_block *new_bb = bpf_ir_create_bb(env, fun);
@@ -88,10 +89,15 @@ struct ir_basic_block *bpf_ir_split_bb(struct bpf_ir_env *env,
 	bpf_ir_array_free(&old_succs);
 	// Move all instructions after insn to new_bb
 	struct list_head *p;
-	if (split_front) {
+	if (insert_pos == INSERT_FRONT) {
 		p = &insn->list_ptr;
-	} else {
+	} else if (insert_pos == INSERT_BACK) {
 		p = insn->list_ptr.next;
+	} else {
+		RAISE_ERROR_RET("Unknown insert position", NULL);
+	}
+	if (p == &bb->ir_insn_head) {
+		RAISE_ERROR_RET("Cannot split at the end/start of a BB", NULL);
 	}
 	while (p != &bb->ir_insn_head) {
 		struct ir_insn *cur = list_entry(p, struct ir_insn, list_ptr);
@@ -122,4 +128,21 @@ struct ir_insn *bpf_ir_get_first_insn(struct ir_basic_block *bb)
 struct ir_bb_cg_extra *bpf_ir_bb_cg(struct ir_basic_block *bb)
 {
 	return bb->user_data;
+}
+
+struct ir_basic_block *
+bpf_ir_bb_create_error_block(struct bpf_ir_env *env, struct ir_function *fun,
+			     struct ir_insn *insn,
+			     enum insert_position insert_pos)
+{
+	struct ir_basic_block *bb = insn->parent_bb;
+
+	struct ir_basic_block *new_bb =
+		bpf_ir_split_bb(env, fun, insn, insert_pos);
+	CHECK_ERR(NULL);
+	struct ir_basic_block *err_bb = bpf_ir_create_bb(env, fun);
+	CHECK_ERR(NULL);
+	bpf_ir_create_throw_insn_bb(env, err_bb, INSERT_BACK);
+	bpf_ir_connect_bb(env, bb, err_bb);
+	return new_bb;
 }
