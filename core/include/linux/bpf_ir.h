@@ -1100,10 +1100,11 @@ struct ir_insn *bpf_ir_get_first_insn(struct ir_basic_block *bb);
 
 int bpf_ir_bb_empty(struct ir_basic_block *bb);
 
-struct ir_basic_block *
-bpf_ir_bb_create_error_block(struct bpf_ir_env *env, struct ir_function *fun,
-			     struct ir_insn *insn,
-			     enum insert_position insert_pos);
+void bpf_ir_bb_create_error_block(struct bpf_ir_env *env,
+				  struct ir_function *fun, struct ir_insn *insn,
+				  enum insert_position insert_pos,
+				  struct ir_basic_block **dst_err_bb,
+				  struct ir_basic_block **dst_new_bb);
 
 /* BB End */
 
