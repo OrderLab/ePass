@@ -17,3 +17,6 @@ for file in $files; do
 done
 
 echo "all:$all_objs" >> Makefile
+
+gcc fork.c -o output/fork
+gcc test.c -o output/test
