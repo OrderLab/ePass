@@ -77,6 +77,13 @@ void add_counter(struct bpf_ir_env *env, struct ir_function *fun, void *param)
 	if (param) {
 		opt = *(struct bpf_ir_counter_opt *)param;
 	}
+
+	PRINT_LOG_DEBUG(env, "Limit: %d; ", opt.counter_limit);
+	if (opt.accurate) {
+		PRINT_LOG_DEBUG(env, "Accurate mode\n");
+	} else {
+		PRINT_LOG_DEBUG(env, "Fast mode\n");
+	}
 	struct ir_basic_block *entry = fun->entry;
 	struct ir_insn *alloc_insn = bpf_ir_create_alloc_insn_bb(
 		env, entry, IR_VR_TYPE_32, INSERT_FRONT);
@@ -159,7 +166,6 @@ static int load_param(const char *opt, void **param)
 		}
 
 		if (strncmp(mopt, "limit=", 6) == 0) {
-			res.accurate = true;
 			int err = parse_int(mopt + 6, &res.counter_limit);
 			if (err) {
 				return err;

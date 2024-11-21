@@ -56,6 +56,8 @@ struct bpf_ir_opts {
 	// Enable register coalesce optimization
 	bool enable_coalesce;
 
+	bool enable_throw_msg;
+
 	// Verbose level
 	int verbose;
 

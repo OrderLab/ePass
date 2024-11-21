@@ -132,7 +132,9 @@ struct ir_bb_cg_extra *bpf_ir_bb_cg(struct ir_basic_block *bb)
 
 void bpf_ir_bb_create_error_block(struct bpf_ir_env *env,
 				  struct ir_function *fun, struct ir_insn *insn,
-				  enum insert_position insert_pos, struct ir_basic_block **dst_err_bb, struct ir_basic_block **dst_new_bb)
+				  enum insert_position insert_pos,
+				  struct ir_basic_block **dst_err_bb,
+				  struct ir_basic_block **dst_new_bb)
 {
 	struct ir_basic_block *bb = insn->parent_bb;
 
