@@ -49,6 +49,7 @@ int read(struct user_opts uopts)
 	printf("lift %lluns\trun %lluns\tcompile %lluns\tsum %lluns\n",
 	       env->lift_time, env->run_time, env->cg_time,
 	       env->lift_time + env->run_time + env->cg_time);
+	printf("program size: %zu->%zu\n", sz, env->insn_cnt);
 
 	bpf_ir_free_opts(env);
 	bpf_ir_free_env(env);
