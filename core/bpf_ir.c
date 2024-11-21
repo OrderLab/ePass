@@ -1847,6 +1847,7 @@ struct bpf_ir_opts bpf_ir_default_opts(void)
 	opts.verbose = 1;
 	opts.max_iteration = 10;
 	opts.disable_prog_check = false;
+	opts.enable_throw_msg = false;
 	return opts;
 }
 
