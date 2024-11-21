@@ -1,7 +1,7 @@
 #ifndef _LINUX_BPF_IR_H
 #define _LINUX_BPF_IR_H
 
-#include <linux/bpf.h>
+#include "linux/bpf.h"
 
 #ifndef __KERNEL__
 #include <errno.h>
@@ -704,6 +704,8 @@ void bpf_ir_prog_check(struct bpf_ir_env *env, struct ir_function *fun);
 
 /* Fun End */
 
+void bpf_ir_free_function(struct ir_function *fun);
+
 /* IR Instructions Start */
 
 enum insert_position {
@@ -1097,6 +1099,11 @@ struct ir_insn *bpf_ir_get_last_insn(struct ir_basic_block *bb);
 struct ir_insn *bpf_ir_get_first_insn(struct ir_basic_block *bb);
 
 int bpf_ir_bb_empty(struct ir_basic_block *bb);
+
+struct ir_basic_block *
+bpf_ir_bb_create_error_block(struct bpf_ir_env *env, struct ir_function *fun,
+			     struct ir_insn *insn,
+			     enum insert_position insert_pos);
 
 /* BB End */
 

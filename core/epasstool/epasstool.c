@@ -19,7 +19,7 @@ void enable_builtin(struct bpf_ir_env *env)
 static void usage(char *prog)
 {
 	printf("Usage: %s --mode <mode> --prog <prog> [--sec <sec>] "
-	       "[--gopt <gopt>] [--popt <popt>]\n",
+	       "[--gopt <gopt>] [--popt <popt>] --pass-only\n",
 	       prog);
 	printf("Modes:\n");
 	printf("  read: Run ePass from object file\n");
@@ -44,6 +44,7 @@ int main(int argc, char **argv)
 	struct user_opts uopts;
 	uopts.gopt[0] = 0;
 	uopts.popt[0] = 0;
+	uopts.no_compile = false;
 	static struct option long_options[] = {
 		{ "mode", required_argument, NULL, 'm' },
 		{ "gopt", required_argument, NULL, 0 },
@@ -51,6 +52,7 @@ int main(int argc, char **argv)
 		{ "prog", required_argument, NULL, 'p' },
 		{ "sec", required_argument, NULL, 's' },
 		{ "help", no_argument, NULL, 'h' },
+		{ "pass-only", no_argument, NULL, 0 },
 		{ NULL, 0, NULL, 0 }
 	};
 	int ch = 0;
@@ -64,6 +66,9 @@ int main(int argc, char **argv)
 			} else if (strcmp(long_options[opt_index].name,
 					  "popt") == 0) {
 				strcpy(uopts.popt, optarg);
+			} else if (strcmp(long_options[opt_index].name,
+					  "pass-only") == 0) {
+				uopts.no_compile = true;
 			}
 		} else {
 			switch (ch) {
