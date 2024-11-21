@@ -47,12 +47,12 @@ int readload(struct user_opts uopts)
 				     bpf_program__expected_attach_type(prog),
 				     &handler_opts);
 	bpf_object__close(obj);
-#ifdef EPASS_LIBBPF
-	obj = bpf_object__open(uopts.prog, 0, NULL, NULL);
-#else
 	obj = bpf_object__open(uopts.prog);
-#endif
+#ifdef EPASS_LIBBPF
+	bpf_object__load(obj, 0, NULL, NULL);
+#else
 	bpf_object__load(obj);
+#endif
 	bpf_ir_free_opts(env);
 	bpf_ir_free_env(env);
 	bpf_object__close(obj);
