@@ -38,6 +38,7 @@ def init():
     print("init...")
     os.system("./gen_tests.sh")
     os.system("make all -j$(nproc)")
+    os.mkdir("evalout")
 
 
 def measure_cmd_time_avg(cmd: str):
@@ -54,6 +55,30 @@ def measure_cmd_time_avg(cmd: str):
 
     return sum(times) / len(times) / 1000000
 
+
+
+def measure_epass_insns(prog, sec, gopt="", popt=""):
+    process = subprocess.Popen(
+        [
+            "epass",
+            "-m",
+            "read",
+            "-p",
+            prog,
+            "-s",
+            sec,
+            "--gopt",
+            gopt,
+            "--popt",
+            popt,
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    out, _ = process.communicate()
+    rec = re.compile(r"program size: (.*?)->(.*?)\s")
+    (c1, c2) = rec.findall(out.decode())[0]
+    return (int(c1), int(c2))
 
 def measure_epass_time_avg(prog, sec, gopt="", popt=""):
     tot_times = []
@@ -116,7 +141,7 @@ def attach_prog():
 
 
 def test_network():
-    for _ in range(10):
+    for _ in range(50):
         for u in urls:
             check_connectivity(u)
 
@@ -335,6 +360,11 @@ def evaluate_counter_pass():
     plt.tight_layout()
     fig.savefig("evalout/add_counter.pdf", dpi=200)
 
+def evaluate_counter_pass_efficiency():
+    # Test the efficiency of add_counter, using performance pass vs accurate pass
+    ret = measure_epass_insns("output/evaluation_counter_loop3.o", "prog", popt="add_counter")
+    ret2 = measure_epass_insns("output/evaluation_counter_loop3.o", "prog", popt="add_counter(accurate)")
+    print(ret, ret2)
 
 if __name__ == "__main__":
     import sys
@@ -347,3 +377,5 @@ if __name__ == "__main__":
         evaluate_compile_speed()
     if arg == "counter":
         evaluate_counter_pass()
+    if arg == "counter_eff":
+        evaluate_counter_pass_efficiency()

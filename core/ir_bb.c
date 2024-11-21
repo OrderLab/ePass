@@ -129,3 +129,22 @@ struct ir_bb_cg_extra *bpf_ir_bb_cg(struct ir_basic_block *bb)
 {
 	return bb->user_data;
 }
+
+void bpf_ir_bb_create_error_block(struct bpf_ir_env *env,
+				  struct ir_function *fun, struct ir_insn *insn,
+				  enum insert_position insert_pos,
+				  struct ir_basic_block **dst_err_bb,
+				  struct ir_basic_block **dst_new_bb)
+{
+	struct ir_basic_block *bb = insn->parent_bb;
+
+	struct ir_basic_block *new_bb =
+		bpf_ir_split_bb(env, fun, insn, insert_pos);
+	CHECK_ERR();
+	struct ir_basic_block *err_bb = bpf_ir_create_bb(env, fun);
+	CHECK_ERR();
+	bpf_ir_create_throw_insn_bb(env, err_bb, INSERT_BACK);
+	bpf_ir_connect_bb(env, bb, err_bb);
+	*dst_err_bb = err_bb;
+	*dst_new_bb = new_bb;
+}

@@ -16,6 +16,8 @@ Just store the allocated position in value. Not track users. No references.
 
 All VRs are changed to Real Registers.
 
+Automatically connect BB based on JMP instructions.
+
 ## Bugs
 
 ### SplitBB operation may not work properly if it's at the top of a BB

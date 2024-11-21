@@ -1,7 +1,10 @@
 cmake_minimum_required(VERSION 3.20)
 project(epass C)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror -Wstrict-prototypes -Wenum-compare -Wunused-variable -Wunused-but-set-variable -Wsign-compare -O3")
-
+OPTION(EPASS_LIBBPF "Compile with ePass libbpf" OFF)
+IF(EPASS_LIBBPF)
+    ADD_DEFINITIONS(-DEPASS_LIBBPF)
+ENDIF(EPASS_LIBBPF)
 add_library(epass STATIC
     bpf_ir.c
     array.c

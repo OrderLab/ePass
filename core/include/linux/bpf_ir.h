@@ -1,7 +1,7 @@
 #ifndef _LINUX_BPF_IR_H
 #define _LINUX_BPF_IR_H
 
-#include <linux/bpf.h>
+#include "linux/bpf.h"
 
 #ifndef __KERNEL__
 #include <errno.h>
@@ -55,6 +55,8 @@ struct bpf_ir_opts {
 
 	// Enable register coalesce optimization
 	bool enable_coalesce;
+
+	bool enable_throw_msg;
 
 	// Verbose level
 	int verbose;
@@ -1100,6 +1102,12 @@ struct ir_insn *bpf_ir_get_first_insn(struct ir_basic_block *bb);
 
 int bpf_ir_bb_empty(struct ir_basic_block *bb);
 
+void bpf_ir_bb_create_error_block(struct bpf_ir_env *env,
+				  struct ir_function *fun, struct ir_insn *insn,
+				  enum insert_position insert_pos,
+				  struct ir_basic_block **dst_err_bb,
+				  struct ir_basic_block **dst_new_bb);
+
 /* BB End */
 
 /* IR Helper Start */
@@ -1220,36 +1228,33 @@ struct builtin_pass_cfg {
 };
 
 #define DEF_CUSTOM_PASS(pass_def, check_applyc, param_loadc, param_unloadc) \
-	{                                                                   \
-		.pass = pass_def, .param = NULL, .param_load = param_loadc, \
-		.param_unload = param_unloadc, .check_apply = check_applyc  \
-	}
+	{ .pass = pass_def,                                                 \
+	  .param = NULL,                                                    \
+	  .param_load = param_loadc,                                        \
+	  .param_unload = param_unloadc,                                    \
+	  .check_apply = check_applyc }
 
 #define DEF_BUILTIN_PASS_CFG(namec, param_loadc, param_unloadc) \
-	{                                                       \
-		.name = namec, .param = NULL, .enable = false,  \
-		.enable_cfg = false, .param_load = param_loadc, \
-		.param_unload = param_unloadc                   \
-	}
+	{ .name = namec,                                        \
+	  .param = NULL,                                        \
+	  .enable = false,                                      \
+	  .enable_cfg = false,                                  \
+	  .param_load = param_loadc,                            \
+	  .param_unload = param_unloadc }
 
 #define DEF_BUILTIN_PASS_ENABLE_CFG(namec, param_loadc, param_unloadc) \
-	{                                                              \
-		.name = namec, .param = NULL, .enable = true,          \
-		.enable_cfg = false, .param_load = param_loadc,        \
-		.param_unload = param_unloadc                          \
-	}
+	{ .name = namec,                                               \
+	  .param = NULL,                                               \
+	  .enable = true,                                              \
+	  .enable_cfg = false,                                         \
+	  .param_load = param_loadc,                                   \
+	  .param_unload = param_unloadc }
 
-#define DEF_FUNC_PASS(fun, msg, en_def)                      \
-	{                                                    \
-		.pass = fun, .name = msg, .enabled = en_def, \
-		.force_enable = false                        \
-	}
+#define DEF_FUNC_PASS(fun, msg, en_def) \
+	{ .pass = fun, .name = msg, .enabled = en_def, .force_enable = false }
 
-#define DEF_NON_OVERRIDE_FUNC_PASS(fun, msg)               \
-	{                                                  \
-		.pass = fun, .name = msg, .enabled = true, \
-		.force_enable = true                       \
-	}
+#define DEF_NON_OVERRIDE_FUNC_PASS(fun, msg) \
+	{ .pass = fun, .name = msg, .enabled = true, .force_enable = true }
 
 /* Passes End */
 

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include <linux/bpf.h>
+
 #include <linux/bpf_common.h>
 #include <linux/bpf_ir.h>
 
@@ -1481,14 +1481,18 @@ static void init_function(struct bpf_ir_env *env, struct ir_function *fun,
 	}
 }
 
-static void bpf_ir_fix_bb_succ(struct bpf_ir_env *env, struct ir_function *fun)
+static void gen_bb_succ(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	struct ir_basic_block **pos;
 	array_for(pos, fun->all_bbs)
 	{
 		struct ir_basic_block *bb = *pos;
 		struct ir_insn *insn = bpf_ir_get_last_insn(bb);
-		if (insn && bpf_ir_is_cond_jmp(insn)) {
+		if (!insn) {
+			// Empty BB
+			continue;
+		}
+		if (bpf_ir_is_cond_jmp(insn)) {
 			// Conditional jmp
 			if (bb->succs.num_elem != 2) {
 				print_ir_insn_err(env, insn,
@@ -1502,6 +1506,16 @@ static void bpf_ir_fix_bb_succ(struct bpf_ir_env *env, struct ir_function *fun)
 				&bb->succs, 1, struct ir_basic_block *);
 			*s1 = insn->bb1;
 			*s2 = insn->bb2;
+		}
+		if (insn->op == IR_INSN_JA) {
+			if (bb->succs.num_elem != 1) {
+				print_ir_insn_err(env, insn,
+						  "Jump instruction");
+				RAISE_ERROR("JA jmp with != 1 successors");
+			}
+			struct ir_basic_block **s1 = array_get(
+				&bb->succs, 0, struct ir_basic_block *);
+			*s1 = insn->bb1;
 		}
 	}
 }
@@ -1590,7 +1604,7 @@ static void gen_end_bbs(struct bpf_ir_env *env, struct ir_function *fun)
 static void bpf_ir_pass_postprocess(struct bpf_ir_env *env,
 				    struct ir_function *fun)
 {
-	bpf_ir_fix_bb_succ(env, fun);
+	gen_bb_succ(env, fun);
 	CHECK_ERR();
 	bpf_ir_clean_metadata_all(fun);
 	gen_reachable_bbs(env, fun);
@@ -1833,6 +1847,7 @@ struct bpf_ir_opts bpf_ir_default_opts(void)
 	opts.verbose = 1;
 	opts.max_iteration = 10;
 	opts.disable_prog_check = false;
+	opts.enable_throw_msg = false;
 	return opts;
 }
 
