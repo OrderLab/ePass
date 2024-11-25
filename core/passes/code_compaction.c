@@ -6,5 +6,4 @@
 void bpf_ir_optimize_code_compaction(struct bpf_ir_env *env,
 				     struct ir_function *fun, void *param)
 {
-    
 }
