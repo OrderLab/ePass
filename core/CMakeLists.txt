@@ -17,6 +17,7 @@ add_library(epass STATIC
     passes/translate_throw.c
     passes/optimization.c
     passes/cg_prepare.c
+    passes/code_compaction.c
     passes/msan.c
     passes/div_by_zero.c
     passes/jmp_complexity.c

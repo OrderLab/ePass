@@ -49,4 +49,5 @@ void bpf_ir_jmp_complexity(struct bpf_ir_env *env, struct ir_function *fun,
 					err_bb, IR_INSN_JGT, IR_ALU_64,
 					INSERT_BACK);
 	}
+	bpf_ir_array_free(&jmp_insns);
 }
