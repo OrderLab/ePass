@@ -1185,10 +1185,14 @@ void msan(struct bpf_ir_env *env, struct ir_function *fun, void *param);
 void bpf_ir_div_by_zero(struct bpf_ir_env *env, struct ir_function *fun,
 			void *param);
 
+void bpf_ir_optimize_code_compaction(struct bpf_ir_env *env,
+				     struct ir_function *fun, void *param);
+
 extern const struct builtin_pass_cfg bpf_ir_kern_add_counter_pass;
 extern const struct builtin_pass_cfg bpf_ir_kern_optimization_pass;
 extern const struct builtin_pass_cfg bpf_ir_kern_msan;
 extern const struct builtin_pass_cfg bpf_ir_kern_div_by_zero_pass;
+extern const struct builtin_pass_cfg bpf_ir_kern_compaction_pass;
 
 void translate_throw(struct bpf_ir_env *env, struct ir_function *fun,
 		     void *param);

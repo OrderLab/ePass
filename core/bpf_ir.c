@@ -228,6 +228,8 @@ static const struct function_pass post_passes[] = {
 	DEF_FUNC_PASS(add_counter, "add_counter", false),
 	/* CG Preparation Passes */
 	DEF_NON_OVERRIDE_FUNC_PASS(translate_throw, "translate_throw"),
+	DEF_NON_OVERRIDE_FUNC_PASS(bpf_ir_optimize_code_compaction,
+				   "optimize_compaction"),
 	DEF_NON_OVERRIDE_FUNC_PASS(bpf_ir_optimize_ir, "optimize_ir"),
 	DEF_NON_OVERRIDE_FUNC_PASS(bpf_ir_cg_change_fun_arg, "change_fun_arg"),
 	DEF_NON_OVERRIDE_FUNC_PASS(bpf_ir_cg_change_call_pre_cg, "change_call"),

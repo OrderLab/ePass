@@ -118,6 +118,7 @@ int main(int argc, char **argv)
 	struct builtin_pass_cfg passes[] = {
 		bpf_ir_kern_add_counter_pass,
 		bpf_ir_kern_optimization_pass,
+		bpf_ir_kern_compaction_pass,
 		bpf_ir_kern_msan,
 	};
 	struct custom_pass_cfg custom_passes[] = {
