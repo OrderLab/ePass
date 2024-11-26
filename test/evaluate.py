@@ -19,14 +19,6 @@ import glob
 EXPERIMENT_TIMES = env.EXPERIMENT_TIMES
 CARD = env.CARD
 
-urls = [
-    "https://www.google.com",
-    "https://1.1.1.1",
-    "https://208.67.222.222",
-    "https://www.github.com",
-    "https://www.wikipedia.org",
-]
-
 def all_objects():
     # Get all .o file paths in the output directory
     o_files = glob.glob(os.path.join("output", "*.o"))
@@ -65,11 +57,15 @@ def measure_cmd_time_avg(cmd: str):
 
 
 def measure_epass_insns(prog, sec, gopt="", popt=""):
+    if prog[-3:] == "txt":
+        mode = "readlog"
+    else:
+        mode = "read"
     process = subprocess.Popen(
         [
             "epass",
             "-m",
-            "read",
+            mode,
             "-p",
             prog,
             "-s",
@@ -378,7 +374,19 @@ def evaluate_counter_pass_efficiency():
 def evaluate_optimization():
     for idx, obj in enumerate(all_objects()):
         (r1, r2) = measure_epass_insns(obj, "prog")
-        print(r1, r2)
+        if r1 == 0:
+            continue # Ignore buggy programs
+
+        (_, newr2) = measure_epass_insns(obj, "prog", "enable_coalesce", "optimize_compaction")
+        if newr2 != 0:
+            r2 = newr2
+        else:
+            (_, newr2) = measure_epass_insns(obj, "prog", "", "optimize_compaction")
+            if newr2 != 0:
+                r2 = newr2
+        if r2 > r1:
+            continue
+        print(f"{obj} {r1} -> {r2}")
 
 if __name__ == "__main__":
     import sys
