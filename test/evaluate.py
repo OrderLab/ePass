@@ -26,6 +26,8 @@ urls = [
     "https://www.wikipedia.org",
 ]
 
+def all_objects():
+    # get
 
 def check_connectivity(url):
     try:
@@ -36,6 +38,7 @@ def check_connectivity(url):
 
 def init():
     print("init...")
+    os.system("sudo /sbin/sysctl -w kernel.bpf_stats_enabled=1")
     os.system("./gen_tests.sh")
     os.system("make all -j$(nproc)")
     os.mkdir("evalout")
@@ -77,8 +80,11 @@ def measure_epass_insns(prog, sec, gopt="", popt=""):
     )
     out, _ = process.communicate()
     rec = re.compile(r"program size: (.*?)->(.*?)\s")
-    (c1, c2) = rec.findall(out.decode())[0]
-    return (int(c1), int(c2))
+    try:
+        (c1, c2) = rec.findall(out.decode())[0]
+        return (int(c1), int(c2))
+    except:
+        return 0, 0
 
 def measure_epass_time_avg(prog, sec, gopt="", popt=""):
     tot_times = []
@@ -366,11 +372,14 @@ def evaluate_counter_pass_efficiency():
     ret2 = measure_epass_insns("output/evaluation_counter_loop3.o", "prog", popt="add_counter(accurate)")
     print(ret, ret2)
 
+def evaluate_optimization():
+    (r1, r2) = measure_epass_insns("output/evaluation_counter_loop3.o", "prog")
+    print(r1, r2)
+
 if __name__ == "__main__":
     import sys
 
     arg = sys.argv[1]
-    os.system("sudo /sbin/sysctl -w kernel.bpf_stats_enabled=1")
     if arg == "init":
         init()
     if arg == "speed":
@@ -379,3 +388,5 @@ if __name__ == "__main__":
         evaluate_counter_pass()
     if arg == "counter_eff":
         evaluate_counter_pass_efficiency()
+    if arg == "opt":
+        evaluate_optimization()
