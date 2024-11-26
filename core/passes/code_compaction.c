@@ -70,4 +70,4 @@ void bpf_ir_optimize_code_compaction(struct bpf_ir_env *env,
 }
 
 const struct builtin_pass_cfg bpf_ir_kern_compaction_pass =
-	DEF_BUILTIN_PASS_ENABLE_CFG("optimize_compaction", NULL, NULL);
+	DEF_BUILTIN_PASS_CFG("optimize_compaction", NULL, NULL);
