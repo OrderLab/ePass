@@ -15,6 +15,7 @@ from pathlib import Path
 import env
 import time
 import glob
+import matplotlib.ticker as mticker
 
 EXPERIMENT_TIMES = env.EXPERIMENT_TIMES
 CARD = env.CARD
@@ -22,6 +23,9 @@ CARD = env.CARD
 def all_objects():
     # Get all .o file paths in the output directory
     o_files = glob.glob(os.path.join("output", "*.o"))
+    o_files.remove("output/evaluation_compile_speed_speed_100.o")
+    o_files.remove("output/evaluation_compile_speed_speed_50.o")
+    o_files.remove("output/evaluation_compile_speed_speed_20.o")
     return o_files
 
 
@@ -372,7 +376,13 @@ def evaluate_counter_pass_efficiency():
     print(ret, ret2)
 
 def evaluate_optimization():
-    for idx, obj in enumerate(all_objects()):
+    evaluate_optimization1()
+    evaluate_optimization2()
+    evaluate_optimization3()
+
+def evaluate_optimization1():
+    numbers = []
+    for obj in all_objects():
         (r1, r2) = measure_epass_insns(obj, "prog")
         if r1 == 0:
             continue # Ignore buggy programs
@@ -385,8 +395,88 @@ def evaluate_optimization():
             if newr2 != 0:
                 r2 = newr2
         if r2 > r1:
+            numbers.append(0)
             continue
-        print(f"{obj} {r1} -> {r2}")
+        # print(f"{obj} {r1} -> {r2}")
+        numbers.append((r1 - r2)/r1)
+    numbers = sorted(numbers, reverse=True)
+    plt.bar(range(len(numbers)), numbers)
+
+    plt.xlabel("Program Index")
+    plt.ylabel("NI Reduced")
+
+    plt.gca().yaxis.set_major_formatter(mticker.PercentFormatter(xmax=1))
+
+    fig = matplotlib.pyplot.gcf()
+    fig.set_size_inches(3, 2)
+    plt.tight_layout()
+    fig.savefig("evalout/opt1.pdf", dpi=200)
+    plt.clf()
+
+def evaluate_optimization2():
+    numbers = []
+    for obj in all_objects():
+        (r2, r1) = measure_epass_insns(obj, "prog", popt="optimize_ir(noopt)")
+        if r2 == 0:
+            continue # Ignore buggy programs
+
+        (_, newr2) = measure_epass_insns(obj, "prog", "enable_coalesce", "optimize_compaction")
+        if newr2 != 0:
+            r2 = newr2
+        else:
+            (_, newr2) = measure_epass_insns(obj, "prog", "", "optimize_compaction")
+            if newr2 != 0:
+                r2 = newr2
+        if r2 > r1:
+            numbers.append(0)
+            continue
+        # print(f"{obj} {r1} -> {r2}")
+        numbers.append((r1 - r2)/r1)
+    numbers = sorted(numbers, reverse=True)
+    plt.bar(range(len(numbers)), numbers)
+
+    plt.xlabel("Program Index")
+    plt.ylabel("NI Reduced")
+
+    plt.gca().yaxis.set_major_formatter(mticker.PercentFormatter(xmax=1))
+
+    fig = matplotlib.pyplot.gcf()
+    fig.set_size_inches(3, 2)
+    plt.tight_layout()
+    fig.savefig("evalout/opt2.pdf", dpi=200)
+    plt.clf()
+
+
+def evaluate_optimization3():
+    numbers = []
+    for obj in all_objects():
+        (r1, r2) = measure_epass_insns(obj, "prog", popt="add_counter")
+        if r1 == 0:
+            continue # Ignore buggy programs
+
+        (_, newr1) = measure_epass_insns(obj, "prog", popt="add_counter(accurate)")
+        if newr1 != 0:
+            r1 = newr1
+
+        if r2 > r1:
+            numbers.append(0)
+            continue
+        # print(f"{obj} {r1} -> {r2}")
+        numbers.append((r1 - r2)/r1)
+    numbers = sorted(numbers, reverse=True)
+    plt.bar(range(len(numbers)), numbers)
+
+    plt.xlabel("Program Index")
+    plt.ylabel("NI Reduced")
+
+    plt.gca().yaxis.set_major_formatter(mticker.PercentFormatter(xmax=1))
+
+    fig = matplotlib.pyplot.gcf()
+    fig.set_size_inches(3, 2)
+    plt.tight_layout()
+    fig.savefig("evalout/opt3.pdf", dpi=200)
+    plt.clf()
+
 
 if __name__ == "__main__":
     import sys
