@@ -28,7 +28,7 @@ struct {
 
 
 SEC("tracepoint/syscount")
-int syscount(struct trace_event_raw_sys_enter *ctx) {
+int prog(struct trace_event_raw_sys_enter *ctx) {
 	// Interpret ctx
 	u64 syscall_id = ctx->id;
 	u64 *value;

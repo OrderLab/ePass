@@ -14,6 +14,7 @@ import requests
 from pathlib import Path
 import env
 import time
+import glob
 
 EXPERIMENT_TIMES = env.EXPERIMENT_TIMES
 CARD = env.CARD
@@ -27,7 +28,10 @@ urls = [
 ]
 
 def all_objects():
-    # get
+    # Get all .o file paths in the output directory
+    o_files = glob.glob(os.path.join("output", "*.o"))
+    return o_files
+
 
 def check_connectivity(url):
     try:
@@ -147,9 +151,8 @@ def attach_prog():
 
 
 def test_network():
-    for _ in range(50):
-        for u in urls:
-            check_connectivity(u)
+    # for _ in range(2):
+    os.system("speedtest-cli --secure")
 
 
 def collect_info():
@@ -373,8 +376,9 @@ def evaluate_counter_pass_efficiency():
     print(ret, ret2)
 
 def evaluate_optimization():
-    (r1, r2) = measure_epass_insns("output/evaluation_counter_loop3.o", "prog")
-    print(r1, r2)
+    for idx, obj in enumerate(all_objects()):
+        (r1, r2) = measure_epass_insns(obj, "prog")
+        print(r1, r2)
 
 if __name__ == "__main__":
     import sys
