@@ -498,9 +498,10 @@ static bool coalescing(struct bpf_ir_env *env, struct ir_function *fun)
 					if (insn_cg(src)->alloc_reg ==
 					    insn_cg(insn_dst)->alloc_reg) {
 						// Remove
-						erase_same_reg_assign(env, fun,
-								      insn);
-						return true;
+						// erase_same_reg_assign(env, fun,
+						// 		      insn);
+						// return true;
+						continue;
 					}
 
 					// R = R
