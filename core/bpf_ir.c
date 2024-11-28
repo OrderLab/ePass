@@ -1564,6 +1564,15 @@ static void add_reach(struct bpf_ir_env *env, struct ir_function *fun,
 			break;
 		}
 		if (cur_bb->succs.num_elem == 1) {
+			// Check if end with JA
+			struct ir_insn *lastinsn = bpf_ir_get_last_insn(cur_bb);
+			if (lastinsn && lastinsn->op == IR_INSN_JA) {
+				struct ir_basic_block **succ2 =
+					bpf_ir_array_get_void(&cur_bb->succs,
+							      0);
+				bpf_ir_array_push(env, &todo, succ2);
+				break;
+			}
 		} else if (cur_bb->succs.num_elem == 2) {
 			struct ir_basic_block **succ2 =
 				bpf_ir_array_get_void(&cur_bb->succs, 1);
