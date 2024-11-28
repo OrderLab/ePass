@@ -105,6 +105,8 @@ static int apply_global_opt(struct bpf_ir_env *env, const char *opt)
 		env->opts.disable_prog_check = true;
 	} else if (strcmp(opt, "print_bpf_detail") == 0) {
 		env->opts.print_mode = BPF_IR_PRINT_BPF_DETAIL;
+	} else if (strcmp(opt, "printk_log") == 0) {
+		env->opts.enable_printk_log = true;
 	} else if (strcmp(opt, "throw_msg") == 0) {
 		env->opts.enable_throw_msg = true;
 	} else if (strncmp(opt, "verbose=", 8) == 0) {
