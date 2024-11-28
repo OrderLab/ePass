@@ -13,7 +13,7 @@ add_library(epass STATIC
     ir_bb.c
     ir_insn.c
     passes/phi_pass.c
-    passes/add_counter_pass.c
+    passes/insn_counter_pass.c
     passes/translate_throw.c
     passes/optimization.c
     passes/cg_prepare.c

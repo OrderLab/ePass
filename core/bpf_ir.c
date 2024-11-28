@@ -225,7 +225,7 @@ static const struct function_pass pre_passes[] = {
 static const struct function_pass post_passes[] = {
 	DEF_FUNC_PASS(bpf_ir_div_by_zero, "div_by_zero", false),
 	DEF_FUNC_PASS(msan, "msan", false),
-	DEF_FUNC_PASS(add_counter, "add_counter", false),
+	DEF_FUNC_PASS(insn_counter, "insn_counter", false),
 	/* CG Preparation Passes */
 	DEF_NON_OVERRIDE_FUNC_PASS(translate_throw, "translate_throw"),
 	DEF_FUNC_PASS(bpf_ir_optimize_code_compaction, "optimize_compaction",
@@ -1859,6 +1859,7 @@ struct bpf_ir_opts bpf_ir_default_opts(void)
 	opts.max_iteration = 10;
 	opts.disable_prog_check = false;
 	opts.enable_throw_msg = false;
+	opts.enable_printk_log = false;
 	return opts;
 }
 

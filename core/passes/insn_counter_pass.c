@@ -69,7 +69,7 @@ static void add_counter_to_bb(struct bpf_ir_env *env, struct ir_basic_block *bb,
 	// bpf_ir_connect_bb(env, bb, err_bb);
 }
 
-void add_counter(struct bpf_ir_env *env, struct ir_function *fun, void *param)
+void insn_counter(struct bpf_ir_env *env, struct ir_function *fun, void *param)
 {
 	struct bpf_ir_counter_opt opt;
 	opt.counter_limit = 1000000;
@@ -191,5 +191,5 @@ static void unload_param(void *param)
 	free_proto(param);
 }
 
-const struct builtin_pass_cfg bpf_ir_kern_add_counter_pass =
-	DEF_BUILTIN_PASS_CFG("add_counter", load_param, unload_param);
+const struct builtin_pass_cfg bpf_ir_kern_insn_counter_pass =
+	DEF_BUILTIN_PASS_CFG("insn_counter", load_param, unload_param);

@@ -116,7 +116,7 @@ int main(int argc, char **argv)
 	// Initialize common options
 	common_opts = bpf_ir_default_opts();
 	struct builtin_pass_cfg passes[] = {
-		bpf_ir_kern_add_counter_pass,
+		bpf_ir_kern_insn_counter_pass,
 		bpf_ir_kern_optimization_pass,
 		bpf_ir_kern_compaction_pass,
 		bpf_ir_kern_msan,

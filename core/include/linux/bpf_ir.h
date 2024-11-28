@@ -53,9 +53,13 @@ struct bpf_ir_opts {
 	// Force to use ePass, even if verifier passes
 	bool force;
 
+	// Enable printing log to printk
+	bool enable_printk_log;
+
 	// Enable register coalesce optimization
 	bool enable_coalesce;
 
+	// Write an error message to trace when throwing an error
 	bool enable_throw_msg;
 
 	// Verbose level
@@ -1178,7 +1182,7 @@ void print_ir_bb_err(struct bpf_ir_env *env, struct ir_basic_block *bb);
 void remove_trivial_phi(struct bpf_ir_env *env, struct ir_function *fun,
 			void *param);
 
-void add_counter(struct bpf_ir_env *env, struct ir_function *fun, void *param);
+void insn_counter(struct bpf_ir_env *env, struct ir_function *fun, void *param);
 
 void msan(struct bpf_ir_env *env, struct ir_function *fun, void *param);
 
@@ -1188,7 +1192,7 @@ void bpf_ir_div_by_zero(struct bpf_ir_env *env, struct ir_function *fun,
 void bpf_ir_optimize_code_compaction(struct bpf_ir_env *env,
 				     struct ir_function *fun, void *param);
 
-extern const struct builtin_pass_cfg bpf_ir_kern_add_counter_pass;
+extern const struct builtin_pass_cfg bpf_ir_kern_insn_counter_pass;
 extern const struct builtin_pass_cfg bpf_ir_kern_optimization_pass;
 extern const struct builtin_pass_cfg bpf_ir_kern_msan;
 extern const struct builtin_pass_cfg bpf_ir_kern_div_by_zero_pass;
