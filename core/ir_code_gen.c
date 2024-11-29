@@ -2588,15 +2588,8 @@ static void translate_loadimm_extra(struct ir_insn *insn)
 	extra->translated[0].src_reg = insn->imm_extra_type;
 	extra->translated[0].dst_reg = get_alloc_reg(dst_insn);
 	// 0 2 6 needs next
-	if (insn->imm_extra_type == IR_LOADIMM_IMM64 ||
-	    insn->imm_extra_type == IR_LOADIMM_MAP_VAL_FD ||
-	    insn->imm_extra_type == IR_LOADIMM_MAP_VAL_IDX) {
-		extra->translated[0].it = IMM64;
-		extra->translated[0].imm64 = insn->imm64;
-	} else {
-		extra->translated[0].imm = insn->imm64 & 0xFFFFFFFF;
-		extra->translated[0].it = IMM;
-	}
+	extra->translated[0].it = IMM64;
+	extra->translated[0].imm64 = insn->imm64;
 }
 
 static void translate_storeraw(struct ir_insn *insn)
