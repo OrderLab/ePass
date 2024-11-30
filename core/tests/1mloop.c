@@ -1,7 +1,7 @@
 #include <linux/bpf.h>
 #include <bpf/bpf_helpers.h>
 
-SEC("tp/syscalls/sys_enter_execve")
+SEC("xdp")
 int prog(void *ctx) {
     __u64 t = bpf_ktime_get_ns();
     for (__u64 i = 0; i < t; ++i) {
