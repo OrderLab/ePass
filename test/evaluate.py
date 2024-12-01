@@ -154,7 +154,7 @@ def attach_prog():
 
 def test_null():
     # for _ in range(2):
-    cmds = "lat_syscall -N 100 null"
+    cmds = "lat_syscall -N 1000 null"
     process = subprocess.Popen(
         cmds.split(" "), stdout=subprocess.PIPE, stderr=subprocess.PIPE
     )
@@ -455,7 +455,23 @@ def evaluate_counter_pass_percent():
 def evaluate_counter_pass_efficiency():
     # Test the efficiency of insn_counter, using performance pass
     ret = measure_epass_insns(
+        "output/evaluation_counter_loop2.o", "prog", popt="insn_counter"
+    )
+    print(ret)
+    ret = measure_epass_insns(
+        "output/evaluation_counter_loop4.o", "prog", popt="insn_counter"
+    )
+    print(ret)
+    ret = measure_epass_insns(
         "output/evaluation_counter_loop3.o", "prog", popt="insn_counter"
+    )
+    print(ret)
+    ret = measure_epass_insns(
+        "output/evaluation_counter_loop1med.o", "prog", popt="insn_counter"
+    )
+    print(ret)
+    ret = measure_epass_insns(
+        "output/evaluation_counter_loop1sim.o", "prog", popt="insn_counter"
     )
     print(ret)
 

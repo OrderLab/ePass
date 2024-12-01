@@ -5,12 +5,9 @@ SEC("tracepoint/syscalls/sys_enter_getppid")
 int prog(void *ctx)
 {
 	__u64 i = 0;
-	while (i < 3000) {
+	while (i < 1000) {
 		__u64 a = bpf_ktime_get_ns();
 		__u64 b = bpf_ktime_get_ns();
-		if (a > b) {
-			i += 2;
-		}
 		++i;
 	}
 	static char msg[] = "finished:  %d";

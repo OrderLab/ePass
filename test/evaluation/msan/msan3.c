@@ -4,13 +4,15 @@
 SEC("tracepoint/syscalls/sys_enter_getppid")
 int prog(void *ctx)
 {
-	int tot = 0;
-	__u64 t = bpf_ktime_get_ns() % 2;
-	for (__u64 i = 0; i < 100; ++i) {
-		__u64 tmp = bpf_ktime_get_ns() % 7;
-		tot += tmp;
+	int a[20];
+	int id = bpf_ktime_get_ns() % 2 + 4;
+	if (id < 3 || id > 7) {
+		return 0;
 	}
-	bpf_printk("%d", tot);
+	a[5] = 0;
+	if (a[id]) {
+		bpf_printk("%p\n", &a[id]);
+	}
 	return 0;
 }
 
