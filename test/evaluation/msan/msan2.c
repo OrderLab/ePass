@@ -6,7 +6,7 @@ int prog(void *ctx)
 {
     // char s[] = "asf\n";
     // bpf_printk("%s\n",s);
-    int k = bpf_ktime_get_ns() % 5;
+    int k = bpf_ktime_get_ns() % 2;
     int a[5];
     a[0] = k;
     a[1] = k - 1;
