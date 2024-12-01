@@ -152,9 +152,9 @@ def attach_prog():
     os.system(f"sudo bpftool net attach xdp name prog dev {CARD}")
 
 
-def test_null():
+def test_null(it = 1000):
     # for _ in range(2):
-    cmds = "lat_syscall -N 1000 null"
+    cmds = f"lat_syscall -N {it} null"
     process = subprocess.Popen(
         cmds.split(" "), stdout=subprocess.PIPE, stderr=subprocess.PIPE
     )
@@ -329,14 +329,14 @@ def evaluate_counter_pass_single(prog_name, use_lat=False):
     remove_prog(prog)
     load_prog_no_epass(prog, autoattach=True)
     print(f"test {prog_name}...")
-    n1c = test_null()
+    n1c = test_null(100)
     (avg1, cnt) = collect_info()
     # print(avg1, cnt)
     remove_prog(prog)
     time.sleep(0.1)
     print(f"test {prog_name} with insn_counter...")
     load_prog_epass(prog, popt="insn_counter", autoattach=True)
-    n2c = test_null()
+    n2c = test_null(100)
     (avg2, cnt) = collect_info()
     # print(avg2, cnt)
     remove_prog(prog)
@@ -345,6 +345,26 @@ def evaluate_counter_pass_single(prog_name, use_lat=False):
     else:
         return (avg1, avg2)
 
+def evaluate_msan_pass_single(prog_name, use_lat=False):
+    prog = f"output/{prog_name}.o"
+    remove_prog(prog)
+    load_prog_no_epass(prog, autoattach=True)
+    print(f"test {prog_name}...")
+    n1c = test_null()
+    (avg1, cnt) = collect_info()
+    # print(avg1, cnt)
+    remove_prog(prog)
+    time.sleep(0.1)
+    print(f"test {prog_name} with msan...")
+    load_prog_epass(prog, popt="msan", autoattach=True)
+    n2c = test_null()
+    (avg2, cnt) = collect_info()
+    # print(avg2, cnt)
+    remove_prog(prog)
+    if use_lat:
+        return (n1c, n2c)
+    else:
+        return (avg1, avg2)
 
 def evaluate_counter_pass():
     USE_LATENCY = True
@@ -393,7 +413,7 @@ def evaluate_counter_pass():
     # plt.bar(x3, group3, width=bar_width, label='Group 3')
 
     # Adding labels and title
-    plt.ylabel("Time (ns)")
+    plt.ylabel("Time (μs)")
     # plt.title("")
     plt.xticks(x, categories)
     plt.legend(fontsize=8)
@@ -475,6 +495,69 @@ def evaluate_counter_pass_efficiency():
     )
     print(ret)
 
+
+def evaluate_msan_pass():
+    USE_LATENCY = True
+    (l1, l1c) = evaluate_msan_pass_single(
+        "evaluation_msan_msan1", use_lat=USE_LATENCY
+    )
+    print(l1, l1c)
+    time.sleep(0.1)
+    (l2, l2c) = evaluate_msan_pass_single(
+        "evaluation_msan_msan2", use_lat=USE_LATENCY
+    )
+    print(l2, l2c)
+    time.sleep(0.1)
+    (l3, l3c) = evaluate_msan_pass_single(
+        "evaluation_msan_msan3", use_lat=USE_LATENCY
+    )
+    print(l3, l3c)
+
+    categories = ["c1", "c2", "c3"]
+    group1 = [l1, l2, l3]
+    group2 = [l1c, l2c, l3c]
+    # group3 = [4, 6, 0]
+
+    # Bar width
+    bar_width = 0.25
+
+    # x positions for each group of bars
+    x = np.arange(len(categories))
+    x1 = x - bar_width / 2
+    x2 = x + bar_width / 2
+    # x3 = x + bar_width
+
+    # Plotting
+    plt.bar(x1, group1, width=bar_width, label="Group 1")
+    plt.bar(x2, group2, width=bar_width, label="Group 2")
+    # plt.bar(x3, group3, width=bar_width, label='Group 3')
+
+    # Adding labels and title
+    plt.ylabel("Time (μs)")
+    # plt.title("")
+    plt.xticks(x, categories)
+    plt.legend(fontsize=8)
+
+    # Show plot
+    # plt.show()
+    fig = matplotlib.pyplot.gcf()
+    fig.set_size_inches(3, 2)
+    plt.tight_layout()
+    fig.savefig("evalout/msan.pdf", dpi=200)
+
+def evaluate_msan_pass_efficiency():
+    ret = measure_epass_insns(
+        "output/evaluation_msan_msan1.o", "prog", popt="msan"
+    )
+    print(ret)
+    ret = measure_epass_insns(
+        "output/evaluation_msan_msan2.o", "prog", popt="msan"
+    )
+    print(ret)
+    ret = measure_epass_insns(
+        "output/evaluation_msan_msan3.o", "prog", popt="msan"
+    )
+    print(ret)
 
 def evaluate_optimization():
     evaluate_optimization1()
@@ -598,9 +681,11 @@ if __name__ == "__main__":
         evaluate_compile_speed()
     if arg == "counter":
         evaluate_counter_pass()
-    if arg == "counterper":
-        evaluate_counter_pass_percent()
     if arg == "counter_eff":
         evaluate_counter_pass_efficiency()
+    if arg == "msan":
+        evaluate_msan_pass()
+    if arg == "msan_eff":
+        evaluate_msan_pass_efficiency()
     if arg == "opt":
         evaluate_optimization()
