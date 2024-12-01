@@ -20,6 +20,7 @@ import matplotlib.ticker as mticker
 EXPERIMENT_TIMES = env.EXPERIMENT_TIMES
 CARD = env.CARD
 
+
 def all_objects():
     # Get all .o file paths in the output directory
     o_files = glob.glob(os.path.join("output", "*.o"))
@@ -27,13 +28,6 @@ def all_objects():
     o_files.remove("output/evaluation_compile_speed_speed_50.o")
     o_files.remove("output/evaluation_compile_speed_speed_20.o")
     return o_files
-
-
-def check_connectivity(url):
-    try:
-        requests.get(url, timeout=0.1)
-    except:
-        print(f"Connection failed for {url}")
 
 
 def init():
@@ -57,7 +51,6 @@ def measure_cmd_time_avg(cmd: str):
         times.append(int(rec.findall(out.decode())[0]))
 
     return sum(times) / len(times) / 1000000
-
 
 
 def measure_epass_insns(prog, sec, gopt="", popt=""):
@@ -89,6 +82,7 @@ def measure_epass_insns(prog, sec, gopt="", popt=""):
         return (int(c1), int(c2))
     except:
         return 0, 0
+
 
 def measure_epass_time_avg(prog, sec, gopt="", popt=""):
     tot_times = []
@@ -131,18 +125,26 @@ def measure_epass_time_avg(prog, sec, gopt="", popt=""):
     return mean_tot, mean_lift, mean_run, mean_compile
 
 
-def load_prog_epass(prog, gopt="", popt=""):
+def load_prog_epass(prog, gopt="", popt="", autoattach=False):
     bname = Path(prog).stem
     # bpftool prog load {prog} /sys/fs/bpf/{bname} epass {gopt} {popt}
-    ret = os.system(
-        f'sudo bpftool prog load {prog} /sys/fs/bpf/{bname} epass "{gopt}" "{popt}"'
-    )
+    if autoattach:
+        ret = os.system(
+            f'sudo bpftool prog load {prog} /sys/fs/bpf/{bname} epass "{gopt}" "{popt}" autoattach'
+        )
+    else:
+        ret = os.system(
+            f'sudo bpftool prog load {prog} /sys/fs/bpf/{bname} epass "{gopt}" "{popt}"'
+        )
     return ret
 
 
-def load_prog_no_epass(prog):
+def load_prog_no_epass(prog, autoattach=False):
     bname = Path(prog).stem
-    ret = os.system(f"sudo bpftool prog load {prog} /sys/fs/bpf/{bname}")
+    if autoattach:
+        ret = os.system(f"sudo bpftool prog load {prog} /sys/fs/bpf/{bname} autoattach")
+    else:
+        ret = os.system(f"sudo bpftool prog load {prog} /sys/fs/bpf/{bname}")
     return ret
 
 
@@ -150,9 +152,18 @@ def attach_prog():
     os.system(f"sudo bpftool net attach xdp name prog dev {CARD}")
 
 
-def test_network():
+def test_null():
     # for _ in range(2):
-    os.system("speedtest-cli --secure")
+    cmds = "lat_syscall -N 100 null"
+    process = subprocess.Popen(
+        cmds.split(" "), stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
+    _, out = process.communicate()
+    out = out.decode()
+    rec = re.compile(r"Simple syscall: (.*?) microseconds")
+    res = rec.findall(out)[0]
+    tot = float(res)
+    return tot
 
 
 def collect_info():
@@ -245,6 +256,12 @@ def evaluate_compile_speed():
     x2region3 = [epass_run_20, epass_run_50, epass_run_100]
     x2region4 = [epass_other_20, epass_other_50, epass_other_100]
 
+    print(x1region1, x1region2, x1region3, x1region4)
+
+    print(x2region1, x2region2, x2region3, x2region4)
+
+    print(group3)
+
     color1 = (0.2, 0.6, 0.9, 0.8)
     color2 = (0.2, 0.8, 0.6, 0.8)
     color3 = (1.0, 0.6, 0.2, 0.8)
@@ -307,39 +324,58 @@ def evaluate_compile_speed():
     fig.savefig("evalout/compile_speed.pdf", dpi=200)
 
 
-def evaluate_counter_pass_single(prog_name):
+def evaluate_counter_pass_single(prog_name, use_lat=False):
     prog = f"output/{prog_name}.o"
     remove_prog(prog)
-    load_prog_no_epass(prog)
-    attach_prog()
+    load_prog_no_epass(prog, autoattach=True)
     print(f"test {prog_name}...")
-    test_network()
+    n1c = test_null()
     (avg1, cnt) = collect_info()
-    print(avg1, cnt)
-    dettach_prog()
+    # print(avg1, cnt)
     remove_prog(prog)
-    time.sleep(1)
-    print(f"test {prog_name} with add_counter...")
-    load_prog_epass(prog, popt="add_counter")
-    attach_prog()
-    test_network()
+    time.sleep(0.1)
+    print(f"test {prog_name} with insn_counter...")
+    load_prog_epass(prog, popt="insn_counter", autoattach=True)
+    n2c = test_null()
     (avg2, cnt) = collect_info()
-    print(avg2, cnt)
-    dettach_prog()
+    # print(avg2, cnt)
     remove_prog(prog)
-    return avg1, avg2
+    if use_lat:
+        return (n1c, n2c)
+    else:
+        return (avg1, avg2)
 
 
 def evaluate_counter_pass():
-    (l1, l1c) = evaluate_counter_pass_single("evaluation_counter_loop3")
+    USE_LATENCY = True
+    (l1, l1c) = evaluate_counter_pass_single(
+        "evaluation_counter_loop2", use_lat=USE_LATENCY
+    )
     print(l1, l1c)
-    time.sleep(1)
-    (l2, l2c) = evaluate_counter_pass_single("evaluation_counter_loop4")
+    time.sleep(0.1)
+    (l2, l2c) = evaluate_counter_pass_single(
+        "evaluation_counter_loop4", use_lat=USE_LATENCY
+    )
     print(l2, l2c)
+    time.sleep(0.1)
+    (l3, l3c) = evaluate_counter_pass_single(
+        "evaluation_counter_loop3", use_lat=USE_LATENCY
+    )
+    print(l3, l3c)
+    time.sleep(0.1)
+    (l4, l4c) = evaluate_counter_pass_single(
+        "evaluation_counter_loop1med", use_lat=USE_LATENCY
+    )
+    print(l4, l4c)
+    time.sleep(0.1)
+    (l5, l5c) = evaluate_counter_pass_single(
+        "evaluation_counter_loop1sim", use_lat=USE_LATENCY
+    )
+    print(l5, l5c)
 
-    categories = ["counter_1", "counter_2"]
-    group1 = [l1, l2]
-    group2 = [l1c, l2c]
+    categories = ["c1", "c2", "c3", "c4", "c5"]
+    group1 = [l1, l2, l3, l4, l5]
+    group2 = [l1c, l2c, l3c, l4c, l5c]
     # group3 = [4, 6, 0]
 
     # Bar width
@@ -347,8 +383,8 @@ def evaluate_counter_pass():
 
     # x positions for each group of bars
     x = np.arange(len(categories))
-    x1 = x - bar_width/2
-    x2 = x + bar_width/2
+    x1 = x - bar_width / 2
+    x2 = x + bar_width / 2
     # x3 = x + bar_width
 
     # Plotting
@@ -367,27 +403,79 @@ def evaluate_counter_pass():
     fig = matplotlib.pyplot.gcf()
     fig.set_size_inches(3, 2)
     plt.tight_layout()
-    fig.savefig("evalout/add_counter.pdf", dpi=200)
+    fig.savefig("evalout/insn_counter.pdf", dpi=200)
+
+
+def evaluate_counter_pass_percent():
+    USE_LATENCY = True
+    (l1, l1c) = evaluate_counter_pass_single(
+        "evaluation_counter_loop2", use_lat=USE_LATENCY
+    )
+    oh1 = (l1c - l1) / l1
+    print(oh1)
+    time.sleep(0.1)
+    (l2, l2c) = evaluate_counter_pass_single(
+        "evaluation_counter_loop4", use_lat=USE_LATENCY
+    )
+    oh2 = (l2c - l2) / l2
+    print(oh2)
+    time.sleep(0.1)
+    (l3, l3c) = evaluate_counter_pass_single(
+        "evaluation_counter_loop3", use_lat=USE_LATENCY
+    )
+    oh3 = (l3c - l3) / l3
+    print(oh3)
+    time.sleep(0.1)
+    (l4, l4c) = evaluate_counter_pass_single(
+        "evaluation_counter_loop1med", use_lat=USE_LATENCY
+    )
+    oh4 = (l4c - l4) / l4
+    print(oh4)
+    time.sleep(0.1)
+    (l5, l5c) = evaluate_counter_pass_single(
+        "evaluation_counter_loop1sim", use_lat=USE_LATENCY
+    )
+    oh5 = (l5c - l5) / l5
+    print(oh5)
+    xs = [oh1, oh2, oh3, oh4, oh5]
+    print(xs)
+    plt.bar([1, 2, 3, 4, 5], xs)
+
+    # Adding labels and title
+    plt.xlabel("Categories")
+    plt.ylabel("Values")
+    plt.legend()
+
+    fig = matplotlib.pyplot.gcf()
+    fig.set_size_inches(3, 2)
+    plt.tight_layout()
+    fig.savefig("evalout/counter_per.pdf", dpi=200)
+
 
 def evaluate_counter_pass_efficiency():
-    # Test the efficiency of add_counter, using performance pass vs accurate pass
-    ret = measure_epass_insns("output/evaluation_counter_loop3.o", "prog", popt="add_counter")
-    ret2 = measure_epass_insns("output/evaluation_counter_loop3.o", "prog", popt="add_counter(accurate)")
-    print(ret, ret2)
+    # Test the efficiency of insn_counter, using performance pass
+    ret = measure_epass_insns(
+        "output/evaluation_counter_loop3.o", "prog", popt="insn_counter"
+    )
+    print(ret)
+
 
 def evaluate_optimization():
     evaluate_optimization1()
     evaluate_optimization2()
     evaluate_optimization3()
 
+
 def evaluate_optimization1():
     numbers = []
     for obj in all_objects():
         (r1, r2) = measure_epass_insns(obj, "prog")
         if r1 == 0:
-            continue # Ignore buggy programs
+            continue  # Ignore buggy programs
 
-        (_, newr2) = measure_epass_insns(obj, "prog", "enable_coalesce", "optimize_compaction")
+        (_, newr2) = measure_epass_insns(
+            obj, "prog", "enable_coalesce", "optimize_compaction"
+        )
         if newr2 != 0:
             r2 = newr2
         else:
@@ -398,7 +486,7 @@ def evaluate_optimization1():
             numbers.append(0)
             continue
         # print(f"{obj} {r1} -> {r2}")
-        numbers.append((r1 - r2)/r1)
+        numbers.append((r1 - r2) / r1)
     numbers = sorted(numbers, reverse=True)
     plt.bar(range(len(numbers)), numbers)
 
@@ -412,15 +500,19 @@ def evaluate_optimization1():
     plt.tight_layout()
     fig.savefig("evalout/opt1.pdf", dpi=200)
     plt.clf()
+    print(numbers)
+
 
 def evaluate_optimization2():
     numbers = []
     for obj in all_objects():
         (r2, r1) = measure_epass_insns(obj, "prog", popt="optimize_ir(noopt)")
         if r2 == 0:
-            continue # Ignore buggy programs
+            continue  # Ignore buggy programs
 
-        (_, newr2) = measure_epass_insns(obj, "prog", "enable_coalesce", "optimize_compaction")
+        (_, newr2) = measure_epass_insns(
+            obj, "prog", "enable_coalesce", "optimize_compaction"
+        )
         if newr2 != 0:
             r2 = newr2
         else:
@@ -431,8 +523,9 @@ def evaluate_optimization2():
             numbers.append(0)
             continue
         # print(f"{obj} {r1} -> {r2}")
-        numbers.append((r1 - r2)/r1)
+        numbers.append((r1 - r2) / r1)
     numbers = sorted(numbers, reverse=True)
+    print(numbers)
     plt.bar(range(len(numbers)), numbers)
 
     plt.xlabel("Program Index")
@@ -450,11 +543,11 @@ def evaluate_optimization2():
 def evaluate_optimization3():
     numbers = []
     for obj in all_objects():
-        (r1, r2) = measure_epass_insns(obj, "prog", popt="add_counter")
+        (r1, r2) = measure_epass_insns(obj, "prog", popt="insn_counter")
         if r1 == 0:
-            continue # Ignore buggy programs
+            continue  # Ignore buggy programs
 
-        (_, newr1) = measure_epass_insns(obj, "prog", popt="add_counter(accurate)")
+        (_, newr1) = measure_epass_insns(obj, "prog", popt="insn_counter(accurate)")
         if newr1 != 0:
             r1 = newr1
 
@@ -462,8 +555,9 @@ def evaluate_optimization3():
             numbers.append(0)
             continue
         # print(f"{obj} {r1} -> {r2}")
-        numbers.append((r1 - r2)/r1)
+        numbers.append((r1 - r2) / r1)
     numbers = sorted(numbers, reverse=True)
+    print(numbers)
     plt.bar(range(len(numbers)), numbers)
 
     plt.xlabel("Program Index")
@@ -488,6 +582,8 @@ if __name__ == "__main__":
         evaluate_compile_speed()
     if arg == "counter":
         evaluate_counter_pass()
+    if arg == "counterper":
+        evaluate_counter_pass_percent()
     if arg == "counter_eff":
         evaluate_counter_pass_efficiency()
     if arg == "opt":
