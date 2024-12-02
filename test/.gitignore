@@ -5,3 +5,4 @@ evalout/
 env.py
 __pycache__/
 !progs/bpftrace/*.o
+!progs/kernel_samples/*.o
