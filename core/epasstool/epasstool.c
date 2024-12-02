@@ -45,6 +45,7 @@ int main(int argc, char **argv)
 	uopts.gopt[0] = 0;
 	uopts.popt[0] = 0;
 	uopts.no_compile = false;
+	uopts.auto_sec = true;
 	static struct option long_options[] = {
 		{ "mode", required_argument, NULL, 'm' },
 		{ "gopt", required_argument, NULL, 0 },
@@ -89,6 +90,7 @@ int main(int argc, char **argv)
 				strcpy(uopts.prog, optarg);
 				break;
 			case 's':
+				uopts.auto_sec = false;
 				strcpy(uopts.sec, optarg);
 				break;
 			case 'h':
