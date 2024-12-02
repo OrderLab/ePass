@@ -4,3 +4,4 @@ env/
 evalout/
 env.py
 __pycache__/
+!progs/bpftrace/*.o
