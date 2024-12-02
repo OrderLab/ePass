@@ -53,7 +53,7 @@ def measure_cmd_time_avg(cmd: str):
     return sum(times) / len(times) / 1000000
 
 
-def measure_epass_insns(prog, sec, gopt="", popt=""):
+def measure_epass_insns(prog, gopt="", popt=""):
     if prog[-3:] == "txt":
         mode = "readlog"
     else:
@@ -65,8 +65,6 @@ def measure_epass_insns(prog, sec, gopt="", popt=""):
             mode,
             "-p",
             prog,
-            "-s",
-            sec,
             "--gopt",
             gopt,
             "--popt",
@@ -84,7 +82,7 @@ def measure_epass_insns(prog, sec, gopt="", popt=""):
         return 0, 0
 
 
-def measure_epass_time_avg(prog, sec, gopt="", popt=""):
+def measure_epass_time_avg(prog, gopt="", popt=""):
     tot_times = []
     lift_times = []
     run_times = []
@@ -98,8 +96,6 @@ def measure_epass_time_avg(prog, sec, gopt="", popt=""):
                 "read",
                 "-p",
                 prog,
-                "-s",
-                sec,
                 "--gopt",
                 gopt,
                 "--popt",
@@ -152,7 +148,7 @@ def attach_prog():
     os.system(f"sudo bpftool net attach xdp name prog dev {CARD}")
 
 
-def test_null(it = 1000):
+def test_null(it=1000):
     # for _ in range(2):
     cmds = f"lat_syscall -N {it} null"
     process = subprocess.Popen(
@@ -195,12 +191,12 @@ def evaluate_compile_speed():
     )
     (epass_tot_20o, epass_lift_20o, epass_run_20o, epass_compile_20o) = (
         measure_epass_time_avg(
-            "output/evaluation_compile_speed_speed_20.o", "prog", "no_prog_check"
+            "output/evaluation_compile_speed_speed_20.o", "no_prog_check"
         )
     )
     epass_other_20o = epass_tot_20o - epass_lift_20o - epass_run_20o - epass_compile_20o
     (epass_tot_20, epass_lift_20, epass_run_20, epass_compile_20) = (
-        measure_epass_time_avg("output/evaluation_compile_speed_speed_20.o", "prog")
+        measure_epass_time_avg("output/evaluation_compile_speed_speed_20.o")
     )
     epass_other_20 = epass_tot_20 - epass_lift_20 - epass_run_20 - epass_compile_20
 
@@ -209,12 +205,12 @@ def evaluate_compile_speed():
     )
     (epass_tot_50o, epass_lift_50o, epass_run_50o, epass_compile_50o) = (
         measure_epass_time_avg(
-            "output/evaluation_compile_speed_speed_50.o", "prog", "no_prog_check"
+            "output/evaluation_compile_speed_speed_50.o", "no_prog_check"
         )
     )
     epass_other_50o = epass_tot_50o - epass_lift_50o - epass_run_50o - epass_compile_50o
     (epass_tot_50, epass_lift_50, epass_run_50, epass_compile_50) = (
-        measure_epass_time_avg("output/evaluation_compile_speed_speed_50.o", "prog")
+        measure_epass_time_avg("output/evaluation_compile_speed_speed_50.o")
     )
     epass_other_50 = epass_tot_50 - epass_lift_50 - epass_run_50 - epass_compile_50
 
@@ -223,14 +219,14 @@ def evaluate_compile_speed():
     )
     (epass_tot_100o, epass_lift_100o, epass_run_100o, epass_compile_100o) = (
         measure_epass_time_avg(
-            "output/evaluation_compile_speed_speed_100.o", "prog", "no_prog_check"
+            "output/evaluation_compile_speed_speed_100.o", "no_prog_check"
         )
     )
     epass_other_100o = (
         epass_tot_100o - epass_lift_100o - epass_run_100o - epass_compile_100o
     )
     (epass_tot_100, epass_lift_100, epass_run_100, epass_compile_100) = (
-        measure_epass_time_avg("output/evaluation_compile_speed_speed_100.o", "prog")
+        measure_epass_time_avg("output/evaluation_compile_speed_speed_100.o")
     )
     epass_other_100 = epass_tot_100 - epass_lift_100 - epass_run_100 - epass_compile_100
 
@@ -345,6 +341,7 @@ def evaluate_counter_pass_single(prog_name, use_lat=False):
     else:
         return (avg1, avg2)
 
+
 def evaluate_msan_pass_single(prog_name, use_lat=False):
     prog = f"output/{prog_name}.o"
     remove_prog(prog)
@@ -365,6 +362,7 @@ def evaluate_msan_pass_single(prog_name, use_lat=False):
         return (n1c, n2c)
     else:
         return (avg1, avg2)
+
 
 def evaluate_counter_pass():
     USE_LATENCY = True
@@ -474,43 +472,31 @@ def evaluate_counter_pass_percent():
 
 def evaluate_counter_pass_efficiency():
     # Test the efficiency of insn_counter, using performance pass
+    ret = measure_epass_insns("output/evaluation_counter_loop2.o", popt="insn_counter")
+    print(ret)
+    ret = measure_epass_insns("output/evaluation_counter_loop4.o", popt="insn_counter")
+    print(ret)
+    ret = measure_epass_insns("output/evaluation_counter_loop3.o", popt="insn_counter")
+    print(ret)
     ret = measure_epass_insns(
-        "output/evaluation_counter_loop2.o", "prog", popt="insn_counter"
+        "output/evaluation_counter_loop1med.o", popt="insn_counter"
     )
     print(ret)
     ret = measure_epass_insns(
-        "output/evaluation_counter_loop4.o", "prog", popt="insn_counter"
-    )
-    print(ret)
-    ret = measure_epass_insns(
-        "output/evaluation_counter_loop3.o", "prog", popt="insn_counter"
-    )
-    print(ret)
-    ret = measure_epass_insns(
-        "output/evaluation_counter_loop1med.o", "prog", popt="insn_counter"
-    )
-    print(ret)
-    ret = measure_epass_insns(
-        "output/evaluation_counter_loop1sim.o", "prog", popt="insn_counter"
+        "output/evaluation_counter_loop1sim.o", popt="insn_counter"
     )
     print(ret)
 
 
 def evaluate_msan_pass():
     USE_LATENCY = True
-    (l1, l1c) = evaluate_msan_pass_single(
-        "evaluation_msan_msan1", use_lat=USE_LATENCY
-    )
+    (l1, l1c) = evaluate_msan_pass_single("evaluation_msan_msan1", use_lat=USE_LATENCY)
     print(l1, l1c)
     time.sleep(0.1)
-    (l2, l2c) = evaluate_msan_pass_single(
-        "evaluation_msan_msan2", use_lat=USE_LATENCY
-    )
+    (l2, l2c) = evaluate_msan_pass_single("evaluation_msan_msan2", use_lat=USE_LATENCY)
     print(l2, l2c)
     time.sleep(0.1)
-    (l3, l3c) = evaluate_msan_pass_single(
-        "evaluation_msan_msan3", use_lat=USE_LATENCY
-    )
+    (l3, l3c) = evaluate_msan_pass_single("evaluation_msan_msan3", use_lat=USE_LATENCY)
     print(l3, l3c)
 
     categories = ["c1", "c2", "c3"]
@@ -545,19 +531,15 @@ def evaluate_msan_pass():
     plt.tight_layout()
     fig.savefig("evalout/msan.pdf", dpi=200)
 
+
 def evaluate_msan_pass_efficiency():
-    ret = measure_epass_insns(
-        "output/evaluation_msan_msan1.o", "prog", popt="msan"
-    )
+    ret = measure_epass_insns("output/evaluation_msan_msan1.o", popt="msan")
     print(ret)
-    ret = measure_epass_insns(
-        "output/evaluation_msan_msan2.o", "prog", popt="msan"
-    )
+    ret = measure_epass_insns("output/evaluation_msan_msan2.o", popt="msan")
     print(ret)
-    ret = measure_epass_insns(
-        "output/evaluation_msan_msan3.o", "prog", popt="msan"
-    )
+    ret = measure_epass_insns("output/evaluation_msan_msan3.o", popt="msan")
     print(ret)
+
 
 def evaluate_optimization():
     evaluate_optimization1()
@@ -568,17 +550,15 @@ def evaluate_optimization():
 def evaluate_optimization1():
     numbers = []
     for obj in all_objects():
-        (r1, r2) = measure_epass_insns(obj, "prog")
+        (r1, r2) = measure_epass_insns(obj)
         if r1 == 0:
             continue  # Ignore buggy programs
 
-        (_, newr2) = measure_epass_insns(
-            obj, "prog", "enable_coalesce", "optimize_compaction"
-        )
+        (_, newr2) = measure_epass_insns(obj, "enable_coalesce", "optimize_compaction")
         if newr2 != 0:
             r2 = newr2
         else:
-            (_, newr2) = measure_epass_insns(obj, "prog", "", "optimize_compaction")
+            (_, newr2) = measure_epass_insns(obj, "", "optimize_compaction")
             if newr2 != 0:
                 r2 = newr2
         if r2 > r1:
@@ -599,23 +579,23 @@ def evaluate_optimization1():
     plt.tight_layout()
     fig.savefig("evalout/opt1.pdf", dpi=200)
     plt.clf()
-    print(numbers)
+    for n in numbers:
+        print(n)
+    print("----------------")
 
 
 def evaluate_optimization2():
     numbers = []
     for obj in all_objects():
-        (r2, r1) = measure_epass_insns(obj, "prog", popt="optimize_ir(noopt)")
+        (r2, r1) = measure_epass_insns(obj, popt="optimize_ir(noopt)")
         if r2 == 0:
             continue  # Ignore buggy programs
 
-        (_, newr2) = measure_epass_insns(
-            obj, "prog", "enable_coalesce", "optimize_compaction"
-        )
+        (_, newr2) = measure_epass_insns(obj, "enable_coalesce", "optimize_compaction")
         if newr2 != 0:
             r2 = newr2
         else:
-            (_, newr2) = measure_epass_insns(obj, "prog", "", "optimize_compaction")
+            (_, newr2) = measure_epass_insns(obj, "", "optimize_compaction")
             if newr2 != 0:
                 r2 = newr2
         if r2 > r1:
@@ -624,7 +604,6 @@ def evaluate_optimization2():
         # print(f"{obj} {r1} -> {r2}")
         numbers.append((r1 - r2) / r1)
     numbers = sorted(numbers, reverse=True)
-    print(numbers)
     plt.bar(range(len(numbers)), numbers)
 
     plt.xlabel("Program Index")
@@ -637,16 +616,19 @@ def evaluate_optimization2():
     plt.tight_layout()
     fig.savefig("evalout/opt2.pdf", dpi=200)
     plt.clf()
+    for n in numbers:
+        print(n)
+    print("----------------")
 
 
 def evaluate_optimization3():
     numbers = []
     for obj in all_objects():
-        (r1, r2) = measure_epass_insns(obj, "prog", popt="insn_counter")
+        (r1, r2) = measure_epass_insns(obj, popt="insn_counter")
         if r1 == 0:
             continue  # Ignore buggy programs
 
-        (_, newr1) = measure_epass_insns(obj, "prog", popt="insn_counter(accurate)")
+        (_, newr1) = measure_epass_insns(obj, popt="insn_counter(accurate)")
         if newr1 != 0:
             r1 = newr1
 
@@ -656,7 +638,6 @@ def evaluate_optimization3():
         # print(f"{obj} {r1} -> {r2}")
         numbers.append((r1 - r2) / r1)
     numbers = sorted(numbers, reverse=True)
-    print(numbers)
     plt.bar(range(len(numbers)), numbers)
 
     plt.xlabel("Program Index")
@@ -669,6 +650,9 @@ def evaluate_optimization3():
     plt.tight_layout()
     fig.savefig("evalout/opt3.pdf", dpi=200)
     plt.clf()
+    for n in numbers:
+        print(n)
+    print("----------------")
 
 
 if __name__ == "__main__":
