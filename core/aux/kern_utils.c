@@ -125,7 +125,7 @@ static int apply_global_opt(struct bpf_ir_env *env, const char *opt)
 		if (err) {
 			return err;
 		}
-		if (res < 0 || res > 15) {
+		if (res <= 0 || res > 15) {
 			return -EINVAL;
 		}
 		env->opts.max_iteration = res;
