@@ -123,6 +123,10 @@ struct bpf_ir_env {
 
 	// Verifier env
 	void *venv;
+
+	// Verifier information map
+	// Bytecode Insn number -> Verifier information (e.g. min max, type)
+	void *verifier_info_map;
 };
 
 void bpf_ir_print_to_log(int level, struct bpf_ir_env *env, char *fmt, ...);

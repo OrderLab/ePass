@@ -1876,6 +1876,7 @@ struct bpf_ir_env *bpf_ir_init_env(struct bpf_ir_opts opts,
 	env->verifier_err = -1;
 	env->executed = false;
 	env->venv = NULL;
+	env->verifier_info_map = NULL;
 	env->verifier_log_end_pos = 0;
 	env->prog_type = 0; // Unspecified
 	env->lift_time = 0;
