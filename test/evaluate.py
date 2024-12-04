@@ -42,7 +42,7 @@ prog_tests = [
     "output/test_cgrp2_tc.bpf.o",
     "output/xdp_adjust_tail_kern.o",
     "output/trace_event_kern.o",
-    "output/evaluation_counter_complex.o",
+    # "output/evaluation_counter_complex.o",
     "output/tracex2.bpf.o",
     "output/progs_libbpf_uprobe.bpf.o",
     "output/evaluation_msan_msan3.o",
@@ -58,7 +58,7 @@ prog_tests = [
     "output/evaluation_counter_loop1med.o",
     "output/progs_libbpf_bootstrap.bpf.o",
     "output/evaluation_div_by_zero_div_by_zero.o",
-    "output/evaluation_counter_loop1.o",
+    # "output/evaluation_counter_loop1.o",
     "output/progs_simple1.o",
     "output/syscall_tp_kern.o",
     "output/progs_hashmap.o",
@@ -770,29 +770,28 @@ def test_loadtime(prog):
     )
     _, err = process.communicate()
     out = err.decode()
-    rec = re.compile(r"verification time (.*?)usec")
+    rec = re.compile(r"verification time (.*?) usec")
     tot = 0
     try:
         res = rec.findall(out)[0]
-        tot = int(res[0])
+        tot = int(res)
     except:
-        pass
+        return (0, 0)
     os.system(f"sudo rm -rf /sys/fs/bpf/{bname}")
     return (tot, epass / 1000)
 
 
 def evaluate_loadtime():
-    res = test_loadtime("output/evaluation_msan_msan3.o")
-    print(res)
-    # tots = []
-    # eps = []
-    # for obj in prog_tests:
-    #     (tot, epass) = test_loadtime(obj)
-    #     if tot == 0:
-    #         continue  # Rejected programs
-    #     tots.append(tot)
-    #     eps.append(epass)
-    # print(tots, eps)
+    tots = []
+    eps = []
+    for obj in prog_tests:
+        print(f"testing {obj}")
+        (tot, epass) = test_loadtime(obj)
+        if tot == 0:
+            continue  # Rejected programs
+        tots.append(tot)
+        eps.append(epass)
+    print(tots, eps)
 
 
 if __name__ == "__main__":
