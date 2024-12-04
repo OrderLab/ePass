@@ -740,6 +740,24 @@ def evaluate_optimization3():
     print("----------------")
 
 
+def test_comptime(prog):
+    process = subprocess.Popen(
+        ["epass", "-m", "read", "-p", prog],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    out, _ = process.communicate()
+    rec = re.compile(r"ePass finished in (.*?)ns\n")
+    try:
+        tott = rec.findall(out.decode())[0]
+        epass = int(tott)
+    except:
+        return (0, 0)
+
+    tot = measure_cmd_time_avg(
+        "llc -march=bpf output/evaluation_compile_speed_speed_50.ll -o /dev/null"
+    )
+
 def test_loadtime(prog):
     process = subprocess.Popen(
         ["epass", "-m", "read", "-p", prog],
@@ -793,6 +811,18 @@ def evaluate_loadtime():
         eps.append(epass)
     print(tots, eps)
 
+
+def evaluate_compile_speed2():
+    tots = []
+    eps = []
+    for obj in prog_tests:
+        print(f"testing {obj}")
+        (tot, epass) = test_loadtime(obj)
+        if tot == 0:
+            continue  # Rejected programs
+        tots.append(tot)
+        eps.append(epass)
+    print(tots, eps)
 
 if __name__ == "__main__":
     import sys
