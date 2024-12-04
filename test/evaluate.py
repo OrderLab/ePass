@@ -741,6 +741,13 @@ def evaluate_optimization3():
 
 
 def test_comptime(prog):
+    bname = Path(prog).stem
+
+    if not os.path.exists(f"output/{bname}.ll"):
+        return (0, 0, 0)
+
+    llc = measure_cmd_time_avg(f"llc -march=bpf output/{bname}.ll -o /dev/null")
+
     process = subprocess.Popen(
         ["epass", "-m", "read", "-p", prog],
         stdout=subprocess.PIPE,
@@ -748,15 +755,16 @@ def test_comptime(prog):
     )
     out, _ = process.communicate()
     rec = re.compile(r"ePass finished in (.*?)ns\n")
+    rec2 = re.compile(r"program size: (.*?)->")
     try:
         tott = rec.findall(out.decode())[0]
+        size = rec2.findall(out.decode())[0]
         epass = int(tott)
+        size = int(size)
     except:
-        return (0, 0)
+        return (0, 0, 0)
+    return (llc, epass/1000000, size)
 
-    tot = measure_cmd_time_avg(
-        "llc -march=bpf output/evaluation_compile_speed_speed_50.ll -o /dev/null"
-    )
 
 def test_loadtime(prog):
     process = subprocess.Popen(
@@ -815,14 +823,17 @@ def evaluate_loadtime():
 def evaluate_compile_speed2():
     tots = []
     eps = []
+    cnt = []
     for obj in prog_tests:
         print(f"testing {obj}")
-        (tot, epass) = test_loadtime(obj)
+        (tot, epass, num) = test_comptime(obj)
         if tot == 0:
             continue  # Rejected programs
         tots.append(tot)
         eps.append(epass)
-    print(tots, eps)
+        cnt.append(num)
+    print(tots, eps, cnt)
+
 
 if __name__ == "__main__":
     import sys
@@ -832,6 +843,8 @@ if __name__ == "__main__":
         init()
     if arg == "speed":
         evaluate_compile_speed()
+    if arg == "speed2":
+        evaluate_compile_speed2()
     if arg == "counter":
         evaluate_counter_pass()
     if arg == "counter_eff":
