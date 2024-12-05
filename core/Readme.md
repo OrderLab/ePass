@@ -1,3 +1,9 @@
+# Dependencies
+
+- clang >= 17 (<17 could build the epass tool but could not compile the BPF programs properly)
+- Ninja (optional, for faster compilation speed)
+- libbpf (you could use ePass libbpf if running ePass kernel)
+
 # Build
 
 If you are using normal kernel, inside this directory, run:
