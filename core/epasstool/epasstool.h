@@ -11,6 +11,7 @@ struct user_opts {
 	char sec[64];
 	struct bpf_ir_opts opts;
 	bool no_compile;
+	bool auto_sec;
 };
 
 void masking_pass(struct bpf_ir_env *env, struct ir_function *fun, void *param);

@@ -45,6 +45,7 @@ int main(int argc, char **argv)
 	uopts.gopt[0] = 0;
 	uopts.popt[0] = 0;
 	uopts.no_compile = false;
+	uopts.auto_sec = true;
 	static struct option long_options[] = {
 		{ "mode", required_argument, NULL, 'm' },
 		{ "gopt", required_argument, NULL, 0 },
@@ -89,6 +90,7 @@ int main(int argc, char **argv)
 				strcpy(uopts.prog, optarg);
 				break;
 			case 's':
+				uopts.auto_sec = false;
 				strcpy(uopts.sec, optarg);
 				break;
 			case 'h':
@@ -116,8 +118,9 @@ int main(int argc, char **argv)
 	// Initialize common options
 	common_opts = bpf_ir_default_opts();
 	struct builtin_pass_cfg passes[] = {
-		bpf_ir_kern_add_counter_pass,
+		bpf_ir_kern_insn_counter_pass,
 		bpf_ir_kern_optimization_pass,
+		bpf_ir_kern_compaction_pass,
 		bpf_ir_kern_msan,
 	};
 	struct custom_pass_cfg custom_passes[] = {

@@ -14,7 +14,7 @@
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
 SEC("xdp")
-int xdp_firewall(struct xdp_md *ctx) {
+int prog(struct xdp_md *ctx) {
     // We see the raw ethernet frame here.
     // To filter on higher-level protocols, we need to parse it.
     void *data = (void *)(long)ctx->data;

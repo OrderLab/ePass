@@ -446,33 +446,6 @@ static bool has_conflict(struct ir_insn *v1, struct ir_insn *v2)
 	return false;
 }
 
-static void erase_same_reg_assign(struct bpf_ir_env *env,
-				  struct ir_function *fun, struct ir_insn *insn)
-{
-	struct ir_insn *dst_insn = insn_dst(insn);
-	struct ir_insn *src_insn = insn->values[0].data.insn_d;
-	struct ir_insn_cg_extra *dst_insn_cg = insn_cg(dst_insn);
-	struct ir_insn_cg_extra *src_insn_cg = insn_cg(src_insn);
-	u8 src_reg = src_insn_cg->alloc_reg;
-	u8 dst_reg = dst_insn_cg->alloc_reg;
-	DBGASSERT(src_reg == dst_reg);
-	// Merge!
-	if (dst_insn_cg->nonvr && src_insn_cg->nonvr) {
-		// R = R
-		bpf_ir_erase_insn_cg(env, fun, insn);
-		return;
-	}
-	if (dst_insn_cg->nonvr) {
-		// R = r
-		set_insn_dst(env, src_insn, dst_insn);
-		bpf_ir_erase_insn_cg(env, fun, insn);
-		return;
-	}
-	// r = R || r = r
-	set_insn_dst(env, dst_insn, src_insn);
-	bpf_ir_erase_insn_cg(env, fun, insn);
-}
-
 /* Optimization: Coalescing
 
  Returns false if no need to rerun liveness analysis
@@ -498,9 +471,10 @@ static bool coalescing(struct bpf_ir_env *env, struct ir_function *fun)
 					if (insn_cg(src)->alloc_reg ==
 					    insn_cg(insn_dst)->alloc_reg) {
 						// Remove
-						erase_same_reg_assign(env, fun,
-								      insn);
-						return true;
+						// erase_same_reg_assign(env, fun,
+						// 		      insn);
+						// return true;
+						continue;
 					}
 
 					// R = R
@@ -2614,15 +2588,8 @@ static void translate_loadimm_extra(struct ir_insn *insn)
 	extra->translated[0].src_reg = insn->imm_extra_type;
 	extra->translated[0].dst_reg = get_alloc_reg(dst_insn);
 	// 0 2 6 needs next
-	if (insn->imm_extra_type == IR_LOADIMM_IMM64 ||
-	    insn->imm_extra_type == IR_LOADIMM_MAP_VAL_FD ||
-	    insn->imm_extra_type == IR_LOADIMM_MAP_VAL_IDX) {
-		extra->translated[0].it = IMM64;
-		extra->translated[0].imm64 = insn->imm64;
-	} else {
-		extra->translated[0].imm = insn->imm64 & 0xFFFFFFFF;
-		extra->translated[0].it = IMM;
-	}
+	extra->translated[0].it = IMM64;
+	extra->translated[0].imm64 = insn->imm64;
 }
 
 static void translate_storeraw(struct ir_insn *insn)

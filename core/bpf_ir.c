@@ -225,9 +225,11 @@ static const struct function_pass pre_passes[] = {
 static const struct function_pass post_passes[] = {
 	DEF_FUNC_PASS(bpf_ir_div_by_zero, "div_by_zero", false),
 	DEF_FUNC_PASS(msan, "msan", false),
-	DEF_FUNC_PASS(add_counter, "add_counter", false),
+	DEF_FUNC_PASS(insn_counter, "insn_counter", false),
 	/* CG Preparation Passes */
 	DEF_NON_OVERRIDE_FUNC_PASS(translate_throw, "translate_throw"),
+	DEF_FUNC_PASS(bpf_ir_optimize_code_compaction, "optimize_compaction",
+		      false),
 	DEF_NON_OVERRIDE_FUNC_PASS(bpf_ir_optimize_ir, "optimize_ir"),
 	DEF_NON_OVERRIDE_FUNC_PASS(bpf_ir_cg_change_fun_arg, "change_fun_arg"),
 	DEF_NON_OVERRIDE_FUNC_PASS(bpf_ir_cg_change_call_pre_cg, "change_call"),
@@ -1562,6 +1564,15 @@ static void add_reach(struct bpf_ir_env *env, struct ir_function *fun,
 			break;
 		}
 		if (cur_bb->succs.num_elem == 1) {
+			// Check if end with JA
+			struct ir_insn *lastinsn = bpf_ir_get_last_insn(cur_bb);
+			if (lastinsn && lastinsn->op == IR_INSN_JA) {
+				struct ir_basic_block **succ2 =
+					bpf_ir_array_get_void(&cur_bb->succs,
+							      0);
+				bpf_ir_array_push(env, &todo, succ2);
+				break;
+			}
 		} else if (cur_bb->succs.num_elem == 2) {
 			struct ir_basic_block **succ2 =
 				bpf_ir_array_get_void(&cur_bb->succs, 1);
@@ -1848,6 +1859,7 @@ struct bpf_ir_opts bpf_ir_default_opts(void)
 	opts.max_iteration = 10;
 	opts.disable_prog_check = false;
 	opts.enable_throw_msg = false;
+	opts.enable_printk_log = false;
 	return opts;
 }
 
@@ -1864,6 +1876,7 @@ struct bpf_ir_env *bpf_ir_init_env(struct bpf_ir_opts opts,
 	env->verifier_err = -1;
 	env->executed = false;
 	env->venv = NULL;
+	env->verifier_info_map = NULL;
 	env->verifier_log_end_pos = 0;
 	env->prog_type = 0; // Unspecified
 	env->lift_time = 0;

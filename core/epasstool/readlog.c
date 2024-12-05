@@ -40,11 +40,19 @@ int readlog(struct user_opts uopts)
 		return err;
 	}
 	enable_builtin(env);
+	u64 starttime = get_cur_time_ns();
 	bpf_ir_autorun(env);
 	if (env->err) {
 		return env->err;
 	}
-	// bpf_ir_print_log_dbg(env);
+	u64 tot = get_cur_time_ns() - starttime;
+
+	printf("ePass finished in %lluns\n", tot);
+	printf("lift %lluns\trun %lluns\tcompile %lluns\tsum %lluns\n",
+	       env->lift_time, env->run_time, env->cg_time,
+	       env->lift_time + env->run_time + env->cg_time);
+	printf("program size: %zu->%zu\n", index, env->insn_cnt);
+
 	bpf_ir_free_opts(env);
 	bpf_ir_free_env(env);
 

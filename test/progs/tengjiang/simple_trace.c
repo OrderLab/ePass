@@ -12,7 +12,7 @@ char LICENSE[] SEC("license") = "Dual BSD/GPL";
 // SEC name is important! libbpf infers program type from it.
 // See: https://docs.kernel.org/bpf/libbpf/program_types.html#program-types-and-elf
 SEC("tracepoint")
-int handle_tracepoint(void *ctx) {
+int prog(void *ctx) {
     // bpf_get_current_pid_tgid is a helper function!
     int pid = bpf_get_current_pid_tgid() >> 32;
     bpf_printk("BPF triggered from PID %d.\n", pid);

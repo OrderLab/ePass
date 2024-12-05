@@ -39,7 +39,7 @@ inline bool is_user_compromised() {
 }
 
 SEC("lsm/file_open")
-int BPF_PROG(lsm_access_control_open, struct file *file, int ret) {
+int BPF_PROG(prog, struct file *file, int ret) {
     // ret is the return value from the previous BPF program
     // or 0 if it's the first hook.
     if (ret != 0) {

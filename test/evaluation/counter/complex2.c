@@ -9,7 +9,7 @@
 
 #define MAX_BUF_LEN 1000
 
-SEC("xdp")
+SEC("tracepoint/syscalls/sys_enter_getppid")
 int prog(void *ctx)
 {
     char fmts[100] = "helhlo hhh world";
@@ -30,7 +30,7 @@ int prog(void *ctx)
         *msg++ = *fmt++;
     }
 
-	return XDP_PASS;
+	return 0;
 }
 
 char _license[] SEC("license") = "GPL";

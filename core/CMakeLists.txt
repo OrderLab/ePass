@@ -13,12 +13,14 @@ add_library(epass STATIC
     ir_bb.c
     ir_insn.c
     passes/phi_pass.c
-    passes/add_counter_pass.c
+    passes/insn_counter_pass.c
     passes/translate_throw.c
     passes/optimization.c
     passes/cg_prepare.c
+    passes/code_compaction.c
     passes/msan.c
     passes/div_by_zero.c
+    passes/jmp_complexity.c
     aux/prog_check.c
     aux/disasm.c
     aux/kern_utils.c

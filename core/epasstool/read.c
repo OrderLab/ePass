@@ -11,8 +11,12 @@ int read(struct user_opts uopts)
 		printf("Failed to open object\n");
 		return 1;
 	}
-	struct bpf_program *prog =
-		bpf_object__find_program_by_name(obj, uopts.sec);
+	struct bpf_program *prog = NULL;
+	if (uopts.auto_sec) {
+		prog = bpf_object__next_program(obj, NULL);
+	} else {
+		prog = bpf_object__find_program_by_name(obj, uopts.sec);
+	}
 
 	if (!prog) {
 		printf("Program not found\n");
