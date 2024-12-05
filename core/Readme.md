@@ -1,3 +1,27 @@
+# Build
+
+If you are using normal kernel, inside this directory, run:
+
+```
+cmake -S . -B build -GNinja -DEPASS_LIBBPF=OFF
+make
+```
+
+If you are running our custom kernel with custom libbpf, compile with:
+
+```
+cmake -S . -B build -GNinja -DEPASS_LIBBPF=ON
+make
+```
+
+# Install
+
+After building, run:
+
+```
+sudo cmake --install build
+```
+
 # Verifier
 
 We design a form of constraint that could describe all types of ebpf verifier rules. The verifier will generate a "constraint set" based on static analysis information (e.g. BTF) and that doesn't need any simulation.
