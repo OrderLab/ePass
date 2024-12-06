@@ -32,4 +32,12 @@ void enable_builtin(struct bpf_ir_env *env);
 
 extern struct bpf_ir_opts common_opts;
 
+// Passes
+
+extern const struct builtin_pass_cfg bpf_ir_kern_insn_counter_pass;
+extern const struct builtin_pass_cfg bpf_ir_kern_optimization_pass;
+extern const struct builtin_pass_cfg bpf_ir_kern_msan;
+extern const struct builtin_pass_cfg bpf_ir_kern_div_by_zero_pass;
+extern const struct builtin_pass_cfg bpf_ir_kern_compaction_pass;
+
 #endif

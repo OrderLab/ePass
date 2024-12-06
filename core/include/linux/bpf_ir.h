@@ -1196,11 +1196,11 @@ void bpf_ir_div_by_zero(struct bpf_ir_env *env, struct ir_function *fun,
 void bpf_ir_optimize_code_compaction(struct bpf_ir_env *env,
 				     struct ir_function *fun, void *param);
 
-extern const struct builtin_pass_cfg bpf_ir_kern_insn_counter_pass;
-extern const struct builtin_pass_cfg bpf_ir_kern_optimization_pass;
-extern const struct builtin_pass_cfg bpf_ir_kern_msan;
-extern const struct builtin_pass_cfg bpf_ir_kern_div_by_zero_pass;
-extern const struct builtin_pass_cfg bpf_ir_kern_compaction_pass;
+extern const struct function_pass *pre_passes;
+extern const size_t pre_passes_cnt;
+
+extern const struct function_pass *post_passes;
+extern const size_t post_passes_cnt;
 
 void translate_throw(struct bpf_ir_env *env, struct ir_function *fun,
 		     void *param);

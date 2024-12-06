@@ -4,6 +4,34 @@
 
 // Userspace tool
 
+static const struct function_pass pre_passes_def[] = {
+	DEF_FUNC_PASS(remove_trivial_phi, "remove_trivial_phi", true),
+};
+
+static struct function_pass post_passes_def[] = {
+	DEF_FUNC_PASS(bpf_ir_div_by_zero, "div_by_zero", false),
+	DEF_FUNC_PASS(msan, "msan", false),
+	DEF_FUNC_PASS(insn_counter, "insn_counter", false),
+	/* CG Preparation Passes */
+	DEF_NON_OVERRIDE_FUNC_PASS(translate_throw, "translate_throw"),
+	DEF_FUNC_PASS(bpf_ir_optimize_code_compaction, "optimize_compaction",
+		      false),
+	DEF_NON_OVERRIDE_FUNC_PASS(bpf_ir_optimize_ir, "optimize_ir"),
+	DEF_NON_OVERRIDE_FUNC_PASS(bpf_ir_cg_change_fun_arg, "change_fun_arg"),
+	DEF_NON_OVERRIDE_FUNC_PASS(bpf_ir_cg_change_call_pre_cg, "change_call"),
+	DEF_NON_OVERRIDE_FUNC_PASS(bpf_ir_cg_add_stack_offset_pre_cg,
+				   "add_stack_offset"),
+	DEF_NON_OVERRIDE_FUNC_PASS(bpr_ir_cg_to_cssa, "to_cssa"),
+};
+
+const struct function_pass *pre_passes = pre_passes_def;
+const struct function_pass *post_passes = post_passes_def;
+
+const size_t post_passes_cnt =
+	sizeof(post_passes_def) / sizeof(post_passes_def[0]);
+const size_t pre_passes_cnt =
+	sizeof(pre_passes_def) / sizeof(pre_passes_def[0]);
+
 struct bpf_ir_opts common_opts;
 
 // Enable all builtin passes specified by enable_cfg

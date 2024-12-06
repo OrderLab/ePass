@@ -217,27 +217,6 @@ static const s8 helper_func_arg_num[] = {
 	[211] = 2, // cgrp_storage_delete
 };
 
-// All function passes
-static const struct function_pass pre_passes[] = {
-	DEF_FUNC_PASS(remove_trivial_phi, "remove_trivial_phi", true),
-};
-
-static const struct function_pass post_passes[] = {
-	DEF_FUNC_PASS(bpf_ir_div_by_zero, "div_by_zero", false),
-	DEF_FUNC_PASS(msan, "msan", false),
-	DEF_FUNC_PASS(insn_counter, "insn_counter", false),
-	/* CG Preparation Passes */
-	DEF_NON_OVERRIDE_FUNC_PASS(translate_throw, "translate_throw"),
-	DEF_FUNC_PASS(bpf_ir_optimize_code_compaction, "optimize_compaction",
-		      false),
-	DEF_NON_OVERRIDE_FUNC_PASS(bpf_ir_optimize_ir, "optimize_ir"),
-	DEF_NON_OVERRIDE_FUNC_PASS(bpf_ir_cg_change_fun_arg, "change_fun_arg"),
-	DEF_NON_OVERRIDE_FUNC_PASS(bpf_ir_cg_change_call_pre_cg, "change_call"),
-	DEF_NON_OVERRIDE_FUNC_PASS(bpf_ir_cg_add_stack_offset_pre_cg,
-				   "add_stack_offset"),
-	DEF_NON_OVERRIDE_FUNC_PASS(bpr_ir_cg_to_cssa, "to_cssa"),
-};
-
 static void write_variable(struct bpf_ir_env *env,
 			   struct ssa_transform_env *tenv, u8 reg,
 			   struct pre_ir_basic_block *bb, struct ir_value val);
@@ -1646,8 +1625,7 @@ static void run_single_pass(struct bpf_ir_env *env, struct ir_function *fun,
 void bpf_ir_run(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	u64 starttime = get_cur_time_ns();
-	for (size_t i = 0; i < sizeof(pre_passes) / sizeof(pre_passes[0]);
-	     ++i) {
+	for (size_t i = 0; i < pre_passes_cnt; ++i) {
 		bool has_override = false;
 		for (size_t j = 0; j < env->opts.builtin_pass_cfg_num; ++j) {
 			if (strcmp(env->opts.builtin_pass_cfg[j].name,
@@ -1692,8 +1670,7 @@ void bpf_ir_run(struct bpf_ir_env *env, struct ir_function *fun)
 			CHECK_ERR();
 		}
 	}
-	for (size_t i = 0; i < sizeof(post_passes) / sizeof(post_passes[0]);
-	     ++i) {
+	for (size_t i = 0; i < post_passes_cnt; ++i) {
 		bool has_override = false;
 		for (size_t j = 0; j < env->opts.builtin_pass_cfg_num; ++j) {
 			if (strcmp(env->opts.builtin_pass_cfg[j].name,
