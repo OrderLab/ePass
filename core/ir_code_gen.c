@@ -1202,7 +1202,7 @@ static void normalize_assign(struct bpf_ir_env *env, struct ir_function *fun,
 		bpf_ir_change_value(env, insn, &insn->addr_val.value,
 				    bpf_ir_value_stack_ptr(fun));
 		insn->addr_val.offset = insn_cg(dst_insn)->spilled;
-		insn->vr_type = IR_VR_TYPE_64;
+		insn->vr_type = IR_VR_TYPE_64;	// TODO: Should be 64 before normalize
 	} else {
 		if (t0 == STACK) {
 			// Change to LOADRAW
