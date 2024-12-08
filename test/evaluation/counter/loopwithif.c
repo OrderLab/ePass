@@ -6,7 +6,7 @@ int prog(void *ctx) {
     int t = bpf_ktime_get_ns()%10;
     if (t > 5) {
         for (int i = 0; i < t; ++i) {
-            if (i > 1000) {
+            if (i > 5000) {
                 return 0;
             }
             bpf_ktime_get_ns();
@@ -14,7 +14,7 @@ int prog(void *ctx) {
     }else{
         __u64 t2 = bpf_ktime_get_ns();
         for (int j = 0; j < t2; ++j) {
-            if (j > 1000) {
+            if (j > 5000) {
                 return 0;
             }
             bpf_ktime_get_ns();

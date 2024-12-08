@@ -8,9 +8,10 @@ int prog(void *ctx) {
 		if (i > 10) {
 			return 0;
 		}
-        for (int j = 0; j < 1000; ++j) {
+        for (int j = 0; j < 5000; ++j) {
             bpf_ktime_get_ns();
         }
+        return 0;
     }
     return 0;
 }
