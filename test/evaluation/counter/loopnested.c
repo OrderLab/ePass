@@ -5,14 +5,10 @@ SEC("tracepoint/syscalls/sys_enter_getppid")
 int prog(void *ctx) {
     __u64 t = bpf_ktime_get_ns();
     for (int i = 0; i < t; ++i) {
-		if (i > 1000) {
+		if (i > 10) {
 			return 0;
 		}
-        __u64 t2 = bpf_ktime_get_ns();
-        for (int j = 0; j < t2; ++j) {
-            if (j > 1000) {
-                return 0;
-            }
+        for (int j = 0; j < 1000; ++j) {
             bpf_ktime_get_ns();
         }
     }
