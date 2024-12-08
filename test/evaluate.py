@@ -10,7 +10,6 @@ import re
 import matplotlib.pyplot as plt
 import matplotlib
 import numpy as np
-import requests
 from pathlib import Path
 import env
 import time
@@ -20,18 +19,96 @@ import matplotlib.ticker as mticker
 EXPERIMENT_TIMES = env.EXPERIMENT_TIMES
 CARD = env.CARD
 
-prog_tests_b = [
-    "output/evaluation_counter_complex.o",
-    "output/evaluation_counter_loop1.o",
-    "output/evaluation_compile_speed_speed_120.o",
-    "output/evaluation_compile_speed_speed_100.o",
-    "output/evaluation_compile_speed_speed_70.o",
-    "output/evaluation_compile_speed_speed_50.o",
+compile_prog_tests = [
+    "output/evaluation_compile_speed_speed_20.o",
     "output/evaluation_compile_speed_speed_30.o",
-    "output/evaluation_compile_speed_speed_20.o"
+    "output/evaluation_compile_speed_speed_50.o",
+    "output/evaluation_compile_speed_speed_70.o",
+    "output/evaluation_compile_speed_speed_100.o",
+    "output/evaluation_compile_speed_speed_120.o",
+    "output/progs_latency.o",
+    "output/progs_map1.o",
+    "output/trace_output.bpf.o",
+    "output/evaluation_counter_loop2.o",
+    "output/progs_test_asm.o",
+    "output/progs_libbpf_profile.bpf.o",
+    "output/cache.o",
+    "output/evaluation_msan_msan1.o",
+    "output/tracex3.bpf.o",
+    "output/test_map_in_map.bpf.o",
+    "output/ibumad_kern.o",
+    "output/progs_empty.o",
+    "output/sock_flags.bpf.o",
+    "output/progs_tengjiang_syscount.o",
+    "output/tracex4.bpf.o",
+    "output/progs_filter.o",
+    "output/progs_mask.o",
+    "output/tracex5.bpf.o",
+    "output/test_cgrp2_tc.bpf.o",
+    "output/xdp_adjust_tail_kern.o",
+    "output/trace_event_kern.o",
+    "output/evaluation_counter_complex.o",
+    "output/tracex2.bpf.o",
+    "output/progs_libbpf_uprobe.bpf.o",
+    "output/evaluation_msan_msan3.o",
+    "output/tcp_rwnd_kern.o",
+    "output/progs_libbpf_minimal_ns.bpf.o",
+    "output/syscalle.o",
+    "output/progs_loop3.o",
+    "output/tcp_tos_reflect_kern.o",
+    "output/spintest.bpf.o",
+    "output/progs_simple2.o",
+    "output/syscall.o",
+    "output/evaluation_counter_loop1med.o",
+    "output/evaluation_div_by_zero_div_by_zero.o",
+    "output/evaluation_counter_loop1.o",
+    "output/progs_simple1.o",
+    "output/syscall_tp_kern.o",
+    "output/progs_hashmap.o",
+    "output/progs_libbpf_sockfilter.bpf.o",
+    "output/test_probe_write_user.bpf.o",
+    "output/sampleip_kern.o",
+    "output/progs_fn_nonrejected_uninit_var_access.o",
+    "output/progs_libbpf_fentry.bpf.o",
+    "output/syscall2.o",
+    "output/evaluation_masking_mask.o",
+    "output/progs_mem2.o",
+    "output/progs_compact_opt.o",
+    "output/parse_simple.o",
+    "output/progs_str.o",
+    "output/progs_loop1.o",
+    "output/tcp_basertt_kern.o",
+    "output/evaluation_counter_loop3.o",
+    "output/progs_libbpf_lsm.bpf.o",
+    "output/xdp2skb_meta_kern.o",
+    "output/progs_tengjiang_xdp.o",
+    "output/tcp_synrto_kern.o",
+    "output/swf.o",
+    "output/progs_mem1.o",
+    "output/tracex7.bpf.o",
+    "output/progs_libbpf_minimal.bpf.o",
+    "output/read.o",
+    "output/progs_loop2.o",
+    "output/progs_ringbuf.o",
+    "output/evaluation_counter_complex2.o",
+    "output/pf.o",
+    "output/test_overhead_tp.bpf.o",
+    "output/progs_fn_oob.o",
+    "output/task_fd_query_kern.o",
+    "output/progs_alu64.o",
+    "output/evaluation_counter_loop1sim.o",
+    "output/progs_libbpf_kprobe.bpf.o",
+    "output/progs_counter.o",
+    "output/lathist_kern.o",
+    "output/test_overhead_raw_tp.bpf.o",
+    "output/progs_libbpf_minimal_legacy.bpf.o",
+    "output/read2.o",
+    "output/evaluation_msan_msan2.o",
+    "output/evaluation_counter_loop4.o",
+
 ]
 
-prog_tests =prog_tests_b + [
+prog_tests = [
     "output/progs_latency.o",
     "output/progs_map1.o",
     "output/trace_output.bpf.o",
@@ -835,12 +912,13 @@ def evaluate_compile_speed2():
     tots = []
     eps = []
     cnt = []
-    for obj in prog_tests:
+    for obj in compile_prog_tests:
         print(f"testing {obj}")
         (tot, epass, num) = test_comptime(obj)
         print(tot, epass, num)
         if tot == 0:
             continue  # Rejected programs
+        print(obj, tot)
         tots.append(tot)
         eps.append(epass)
         cnt.append(num)
