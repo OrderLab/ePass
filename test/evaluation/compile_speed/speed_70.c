@@ -180,16 +180,6 @@ int prog(struct xdp_md *ctx) {
         bpf_trace_printk("vdnvd", x);
         bpf_trace_printk("fasas", 2, x + i);
     }
-    for (__u64 i = 0; i < t; ++i) {
-        int x = bpf_ktime_get_ns();
-        bpf_trace_printk("vdnvd", x);
-        bpf_trace_printk("fasas", 2, x + i);
-    }
-    for (__u64 i = 0; i < t; ++i) {
-        int x = bpf_ktime_get_ns();
-        bpf_trace_printk("vdnvd", x);
-        bpf_trace_printk("fasas", 2, x + i);
-    }
     char *data_end          = (char *)(long)ctx->data_end;
     char *data              = (char *)(long)ctx->data;
     int   host_header_found = 0;

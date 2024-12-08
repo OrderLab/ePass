@@ -20,7 +20,18 @@ import matplotlib.ticker as mticker
 EXPERIMENT_TIMES = env.EXPERIMENT_TIMES
 CARD = env.CARD
 
-prog_tests = [
+prog_tests_b = [
+    "output/evaluation_counter_complex.o",
+    "output/evaluation_counter_loop1.o",
+    "output/evaluation_compile_speed_speed_120.o",
+    "output/evaluation_compile_speed_speed_100.o",
+    "output/evaluation_compile_speed_speed_70.o",
+    "output/evaluation_compile_speed_speed_50.o",
+    "output/evaluation_compile_speed_speed_30.o",
+    "output/evaluation_compile_speed_speed_20.o"
+]
+
+prog_tests =prog_tests_b + [
     "output/progs_latency.o",
     "output/progs_map1.o",
     "output/trace_output.bpf.o",
@@ -827,6 +838,7 @@ def evaluate_compile_speed2():
     for obj in prog_tests:
         print(f"testing {obj}")
         (tot, epass, num) = test_comptime(obj)
+        print(tot, epass, num)
         if tot == 0:
             continue  # Rejected programs
         tots.append(tot)

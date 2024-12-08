@@ -18,10 +18,12 @@ int prog(struct xdp_md *ctx) {
         int x = bpf_ktime_get_ns();
         bpf_trace_printk(xx, x);
     }
-    for (__u64 i = 0; i < t; ++i) {
+    for (__u64 i = 0; i < 10; ++i) {
         int x = bpf_ktime_get_ns();
-        bpf_trace_printk(xx, x);
+        bpf_trace_printk("vdnvd", x - t);
+        bpf_trace_printk("fasas", 2, x + i);
     }
+    
     char *data_end          = (char *)(long)ctx->data_end;
     char *data              = (char *)(long)ctx->data;
     int   host_header_found = 0;
@@ -44,22 +46,6 @@ int prog(struct xdp_md *ctx) {
         data++;
     }
 
-    if (host_header_found) {
-        struct server_name sn = {"a", 0};
-
-        for (__u16 j = 0; j < 11; j++) {
-            if (data_end < data + 1) {
-                return 0;
-            }
-
-            if (*data == '\r') {
-                break;
-            }
-
-            sn.server_name[j] = *data++;
-            sn.length++;
-        }
-    }
     if (host_header_found) {
         struct server_name sn = {"a", 0};
 
