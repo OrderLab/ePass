@@ -520,14 +520,14 @@ def evaluate_msan_pass_single(prog_name, use_lat=False):
     remove_prog(prog)
     load_prog_no_epass(prog, autoattach=True)
     print(f"test {prog_name}...")
-    n1c = test_null(100)
+    n1c = test_null(1000)
     (avg1, cnt) = collect_info()
     # print(avg1, cnt)
     remove_prog(prog)
     time.sleep(0.1)
     print(f"test {prog_name} with msan...")
     load_prog_epass(prog, popt="msan", autoattach=True)
-    n2c = test_null(100)
+    n2c = test_null(1000)
     (avg2, cnt) = collect_info()
     # print(avg2, cnt)
     remove_prog(prog)
@@ -662,15 +662,19 @@ def evaluate_counter_pass_efficiency():
 
 
 def evaluate_msan_pass():
-    USE_LATENCY = True
+    USE_LATENCY = False
     (l1, l1c) = evaluate_msan_pass_single("evaluation_msan_msan1", use_lat=USE_LATENCY)
     print(l1, l1c)
     time.sleep(0.1)
     (l2, l2c) = evaluate_msan_pass_single("evaluation_msan_msan2", use_lat=USE_LATENCY)
     print(l2, l2c)
     time.sleep(0.1)
-    (l3, l3c) = evaluate_msan_pass_single("evaluation_msan_msan3", use_lat=USE_LATENCY)
+    (l3, l3c) = evaluate_msan_pass_single("evaluation_msan_simpl1", use_lat=USE_LATENCY)
     print(l3, l3c)
+    time.sleep(0.1)
+    (l4, l4c) = evaluate_msan_pass_single("evaluation_msan_simpl2", use_lat=USE_LATENCY)
+    print(l4, l4c)
+    return
 
     categories = ["c1", "c2", "c3"]
     group1 = [l1, l2, l3]
@@ -710,7 +714,9 @@ def evaluate_msan_pass_efficiency():
     print(ret)
     ret = measure_epass_insns("output/evaluation_msan_msan2.o", popt="msan")
     print(ret)
-    ret = measure_epass_insns("output/evaluation_msan_msan3.o", popt="msan")
+    ret = measure_epass_insns("output/evaluation_msan_simpl1.o", popt="msan")
+    print(ret)
+    ret = measure_epass_insns("output/evaluation_msan_simpl2.o", popt="msan")
     print(ret)
 
 

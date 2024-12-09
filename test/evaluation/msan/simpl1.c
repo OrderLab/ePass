@@ -5,7 +5,7 @@ SEC("tracepoint/syscalls/sys_enter_getppid")
 int prog(void *ctx)
 {
     char s[1] = "a";
-    bpf_printk("%d\n",2);
+    bpf_printk("%c\n",s);
 	return 0;
 }
 
