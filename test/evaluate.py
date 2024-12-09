@@ -538,7 +538,7 @@ def evaluate_msan_pass_single(prog_name, use_lat=False):
 
 
 def evaluate_counter_pass():
-    USE_LATENCY = True
+    USE_LATENCY = False
     (l1, l1c) = evaluate_counter_pass_single(
         "evaluation_counter_loop2", use_lat=USE_LATENCY
     )
@@ -563,6 +563,8 @@ def evaluate_counter_pass():
         "evaluation_counter_loop1sim", use_lat=USE_LATENCY
     )
     print(l5, l5c)
+
+    return
 
     categories = ["c1", "c2", "c3", "c4", "c5"]
     group1 = [l1, l2, l3, l4, l5]
