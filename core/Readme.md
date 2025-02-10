@@ -40,7 +40,9 @@ One opinion, one benefit of designing the raw constraint from is that our runtim
 
 ## Future work
 
-Rewrite Normalization. Plain the IR.
+Rewrite Normalization.
+
+Normalization: remove all references, flatten the IR.
 
 Just store the allocated position in value. Not track users. No references.
 
