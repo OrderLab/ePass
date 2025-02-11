@@ -1155,6 +1155,17 @@ static void spill_callee(struct bpf_ir_env *env, struct ir_function *fun)
 
 // Normalization
 
+/* Flatten IR */
+void flatten_ir(struct bpf_ir_env *env, struct ir_function *fun)
+{
+	struct ir_basic_block **pos;
+	array_for(pos, fun->reachable_bbs)
+	{
+		struct ir_basic_block *bb = *pos;
+		struct ir_insn *insn;
+	}
+}
+
 /* Loading constant used in normalization */
 static struct ir_insn *normalize_load_const(struct bpf_ir_env *env,
 					    struct ir_insn *insn,
