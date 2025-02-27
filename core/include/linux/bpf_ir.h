@@ -331,6 +331,7 @@ enum ir_value_type {
 	IR_VALUE_CONSTANT_RAWOFF,
 	IR_VALUE_CONSTANT_RAWOFF_REV,
 	IR_VALUE_INSN,
+	IR_VALUE_FLATTEN_DST, // Used only in code generation
 	IR_VALUE_UNDEF,
 };
 
@@ -348,6 +349,15 @@ struct ir_raw_pos {
 	enum ir_raw_pos_type pos_t;
 };
 
+/* Actual position of a VR, used after RA in cg */
+struct ir_vr_pos {
+	// If this VR needs to be allocated (insn like store does not)
+	bool allocated;
+	u32 spilled_size;
+	u8 alloc_reg;
+	s32 spilled;
+};
+
 /*
  *  VALUE = CONSTANT | INSN
  *
@@ -357,6 +367,7 @@ struct ir_value {
 	union {
 		s64 constant_d;
 		struct ir_insn *insn_d;
+		struct ir_vr_pos vr_pos;
 	} data;
 	enum ir_value_type type;
 	enum ir_alu_op_type const_type; // Used when type is a constant
@@ -1240,33 +1251,36 @@ struct builtin_pass_cfg {
 };
 
 #define DEF_CUSTOM_PASS(pass_def, check_applyc, param_loadc, param_unloadc) \
-	{ .pass = pass_def,                                                 \
-	  .param = NULL,                                                    \
-	  .param_load = param_loadc,                                        \
-	  .param_unload = param_unloadc,                                    \
-	  .check_apply = check_applyc }
+	{                                                                   \
+		.pass = pass_def, .param = NULL, .param_load = param_loadc, \
+		.param_unload = param_unloadc, .check_apply = check_applyc  \
+	}
 
 #define DEF_BUILTIN_PASS_CFG(namec, param_loadc, param_unloadc) \
-	{ .name = namec,                                        \
-	  .param = NULL,                                        \
-	  .enable = false,                                      \
-	  .enable_cfg = false,                                  \
-	  .param_load = param_loadc,                            \
-	  .param_unload = param_unloadc }
+	{                                                       \
+		.name = namec, .param = NULL, .enable = false,  \
+		.enable_cfg = false, .param_load = param_loadc, \
+		.param_unload = param_unloadc                   \
+	}
 
 #define DEF_BUILTIN_PASS_ENABLE_CFG(namec, param_loadc, param_unloadc) \
-	{ .name = namec,                                               \
-	  .param = NULL,                                               \
-	  .enable = true,                                              \
-	  .enable_cfg = false,                                         \
-	  .param_load = param_loadc,                                   \
-	  .param_unload = param_unloadc }
+	{                                                              \
+		.name = namec, .param = NULL, .enable = true,          \
+		.enable_cfg = false, .param_load = param_loadc,        \
+		.param_unload = param_unloadc                          \
+	}
 
-#define DEF_FUNC_PASS(fun, msg, en_def) \
-	{ .pass = fun, .name = msg, .enabled = en_def, .force_enable = false }
+#define DEF_FUNC_PASS(fun, msg, en_def)                      \
+	{                                                    \
+		.pass = fun, .name = msg, .enabled = en_def, \
+		.force_enable = false                        \
+	}
 
-#define DEF_NON_OVERRIDE_FUNC_PASS(fun, msg) \
-	{ .pass = fun, .name = msg, .enabled = true, .force_enable = true }
+#define DEF_NON_OVERRIDE_FUNC_PASS(fun, msg)               \
+	{                                                  \
+		.pass = fun, .name = msg, .enabled = true, \
+		.force_enable = true                       \
+	}
 
 /* Passes End */
 
@@ -1287,6 +1301,17 @@ void bpf_ir_free_insn_cg(struct ir_insn *insn);
 struct ir_bb_cg_extra {
 	// Position of the first instruction
 	size_t pos;
+};
+
+/* Instruction data used after RA (e.g. normalization) */
+struct ir_insn_norm_extra {
+	struct ir_vr_pos pos;
+
+	// Translated pre_ir_insn
+	struct pre_ir_insn translated[2];
+
+	// Translated number
+	u8 translated_num;
 };
 
 struct ir_insn_cg_extra {
