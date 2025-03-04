@@ -102,12 +102,16 @@ static void cg_to_flatten(struct bpf_ir_env *env, struct ir_function *fun)
 		struct ir_insn *insn = NULL;
 		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
 			struct ir_vr_pos pos;
-			struct ir_insn_cg_extra *extra =
-				insn_cg(insn_dst(insn));
-			pos.spilled = extra->spilled;
-			pos.alloc_reg = extra->alloc_reg;
-			pos.allocated = extra->allocated;
-			pos.spilled_size = extra->spilled_size;
+			if (bpf_ir_is_void(insn)) {
+				pos.allocated = false;
+			} else {
+				struct ir_insn_cg_extra *extra =
+					insn_cg(insn_dst(insn));
+				pos.spilled = extra->spilled;
+				pos.alloc_reg = extra->alloc_reg;
+				pos.allocated = extra->allocated;
+				pos.spilled_size = extra->spilled_size;
+			}
 			bpf_ir_free_insn_cg(insn);
 			SAFE_MALLOC(insn->user_data, sizeof(struct ir_vr_pos));
 			insn_norm(insn)->pos = pos;

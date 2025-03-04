@@ -1361,9 +1361,14 @@ enum val_type {
 
 #define insn_cg(insn) ((struct ir_insn_cg_extra *)(insn)->user_data)
 
+/* Dst of a instruction
+
+Note. This could be only applied to an instruction with return value.
+*/
 #define insn_dst(insn) insn_cg(insn)->dst.data.insn_d
 
 #define insn_norm(insn) ((struct ir_insn_norm_extra *)(insn)->user_data)
+
 /* Code Gen End */
 
 /* IR Value Start */
