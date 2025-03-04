@@ -68,18 +68,32 @@ void bpf_ir_free_insn_cg(struct ir_insn *insn)
 	insn->user_data = NULL;
 }
 
-static void free_cg_res(struct ir_function *fun)
+static void free_cg_final(struct ir_function *fun)
+{
+	// Free CG resources (after flattening)
+	// TODO
+}
+
+// Free CG resources, create a new extra data for flattening
+static void cg_to_flatten(struct ir_function *fun)
 {
 	struct ir_basic_block **pos = NULL;
 	array_for(pos, fun->reachable_bbs)
 	{
 		struct ir_basic_block *bb = *pos;
-		struct ir_bb_cg_extra *bb_cg = bb->user_data;
-		free_proto(bb_cg);
-		bb->user_data = NULL;
+		// struct ir_bb_cg_extra *bb_cg = bb->user_data;
+		// free_proto(bb_cg);
+		// bb->user_data = NULL;
 		struct ir_insn *insn = NULL;
 		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
+			struct ir_vr_pos pos;
+			struct ir_insn_cg_extra *extra =
+				insn_cg(insn_dst(insn));
 			bpf_ir_free_insn_cg(insn);
+			pos.spilled = extra->spilled;
+			pos.alloc_reg = extra->alloc_reg;
+			pos.allocated = extra->allocated;
+			pos.spilled_size = extra->spilled_size;
 		}
 	}
 
@@ -1155,9 +1169,11 @@ static void spill_callee(struct bpf_ir_env *env, struct ir_function *fun)
 
 // Normalization
 
-static void remove_all_users(struct ir_function *fun) {
+static void remove_all_users(struct ir_function *fun)
+{
 	struct ir_basic_block **pos;
-	array_for(pos, fun->reachable_bbs) {
+	array_for(pos, fun->reachable_bbs)
+	{
 		struct ir_basic_block *bb = *pos;
 		struct ir_insn *insn;
 		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
@@ -1176,13 +1192,37 @@ static void remove_all_users(struct ir_function *fun) {
 	}
 }
 
-static void change_all_value_to_ir_pos(struct bpf_ir_env *env, struct ir_function *fun) {
+// To flatten IR, we first need to change all the values to ir_pos
+static void change_all_value_to_ir_pos(struct bpf_ir_env *env,
+				       struct ir_function *fun)
+{
 	struct ir_basic_block **pos;
-	array_for(pos, fun->reachable_bbs) {
+	array_for(pos, fun->reachable_bbs)
+	{
 		struct ir_basic_block *bb = *pos;
 		struct ir_insn *insn;
 		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
-			bpf_ir_array_free(&insn->users);
+			struct array operands = bpf_ir_get_operands(env, insn);
+			struct ir_value **pos2;
+			array_for(pos2, operands)
+			{
+				struct ir_value *v = *pos2;
+				if (v->type == IR_VALUE_INSN) {
+					struct ir_insn *insn_d = v->data.insn_d;
+					// The value should be the final value (not proxy)
+					DBGASSERT(insn_d == insn_dst(insn_d));
+
+					struct ir_insn_cg_extra *extra =
+						insn_cg(insn_d);
+					struct ir_vr_pos pos;
+					pos.spilled = extra->spilled;
+					pos.alloc_reg = extra->alloc_reg;
+					pos.allocated = extra->allocated;
+					pos.spilled_size = extra->spilled_size;
+					v->type = IR_VALUE_FLATTEN_DST;
+					v->data.vr_pos = pos;
+				}
+			}
 		}
 	}
 }
@@ -1192,12 +1232,8 @@ static void flatten_ir(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	// Make sure no users
 	remove_all_users(fun);
-	struct ir_basic_block **pos;
-	array_for(pos, fun->reachable_bbs)
-	{
-		struct ir_basic_block *bb = *pos;
-		struct ir_insn *insn;
-	}
+	change_all_value_to_ir_pos(fun);
+	cg_to_flatten(fun);
 }
 
 /* Loading constant used in normalization */
@@ -3120,6 +3156,9 @@ void bpf_ir_compile(struct bpf_ir_env *env, struct ir_function *fun)
 		prog_check_cg(env, fun);
 		CHECK_ERR();
 	}
+
+	CRITICAL("done");
+
 	// Step 12: Normalize
 	normalize(env, fun);
 	CHECK_ERR();
@@ -3146,7 +3185,7 @@ void bpf_ir_compile(struct bpf_ir_env *env, struct ir_function *fun)
 	CHECK_ERR();
 
 	// Free CG resources
-	free_cg_res(fun);
+	// cg_to_flatten(fun);
 	env->cg_time += get_cur_time_ns() - starttime;
 }
 
