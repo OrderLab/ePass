@@ -353,8 +353,10 @@ struct ir_raw_pos {
 struct ir_vr_pos {
 	// If this VR needs to be allocated (insn like store does not)
 	bool allocated;
-	u32 spilled_size;
-	u8 alloc_reg;
+	union {
+		u32 spilled_size; // Spilled
+		u8 alloc_reg; // Not spilled
+	};
 	s32 spilled;
 };
 
@@ -607,11 +609,8 @@ struct ir_basic_block {
 	size_t _id;
 	void *user_data;
 
-	// Flag
+	// Flag (experimental, may be removed in the future)
 	u32 flag;
-
-	// Array of struct ir_insn *
-	struct array users;
 };
 
 /**

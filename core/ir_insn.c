@@ -624,7 +624,6 @@ static struct ir_insn *create_ja_insn_base(struct bpf_ir_env *env,
 	struct ir_insn *new_insn = bpf_ir_create_insn_base(env, bb);
 	new_insn->op = IR_INSN_JA;
 	new_insn->bb1 = to_bb;
-	bpf_ir_array_push(env, &to_bb->users, &new_insn);
 	return new_insn;
 }
 
@@ -644,8 +643,6 @@ create_jbin_insn_base(struct bpf_ir_env *env, struct ir_basic_block *bb,
 	new_insn->alu_op = alu_type;
 	bpf_ir_val_add_user(env, val1, new_insn);
 	bpf_ir_val_add_user(env, val2, new_insn);
-	bpf_ir_array_push(env, &to_bb1->users, &new_insn);
-	bpf_ir_array_push(env, &to_bb2->users, &new_insn);
 	new_insn->value_num = 2;
 	return new_insn;
 }
