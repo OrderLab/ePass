@@ -409,7 +409,7 @@ static void check_err_and_print(struct bpf_ir_env *env, struct ir_function *fun)
 void bpf_ir_prog_check(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	print_ir_err_init(fun);
-	
+
 	check_insn(env, fun);
 	CHECK_DUMP();
 

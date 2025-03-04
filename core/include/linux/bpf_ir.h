@@ -1251,36 +1251,33 @@ struct builtin_pass_cfg {
 };
 
 #define DEF_CUSTOM_PASS(pass_def, check_applyc, param_loadc, param_unloadc) \
-	{                                                                   \
-		.pass = pass_def, .param = NULL, .param_load = param_loadc, \
-		.param_unload = param_unloadc, .check_apply = check_applyc  \
-	}
+	{ .pass = pass_def,                                                 \
+	  .param = NULL,                                                    \
+	  .param_load = param_loadc,                                        \
+	  .param_unload = param_unloadc,                                    \
+	  .check_apply = check_applyc }
 
 #define DEF_BUILTIN_PASS_CFG(namec, param_loadc, param_unloadc) \
-	{                                                       \
-		.name = namec, .param = NULL, .enable = false,  \
-		.enable_cfg = false, .param_load = param_loadc, \
-		.param_unload = param_unloadc                   \
-	}
+	{ .name = namec,                                        \
+	  .param = NULL,                                        \
+	  .enable = false,                                      \
+	  .enable_cfg = false,                                  \
+	  .param_load = param_loadc,                            \
+	  .param_unload = param_unloadc }
 
 #define DEF_BUILTIN_PASS_ENABLE_CFG(namec, param_loadc, param_unloadc) \
-	{                                                              \
-		.name = namec, .param = NULL, .enable = true,          \
-		.enable_cfg = false, .param_load = param_loadc,        \
-		.param_unload = param_unloadc                          \
-	}
+	{ .name = namec,                                               \
+	  .param = NULL,                                               \
+	  .enable = true,                                              \
+	  .enable_cfg = false,                                         \
+	  .param_load = param_loadc,                                   \
+	  .param_unload = param_unloadc }
 
-#define DEF_FUNC_PASS(fun, msg, en_def)                      \
-	{                                                    \
-		.pass = fun, .name = msg, .enabled = en_def, \
-		.force_enable = false                        \
-	}
+#define DEF_FUNC_PASS(fun, msg, en_def) \
+	{ .pass = fun, .name = msg, .enabled = en_def, .force_enable = false }
 
-#define DEF_NON_OVERRIDE_FUNC_PASS(fun, msg)               \
-	{                                                  \
-		.pass = fun, .name = msg, .enabled = true, \
-		.force_enable = true                       \
-	}
+#define DEF_NON_OVERRIDE_FUNC_PASS(fun, msg) \
+	{ .pass = fun, .name = msg, .enabled = true, .force_enable = true }
 
 /* Passes End */
 
