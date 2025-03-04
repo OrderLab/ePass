@@ -1363,6 +1363,7 @@ enum val_type {
 
 #define insn_dst(insn) insn_cg(insn)->dst.data.insn_d
 
+#define insn_norm(insn) ((struct ir_insn_norm_extra *)(insn)->user_data)
 /* Code Gen End */
 
 /* IR Value Start */

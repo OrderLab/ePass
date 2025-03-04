@@ -1379,7 +1379,8 @@ struct ir_insn *bpf_ir_find_ir_insn_by_rawpos(struct ir_function *fun,
 void bpf_ir_free_function(struct ir_function *fun)
 {
 	struct ir_basic_block **pos;
-	array_for(pos, fun->reachable_bbs) {
+	array_for(pos, fun->reachable_bbs)
+	{
 		struct ir_basic_block *bb = *pos;
 		bpf_ir_array_free(&bb->preds);
 		bpf_ir_array_free(&bb->succs);

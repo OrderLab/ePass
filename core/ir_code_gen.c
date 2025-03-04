@@ -75,7 +75,7 @@ static void free_cg_final(struct ir_function *fun)
 }
 
 // Free CG resources, create a new extra data for flattening
-static void cg_to_flatten(struct ir_function *fun)
+static void cg_to_flatten(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	struct ir_basic_block **pos = NULL;
 	array_for(pos, fun->reachable_bbs)
@@ -89,11 +89,13 @@ static void cg_to_flatten(struct ir_function *fun)
 			struct ir_vr_pos pos;
 			struct ir_insn_cg_extra *extra =
 				insn_cg(insn_dst(insn));
-			bpf_ir_free_insn_cg(insn);
 			pos.spilled = extra->spilled;
 			pos.alloc_reg = extra->alloc_reg;
 			pos.allocated = extra->allocated;
 			pos.spilled_size = extra->spilled_size;
+			bpf_ir_free_insn_cg(insn);
+			SAFE_MALLOC(insn->user_data, sizeof(struct ir_vr_pos));
+			insn_norm(insn)->pos = pos;
 		}
 	}
 
@@ -1232,8 +1234,8 @@ static void flatten_ir(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	// Make sure no users
 	remove_all_users(fun);
-	change_all_value_to_ir_pos(fun);
-	cg_to_flatten(fun);
+	change_all_value_to_ir_pos(env, fun);
+	cg_to_flatten(env, fun);
 }
 
 /* Loading constant used in normalization */
