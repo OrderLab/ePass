@@ -152,6 +152,18 @@ static void print_ir_rawpos(struct bpf_ir_env *env, struct ir_raw_pos pos)
 	}
 }
 
+static void print_vr_pos(struct bpf_ir_env *env, struct ir_vr_pos *pos)
+{
+	if (pos->allocated) {
+		if (pos->spilled) {
+			PRINT_LOG_DEBUG(env, "sp+%d", pos->spilled);
+		} else {
+			PRINT_LOG_DEBUG(env, "r%u", pos->alloc_reg);
+		}
+	} else {
+		RAISE_ERROR("Not allocated");
+	}
+}
 static void print_ir_value_full(struct bpf_ir_env *env, struct ir_value v,
 				void (*print_ir)(struct bpf_ir_env *env,
 						 struct ir_insn *))
@@ -175,6 +187,9 @@ static void print_ir_value_full(struct bpf_ir_env *env, struct ir_value v,
 		break;
 	case IR_VALUE_UNDEF:
 		PRINT_LOG_DEBUG(env, "undef");
+		break;
+	case IR_VALUE_FLATTEN_DST:
+		print_vr_pos(env, &v.data.vr_pos);
 		break;
 	default:
 		RAISE_ERROR("Unknown IR value type");
@@ -657,6 +672,13 @@ void print_ir_alloc(struct bpf_ir_env *env, struct ir_insn *insn)
 	} else {
 		PRINT_LOG_DEBUG(env, "(NULL)");
 	}
+}
+
+void print_ir_flatten(struct bpf_ir_env *env, struct ir_insn *insn)
+{
+	struct ir_insn_norm_extra *norm = insn_norm(insn);
+	struct ir_vr_pos *pos = &norm->pos;
+	print_vr_pos(env, pos);
 }
 
 void print_ir_prog_advanced(

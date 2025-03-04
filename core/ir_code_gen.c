@@ -71,7 +71,22 @@ void bpf_ir_free_insn_cg(struct ir_insn *insn)
 static void free_cg_final(struct ir_function *fun)
 {
 	// Free CG resources (after flattening)
-	// TODO
+
+	struct ir_basic_block **pos = NULL;
+	array_for(pos, fun->reachable_bbs)
+	{
+		struct ir_basic_block *bb = *pos;
+		struct ir_bb_cg_extra *bb_cg = bb->user_data;
+		free_proto(bb_cg);
+		bb->user_data = NULL;
+
+		struct ir_insn *insn = NULL;
+		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
+			struct ir_insn_cg_extra *extra = insn_cg(insn);
+			free_proto(extra);
+			insn->user_data = NULL;
+		}
+	}
 }
 
 // Free CG resources, create a new extra data for flattening
@@ -151,6 +166,13 @@ static void print_ir_prog_cg_dst(struct bpf_ir_env *env,
 }
 
 static void print_ir_prog_cg_alloc(struct bpf_ir_env *env,
+				   struct ir_function *fun, char *msg)
+{
+	PRINT_LOG_DEBUG(env, "\x1B[32m----- CG: %s -----\x1B[0m\n", msg);
+	print_ir_prog_advanced(env, fun, NULL, NULL, print_ir_alloc);
+}
+
+static void print_ir_prog_cg_flatten(struct bpf_ir_env *env,
 				   struct ir_function *fun, char *msg)
 {
 	PRINT_LOG_DEBUG(env, "\x1B[32m----- CG: %s -----\x1B[0m\n", msg);
@@ -3159,6 +3181,9 @@ void bpf_ir_compile(struct bpf_ir_env *env, struct ir_function *fun)
 		CHECK_ERR();
 	}
 
+	flatten_ir(env, fun);
+	CHECK_ERR();
+
 	CRITICAL("done");
 
 	// Step 12: Normalize
@@ -3187,7 +3212,7 @@ void bpf_ir_compile(struct bpf_ir_env *env, struct ir_function *fun)
 	CHECK_ERR();
 
 	// Free CG resources
-	// cg_to_flatten(fun);
+	free_cg_final(fun);
 	env->cg_time += get_cur_time_ns() - starttime;
 }
 
