@@ -1155,9 +1155,43 @@ static void spill_callee(struct bpf_ir_env *env, struct ir_function *fun)
 
 // Normalization
 
+static void remove_all_users(struct ir_function *fun) {
+	struct ir_basic_block **pos;
+	array_for(pos, fun->reachable_bbs) {
+		struct ir_basic_block *bb = *pos;
+		struct ir_insn *insn;
+		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
+			bpf_ir_array_free(&insn->users);
+		}
+	}
+	for (u8 i = 0; i < MAX_FUNC_ARG; ++i) {
+		bpf_ir_array_free(&fun->function_arg[i]->users);
+	}
+	if (fun->sp) {
+		bpf_ir_array_free(&fun->sp->users);
+	}
+	for (u8 i = 0; i < BPF_REG_10; ++i) {
+		struct ir_insn *insn = fun->cg_info.regs[i];
+		bpf_ir_array_free(&insn->users);
+	}
+}
+
+static void change_all_value_to_ir_pos(struct bpf_ir_env *env, struct ir_function *fun) {
+	struct ir_basic_block **pos;
+	array_for(pos, fun->reachable_bbs) {
+		struct ir_basic_block *bb = *pos;
+		struct ir_insn *insn;
+		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
+			bpf_ir_array_free(&insn->users);
+		}
+	}
+}
+
 /* Flatten IR */
-void flatten_ir(struct bpf_ir_env *env, struct ir_function *fun)
+static void flatten_ir(struct bpf_ir_env *env, struct ir_function *fun)
 {
+	// Make sure no users
+	remove_all_users(fun);
 	struct ir_basic_block **pos;
 	array_for(pos, fun->reachable_bbs)
 	{

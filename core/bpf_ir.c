@@ -1378,21 +1378,20 @@ struct ir_insn *bpf_ir_find_ir_insn_by_rawpos(struct ir_function *fun,
 
 void bpf_ir_free_function(struct ir_function *fun)
 {
-	for (size_t i = 0; i < fun->all_bbs.num_elem; ++i) {
-		struct ir_basic_block *bb =
-			((struct ir_basic_block **)(fun->all_bbs.data))[i];
-
+	struct ir_basic_block **pos;
+	array_for(pos, fun->reachable_bbs) {
+		struct ir_basic_block *bb = *pos;
 		bpf_ir_array_free(&bb->preds);
 		bpf_ir_array_free(&bb->succs);
 		// Free the instructions
-		struct ir_insn *pos = NULL, *n = NULL;
-		list_for_each_entry_safe(pos, n, &bb->ir_insn_head, list_ptr) {
-			list_del(&pos->list_ptr);
-			bpf_ir_array_free(&pos->users);
-			if (pos->op == IR_INSN_PHI) {
-				bpf_ir_array_free(&pos->phi);
+		struct ir_insn *pos2 = NULL, *n = NULL;
+		list_for_each_entry_safe(pos2, n, &bb->ir_insn_head, list_ptr) {
+			list_del(&pos2->list_ptr);
+			bpf_ir_array_free(&pos2->users);
+			if (pos2->op == IR_INSN_PHI) {
+				bpf_ir_array_free(&pos2->phi);
 			}
-			free_proto(pos);
+			free_proto(pos2);
 		}
 		free_proto(bb);
 	}
