@@ -173,7 +173,7 @@ static void print_ir_prog_cg_alloc(struct bpf_ir_env *env,
 }
 
 static void print_ir_prog_cg_flatten(struct bpf_ir_env *env,
-				   struct ir_function *fun, char *msg)
+				     struct ir_function *fun, char *msg)
 {
 	PRINT_LOG_DEBUG(env, "\x1B[32m----- CG: %s -----\x1B[0m\n", msg);
 	print_ir_prog_advanced(env, fun, NULL, NULL, print_ir_alloc);
@@ -1257,7 +1257,9 @@ static void flatten_ir(struct bpf_ir_env *env, struct ir_function *fun)
 	// Make sure no users
 	remove_all_users(fun);
 	change_all_value_to_ir_pos(env, fun);
+	CHECK_ERR();
 	cg_to_flatten(env, fun);
+	CHECK_ERR();
 }
 
 /* Loading constant used in normalization */
