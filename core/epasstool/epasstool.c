@@ -143,7 +143,7 @@ int main(int argc, char **argv)
 	if (mode == MODE_PRINT) {
 		return print(uopts);
 	}
-	if (uopts.prog[0] == 0){
+	if (uopts.prog[0] == 0) {
 		printf("Program not specified\n");
 		usage(argv[0]);
 	}

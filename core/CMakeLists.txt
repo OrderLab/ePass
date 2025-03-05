@@ -25,7 +25,7 @@ add_library(epass STATIC
     aux/disasm.c
     aux/kern_utils.c
     ir_code_gen.c
-    lii.c
+    lli.c
 )
 
 include_directories(include)

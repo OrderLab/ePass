@@ -1148,6 +1148,8 @@ void print_ir_dst(struct bpf_ir_env *env, struct ir_insn *insn);
 
 void print_ir_alloc(struct bpf_ir_env *env, struct ir_insn *insn);
 
+void print_ir_flatten(struct bpf_ir_env *env, struct ir_insn *insn);
+
 void bpf_ir_clean_visited(struct ir_function *);
 
 // Tag the instruction and BB
