@@ -8,13 +8,15 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "list.h"
 #include <stdarg.h>
 #include <stddef.h>
-
 #include <stdbool.h>
 #include <stdint.h>
 #include <time.h>
+
+// Used to simulate kernel functions
+#include "list.h"
+#include "hashtable.h"
 
 typedef __s8 s8;
 typedef __u8 u8;

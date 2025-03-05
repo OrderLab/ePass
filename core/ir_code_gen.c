@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: GPL-2.0-only
-
 #include <linux/bpf_ir.h>
 
 static void set_insn_dst(struct bpf_ir_env *env, struct ir_insn *insn,
@@ -107,6 +106,7 @@ static void cg_to_flatten(struct bpf_ir_env *env, struct ir_function *fun)
 			} else {
 				struct ir_insn_cg_extra *extra =
 					insn_cg(insn_dst(insn));
+				DBGASSERT(extra->allocated);
 				pos.spilled = extra->spilled;
 				pos.alloc_reg = extra->alloc_reg;
 				pos.allocated = extra->allocated;
@@ -180,7 +180,7 @@ static void print_ir_prog_cg_flatten(struct bpf_ir_env *env,
 				     struct ir_function *fun, char *msg)
 {
 	PRINT_LOG_DEBUG(env, "\x1B[32m----- CG: %s -----\x1B[0m\n", msg);
-	print_ir_prog_advanced(env, fun, NULL, NULL, print_ir_alloc);
+	print_ir_prog_advanced(env, fun, NULL, NULL, print_ir_flatten);
 }
 
 static void synthesize(struct bpf_ir_env *env, struct ir_function *fun)
@@ -1251,6 +1251,36 @@ static void change_all_value_to_ir_pos(struct bpf_ir_env *env,
 					v->data.vr_pos = pos;
 				}
 			}
+		}
+	}
+}
+
+static void test(struct bpf_ir_env *env, struct ir_function *fun)
+{
+	struct ir_basic_block **pos = NULL;
+	array_for(pos, fun->reachable_bbs)
+	{
+		struct ir_basic_block *bb = *pos;
+		// struct ir_bb_cg_extra *bb_cg = bb->user_data;
+		// free_proto(bb_cg);
+		// bb->user_data = NULL;
+		struct ir_insn *insn = NULL;
+		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
+			struct ir_vr_pos pos;
+			if (bpf_ir_is_void(insn)) {
+				pos.allocated = false;
+			} else {
+				struct ir_insn_cg_extra *extra =
+					insn_cg(insn_dst(insn));
+				DBGASSERT(extra->allocated);
+				pos.spilled = extra->spilled;
+				pos.alloc_reg = extra->alloc_reg;
+				pos.allocated = extra->allocated;
+				pos.spilled_size = extra->spilled_size;
+			}
+			bpf_ir_free_insn_cg(insn);
+			SAFE_MALLOC(insn->user_data, sizeof(struct ir_vr_pos));
+			insn_norm(insn)->pos = pos;
 		}
 	}
 }
@@ -3189,6 +3219,8 @@ void bpf_ir_compile(struct bpf_ir_env *env, struct ir_function *fun)
 
 	flatten_ir(env, fun);
 	CHECK_ERR();
+
+	print_ir_prog_cg_flatten(env, fun, "Flattening");
 
 	CRITICAL("done");
 

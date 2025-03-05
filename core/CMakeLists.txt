@@ -28,6 +28,9 @@ add_library(epass STATIC
     lli.c
 )
 
+add_executable(test_list tests/test_list.c)
+add_executable(test_hashtable tests/test_hashtable.c)
+
 include_directories(include)
 
 set_target_properties(epass PROPERTIES PUBLIC_HEADER "include/linux/bpf_ir.h")

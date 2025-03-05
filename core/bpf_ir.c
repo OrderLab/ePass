@@ -1,6 +1,4 @@
 // SPDX-License-Identifier: GPL-2.0-only
-
-#include <linux/bpf_common.h>
 #include <linux/bpf_ir.h>
 
 static const s8 helper_func_arg_num[] = {

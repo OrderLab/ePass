@@ -1,45 +1,23 @@
-/**
- *
- * I grub it from linux kernel source code and fix it for user space
- * program. Of course, this is a GPL licensed header file.
- *
- * Here is a recipe to cook list.h for user space program
- *
- * 1. copy list.h from linux/include/list.h
- * 2. remove
- *     - #ifdef __KERNEL__ and its #endif
- *     - all #include line
- *     - prefetch() and rcu related functions
- * 3. add macro offsetof() and container_of
- *
- * - kazutomo@mcs.anl.gov
- */
+/* SPDX-License-Identifier: GPL-2.0 */
 #ifndef _LINUX_LIST_H
 #define _LINUX_LIST_H
 
-/**
- * @name from other kernel headers
- */
-/*@{*/
+#include <stddef.h>
+#include <stdbool.h>
 
 /**
- * Get offset of a member
- */
-// #define offsetof(TYPE, MEMBER) ((size_t) & ((TYPE *)0)->MEMBER)
-
-/**
- * Casts a member of a structure out to the containing structure
- * @param ptr        the pointer to the member.
- * @param type       the type of the container struct this is embedded in.
- * @param member     the name of the member within the struct.
+ * container_of - cast a member of a structure out to the containing structure
+ * @ptr:	the pointer to the member.
+ * @type:	the type of the container struct this is embedded in.
+ * @member:	the name of the member within the struct.
  *
+ * WARNING: any const qualifier of @ptr is lost.
  */
-#define container_of(ptr, type, member)                            \
-	({                                                         \
-		const typeof(((type *)0)->member) *__mptr = (ptr); \
-		(type *)((char *)__mptr - offsetof(type, member)); \
+#define container_of(ptr, type, member)                      \
+	({                                                   \
+		void *__mptr = (void *)(ptr);                \
+		((type *)(__mptr - offsetof(type, member))); \
 	})
-/*@}*/
 
 /*
  * These are non-NULL pointers that will result in page faults
