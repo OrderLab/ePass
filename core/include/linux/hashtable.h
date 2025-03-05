@@ -8,6 +8,73 @@
 #define _LINUX_HASHTABLE_H
 
 #include "linux/list.h"
+#include <linux/types.h>
+
+#define GOLDEN_RATIO_32 0x61C88647
+#define GOLDEN_RATIO_64 0x61C8864680B583EBull
+
+#define hash_long(val, bits) hash_64(val, bits)
+
+static __always_inline int fls(__u32 n)
+{
+	if (n == 0)
+		return 0;
+	return 32 - __builtin_clz(n);
+}
+
+static __always_inline int fls64(__u64 n)
+{
+	if (n == 0)
+		return 0;
+	return 64 - __builtin_clzll(n);
+}
+
+static __always_inline __attribute__((const)) int __ilog2_u32(__u32 n)
+{
+	return fls(n) - 1;
+}
+
+static __always_inline int __ilog2_u64(__u64 n)
+{
+	return fls64(n) - 1;
+}
+/**
+ * ilog2 - log base 2 of 32-bit or a 64-bit unsigned value
+ * @n: parameter
+ *
+ * constant-capable log of base 2 calculation
+ * - this can be used to initialise global variables from constant data, hence
+ * the massive ternary operator construction
+ *
+ * selects the appropriately-sized optimised version depending on sizeof(n)
+ */
+#define ilog2(n)                                                             \
+	(__builtin_constant_p(n) ? ((n) < 2 ? 0 : 63 - __builtin_clzll(n)) : \
+	 (sizeof(n) <= 4)	 ? __ilog2_u32(n) :                          \
+				   __ilog2_u64(n))
+
+static inline __u32 __hash_32(__u32 val)
+{
+	return val * GOLDEN_RATIO_32;
+}
+
+/**
+ * ARRAY_SIZE - get the number of elements in array @arr
+ * @arr: array to be sized
+ */
+#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
+
+static inline __u32 hash_32(__u32 val, unsigned int bits)
+{
+	/* High bits are more random, so use them. */
+	return __hash_32(val) >> (32 - bits);
+}
+
+static __always_inline __u32 hash_64(__u64 val, unsigned int bits)
+{
+	/* 64x64-bit multiply is efficient on all 64-bit processors */
+	return val * GOLDEN_RATIO_64 >> (64 - bits);
+}
 
 #define DEFINE_HASHTABLE(name, bits)                                         \
 	struct hlist_head name[1 << (bits)] = { [0 ...((1 << (bits)) - 1)] = \

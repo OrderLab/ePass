@@ -161,12 +161,12 @@ void bpf_ir_print_log_dbg(struct bpf_ir_env *env);
 
 /* Array Start */
 
-struct array {
+typedef struct array {
 	void *data;
 	size_t num_elem; // Current length
 	size_t max_elem; // Maximum length
 	size_t elem_size;
-};
+} array;
 
 void bpf_ir_array_init(struct array *res, size_t size);
 
@@ -200,6 +200,19 @@ void bpf_ir_array_clone(struct bpf_ir_env *env, struct array *res,
 #define INIT_ARRAY(arr, type) bpf_ir_array_init(arr, sizeof(type))
 
 /* Array End */
+
+/* Hashtable Start */
+
+struct hashtbl_entry {
+	void *key;
+	void *data;
+	u8 occupy; // 0: Empty, 1: Occupied, 2: Deleted
+};
+
+/* An array of hashtbl_entry */
+typedef struct array hashtbl;
+
+/* Hashtable End */
 
 /* DBG Macro Start */
 #ifndef __KERNEL__
