@@ -220,12 +220,22 @@ struct hashtbl {
 void bpf_ir_hashtbl_init(struct bpf_ir_env *env, struct hashtbl *res,
 			 size_t size);
 
+#define hashtbl_insert(env, tbl, key, keyhash, data)                           \
+	bpf_ir_hashtbl_insert(env, tbl, &(key), sizeof(key), keyhash, &(data), \
+			      sizeof(data))
+
 void bpf_ir_hashtbl_insert(struct bpf_ir_env *env, struct hashtbl *tbl,
 			   void *key, size_t key_size, u32 key_hash, void *data,
 			   size_t data_size);
 
+#define hashtbl_delete(env, tbl, key, keyhash) \
+	bpf_ir_hashtbl_delete(tbl, &(key), sizeof(key), keyhash)
+
 int bpf_ir_hashtbl_delete(struct hashtbl *tbl, void *key, size_t key_size,
 			  u32 key_hash);
+
+#define hashtbl_get(env, tbl, key, keyhash, type) \
+	(type *)bpf_ir_hashtbl_get(tbl, &(key), sizeof(key), keyhash)
 
 void *bpf_ir_hashtbl_get(struct hashtbl *tbl, void *key, size_t key_size,
 			 u32 key_hash);
@@ -234,6 +244,10 @@ void bpf_ir_hashtbl_print_dbg(struct bpf_ir_env *env, struct hashtbl *tbl,
 			      void (*print_key)(struct bpf_ir_env *env, void *),
 			      void (*print_data)(struct bpf_ir_env *env,
 						 void *));
+
+void bpf_ir_hashtbl_clean(struct hashtbl *tbl);
+
+void bpf_ir_hashtbl_free(struct hashtbl *tbl);
 
 /* Hashtable End */
 
