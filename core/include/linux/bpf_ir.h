@@ -16,7 +16,7 @@
 
 // Used to simulate kernel functions
 #include "list.h"
-#include "hashtable.h"
+#include "hash.h"
 
 typedef __s8 s8;
 typedef __u8 u8;
@@ -34,6 +34,7 @@ typedef __u64 u64;
 #include <linux/types.h>
 #include <linux/sort.h>
 #include <linux/list.h>
+#include <linux/hash.h>
 
 #define SIZET_MAX ULONG_MAX
 
@@ -204,13 +205,35 @@ void bpf_ir_array_clone(struct bpf_ir_env *env, struct array *res,
 /* Hashtable Start */
 
 struct hashtbl_entry {
+	u32 key_hash; // Used for growing
 	void *key;
 	void *data;
-	u8 occupy; // 0: Empty, 1: Occupied, 2: Deleted
+	s8 occupy; // 0: Empty, 1: Occupied, -1: Deleted
 };
 
-/* An array of hashtbl_entry */
-typedef struct array hashtbl;
+struct hashtbl {
+	struct hashtbl_entry *table;
+	size_t size;
+	size_t cnt;
+};
+
+void bpf_ir_hashtbl_init(struct bpf_ir_env *env, struct hashtbl *res,
+			 size_t size);
+
+void bpf_ir_hashtbl_insert(struct bpf_ir_env *env, struct hashtbl *tbl,
+			   void *key, size_t key_size, u32 key_hash, void *data,
+			   size_t data_size);
+
+int bpf_ir_hashtbl_delete(struct hashtbl *tbl, void *key, size_t key_size,
+			  u32 key_hash);
+
+void *bpf_ir_hashtbl_get(struct hashtbl *tbl, void *key, size_t key_size,
+			 u32 key_hash);
+
+void bpf_ir_hashtbl_print_dbg(struct bpf_ir_env *env, struct hashtbl *tbl,
+			      void (*print_key)(struct bpf_ir_env *env, void *),
+			      void (*print_data)(struct bpf_ir_env *env,
+						 void *));
 
 /* Hashtable End */
 
