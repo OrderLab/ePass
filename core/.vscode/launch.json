@@ -13,7 +13,7 @@
                 "-m",
                 "read",
                 "-p",
-                "tests/output/empty.o"
+                "bpftests/output/empty.o"
             ],
             "cwd": "${workspaceFolder}"
         }

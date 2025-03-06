@@ -42,6 +42,14 @@ Reproduce: `ringbuf.c` enable coalesce will cause some error in CG
 
 Raw libbpf library loader doesn't change the "imm" value when calling the `callback_fn`. It doesn't support calling it after changing the resources.
 
+## function_arg?
+
+Not sure why there is no function_arg stuffs in code generation.
+
+## ALLOCARRAY?
+
+Why pre-colored?
+
 # TODO
 
 - [ ] Rewrite Normalization, flatten the IR.

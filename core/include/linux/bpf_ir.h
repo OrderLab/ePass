@@ -405,10 +405,8 @@ struct ir_raw_pos {
 struct ir_vr_pos {
 	// If this VR needs to be allocated (insn like store does not)
 	bool allocated;
-	union {
-		u32 spilled_size; // Spilled
-		u8 alloc_reg; // Not spilled
-	};
+	u32 spilled_size; // Spilled
+	u8 alloc_reg; // Not spilled
 	s32 spilled;
 };
 
@@ -1400,6 +1398,8 @@ struct ir_insn_cg_extra {
 	// Valid if spilled == 0 && allocated == 1
 	// Valid number: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
 	u8 alloc_reg;
+
+	struct ir_vr_pos vr_pos;
 
 	// Whether this instruction is a non-VR instruction, like a pre-colored register
 	bool nonvr;

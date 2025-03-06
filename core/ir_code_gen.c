@@ -95,23 +95,30 @@ static void cg_to_flatten(struct bpf_ir_env *env, struct ir_function *fun)
 	array_for(pos, fun->reachable_bbs)
 	{
 		struct ir_basic_block *bb = *pos;
-		// struct ir_bb_cg_extra *bb_cg = bb->user_data;
-		// free_proto(bb_cg);
-		// bb->user_data = NULL;
 		struct ir_insn *insn = NULL;
 		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
 			struct ir_vr_pos pos;
 			if (bpf_ir_is_void(insn)) {
 				pos.allocated = false;
 			} else {
-				struct ir_insn_cg_extra *extra =
+				struct ir_insn_cg_extra *dst_extra =
 					insn_cg(insn_dst(insn));
-				DBGASSERT(extra->allocated);
-				pos.spilled = extra->spilled;
-				pos.alloc_reg = extra->alloc_reg;
-				pos.allocated = extra->allocated;
-				pos.spilled_size = extra->spilled_size;
+				DBGASSERT(dst_extra->allocated);
+				pos.spilled = dst_extra->spilled;
+				pos.alloc_reg = dst_extra->alloc_reg;
+				pos.allocated = dst_extra->allocated;
+				pos.spilled_size = dst_extra->spilled_size;
 			}
+			insn_cg(insn)->vr_pos = pos;
+		}
+	}
+	array_for(pos, fun->reachable_bbs)
+	{
+		struct ir_basic_block *bb = *pos;
+		struct ir_insn *insn = NULL;
+		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
+			struct ir_insn_cg_extra *extra = insn_cg(insn);
+			struct ir_vr_pos pos = extra->vr_pos;
 			bpf_ir_free_insn_cg(insn);
 			SAFE_MALLOC(insn->user_data, sizeof(struct ir_vr_pos));
 			insn_norm(insn)->pos = pos;
