@@ -1020,6 +1020,17 @@ static enum val_type vtype(struct ir_value val)
 		   val.type == IR_VALUE_CONSTANT_RAWOFF ||
 		   val.type == IR_VALUE_CONSTANT_RAWOFF_REV) {
 		return CONST;
+	} else if (val.type == IR_VALUE_FLATTEN_DST) {
+		if (val.data.vr_pos.allocated) {
+			if (val.data.vr_pos.spilled) {
+				// WARNING: cannot determine whether it's a stackoff
+				return STACK;
+			} else {
+				return REG;
+			}
+		} else {
+			return UNDEF;
+		}
 	} else {
 		CRITICAL("No such value type for dst");
 	}
@@ -1503,9 +1514,8 @@ static void normalize_getelemptr(struct bpf_ir_env *env,
 	struct ir_value *v1 = &insn->values[1];
 	enum val_type t0 = insn->value_num >= 1 ? vtype(*v0) : UNDEF;
 	enum val_type t1 = insn->value_num >= 2 ? vtype(*v1) : UNDEF;
-	enum val_type tdst = vtype_insn(insn);
-	struct ir_insn *dst_insn = insn_dst(insn);
-	DBGASSERT(tdst == REG);
+	struct ir_vr_pos pos = insn_norm(insn)->pos;
+
 	DBGASSERT(t1 == STACKOFF);
 	DBGASSERT(v1->type == IR_VALUE_INSN &&
 		  v1->data.insn_d->op == IR_INSN_ALLOCARRAY);
@@ -3251,14 +3261,10 @@ void bpf_ir_compile(struct bpf_ir_env *env, struct ir_function *fun)
 
 	print_ir_prog_cg_flatten(env, fun, "Flattening");
 
-	CRITICAL("done");
-
 	// Step 12: Normalize
 	normalize(env, fun);
 	CHECK_ERR();
 	print_ir_prog_cg_alloc(env, fun, "Normalization");
-	// prog_check_cg(env, fun);
-	// CHECK_ERR();
 
 	replace_builtin_const(env, fun);
 	CHECK_ERR();

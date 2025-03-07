@@ -251,6 +251,21 @@ void bpf_ir_hashtbl_free(struct hashtbl *tbl);
 
 /* Hashtable End */
 
+/* Ptrset Start */
+
+struct ptrset_entry {
+	void *key;
+	s8 occupy; // 0: Empty, 1: Occupied, -1: Deleted
+};
+
+struct ptrset {
+	struct ptrset *set;
+	size_t size;
+	size_t cnt;
+};
+
+/* Ptrset End */
+
 /* DBG Macro Start */
 #ifndef __KERNEL__
 
