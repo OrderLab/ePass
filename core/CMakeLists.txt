@@ -9,6 +9,7 @@ add_library(epass STATIC
     bpf_ir.c
     array.c
     hashtbl.c
+    ptrset.c
     ir_helper.c
     ir_value.c
     ir_bb.c

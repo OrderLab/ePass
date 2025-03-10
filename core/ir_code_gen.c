@@ -1514,7 +1514,7 @@ static void normalize_getelemptr(struct bpf_ir_env *env,
 	struct ir_value *v1 = &insn->values[1];
 	enum val_type t0 = insn->value_num >= 1 ? vtype(*v0) : UNDEF;
 	enum val_type t1 = insn->value_num >= 2 ? vtype(*v1) : UNDEF;
-	struct ir_vr_pos pos = insn_norm(insn)->pos;
+	struct ir_insn *dst_insn = insn_dst(insn);
 
 	DBGASSERT(t1 == STACKOFF);
 	DBGASSERT(v1->type == IR_VALUE_INSN &&
