@@ -12,4 +12,12 @@ static inline __u32 __hash_32(__u32 val)
 	return val * GOLDEN_RATIO_32;
 }
 
+static inline __u32 hash32_ptr(const void *ptr)
+{
+	unsigned long val = (unsigned long)ptr;
+
+	val ^= (val >> 32);
+	return (__u32)val;
+}
+
 #endif

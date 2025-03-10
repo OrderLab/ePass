@@ -259,10 +259,27 @@ struct ptrset_entry {
 };
 
 struct ptrset {
-	struct ptrset *set;
+	struct ptrset_entry *set;
 	size_t size;
 	size_t cnt;
 };
+
+void bpf_ir_ptrset_init(struct bpf_ir_env *env, struct ptrset *res,
+			size_t size);
+
+void bpf_ir_ptrset_insert(struct bpf_ir_env *env, struct ptrset *set,
+			  void *key);
+
+int bpf_ir_ptrset_delete(struct ptrset *set, void *key);
+
+bool bpf_ir_ptrset_exists(struct ptrset *set, void *key);
+
+void bpf_ir_ptrset_print_dbg(struct bpf_ir_env *env, struct ptrset *set,
+			     void (*print_key)(struct bpf_ir_env *env, void *));
+
+void bpf_ir_ptrset_clean(struct ptrset *set);
+
+void bpf_ir_ptrset_free(struct ptrset *set);
 
 /* Ptrset End */
 

@@ -2,3 +2,120 @@
 #include <linux/bpf_ir.h>
 
 // An efficient pointer hashset data structure
+
+#define STEP 31
+
+// Make sure size > 0
+void bpf_ir_ptrset_init(struct bpf_ir_env *env, struct ptrset *res, size_t size)
+{
+	SAFE_MALLOC(res->set, size * sizeof(struct ptrset_entry));
+	res->size = size;
+	res->cnt = 0;
+}
+
+static void bpf_ir_ptrset_insert_raw(struct ptrset *set, void *key)
+{
+	u32 index = hash32_ptr(key) % set->size;
+	for (u32 i = 0; i < set->size; ++i) {
+		if (set->set[index].occupy <= 0) {
+			// Found an empty slot
+			set->set[index].key = key;
+			set->set[index].occupy = 1;
+			set->cnt++;
+			return;
+		}
+		index = (index + STEP) % set->size;
+	}
+	CRITICAL("Impossible");
+}
+
+void bpf_ir_ptrset_insert(struct bpf_ir_env *env, struct ptrset *set, void *key)
+{
+	if (set->cnt >= set->size) {
+		// Table is full, grow it
+		size_t new_size = set->size * 2;
+		struct ptrset new_table;
+		bpf_ir_ptrset_init(env, &new_table, new_size);
+		for (size_t i = 0; i < set->size; ++i) {
+			if (set->set[i].occupy > 0) {
+				bpf_ir_ptrset_insert_raw(&new_table,
+							 set->set[i].key);
+			}
+		}
+		free_proto(set->set);
+		set->set = new_table.set;
+		set->size = new_table.size;
+	}
+	bpf_ir_ptrset_insert_raw(set, key);
+}
+
+int bpf_ir_ptrset_delete(struct ptrset *set, void *key)
+{
+	u32 index = hash32_ptr(key) % set->size;
+	for (u32 i = 0; i < set->size; ++i) {
+		if (set->set[index].occupy <= 0) {
+			// Not found
+			return -1;
+		}
+		if (set->set[index].occupy == 1) {
+			if (set->set[index].key == key) {
+				// Found
+				set->set[index].occupy = -1;
+				set->cnt--;
+				return 0;
+			}
+		}
+		index = (index + STEP) % set->size;
+	}
+	return -1;
+}
+
+bool bpf_ir_ptrset_exists(struct ptrset *set, void *key)
+{
+	u32 index = hash32_ptr(key) % set->size;
+	for (u32 i = 0; i < set->size; ++i) {
+		if (set->set[index].occupy <= 0) {
+			// Not found
+			return false;
+		}
+		if (set->set[index].occupy == 1) {
+			if (set->set[index].key == key) {
+				// Found
+				return true;
+			}
+		}
+		index = (index + STEP) % set->size;
+	}
+	return NULL;
+}
+
+void bpf_ir_ptrset_print_dbg(struct bpf_ir_env *env, struct ptrset *set,
+			     void (*print_key)(struct bpf_ir_env *env, void *))
+{
+	for (size_t i = 0; i < set->size; ++i) {
+		if (set->set[i].occupy > 0) {
+			print_key(env, set->set[i].key);
+			PRINT_LOG_DEBUG(env, " ");
+		}
+	}
+	PRINT_LOG_DEBUG(env, "\n");
+}
+
+void bpf_ir_ptrset_clean(struct ptrset *set)
+{
+	for (size_t i = 0; i < set->size; ++i) {
+		if (set->set[i].occupy > 0) {
+			set->set[i].key = NULL;
+			set->set[i].occupy = 0;
+		}
+	}
+	set->cnt = 0;
+}
+
+void bpf_ir_ptrset_free(struct ptrset *set)
+{
+	bpf_ir_ptrset_clean(set);
+	free_proto(set->set);
+	set->size = 0;
+	set->set = NULL;
+}
