@@ -152,3 +152,47 @@ struct ptrset bpf_ir_ptrset_intersec(struct bpf_ir_env *env,
 	}
 	return res;
 }
+
+// Move set2 to set1
+void bpf_ir_ptrset_move(struct ptrset *set1, struct ptrset *set2)
+{
+	bpf_ir_ptrset_free(set1);
+	*set1 = *set2;
+	set2->set = NULL;
+	set2->cnt = 0;
+	set2->size = 0;
+}
+
+// Clone set2 to set1
+void bpf_ir_ptrset_clone(struct bpf_ir_env *env, struct ptrset *set1,
+			 struct ptrset *set2)
+{
+	bpf_ir_ptrset_free(set1);
+	bpf_ir_ptrset_init(env, set1, set2->size);
+	for (size_t i = 0; i < set2->size; ++i) {
+		if (set2->set[i].occupy > 0) {
+			bpf_ir_ptrset_insert(env, set1, set2->set[i].key);
+		}
+	}
+}
+
+// set1 += set2
+void bpf_ir_ptrset_add(struct bpf_ir_env *env, struct ptrset *set1,
+		       struct ptrset *set2)
+{
+	for (size_t i = 0; i < set2->size; ++i) {
+		if (set2->set[i].occupy > 0) {
+			bpf_ir_ptrset_insert(env, set1, set2->set[i].key);
+		}
+	}
+}
+
+// set1 -= set2
+void bpf_ir_ptrset_minus(struct ptrset *set1, struct ptrset *set2)
+{
+	for (size_t i = 0; i < set2->size; ++i) {
+		if (set2->set[i].occupy > 0) {
+			bpf_ir_ptrset_delete(set1, set2->set[i].key);
+		}
+	}
+}

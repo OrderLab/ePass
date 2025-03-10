@@ -66,6 +66,41 @@ void test(int initsize)
 	bpf_ir_ptrset_print_dbg(env, &set, print_key);
 	DBGASSERT(set.cnt == 0);
 
+	struct ptrset set2;
+	bpf_ir_ptrset_init(env, &set2, initsize);
+
+	for (int i = 0; i < 3; i++) {
+		bpf_ir_ptrset_insert(env, &set, strmap[i]);
+	}
+
+	for (int i = 5; i < 9; i++) {
+		bpf_ir_ptrset_insert(env, &set2, strmap[i]);
+	}
+
+	struct ptrset set3 = bpf_ir_ptrset_union(env, &set, &set2);
+
+	CRITICAL_ASSERT(env, set3.cnt == 7);
+
+	for (int i = 7; i < 10; i++) {
+		bpf_ir_ptrset_insert(env, &set, strmap[i]);
+	}
+
+	struct ptrset set4 = bpf_ir_ptrset_union(env, &set, &set2);
+
+	CRITICAL_ASSERT(env, set4.cnt == 8);
+
+	struct ptrset set5 = bpf_ir_ptrset_intersec(env, &set, &set2);
+
+	CRITICAL_ASSERT(env, set5.cnt == 2);
+
+	// bpf_ir_ptrset_print_dbg(env, &set3, print_key);
+
+	bpf_ir_ptrset_free(&set);
+	bpf_ir_ptrset_free(&set2);
+	bpf_ir_ptrset_free(&set3);
+	bpf_ir_ptrset_free(&set4);
+	bpf_ir_ptrset_free(&set5);
+
 	bpf_ir_free_env(env);
 }
 

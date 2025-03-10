@@ -287,6 +287,16 @@ struct ptrset bpf_ir_ptrset_union(struct bpf_ir_env *env, struct ptrset *set1,
 struct ptrset bpf_ir_ptrset_intersec(struct bpf_ir_env *env,
 				     struct ptrset *set1, struct ptrset *set2);
 
+void bpf_ir_ptrset_move(struct ptrset *set1, struct ptrset *set2);
+
+void bpf_ir_ptrset_clone(struct bpf_ir_env *env, struct ptrset *set1,
+			 struct ptrset *set2);
+
+void bpf_ir_ptrset_add(struct bpf_ir_env *env, struct ptrset *set1,
+		       struct ptrset *set2);
+
+void bpf_ir_ptrset_minus(struct ptrset *set1, struct ptrset *set2);
+
 /* Ptrset End */
 
 /* DBG Macro Start */
