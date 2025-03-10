@@ -21,7 +21,7 @@ static u32 hash(const char *s)
 	while ((c = *s++))
 		key += c;
 
-	return key;
+	return key % 7;
 }
 
 void print_key(struct bpf_ir_env *env, void *key)
@@ -36,14 +36,14 @@ void print_data(struct bpf_ir_env *env, void *data)
 	PRINT_LOG_DEBUG(env, "%d", *i);
 }
 
-void test(void)
+void test(int tb_init_size)
 {
 	struct bpf_ir_opts opts = bpf_ir_default_opts();
 	opts.verbose = 5;
 	struct bpf_ir_env *env = bpf_ir_init_env(opts, NULL, 0);
 
 	struct hashtbl tbl;
-	bpf_ir_hashtbl_init(env, &tbl, 8);
+	bpf_ir_hashtbl_init(env, &tbl, tb_init_size);
 
 	for (int i = 0; i < 5; i++) {
 		char name[32];
@@ -51,7 +51,8 @@ void test(void)
 		hashtbl_insert(env, &tbl, name, hash(name), i);
 	}
 
-	bpf_ir_hashtbl_print_dbg(env, &tbl, print_key, print_data);
+	// bpf_ir_hashtbl_print_dbg(env, &tbl, print_key, print_data);
+	DBGASSERT(tbl.cnt == 5);
 
 	PRINT_LOG_DEBUG(env, "Delete\n");
 
@@ -60,8 +61,9 @@ void test(void)
 		sprintf(name, "node%d", i);
 		hashtbl_delete(env, &tbl, name, hash(name));
 	}
+	DBGASSERT(tbl.cnt == 2);
 
-	bpf_ir_hashtbl_print_dbg(env, &tbl, print_key, print_data);
+	// bpf_ir_hashtbl_print_dbg(env, &tbl, print_key, print_data);
 
 	PRINT_LOG_DEBUG(env, "Rehash\n");
 
@@ -72,7 +74,9 @@ void test(void)
 		hashtbl_insert(env, &tbl, name, hash(name), tmp);
 	}
 
-	bpf_ir_hashtbl_print_dbg(env, &tbl, print_key, print_data);
+	DBGASSERT(tbl.cnt == 8);
+
+	// bpf_ir_hashtbl_print_dbg(env, &tbl, print_key, print_data);
 
 	PRINT_LOG_DEBUG(env, "Get\n");
 
@@ -91,7 +95,9 @@ void test(void)
 
 	bpf_ir_hashtbl_clean(&tbl);
 
-	bpf_ir_hashtbl_print_dbg(env, &tbl, print_key, print_data);
+	DBGASSERT(tbl.cnt == 0);
+
+	// bpf_ir_hashtbl_print_dbg(env, &tbl, print_key, print_data);
 
 	PRINT_LOG_DEBUG(env, "Extend\n");
 
@@ -101,7 +107,9 @@ void test(void)
 		hashtbl_insert(env, &tbl, name, hash(name), i);
 	}
 
-	bpf_ir_hashtbl_print_dbg(env, &tbl, print_key, print_data);
+	DBGASSERT(tbl.cnt == 100);
+
+	// bpf_ir_hashtbl_print_dbg(env, &tbl, print_key, print_data);
 
 	bpf_ir_hashtbl_free(&tbl);
 
@@ -110,6 +118,8 @@ void test(void)
 
 int main(void)
 {
-	test();
+	for (int i = 1; i < 10; i++) {
+		test(i);
+	}
 	return 0;
 }

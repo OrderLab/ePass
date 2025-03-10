@@ -23,6 +23,9 @@ static void bpf_ir_ptrset_insert_raw(struct ptrset *set, void *key)
 			set->set[index].occupy = 1;
 			set->cnt++;
 			return;
+		} else if (set->set[index].key == key) {
+			// Found
+			return;
 		}
 		index = (index + STEP) % set->size;
 	}
@@ -53,8 +56,8 @@ int bpf_ir_ptrset_delete(struct ptrset *set, void *key)
 {
 	u32 index = hash32_ptr(key) % set->size;
 	for (u32 i = 0; i < set->size; ++i) {
-		if (set->set[index].occupy <= 0) {
-			// Not found
+		if (set->set[index].occupy == 0) {
+			// Already deleted
 			return -1;
 		}
 		if (set->set[index].occupy == 1) {
@@ -74,7 +77,7 @@ bool bpf_ir_ptrset_exists(struct ptrset *set, void *key)
 {
 	u32 index = hash32_ptr(key) % set->size;
 	for (u32 i = 0; i < set->size; ++i) {
-		if (set->set[index].occupy <= 0) {
+		if (set->set[index].occupy == 0) {
 			// Not found
 			return false;
 		}
@@ -104,10 +107,8 @@ void bpf_ir_ptrset_print_dbg(struct bpf_ir_env *env, struct ptrset *set,
 void bpf_ir_ptrset_clean(struct ptrset *set)
 {
 	for (size_t i = 0; i < set->size; ++i) {
-		if (set->set[i].occupy > 0) {
-			set->set[i].key = NULL;
-			set->set[i].occupy = 0;
-		}
+		set->set[i].key = NULL;
+		set->set[i].occupy = 0;
 	}
 	set->cnt = 0;
 }
@@ -118,4 +119,36 @@ void bpf_ir_ptrset_free(struct ptrset *set)
 	free_proto(set->set);
 	set->size = 0;
 	set->set = NULL;
+}
+
+struct ptrset bpf_ir_ptrset_union(struct bpf_ir_env *env, struct ptrset *set1,
+				  struct ptrset *set2)
+{
+	struct ptrset res;
+	bpf_ir_ptrset_init(env, &res, set1->cnt + set2->cnt);
+	for (size_t i = 0; i < set1->size; ++i) {
+		if (set1->set[i].occupy > 0) {
+			bpf_ir_ptrset_insert(env, &res, set1->set[i].key);
+		}
+	}
+	for (size_t i = 0; i < set2->size; ++i) {
+		if (set2->set[i].occupy > 0) {
+			bpf_ir_ptrset_insert(env, &res, set2->set[i].key);
+		}
+	}
+	return res;
+}
+
+struct ptrset bpf_ir_ptrset_intersec(struct bpf_ir_env *env,
+				     struct ptrset *set1, struct ptrset *set2)
+{
+	struct ptrset res;
+	bpf_ir_ptrset_init(env, &res, set1->cnt);
+	for (size_t i = 0; i < set1->size; ++i) {
+		if (set1->set[i].occupy > 0 &&
+		    bpf_ir_ptrset_exists(set2, set1->set[i].key)) {
+			bpf_ir_ptrset_insert(env, &res, set1->set[i].key);
+		}
+	}
+	return res;
 }

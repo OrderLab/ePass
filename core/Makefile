@@ -24,5 +24,6 @@ readlog: build
 test: build
 	./build/test_list
 	./build/test_hashtable
+	./build/test_ptrset
 
 .PHONY: build format kernel readlog read genctor test

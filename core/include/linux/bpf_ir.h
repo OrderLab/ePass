@@ -281,6 +281,12 @@ void bpf_ir_ptrset_clean(struct ptrset *set);
 
 void bpf_ir_ptrset_free(struct ptrset *set);
 
+struct ptrset bpf_ir_ptrset_union(struct bpf_ir_env *env, struct ptrset *set1,
+				  struct ptrset *set2);
+
+struct ptrset bpf_ir_ptrset_intersec(struct bpf_ir_env *env,
+				     struct ptrset *set1, struct ptrset *set2);
+
 /* Ptrset End */
 
 /* DBG Macro Start */

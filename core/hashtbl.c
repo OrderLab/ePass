@@ -96,7 +96,7 @@ int bpf_ir_hashtbl_delete(struct hashtbl *tbl, void *key, size_t key_size,
 {
 	u32 index = __hash_32(key_hash) % tbl->size;
 	for (u32 i = 0; i < tbl->size; ++i) {
-		if (tbl->table[index].occupy <= 0) {
+		if (tbl->table[index].occupy == 0) {
 			// Not found
 			return -1;
 		}
@@ -121,7 +121,7 @@ void *bpf_ir_hashtbl_get(struct hashtbl *tbl, void *key, size_t key_size,
 {
 	u32 index = __hash_32(key_hash) % tbl->size;
 	for (u32 i = 0; i < tbl->size; ++i) {
-		if (tbl->table[index].occupy <= 0) {
+		if (tbl->table[index].occupy == 0) {
 			// Not found
 			return NULL;
 		}
