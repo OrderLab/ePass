@@ -1,45 +1,20 @@
-/**
- *
- * I grub it from linux kernel source code and fix it for user space
- * program. Of course, this is a GPL licensed header file.
- *
- * Here is a recipe to cook list.h for user space program
- *
- * 1. copy list.h from linux/include/list.h
- * 2. remove
- *     - #ifdef __KERNEL__ and its #endif
- *     - all #include line
- *     - prefetch() and rcu related functions
- * 3. add macro offsetof() and container_of
- *
- * - kazutomo@mcs.anl.gov
- */
+/* SPDX-License-Identifier: GPL-2.0 */
 #ifndef _LINUX_LIST_H
 #define _LINUX_LIST_H
 
 /**
- * @name from other kernel headers
- */
-/*@{*/
-
-/**
- * Get offset of a member
- */
-// #define offsetof(TYPE, MEMBER) ((size_t) & ((TYPE *)0)->MEMBER)
-
-/**
- * Casts a member of a structure out to the containing structure
- * @param ptr        the pointer to the member.
- * @param type       the type of the container struct this is embedded in.
- * @param member     the name of the member within the struct.
+ * container_of - cast a member of a structure out to the containing structure
+ * @ptr:	the pointer to the member.
+ * @type:	the type of the container struct this is embedded in.
+ * @member:	the name of the member within the struct.
  *
+ * WARNING: any const qualifier of @ptr is lost.
  */
-#define container_of(ptr, type, member)                            \
-	({                                                         \
-		const typeof(((type *)0)->member) *__mptr = (ptr); \
-		(type *)((char *)__mptr - offsetof(type, member)); \
+#define container_of(ptr, type, member)                      \
+	({                                                   \
+		void *__mptr = (void *)(ptr);                \
+		((type *)(__mptr - offsetof(type, member))); \
 	})
-/*@}*/
 
 /*
  * These are non-NULL pointers that will result in page faults
@@ -373,7 +348,11 @@ struct hlist_node {
 #define HLIST_HEAD_INIT { .first = NULL }
 #define HLIST_HEAD(name) struct hlist_head name = { .first = NULL }
 #define INIT_HLIST_HEAD(ptr) ((ptr)->first = NULL)
-#define INIT_HLIST_NODE(ptr) ((ptr)->next = NULL, (ptr)->pprev = NULL)
+static inline void INIT_HLIST_NODE(struct hlist_node *h)
+{
+	h->next = NULL;
+	h->pprev = NULL;
+}
 
 static inline int hlist_unhashed(const struct hlist_node *h)
 {
@@ -442,12 +421,8 @@ static inline void hlist_add_after(struct hlist_node *n,
 
 #define hlist_entry(ptr, type, member) container_of(ptr, type, member)
 
-#define hlist_for_each(pos, head)                              \
-	for (pos = (head)->first; pos && ({                    \
-					  prefetch(pos->next); \
-					  1;                   \
-				  });                          \
-	     pos = pos->next)
+#define hlist_for_each(pos, head) \
+	for (pos = (head)->first; pos; pos = pos->next)
 
 #define hlist_for_each_safe(pos, n, head)                \
 	for (pos = (head)->first; pos && ({              \
@@ -456,78 +431,56 @@ static inline void hlist_add_after(struct hlist_node *n,
 				  });                    \
 	     pos = n)
 
+#define hlist_entry_safe(ptr, type, member)                          \
+	({                                                           \
+		typeof(ptr) ____ptr = (ptr);                         \
+		____ptr ? hlist_entry(____ptr, type, member) : NULL; \
+	})
+
 /**
  * hlist_for_each_entry	- iterate over list of given type
- * @tpos:	the type * to use as a loop counter.
- * @pos:	the &struct hlist_node to use as a loop counter.
+ * @pos:	the type * to use as a loop cursor.
  * @head:	the head for your list.
  * @member:	the name of the hlist_node within the struct.
  */
-#define hlist_for_each_entry(tpos, pos, head, member)                \
-	for (pos = (head)->first;                                    \
-	     pos && ({                                               \
-		     prefetch(pos->next);                            \
-		     1;                                              \
-	     }) &&                                                   \
-	     ({                                                      \
-		     tpos = hlist_entry(pos, typeof(*tpos), member); \
-		     1;                                              \
-	     });                                                     \
-	     pos = pos->next)
+#define hlist_for_each_entry(pos, head, member)                              \
+	for (pos = hlist_entry_safe((head)->first, typeof(*(pos)), member);  \
+	     pos; pos = hlist_entry_safe((pos)->member.next, typeof(*(pos)), \
+					 member))
 
 /**
- * hlist_for_each_entry_continue - iterate over a hlist continuing after existing point
- * @tpos:	the type * to use as a loop counter.
- * @pos:	the &struct hlist_node to use as a loop counter.
- * @member:	the name of the hlist_node within the struct.
- */
-#define hlist_for_each_entry_continue(tpos, pos, member)             \
-	for (pos = (pos)->next;                                      \
-	     pos && ({                                               \
-		     prefetch(pos->next);                            \
-		     1;                                              \
-	     }) &&                                                   \
-	     ({                                                      \
-		     tpos = hlist_entry(pos, typeof(*tpos), member); \
-		     1;                                              \
-	     });                                                     \
-	     pos = pos->next)
+* hlist_for_each_entry_continue - iterate over a hlist continuing after current point
+* @pos:	the type * to use as a loop cursor.
+* @member:	the name of the hlist_node within the struct.
+*/
+#define hlist_for_each_entry_continue(pos, member)                           \
+	for (pos = hlist_entry_safe((pos)->member.next, typeof(*(pos)),      \
+				    member);                                 \
+	     pos; pos = hlist_entry_safe((pos)->member.next, typeof(*(pos)), \
+					 member))
 
 /**
- * hlist_for_each_entry_from - iterate over a hlist continuing from existing point
- * @tpos:	the type * to use as a loop counter.
- * @pos:	the &struct hlist_node to use as a loop counter.
- * @member:	the name of the hlist_node within the struct.
- */
-#define hlist_for_each_entry_from(tpos, pos, member)                   \
-	for (; pos && ({                                               \
-		       prefetch(pos->next);                            \
-		       1;                                              \
-	       }) &&                                                   \
-	       ({                                                      \
-		       tpos = hlist_entry(pos, typeof(*tpos), member); \
-		       1;                                              \
-	       });                                                     \
-	     pos = pos->next)
+* hlist_for_each_entry_from - iterate over a hlist continuing from current point
+* @pos:	the type * to use as a loop cursor.
+* @member:	the name of the hlist_node within the struct.
+*/
+#define hlist_for_each_entry_from(pos, member)                                 \
+	for (; pos; pos = hlist_entry_safe((pos)->member.next, typeof(*(pos)), \
+					   member))
 
 /**
- * hlist_for_each_entry_safe - iterate over list of given type safe against removal of list entry
- * @tpos:	the type * to use as a loop counter.
- * @pos:	the &struct hlist_node to use as a loop counter.
- * @n:		another &struct hlist_node to use as temporary storage
- * @head:	the head for your list.
- * @member:	the name of the hlist_node within the struct.
- */
-#define hlist_for_each_entry_safe(tpos, pos, n, head, member)        \
-	for (pos = (head)->first;                                    \
-	     pos && ({                                               \
-		     n = pos->next;                                  \
-		     1;                                              \
-	     }) &&                                                   \
-	     ({                                                      \
-		     tpos = hlist_entry(pos, typeof(*tpos), member); \
-		     1;                                              \
-	     });                                                     \
-	     pos = n)
+* hlist_for_each_entry_safe - iterate over list of given type safe against removal of list entry
+* @pos:	the type * to use as a loop cursor.
+* @n:		a &struct hlist_node to use as temporary storage
+* @head:	the head for your list.
+* @member:	the name of the hlist_node within the struct.
+*/
+#define hlist_for_each_entry_safe(pos, n, head, member)                   \
+	for (pos = hlist_entry_safe((head)->first, typeof(*pos), member); \
+	     pos && ({                                                    \
+		     n = pos->member.next;                                \
+		     1;                                                   \
+	     });                                                          \
+	     pos = hlist_entry_safe(n, typeof(*pos), member))
 
 #endif

@@ -72,6 +72,7 @@ int main(int argc, char **argv)
 	struct user_opts uopts;
 	uopts.gopt[0] = 0;
 	uopts.popt[0] = 0;
+	uopts.prog[0] = 0;
 	uopts.no_compile = false;
 	uopts.auto_sec = true;
 	static struct option long_options[] = {
@@ -141,6 +142,10 @@ int main(int argc, char **argv)
 	}
 	if (mode == MODE_PRINT) {
 		return print(uopts);
+	}
+	if (uopts.prog[0] == 0) {
+		printf("Program not specified\n");
+		usage(argv[0]);
 	}
 
 	// Initialize common options

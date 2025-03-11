@@ -18,8 +18,14 @@ static void print_bpf_prog(struct bpf_ir_env *env, const struct bpf_insn *insns,
 int print(struct user_opts uopts)
 {
 	struct bpf_object *obj = bpf_object__open(uopts.prog);
-	struct bpf_program *prog =
-		bpf_object__find_program_by_name(obj, uopts.sec);
+
+	struct bpf_program *prog = NULL;
+	if (uopts.auto_sec) {
+		prog = bpf_object__next_program(obj, NULL);
+	} else {
+		prog = bpf_object__find_program_by_name(obj, uopts.sec);
+	}
+
 	if (!prog) {
 		return 1;
 	}

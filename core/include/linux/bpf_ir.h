@@ -8,13 +8,15 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "list.h"
 #include <stdarg.h>
 #include <stddef.h>
-
 #include <stdbool.h>
 #include <stdint.h>
 #include <time.h>
+
+// Used to simulate kernel functions
+#include "list.h"
+#include "hash.h"
 
 typedef __s8 s8;
 typedef __u8 u8;
@@ -32,6 +34,7 @@ typedef __u64 u64;
 #include <linux/types.h>
 #include <linux/sort.h>
 #include <linux/list.h>
+#include <linux/hash.h>
 
 #define SIZET_MAX ULONG_MAX
 
@@ -159,12 +162,12 @@ void bpf_ir_print_log_dbg(struct bpf_ir_env *env);
 
 /* Array Start */
 
-struct array {
+typedef struct array {
 	void *data;
 	size_t num_elem; // Current length
 	size_t max_elem; // Maximum length
 	size_t elem_size;
-};
+} array;
 
 void bpf_ir_array_init(struct array *res, size_t size);
 
@@ -198,6 +201,103 @@ void bpf_ir_array_clone(struct bpf_ir_env *env, struct array *res,
 #define INIT_ARRAY(arr, type) bpf_ir_array_init(arr, sizeof(type))
 
 /* Array End */
+
+/* Hashtable Start */
+
+struct hashtbl_entry {
+	u32 key_hash; // Used for growing
+	void *key;
+	void *data;
+	s8 occupy; // 0: Empty, 1: Occupied, -1: Deleted
+};
+
+struct hashtbl {
+	struct hashtbl_entry *table;
+	size_t size;
+	size_t cnt;
+};
+
+void bpf_ir_hashtbl_init(struct bpf_ir_env *env, struct hashtbl *res,
+			 size_t size);
+
+#define hashtbl_insert(env, tbl, key, keyhash, data)                           \
+	bpf_ir_hashtbl_insert(env, tbl, &(key), sizeof(key), keyhash, &(data), \
+			      sizeof(data))
+
+void bpf_ir_hashtbl_insert(struct bpf_ir_env *env, struct hashtbl *tbl,
+			   void *key, size_t key_size, u32 key_hash, void *data,
+			   size_t data_size);
+
+#define hashtbl_delete(env, tbl, key, keyhash) \
+	bpf_ir_hashtbl_delete(tbl, &(key), sizeof(key), keyhash)
+
+int bpf_ir_hashtbl_delete(struct hashtbl *tbl, void *key, size_t key_size,
+			  u32 key_hash);
+
+#define hashtbl_get(env, tbl, key, keyhash, type) \
+	(type *)bpf_ir_hashtbl_get(tbl, &(key), sizeof(key), keyhash)
+
+void *bpf_ir_hashtbl_get(struct hashtbl *tbl, void *key, size_t key_size,
+			 u32 key_hash);
+
+void bpf_ir_hashtbl_print_dbg(struct bpf_ir_env *env, struct hashtbl *tbl,
+			      void (*print_key)(struct bpf_ir_env *env, void *),
+			      void (*print_data)(struct bpf_ir_env *env,
+						 void *));
+
+void bpf_ir_hashtbl_clean(struct hashtbl *tbl);
+
+void bpf_ir_hashtbl_free(struct hashtbl *tbl);
+
+/* Hashtable End */
+
+/* Ptrset Start */
+
+struct ptrset_entry {
+	void *key;
+	s8 occupy; // 0: Empty, 1: Occupied, -1: Deleted
+};
+
+struct ptrset {
+	struct ptrset_entry *set;
+	size_t size;
+	size_t cnt;
+};
+
+void bpf_ir_ptrset_init(struct bpf_ir_env *env, struct ptrset *res,
+			size_t size);
+
+void bpf_ir_ptrset_insert(struct bpf_ir_env *env, struct ptrset *set,
+			  void *key);
+
+int bpf_ir_ptrset_delete(struct ptrset *set, void *key);
+
+bool bpf_ir_ptrset_exists(struct ptrset *set, void *key);
+
+void bpf_ir_ptrset_print_dbg(struct bpf_ir_env *env, struct ptrset *set,
+			     void (*print_key)(struct bpf_ir_env *env, void *));
+
+void bpf_ir_ptrset_clean(struct ptrset *set);
+
+void bpf_ir_ptrset_free(struct ptrset *set);
+
+struct ptrset bpf_ir_ptrset_union(struct bpf_ir_env *env, struct ptrset *set1,
+				  struct ptrset *set2);
+
+struct ptrset bpf_ir_ptrset_intersec(struct bpf_ir_env *env,
+				     struct ptrset *set1, struct ptrset *set2);
+
+void bpf_ir_ptrset_move(struct ptrset *set1, struct ptrset *set2);
+
+void bpf_ir_ptrset_clone(struct bpf_ir_env *env, struct ptrset *set1,
+			 struct ptrset *set2);
+
+void bpf_ir_ptrset_add(struct bpf_ir_env *env, struct ptrset *set1,
+		       struct ptrset *set2);
+
+void bpf_ir_ptrset_minus(struct ptrset *set1, struct ptrset *set2);
+
+/* Ptrset End */
 
 /* DBG Macro Start */
 #ifndef __KERNEL__
@@ -331,6 +431,7 @@ enum ir_value_type {
 	IR_VALUE_CONSTANT_RAWOFF,
 	IR_VALUE_CONSTANT_RAWOFF_REV,
 	IR_VALUE_INSN,
+	IR_VALUE_FLATTEN_DST, // Used only in code generation
 	IR_VALUE_UNDEF,
 };
 
@@ -348,6 +449,15 @@ struct ir_raw_pos {
 	enum ir_raw_pos_type pos_t;
 };
 
+/* Actual position of a VR, used after RA in cg */
+struct ir_vr_pos {
+	// If this VR needs to be allocated (insn like store does not)
+	bool allocated;
+	u32 spilled_size; // Spilled
+	u8 alloc_reg; // Not spilled
+	s32 spilled;
+};
+
 /*
  *  VALUE = CONSTANT | INSN
  *
@@ -357,6 +467,7 @@ struct ir_value {
 	union {
 		s64 constant_d;
 		struct ir_insn *insn_d;
+		struct ir_vr_pos vr_pos;
 	} data;
 	enum ir_value_type type;
 	enum ir_alu_op_type const_type; // Used when type is a constant
@@ -596,11 +707,8 @@ struct ir_basic_block {
 	size_t _id;
 	void *user_data;
 
-	// Flag
+	// Flag (experimental, may be removed in the future)
 	u32 flag;
-
-	// Array of struct ir_insn *
-	struct array users;
 };
 
 /**
@@ -1138,6 +1246,8 @@ void print_ir_dst(struct bpf_ir_env *env, struct ir_insn *insn);
 
 void print_ir_alloc(struct bpf_ir_env *env, struct ir_insn *insn);
 
+void print_ir_flatten(struct bpf_ir_env *env, struct ir_insn *insn);
+
 void bpf_ir_clean_visited(struct ir_function *);
 
 // Tag the instruction and BB
@@ -1289,6 +1399,17 @@ struct ir_bb_cg_extra {
 	size_t pos;
 };
 
+/* Instruction data used after RA (e.g. normalization) */
+struct ir_insn_norm_extra {
+	struct ir_vr_pos pos;
+
+	// Translated pre_ir_insn
+	struct pre_ir_insn translated[2];
+
+	// Translated number
+	u8 translated_num;
+};
+
 struct ir_insn_cg_extra {
 	// Destination (Not in SSA form anymore)
 	struct ir_value dst;
@@ -1302,12 +1423,6 @@ struct ir_insn_cg_extra {
 	// Adj list in interference graph
 	// Array of struct ir_insn*
 	struct array adj;
-
-	// Translated pre_ir_insn
-	struct pre_ir_insn translated[2];
-
-	// Translated number
-	u8 translated_num;
 
 	// Whether the VR is allocated with a real register
 	// If it's a pre-colored register, it's also 1
@@ -1326,6 +1441,8 @@ struct ir_insn_cg_extra {
 	// Valid number: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
 	u8 alloc_reg;
 
+	struct ir_vr_pos vr_pos;
+
 	// Whether this instruction is a non-VR instruction, like a pre-colored register
 	bool nonvr;
 };
@@ -1340,7 +1457,13 @@ enum val_type {
 
 #define insn_cg(insn) ((struct ir_insn_cg_extra *)(insn)->user_data)
 
+/* Dst of a instruction
+
+Note. This could be only applied to an instruction with return value.
+*/
 #define insn_dst(insn) insn_cg(insn)->dst.data.insn_d
+
+#define insn_norm(insn) ((struct ir_insn_norm_extra *)(insn)->user_data)
 
 /* Code Gen End */
 

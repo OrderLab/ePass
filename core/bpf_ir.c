@@ -1,6 +1,4 @@
 // SPDX-License-Identifier: GPL-2.0-only
-
-#include <linux/bpf_common.h>
 #include <linux/bpf_ir.h>
 
 static const s8 helper_func_arg_num[] = {
@@ -625,7 +623,6 @@ static struct ir_insn *add_phi_operands(struct bpf_ir_env *env,
 			env, tenv, reg,
 			(struct pre_ir_basic_block *)pred->user_data);
 		add_user(env, insn, phi.value);
-		bpf_ir_array_push(env, &pred->users, &insn);
 		bpf_ir_array_push(env, &insn->phi, &phi);
 	}
 	return insn;
@@ -961,8 +958,6 @@ static void create_cond_jmp(struct bpf_ir_env *env,
 	size_t pos = insn.pos + insn.off + 1;
 	new_insn->bb1 = get_ir_bb_from_position(tenv, insn.pos + 1);
 	new_insn->bb2 = get_ir_bb_from_position(tenv, pos);
-	bpf_ir_array_push(env, &new_insn->bb1->users, &new_insn);
-	bpf_ir_array_push(env, &new_insn->bb2->users, &new_insn);
 
 	set_insn_raw_pos(new_insn, insn.pos);
 	set_value_raw_pos(&new_insn->values[0], insn.pos, IR_RAW_POS_DST);
@@ -1224,8 +1219,6 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 				new_insn->bb1 =
 					get_ir_bb_from_position(tenv, pos);
 				set_insn_raw_pos(new_insn, insn.pos);
-				bpf_ir_array_push(env, &new_insn->bb1->users,
-						  &new_insn);
 			} else if (BPF_OP(code) == BPF_EXIT) {
 				// Exit
 				struct ir_insn *new_insn =
@@ -1383,22 +1376,21 @@ struct ir_insn *bpf_ir_find_ir_insn_by_rawpos(struct ir_function *fun,
 
 void bpf_ir_free_function(struct ir_function *fun)
 {
-	for (size_t i = 0; i < fun->all_bbs.num_elem; ++i) {
-		struct ir_basic_block *bb =
-			((struct ir_basic_block **)(fun->all_bbs.data))[i];
-
+	struct ir_basic_block **pos;
+	array_for(pos, fun->reachable_bbs)
+	{
+		struct ir_basic_block *bb = *pos;
 		bpf_ir_array_free(&bb->preds);
 		bpf_ir_array_free(&bb->succs);
-		bpf_ir_array_free(&bb->users);
 		// Free the instructions
-		struct ir_insn *pos = NULL, *n = NULL;
-		list_for_each_entry_safe(pos, n, &bb->ir_insn_head, list_ptr) {
-			list_del(&pos->list_ptr);
-			bpf_ir_array_free(&pos->users);
-			if (pos->op == IR_INSN_PHI) {
-				bpf_ir_array_free(&pos->phi);
+		struct ir_insn *pos2 = NULL, *n = NULL;
+		list_for_each_entry_safe(pos2, n, &bb->ir_insn_head, list_ptr) {
+			list_del(&pos2->list_ptr);
+			bpf_ir_array_free(&pos2->users);
+			if (pos2->op == IR_INSN_PHI) {
+				bpf_ir_array_free(&pos2->phi);
 			}
-			free_proto(pos);
+			free_proto(pos2);
 		}
 		free_proto(bb);
 	}

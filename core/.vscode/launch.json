@@ -8,8 +8,13 @@
             "type": "lldb",
             "request": "launch",
             "name": "Debug",
-            "program": "${workspaceFolder}/build/read",
-            "args": ["tests/output/empty.o", "prog"],
+            "program": "${workspaceFolder}/build/epasstool/epass",
+            "args": [
+                "-m",
+                "read",
+                "-p",
+                "bpftests/output/empty.o"
+            ],
             "cwd": "${workspaceFolder}"
         }
     ]

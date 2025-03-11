@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include <linux/bpf_ir.h>
 
-// Kernel-side Low-level Interface Implementation
+// Low-level Interface implemented for both kernel and user-space
 
 #ifdef __KERNEL__
 

@@ -8,6 +8,8 @@ ENDIF(EPASS_LIBBPF)
 add_library(epass STATIC
     bpf_ir.c
     array.c
+    hashtbl.c
+    ptrset.c
     ir_helper.c
     ir_value.c
     ir_bb.c
@@ -25,8 +27,15 @@ add_library(epass STATIC
     aux/disasm.c
     aux/kern_utils.c
     ir_code_gen.c
-    lii.c
+    lli.c
 )
+
+add_executable(test_list tests/test_list.c)
+add_executable(test_hashtable tests/test_hashtable.c)
+add_executable(test_ptrset tests/test_ptrset.c)
+
+target_link_libraries(test_hashtable epass)
+target_link_libraries(test_ptrset epass)
 
 include_directories(include)
 

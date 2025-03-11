@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: GPL-2.0-only
-
 #include <linux/bpf_ir.h>
 
 static void set_insn_dst(struct bpf_ir_env *env, struct ir_insn *insn,
@@ -14,6 +13,28 @@ static void set_insn_dst(struct bpf_ir_env *env, struct ir_insn *insn,
 		bpf_ir_val_add_user(env, v, insn);
 	}
 	insn_cg(insn)->dst = v;
+}
+
+void bpf_ir_init_insn_cg(struct bpf_ir_env *env, struct ir_insn *insn)
+{
+	struct ir_insn_cg_extra *extra = NULL;
+	SAFE_MALLOC(extra, sizeof(struct ir_insn_cg_extra));
+	insn->user_data = extra;
+	// When init, the destination is itself
+	extra->dst = bpf_ir_value_undef();
+	if (!bpf_ir_is_void(insn)) {
+		set_insn_dst(env, insn, insn);
+	}
+
+	INIT_ARRAY(&extra->adj, struct ir_insn *);
+	extra->allocated = false;
+	extra->spilled = 0;
+	extra->alloc_reg = 0;
+	INIT_ARRAY(&extra->gen, struct ir_insn *);
+	INIT_ARRAY(&extra->kill, struct ir_insn *);
+	INIT_ARRAY(&extra->in, struct ir_insn *);
+	INIT_ARRAY(&extra->out, struct ir_insn *);
+	extra->nonvr = false;
 }
 
 static void init_cg(struct bpf_ir_env *env, struct ir_function *fun)
@@ -68,8 +89,10 @@ void bpf_ir_free_insn_cg(struct ir_insn *insn)
 	insn->user_data = NULL;
 }
 
-static void free_cg_res(struct ir_function *fun)
+static void free_cg_final(struct ir_function *fun)
 {
+	// Free CG resources (after flattening)
+
 	struct ir_basic_block **pos = NULL;
 	array_for(pos, fun->reachable_bbs)
 	{
@@ -77,9 +100,50 @@ static void free_cg_res(struct ir_function *fun)
 		struct ir_bb_cg_extra *bb_cg = bb->user_data;
 		free_proto(bb_cg);
 		bb->user_data = NULL;
+
 		struct ir_insn *insn = NULL;
 		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
+			struct ir_insn_cg_extra *extra = insn_cg(insn);
+			free_proto(extra);
+			insn->user_data = NULL;
+		}
+	}
+}
+
+// Free CG resources, create a new extra data for flattening
+static void cg_to_flatten(struct bpf_ir_env *env, struct ir_function *fun)
+{
+	struct ir_basic_block **pos = NULL;
+	array_for(pos, fun->reachable_bbs)
+	{
+		struct ir_basic_block *bb = *pos;
+		struct ir_insn *insn = NULL;
+		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
+			struct ir_vr_pos pos;
+			if (bpf_ir_is_void(insn)) {
+				pos.allocated = false;
+			} else {
+				struct ir_insn_cg_extra *dst_extra =
+					insn_cg(insn_dst(insn));
+				DBGASSERT(dst_extra->allocated);
+				pos.spilled = dst_extra->spilled;
+				pos.alloc_reg = dst_extra->alloc_reg;
+				pos.allocated = dst_extra->allocated;
+				pos.spilled_size = dst_extra->spilled_size;
+			}
+			insn_cg(insn)->vr_pos = pos;
+		}
+	}
+	array_for(pos, fun->reachable_bbs)
+	{
+		struct ir_basic_block *bb = *pos;
+		struct ir_insn *insn = NULL;
+		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
+			struct ir_insn_cg_extra *extra = insn_cg(insn);
+			struct ir_vr_pos pos = extra->vr_pos;
 			bpf_ir_free_insn_cg(insn);
+			SAFE_MALLOC(insn->user_data, sizeof(struct ir_vr_pos));
+			insn_norm(insn)->pos = pos;
 		}
 	}
 
@@ -141,6 +205,13 @@ static void print_ir_prog_cg_alloc(struct bpf_ir_env *env,
 	print_ir_prog_advanced(env, fun, NULL, NULL, print_ir_alloc);
 }
 
+static void print_ir_prog_cg_flatten(struct bpf_ir_env *env,
+				     struct ir_function *fun, char *msg)
+{
+	PRINT_LOG_DEBUG(env, "\x1B[32m----- CG: %s -----\x1B[0m\n", msg);
+	print_ir_prog_advanced(env, fun, NULL, NULL, print_ir_flatten);
+}
+
 static void synthesize(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	// The last step, synthesizes the program
@@ -151,7 +222,7 @@ static void synthesize(struct bpf_ir_env *env, struct ir_function *fun)
 		struct ir_basic_block *bb = *pos;
 		struct ir_insn *insn = NULL;
 		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
-			struct ir_insn_cg_extra *extra = insn_cg(insn);
+			struct ir_insn_norm_extra *extra = insn_norm(insn);
 			for (u8 i = 0; i < extra->translated_num; ++i) {
 				struct pre_ir_insn translated_insn =
 					extra->translated[i];
@@ -949,6 +1020,17 @@ static enum val_type vtype(struct ir_value val)
 		   val.type == IR_VALUE_CONSTANT_RAWOFF ||
 		   val.type == IR_VALUE_CONSTANT_RAWOFF_REV) {
 		return CONST;
+	} else if (val.type == IR_VALUE_FLATTEN_DST) {
+		if (val.data.vr_pos.allocated) {
+			if (val.data.vr_pos.spilled) {
+				// WARNING: cannot determine whether it's a stackoff
+				return STACK;
+			} else {
+				return REG;
+			}
+		} else {
+			return UNDEF;
+		}
 	} else {
 		CRITICAL("No such value type for dst");
 	}
@@ -987,7 +1069,7 @@ static void calc_pos(struct bpf_ir_env *env, struct ir_function *fun)
 		bb_extra->pos = ipos;
 		struct ir_insn *insn;
 		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
-			struct ir_insn_cg_extra *insn_extra = insn_cg(insn);
+			struct ir_insn_norm_extra *insn_extra = insn_norm(insn);
 			for (u8 i = 0; i < insn_extra->translated_num; ++i) {
 				struct pre_ir_insn *translated_insn =
 					&insn_extra->translated[i];
@@ -1013,7 +1095,7 @@ static void relocate(struct bpf_ir_env *env, struct ir_function *fun)
 		struct ir_basic_block *bb = *pos;
 		struct ir_insn *insn;
 		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
-			struct ir_insn_cg_extra *insn_extra = insn_cg(insn);
+			struct ir_insn_norm_extra *insn_extra = insn_norm(insn);
 			if (insn->op == IR_INSN_JA) {
 				DBGASSERT(insn_extra->translated_num == 1);
 				size_t target = bpf_ir_bb_cg(insn->bb1)->pos;
@@ -1154,6 +1236,105 @@ static void spill_callee(struct bpf_ir_env *env, struct ir_function *fun)
 }
 
 // Normalization
+
+static void remove_all_users(struct ir_function *fun)
+{
+	struct ir_basic_block **pos;
+	array_for(pos, fun->reachable_bbs)
+	{
+		struct ir_basic_block *bb = *pos;
+		struct ir_insn *insn;
+		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
+			bpf_ir_array_free(&insn->users);
+		}
+	}
+	for (u8 i = 0; i < MAX_FUNC_ARG; ++i) {
+		bpf_ir_array_free(&fun->function_arg[i]->users);
+	}
+	if (fun->sp) {
+		bpf_ir_array_free(&fun->sp->users);
+	}
+	for (u8 i = 0; i < BPF_REG_10; ++i) {
+		struct ir_insn *insn = fun->cg_info.regs[i];
+		bpf_ir_array_free(&insn->users);
+	}
+}
+
+// To flatten IR, we first need to change all the values to ir_pos
+static void change_all_value_to_ir_pos(struct bpf_ir_env *env,
+				       struct ir_function *fun)
+{
+	struct ir_basic_block **pos;
+	array_for(pos, fun->reachable_bbs)
+	{
+		struct ir_basic_block *bb = *pos;
+		struct ir_insn *insn;
+		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
+			struct array operands = bpf_ir_get_operands(env, insn);
+			struct ir_value **pos2;
+			array_for(pos2, operands)
+			{
+				struct ir_value *v = *pos2;
+				if (v->type == IR_VALUE_INSN) {
+					struct ir_insn *insn_d = v->data.insn_d;
+					// The value should be the final value (not proxy)
+					DBGASSERT(insn_d == insn_dst(insn_d));
+
+					struct ir_insn_cg_extra *extra =
+						insn_cg(insn_d);
+					struct ir_vr_pos pos;
+					pos.spilled = extra->spilled;
+					pos.alloc_reg = extra->alloc_reg;
+					pos.allocated = extra->allocated;
+					pos.spilled_size = extra->spilled_size;
+					v->type = IR_VALUE_FLATTEN_DST;
+					v->data.vr_pos = pos;
+				}
+			}
+		}
+	}
+}
+
+static void test(struct bpf_ir_env *env, struct ir_function *fun)
+{
+	struct ir_basic_block **pos = NULL;
+	array_for(pos, fun->reachable_bbs)
+	{
+		struct ir_basic_block *bb = *pos;
+		// struct ir_bb_cg_extra *bb_cg = bb->user_data;
+		// free_proto(bb_cg);
+		// bb->user_data = NULL;
+		struct ir_insn *insn = NULL;
+		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
+			struct ir_vr_pos pos;
+			if (bpf_ir_is_void(insn)) {
+				pos.allocated = false;
+			} else {
+				struct ir_insn_cg_extra *extra =
+					insn_cg(insn_dst(insn));
+				DBGASSERT(extra->allocated);
+				pos.spilled = extra->spilled;
+				pos.alloc_reg = extra->alloc_reg;
+				pos.allocated = extra->allocated;
+				pos.spilled_size = extra->spilled_size;
+			}
+			bpf_ir_free_insn_cg(insn);
+			SAFE_MALLOC(insn->user_data, sizeof(struct ir_vr_pos));
+			insn_norm(insn)->pos = pos;
+		}
+	}
+}
+
+/* Flatten IR */
+static void flatten_ir(struct bpf_ir_env *env, struct ir_function *fun)
+{
+	// Make sure no users
+	remove_all_users(fun);
+	change_all_value_to_ir_pos(env, fun);
+	CHECK_ERR();
+	cg_to_flatten(env, fun);
+	CHECK_ERR();
+}
 
 /* Loading constant used in normalization */
 static struct ir_insn *normalize_load_const(struct bpf_ir_env *env,
@@ -1333,9 +1514,8 @@ static void normalize_getelemptr(struct bpf_ir_env *env,
 	struct ir_value *v1 = &insn->values[1];
 	enum val_type t0 = insn->value_num >= 1 ? vtype(*v0) : UNDEF;
 	enum val_type t1 = insn->value_num >= 2 ? vtype(*v1) : UNDEF;
-	enum val_type tdst = vtype_insn(insn);
 	struct ir_insn *dst_insn = insn_dst(insn);
-	DBGASSERT(tdst == REG);
+
 	DBGASSERT(t1 == STACKOFF);
 	DBGASSERT(v1->type == IR_VALUE_INSN &&
 		  v1->data.insn_d->op == IR_INSN_ALLOCARRAY);
@@ -2572,7 +2752,7 @@ static u8 get_alloc_reg(struct ir_insn *insn)
 static void translate_loadraw(struct ir_insn *insn)
 {
 	enum val_type tdst = vtype_insn(insn);
-	struct ir_insn_cg_extra *extra = insn_cg(insn);
+	struct ir_insn_norm_extra *extra = insn_norm(insn);
 	struct ir_insn *dst_insn = insn_dst(insn);
 	DBGASSERT(tdst == REG);
 	extra->translated[0] = load_addr_to_reg(get_alloc_reg(dst_insn),
@@ -2582,7 +2762,7 @@ static void translate_loadraw(struct ir_insn *insn)
 static void translate_loadimm_extra(struct ir_insn *insn)
 {
 	enum val_type tdst = vtype_insn(insn);
-	struct ir_insn_cg_extra *extra = insn_cg(insn);
+	struct ir_insn_norm_extra *extra = insn_norm(insn);
 	struct ir_insn *dst_insn = insn_dst(insn);
 	DBGASSERT(tdst == REG);
 	extra->translated[0].opcode = BPF_IMM | BPF_LD | BPF_DW;
@@ -2598,7 +2778,7 @@ static void translate_storeraw(struct ir_insn *insn)
 {
 	struct ir_value v0 = insn->values[0];
 	enum val_type t0 = insn->value_num >= 1 ? vtype(v0) : UNDEF;
-	struct ir_insn_cg_extra *extra = insn_cg(insn);
+	struct ir_insn_norm_extra *extra = insn_norm(insn);
 	// storeraw
 	if (insn->addr_val.value.type == IR_VALUE_INSN) {
 		// Store value in (address in the value)
@@ -2629,7 +2809,7 @@ static void translate_alu(struct ir_insn *insn)
 	enum val_type t0 = insn->value_num >= 1 ? vtype(v0) : UNDEF;
 	enum val_type t1 = insn->value_num >= 2 ? vtype(v1) : UNDEF;
 	enum val_type tdst = vtype_insn(insn);
-	struct ir_insn_cg_extra *extra = insn_cg(insn);
+	struct ir_insn_norm_extra *extra = insn_norm(insn);
 	struct ir_insn *dst_insn = insn_dst(insn);
 	DBGASSERT(tdst == REG);
 	DBGASSERT(t0 == REG);
@@ -2658,7 +2838,7 @@ static void translate_assign(struct ir_insn *insn)
 	struct ir_value v0 = insn->values[0];
 	enum val_type t0 = insn->value_num >= 1 ? vtype(v0) : UNDEF;
 	enum val_type tdst = vtype_insn(insn);
-	struct ir_insn_cg_extra *extra = insn_cg(insn);
+	struct ir_insn_norm_extra *extra = insn_norm(insn);
 	struct ir_insn *dst_insn = insn_dst(insn);
 
 	// reg = const (alu)
@@ -2682,13 +2862,13 @@ static void translate_assign(struct ir_insn *insn)
 
 static void translate_ret(struct ir_insn *insn)
 {
-	struct ir_insn_cg_extra *extra = insn_cg(insn);
+	struct ir_insn_norm_extra *extra = insn_norm(insn);
 	extra->translated[0].opcode = BPF_EXIT | BPF_JMP;
 }
 
 static void translate_call(struct ir_insn *insn)
 {
-	struct ir_insn_cg_extra *extra = insn_cg(insn);
+	struct ir_insn_norm_extra *extra = insn_norm(insn);
 	// Currently only support local helper functions
 	extra->translated[0].opcode = BPF_CALL | BPF_JMP;
 	extra->translated[0].it = IMM;
@@ -2697,7 +2877,7 @@ static void translate_call(struct ir_insn *insn)
 
 static void translate_ja(struct ir_insn *insn)
 {
-	struct ir_insn_cg_extra *extra = insn_cg(insn);
+	struct ir_insn_norm_extra *extra = insn_norm(insn);
 	extra->translated[0].opcode = BPF_JMP | BPF_JA;
 }
 
@@ -2706,7 +2886,7 @@ static void translate_neg(struct ir_insn *insn)
 	struct ir_value v0 = insn->values[0];
 	enum val_type t0 = insn->value_num >= 1 ? vtype(v0) : UNDEF;
 	enum val_type tdst = vtype_insn(insn);
-	struct ir_insn_cg_extra *extra = insn_cg(insn);
+	struct ir_insn_norm_extra *extra = insn_norm(insn);
 	struct ir_insn *dst_insn = insn_dst(insn);
 	DBGASSERT(tdst == REG && t0 == REG);
 	DBGASSERT(get_alloc_reg(dst_insn) == get_alloc_reg(v0.data.insn_d));
@@ -2718,7 +2898,7 @@ static void translate_end(struct ir_insn *insn)
 	struct ir_value v0 = insn->values[0];
 	enum val_type t0 = insn->value_num >= 1 ? vtype(v0) : UNDEF;
 	enum val_type tdst = vtype_insn(insn);
-	struct ir_insn_cg_extra *extra = insn_cg(insn);
+	struct ir_insn_norm_extra *extra = insn_norm(insn);
 	struct ir_insn *dst_insn = insn_dst(insn);
 	DBGASSERT(tdst == REG);
 	DBGASSERT(t0 == REG);
@@ -2733,7 +2913,7 @@ static void translate_cond_jmp(struct ir_insn *insn)
 	struct ir_value v1 = insn->values[1];
 	enum val_type t0 = insn->value_num >= 1 ? vtype(v0) : UNDEF;
 	enum val_type t1 = insn->value_num >= 2 ? vtype(v1) : UNDEF;
-	struct ir_insn_cg_extra *extra = insn_cg(insn);
+	struct ir_insn_norm_extra *extra = insn_norm(insn);
 	DBGASSERT(t0 == REG || t1 == REG);
 	if (t0 == REG) {
 		if (t1 == REG) {
@@ -2840,7 +3020,7 @@ static void check_total_insn(struct bpf_ir_env *env, struct ir_function *fun)
 		struct ir_insn *insn, *tmp;
 		list_for_each_entry_safe(insn, tmp, &bb->ir_insn_head,
 					 list_ptr) {
-			struct ir_insn_cg_extra *extra = insn_cg(insn);
+			struct ir_insn_norm_extra *extra = insn_norm(insn);
 			cnt += extra->translated_num;
 		}
 	}
@@ -2858,7 +3038,7 @@ static void translate(struct bpf_ir_env *env, struct ir_function *fun)
 		struct ir_insn *insn, *tmp;
 		list_for_each_entry_safe(insn, tmp, &bb->ir_insn_head,
 					 list_ptr) {
-			struct ir_insn_cg_extra *extra = insn_cg(insn);
+			struct ir_insn_norm_extra *extra = insn_norm(insn);
 			extra->translated_num = 1; // Default: 1 instruction
 			if (insn->op == IR_INSN_ALLOC) {
 				// Nothing to do
@@ -3075,12 +3255,16 @@ void bpf_ir_compile(struct bpf_ir_env *env, struct ir_function *fun)
 		prog_check_cg(env, fun);
 		CHECK_ERR();
 	}
+
+	flatten_ir(env, fun);
+	CHECK_ERR();
+
+	print_ir_prog_cg_flatten(env, fun, "Flattening");
+
 	// Step 12: Normalize
 	normalize(env, fun);
 	CHECK_ERR();
 	print_ir_prog_cg_alloc(env, fun, "Normalization");
-	// prog_check_cg(env, fun);
-	// CHECK_ERR();
 
 	replace_builtin_const(env, fun);
 	CHECK_ERR();
@@ -3101,29 +3285,6 @@ void bpf_ir_compile(struct bpf_ir_env *env, struct ir_function *fun)
 	CHECK_ERR();
 
 	// Free CG resources
-	free_cg_res(fun);
+	free_cg_final(fun);
 	env->cg_time += get_cur_time_ns() - starttime;
-}
-
-void bpf_ir_init_insn_cg(struct bpf_ir_env *env, struct ir_insn *insn)
-{
-	struct ir_insn_cg_extra *extra = NULL;
-	SAFE_MALLOC(extra, sizeof(struct ir_insn_cg_extra));
-	insn->user_data = extra;
-	// When init, the destination is itself
-	extra->dst = bpf_ir_value_undef();
-	if (!bpf_ir_is_void(insn)) {
-		set_insn_dst(env, insn, insn);
-	}
-
-	INIT_ARRAY(&extra->adj, struct ir_insn *);
-	extra->allocated = false;
-	extra->spilled = 0;
-	extra->alloc_reg = 0;
-	INIT_ARRAY(&extra->gen, struct ir_insn *);
-	INIT_ARRAY(&extra->kill, struct ir_insn *);
-	INIT_ARRAY(&extra->in, struct ir_insn *);
-	INIT_ARRAY(&extra->out, struct ir_insn *);
-	extra->translated_num = 0;
-	extra->nonvr = false;
 }
