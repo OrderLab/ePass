@@ -1179,6 +1179,10 @@ struct ir_insn *bpf_ir_create_insn_base_cg(struct bpf_ir_env *env,
 					   struct ir_basic_block *bb,
 					   enum ir_insn_type insn_type);
 
+struct ir_insn *bpf_ir_create_insn_base_norm(struct bpf_ir_env *env,
+					     struct ir_basic_block *bb,
+					     struct ir_vr_pos pos);
+
 struct ir_insn *bpf_ir_create_insn_base(struct bpf_ir_env *env,
 					struct ir_basic_block *bb);
 
@@ -1388,6 +1392,9 @@ void bpf_ir_run(struct bpf_ir_env *env, struct ir_function *fun);
 /* Code Gen Start */
 
 void bpf_ir_init_insn_cg(struct bpf_ir_env *env, struct ir_insn *insn);
+
+void bpf_ir_init_insn_norm(struct bpf_ir_env *env, struct ir_insn *insn,
+			   struct ir_vr_pos pos);
 
 void bpf_ir_compile(struct bpf_ir_env *env, struct ir_function *fun);
 

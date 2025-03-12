@@ -37,6 +37,15 @@ void bpf_ir_init_insn_cg(struct bpf_ir_env *env, struct ir_insn *insn)
 	extra->nonvr = false;
 }
 
+void bpf_ir_init_insn_norm(struct bpf_ir_env *env, struct ir_insn *insn,
+			   struct ir_vr_pos pos)
+{
+	struct ir_insn_norm_extra *extra = NULL;
+	SAFE_MALLOC(extra, sizeof(struct ir_insn_norm_extra));
+	insn->user_data = extra;
+	extra->pos = pos;
+}
+
 static void init_cg(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	struct ir_basic_block **pos = NULL;
@@ -1518,6 +1527,7 @@ static void normalize_getelemptr(struct bpf_ir_env *env,
 	DBGASSERT(t1 == STACK);
 	struct ir_vr_pos dstpos = insn_norm(insn)->pos;
 	DBGASSERT(dstpos.allocated && dstpos.spilled == 0); // dst must be reg
+	u8 dstreg = dstpos.alloc_reg;
 	struct ir_vr_pos v1pos = v1->data.vr_pos;
 	s32 spill_pos = v1pos.spilled;
 	insn->op = IR_INSN_ADD;
@@ -1533,9 +1543,9 @@ static void normalize_getelemptr(struct bpf_ir_env *env,
 		normalize_alu(env, fun, insn);
 	}
 	if (t0 == REG) {
-		bpf_ir_change_value(env, insn, v1,
-				    bpf_ir_value_const32(spill_pos));
-		if (allocated_reg(*v0) == allocated_reg_insn(dst_insn)) {
+		u8 v0reg = v0->data.vr_pos.alloc_reg;
+		*v1 = bpf_ir_value_const32(spill_pos);
+		if (v0reg == dstreg) {
 			// reg = getelemptr reg ptr
 			// ==>
 			// reg += r10

@@ -32,6 +32,25 @@ struct ir_insn *bpf_ir_create_insn_base_cg(struct bpf_ir_env *env,
 	return new_insn;
 }
 
+struct ir_insn *bpf_ir_create_insn_base_norm(struct bpf_ir_env *env,
+					     struct ir_basic_block *bb,
+					     struct ir_vr_pos pos)
+{
+	struct ir_insn *new_insn = malloc_proto(sizeof(struct ir_insn));
+	if (!new_insn) {
+		env->err = -ENOMEM;
+		PRINT_LOG_DEBUG(env, "Failed to allocate memory for ir_insn\n");
+		return NULL;
+	}
+	new_insn->parent_bb = bb;
+	new_insn->users = bpf_ir_array_null(); // Do not allocate new users
+	new_insn->value_num = 0;
+
+	bpf_ir_init_insn_norm(env, new_insn, pos);
+	CHECK_ERR(NULL);
+	return new_insn;
+}
+
 void bpf_ir_replace_operand(struct bpf_ir_env *env, struct ir_insn *insn,
 			    struct ir_value v1, struct ir_value v2)
 {
@@ -614,6 +633,22 @@ create_bin_insn_base_cg(struct bpf_ir_env *env, struct ir_basic_block *bb,
 	new_insn->alu_op = alu_type;
 	bpf_ir_val_add_user(env, val1, new_insn);
 	bpf_ir_val_add_user(env, val2, new_insn);
+	new_insn->value_num = 2;
+	return new_insn;
+}
+
+static struct ir_insn *
+create_bin_insn_base_norm(struct bpf_ir_env *env, struct ir_basic_block *bb,
+			  struct ir_vr_pos pos, struct ir_value val1,
+			  struct ir_value val2, enum ir_insn_type ty,
+			  enum ir_alu_op_type alu_type)
+{
+	struct ir_insn *new_insn =
+		bpf_ir_create_insn_base_norm(env, bb, ty, pos);
+	new_insn->op = ty;
+	new_insn->values[0] = val1;
+	new_insn->values[1] = val2;
+	new_insn->alu_op = alu_type;
 	new_insn->value_num = 2;
 	return new_insn;
 }
