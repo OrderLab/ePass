@@ -1487,6 +1487,13 @@ struct ir_address_value bpf_ir_addr_val(struct ir_value value, s16 offset);
 
 struct ir_value bpf_ir_value_stack_ptr(struct ir_function *fun);
 
+#define VR_POS_STACK_PTR                             \
+	(struct ir_vr_pos){ .allocated = true,       \
+			    .alloc_reg = BPF_REG_10, \
+			    .spilled = 0 }
+
+struct ir_value bpf_ir_value_norm_stack_ptr(void);
+
 void bpf_ir_change_value(struct bpf_ir_env *env, struct ir_insn *insn,
 			 struct ir_value *old, struct ir_value new);
 

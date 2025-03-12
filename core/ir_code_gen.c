@@ -1514,13 +1514,12 @@ static void normalize_getelemptr(struct bpf_ir_env *env,
 	struct ir_value *v1 = &insn->values[1];
 	enum val_type t0 = insn->value_num >= 1 ? vtype(*v0) : UNDEF;
 	enum val_type t1 = insn->value_num >= 2 ? vtype(*v1) : UNDEF;
-	struct ir_insn *dst_insn = insn_dst(insn);
 
-	DBGASSERT(t1 == STACKOFF);
-	DBGASSERT(v1->type == IR_VALUE_INSN &&
-		  v1->data.insn_d->op == IR_INSN_ALLOCARRAY);
-	struct ir_insn_cg_extra *v1_extra = insn_cg(v1->data.insn_d);
-	s32 spill_pos = v1_extra->spilled;
+	DBGASSERT(t1 == STACK);
+	struct ir_vr_pos dstpos = insn_norm(insn)->pos;
+	DBGASSERT(dstpos.allocated && dstpos.spilled == 0); // dst must be reg
+	struct ir_vr_pos v1pos = v1->data.vr_pos;
+	s32 spill_pos = v1pos.spilled;
 	insn->op = IR_INSN_ADD;
 	insn->alu_op = IR_ALU_64;
 	if (t0 == CONST) {
@@ -1528,9 +1527,9 @@ static void normalize_getelemptr(struct bpf_ir_env *env,
 		// ==>
 		// reg = r10 + (const + spill_pos)
 		DBGASSERT(v0->const_type == IR_ALU_32);
+		*v0 = bpf_ir_value_norm_stack_ptr();
 		s64 tmp = v0->data.constant_d + spill_pos; // Assume no overflow
-		bpf_ir_change_value(env, insn, v0, bpf_ir_value_insn(fun->sp));
-		bpf_ir_change_value(env, insn, v1, bpf_ir_value_const32(tmp));
+		*v1 = bpf_ir_value_const32(tmp);
 		normalize_alu(env, fun, insn);
 	}
 	if (t0 == REG) {
@@ -3112,13 +3111,6 @@ static void spill_array(struct bpf_ir_env *env, struct ir_function *fun)
 		}
 	}
 }
-
-// static void vreg_to_rreg(struct bpf_ir_env *env, struct ir_function *fun)
-// {
-// 	// Change all virtual registers to real registers
-// 	// Make sure the VRs are all allocated
-// 	// TODO
-// }
 
 // Interface Implementation
 
