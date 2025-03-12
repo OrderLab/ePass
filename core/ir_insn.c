@@ -34,7 +34,7 @@ struct ir_insn *bpf_ir_create_insn_base_cg(struct bpf_ir_env *env,
 
 struct ir_insn *bpf_ir_create_insn_base_norm(struct bpf_ir_env *env,
 					     struct ir_basic_block *bb,
-					     struct ir_vr_pos pos)
+					     struct ir_vr_pos dstpos)
 {
 	struct ir_insn *new_insn = malloc_proto(sizeof(struct ir_insn));
 	if (!new_insn) {
@@ -46,7 +46,7 @@ struct ir_insn *bpf_ir_create_insn_base_norm(struct bpf_ir_env *env,
 	new_insn->users = bpf_ir_array_null(); // Do not allocate new users
 	new_insn->value_num = 0;
 
-	bpf_ir_init_insn_norm(env, new_insn, pos);
+	bpf_ir_init_insn_norm(env, new_insn, dstpos);
 	CHECK_ERR(NULL);
 	return new_insn;
 }
@@ -639,12 +639,12 @@ create_bin_insn_base_cg(struct bpf_ir_env *env, struct ir_basic_block *bb,
 
 static struct ir_insn *
 create_bin_insn_base_norm(struct bpf_ir_env *env, struct ir_basic_block *bb,
-			  struct ir_vr_pos pos, struct ir_value val1,
+			  struct ir_vr_pos dstpos, struct ir_value val1,
 			  struct ir_value val2, enum ir_insn_type ty,
 			  enum ir_alu_op_type alu_type)
 {
 	struct ir_insn *new_insn =
-		bpf_ir_create_insn_base_norm(env, bb, ty, pos);
+		bpf_ir_create_insn_base_norm(env, bb, dstpos);
 	new_insn->op = ty;
 	new_insn->values[0] = val1;
 	new_insn->values[1] = val2;
@@ -1128,6 +1128,31 @@ struct ir_insn *bpf_ir_create_bin_insn_bb_cg(
 {
 	struct ir_insn *new_insn =
 		create_bin_insn_base_cg(env, pos_bb, val1, val2, ty, alu_type);
+	bpf_ir_insert_at_bb(new_insn, pos_bb, pos);
+	return new_insn;
+}
+
+struct ir_insn *
+bpf_ir_create_bin_insn_norm(struct bpf_ir_env *env, struct ir_insn *pos_insn,
+			    struct ir_vr_pos dstpos, struct ir_value val1,
+			    struct ir_value val2, enum ir_insn_type ty,
+			    enum ir_alu_op_type alu_type,
+			    enum insert_position pos)
+{
+	struct ir_insn *new_insn = create_bin_insn_base_norm(
+		env, pos_insn->parent_bb, dstpos, val1, val2, ty, alu_type);
+	bpf_ir_insert_at(new_insn, pos_insn, pos);
+	return new_insn;
+}
+
+struct ir_insn *bpf_ir_create_bin_insn_bb_norm(
+	struct bpf_ir_env *env, struct ir_basic_block *pos_bb,
+	struct ir_vr_pos dstpos, struct ir_value val1, struct ir_value val2,
+	enum ir_insn_type ty, enum ir_alu_op_type alu_type,
+	enum insert_position pos)
+{
+	struct ir_insn *new_insn = create_bin_insn_base_norm(
+		env, pos_bb, dstpos, val1, val2, ty, alu_type);
 	bpf_ir_insert_at_bb(new_insn, pos_bb, pos);
 	return new_insn;
 }

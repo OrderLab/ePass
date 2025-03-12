@@ -1030,6 +1030,19 @@ struct ir_insn *bpf_ir_create_bin_insn_bb_cg(
 	struct ir_value val1, struct ir_value val2, enum ir_insn_type ty,
 	enum ir_alu_op_type alu_type, enum insert_position pos);
 
+struct ir_insn *
+bpf_ir_create_bin_insn_norm(struct bpf_ir_env *env, struct ir_insn *pos_insn,
+			    struct ir_vr_pos dstpos, struct ir_value val1,
+			    struct ir_value val2, enum ir_insn_type ty,
+			    enum ir_alu_op_type alu_type,
+			    enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_bin_insn_bb_norm(
+	struct bpf_ir_env *env, struct ir_basic_block *pos_bb,
+	struct ir_vr_pos dstpos, struct ir_value val1, struct ir_value val2,
+	enum ir_insn_type ty, enum ir_alu_op_type alu_type,
+	enum insert_position pos);
+
 struct ir_insn *bpf_ir_create_ja_insn(struct bpf_ir_env *env,
 				      struct ir_insn *pos_insn,
 				      struct ir_basic_block *to_bb,
@@ -1181,7 +1194,7 @@ struct ir_insn *bpf_ir_create_insn_base_cg(struct bpf_ir_env *env,
 
 struct ir_insn *bpf_ir_create_insn_base_norm(struct bpf_ir_env *env,
 					     struct ir_basic_block *bb,
-					     struct ir_vr_pos pos);
+					     struct ir_vr_pos dstpos);
 
 struct ir_insn *bpf_ir_create_insn_base(struct bpf_ir_env *env,
 					struct ir_basic_block *bb);
