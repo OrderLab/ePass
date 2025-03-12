@@ -802,6 +802,21 @@ static struct ir_insn *create_assign_insn_base_cg(struct bpf_ir_env *env,
 	return new_insn;
 }
 
+static struct ir_insn *create_assign_insn_base_norm(struct bpf_ir_env *env,
+						    struct ir_basic_block *bb,
+						    struct ir_vr_pos dstpos,
+						    struct ir_value val)
+{
+	struct ir_insn *new_insn =
+		bpf_ir_create_insn_base_norm(env, bb, dstpos);
+	new_insn->op = IR_INSN_ASSIGN;
+	new_insn->values[0] = val;
+	new_insn->value_num = 1;
+	new_insn->vr_type = IR_VR_TYPE_UNKNOWN;
+	new_insn->alu_op = IR_ALU_UNKNOWN;
+	return new_insn;
+}
+
 static struct ir_insn *create_phi_insn_base(struct bpf_ir_env *env,
 					    struct ir_basic_block *bb)
 {
@@ -1401,6 +1416,30 @@ struct ir_insn *bpf_ir_create_assign_insn_bb_cg(struct bpf_ir_env *env,
 						enum insert_position pos)
 {
 	struct ir_insn *new_insn = create_assign_insn_base_cg(env, pos_bb, val);
+	bpf_ir_insert_at_bb(new_insn, pos_bb, pos);
+	return new_insn;
+}
+
+struct ir_insn *bpf_ir_create_assign_insn_norm(struct bpf_ir_env *env,
+					       struct ir_insn *pos_insn,
+					       struct ir_vr_pos dstpos,
+					       struct ir_value val,
+					       enum insert_position pos)
+{
+	struct ir_insn *new_insn = create_assign_insn_base_norm(
+		env, pos_insn->parent_bb, dstpos, val);
+	bpf_ir_insert_at(new_insn, pos_insn, pos);
+	return new_insn;
+}
+
+struct ir_insn *bpf_ir_create_assign_insn_bb_norm(struct bpf_ir_env *env,
+						  struct ir_basic_block *pos_bb,
+						  struct ir_vr_pos dstpos,
+						  struct ir_value val,
+						  enum insert_position pos)
+{
+	struct ir_insn *new_insn =
+		create_assign_insn_base_norm(env, pos_bb, dstpos, val);
 	bpf_ir_insert_at_bb(new_insn, pos_bb, pos);
 	return new_insn;
 }

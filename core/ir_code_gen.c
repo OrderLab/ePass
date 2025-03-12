@@ -1550,13 +1550,11 @@ static void normalize_getelemptr(struct bpf_ir_env *env,
 			// ==>
 			// reg += r10
 			// reg += spill_pos
-			bpf_ir_change_value(env, insn, v0,
-					    bpf_ir_value_insn(dst_insn));
-			struct ir_insn *new_insn = bpf_ir_create_bin_insn_cg(
-				env, insn, bpf_ir_value_insn(dst_insn),
-				bpf_ir_value_insn(fun->sp), IR_INSN_ADD,
+			*v0 = bpf_ir_value_vrpos(dstpos);
+			bpf_ir_create_bin_insn_norm(
+				env, insn, dstpos, bpf_ir_value_vrpos(dstpos),
+				bpf_ir_value_norm_stack_ptr(), IR_INSN_ADD,
 				IR_ALU_64, INSERT_FRONT);
-			set_insn_dst(env, new_insn, dst_insn);
 		} else {
 			// reg1 = getelemptr reg2 ptr
 			// ==>

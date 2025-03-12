@@ -1164,6 +1164,18 @@ struct ir_insn *bpf_ir_create_assign_insn_bb_cg(struct bpf_ir_env *env,
 						struct ir_value val,
 						enum insert_position pos);
 
+struct ir_insn *bpf_ir_create_assign_insn_norm(struct bpf_ir_env *env,
+					       struct ir_insn *pos_insn,
+					       struct ir_vr_pos dstpos,
+					       struct ir_value val,
+					       enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_assign_insn_bb_norm(struct bpf_ir_env *env,
+						  struct ir_basic_block *pos_bb,
+						  struct ir_vr_pos dstpos,
+						  struct ir_value val,
+						  enum insert_position pos);
+
 struct ir_insn *bpf_ir_create_phi_insn(struct bpf_ir_env *env,
 				       struct ir_insn *pos_insn,
 				       enum insert_position pos);
@@ -1492,6 +1504,8 @@ Note. This could be only applied to an instruction with return value.
 bool bpf_ir_value_equal(struct ir_value a, struct ir_value b);
 
 struct ir_value bpf_ir_value_insn(struct ir_insn *);
+
+struct ir_value bpf_ir_value_vrpos(struct ir_vr_pos pos);
 
 struct ir_value bpf_ir_value_const32(s32 val);
 

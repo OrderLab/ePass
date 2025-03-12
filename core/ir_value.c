@@ -37,6 +37,14 @@ struct ir_value bpf_ir_value_insn(struct ir_insn *insn)
 	return v;
 }
 
+struct ir_value bpf_ir_value_vrpos(struct ir_vr_pos pos)
+{
+	struct ir_value v = value_base();
+	v.type = IR_VALUE_FLATTEN_DST;
+	v.data.vr_pos = pos;
+	return v;
+}
+
 struct ir_value bpf_ir_value_undef(void)
 {
 	struct ir_value v = value_base();
@@ -94,10 +102,7 @@ struct ir_value bpf_ir_value_stack_ptr(struct ir_function *fun)
 
 struct ir_value bpf_ir_value_norm_stack_ptr(void)
 {
-	struct ir_value v = value_base();
-	v.type = IR_VALUE_FLATTEN_DST;
-	v.data.vr_pos = VR_POS_STACK_PTR;
-	return v;
+	return bpf_ir_value_vrpos(VR_POS_STACK_PTR);
 }
 
 void bpf_ir_change_value(struct bpf_ir_env *env, struct ir_insn *insn,
