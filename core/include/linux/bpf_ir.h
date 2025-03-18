@@ -857,6 +857,8 @@ void bpf_ir_erase_insn(struct bpf_ir_env *env, struct ir_insn *insn);
 void bpf_ir_erase_insn_cg(struct bpf_ir_env *env, struct ir_function *fun,
 			  struct ir_insn *insn);
 
+void bpf_ir_erase_insn_norm(struct ir_insn *insn);
+
 bool bpf_ir_is_last_insn(struct ir_insn *insn);
 
 void bpf_ir_check_no_user(struct bpf_ir_env *env, struct ir_insn *insn);
@@ -912,6 +914,16 @@ struct ir_insn *bpf_ir_create_loadimmextra_insn_cg(
 struct ir_insn *bpf_ir_create_loadimmextra_insn_bb_cg(
 	struct bpf_ir_env *env, struct ir_basic_block *pos_bb,
 	enum ir_loadimm_extra_type load_ty, s64 imm, enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_loadimmextra_insn_norm(
+	struct bpf_ir_env *env, struct ir_insn *pos_insn,
+	struct ir_vr_pos dstpos, enum ir_loadimm_extra_type load_ty, s64 imm,
+	enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_loadimmextra_insn_bb_norm(
+	struct bpf_ir_env *env, struct ir_basic_block *pos_bb,
+	struct ir_vr_pos dstpos, enum ir_loadimm_extra_type load_ty, s64 imm,
+	enum insert_position pos);
 
 struct ir_insn *bpf_ir_create_getelemptr_insn(struct bpf_ir_env *env,
 					      struct ir_insn *pos_insn,

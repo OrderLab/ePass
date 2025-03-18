@@ -1164,6 +1164,19 @@ static void cgir_load_stack_to_reg(struct bpf_ir_env *env,
 			    bpf_ir_value_insn(fun->cg_info.regs[reg]));
 }
 
+static void cgir_load_stack_to_reg_norm(struct bpf_ir_env *env,
+					struct ir_insn *insn,
+					struct ir_value *val,
+					enum ir_vr_type vtype,
+					struct ir_vr_pos reg)
+{
+	struct ir_insn *tmp = bpf_ir_create_assign_insn_norm(
+		env, insn, reg, *val, INSERT_FRONT);
+	tmp->vr_type = vtype;
+
+	*val = bpf_ir_value_vrpos(reg);
+}
+
 static void add_stack_offset_vr(struct ir_function *fun, size_t num)
 {
 	struct ir_insn **pos;
@@ -1348,36 +1361,30 @@ static void flatten_ir(struct bpf_ir_env *env, struct ir_function *fun)
 /* Loading constant used in normalization */
 static struct ir_insn *normalize_load_const(struct bpf_ir_env *env,
 					    struct ir_insn *insn,
-					    struct ir_value *val)
+					    struct ir_value *val,
+					    struct ir_vr_pos dst)
 {
 	struct ir_insn *new_insn = NULL;
 	if (val->const_type == IR_ALU_32) {
-		new_insn = bpf_ir_create_assign_insn_cg(env, insn, *val,
-							INSERT_FRONT);
+		new_insn = bpf_ir_create_assign_insn_norm(env, insn, dst, *val,
+							  INSERT_FRONT);
 		new_insn->alu_op = IR_ALU_64;
 	} else {
-		new_insn = bpf_ir_create_insn_base_cg(env, insn->parent_bb,
-						      IR_INSN_LOADIMM_EXTRA);
-		new_insn->imm_extra_type = IR_LOADIMM_IMM64;
-		new_insn->imm64 = val->data.constant_d;
+		new_insn = bpf_ir_create_loadimmextra_insn_norm(
+			env, insn, dst, IR_LOADIMM_IMM64, val->data.constant_d,
+			INSERT_FRONT);
 		new_insn->vr_type = IR_VR_TYPE_64;
 	}
-	bpf_ir_change_value(env, insn, val, bpf_ir_value_insn(new_insn));
+	*val = bpf_ir_value_vrpos(dst);
 	return new_insn;
 }
 
-static void bpf_ir_erase_insn_cg_shallow(struct ir_insn *insn)
-{
-	list_del(&insn->list_ptr);
-}
-
-static void normalize_assign(struct bpf_ir_env *env, struct ir_function *fun,
-			     struct ir_insn *insn)
+static void normalize_assign(struct ir_insn *insn)
 {
 	struct ir_value *v0 = &insn->values[0];
 	enum val_type t0 = insn->value_num >= 1 ? vtype(*v0) : UNDEF;
 	enum val_type tdst = vtype_insn(insn);
-	struct ir_insn *dst_insn = insn_dst(insn);
+	struct ir_vr_pos dst_pos = insn_norm(insn)->pos;
 	// stack = reg
 	// stack = const32
 	// reg = const32
@@ -1389,19 +1396,16 @@ static void normalize_assign(struct bpf_ir_env *env, struct ir_function *fun,
 		// Change to STORERAW
 		insn->op = IR_INSN_STORERAW;
 
-		bpf_ir_change_value(env, insn, &insn->addr_val.value,
-				    bpf_ir_value_stack_ptr(fun));
-		insn->addr_val.offset = insn_cg(dst_insn)->spilled;
+		insn->addr_val.value = bpf_ir_value_norm_stack_ptr();
+		insn->addr_val.offset = dst_pos.spilled;
 		insn->vr_type =
 			IR_VR_TYPE_64; // TODO: Should be 64 before normalize
 	} else {
 		if (t0 == STACK) {
 			// Change to LOADRAW
 			insn->op = IR_INSN_LOADRAW;
-			bpf_ir_change_value(env, insn, &insn->addr_val.value,
-					    bpf_ir_value_stack_ptr(fun));
-			insn->addr_val.offset =
-				insn_cg(v0->data.insn_d)->spilled;
+			insn->addr_val.value = bpf_ir_value_norm_stack_ptr();
+			insn->addr_val.offset = v0->data.vr_pos.spilled;
 		}
 		if (t0 == CONST && v0->const_type == IR_ALU_64) {
 			// 64 imm load
@@ -1411,29 +1415,26 @@ static void normalize_assign(struct bpf_ir_env *env, struct ir_function *fun,
 		}
 	}
 	if (tdst == REG && t0 == REG) {
-		if (allocated_reg_insn(dst_insn) == allocated_reg(*v0)) {
+		if (dst_pos.alloc_reg == v0->data.vr_pos.alloc_reg) {
 			// The same, erase this instruction
-			// erase_same_reg_assign(env, fun, insn);
-			// Needs garbage collection for instructions
-			bpf_ir_erase_insn_cg_shallow(insn);
+			bpf_ir_erase_insn_norm(insn);
 		}
 	}
 }
 
 /* Normalize ALU */
-static void normalize_alu(struct bpf_ir_env *env, struct ir_function *fun,
-			  struct ir_insn *insn)
+static void normalize_alu(struct bpf_ir_env *env, struct ir_insn *insn)
 {
 	struct ir_value *v0 = &insn->values[0];
 	struct ir_value *v1 = &insn->values[1];
 	enum val_type t0 = insn->value_num >= 1 ? vtype(*v0) : UNDEF;
 	enum val_type t1 = insn->value_num >= 2 ? vtype(*v1) : UNDEF;
 	enum val_type tdst = vtype_insn(insn);
-	struct ir_insn *dst_insn = insn_dst(insn);
 	DBGASSERT(tdst == REG);
+	struct ir_vr_pos dst_pos = insn_norm(insn)->pos;
 	if (t1 == REG) {
 		// tdst != t1
-		DBGASSERT(allocated_reg_insn(dst_insn) != allocated_reg(*v1));
+		DBGASSERT(dst_pos.alloc_reg != v1->data.vr_pos.alloc_reg);
 	}
 	if (t0 == CONST) {
 		DBGASSERT(v0->const_type == IR_ALU_32);
@@ -1447,77 +1448,64 @@ static void normalize_alu(struct bpf_ir_env *env, struct ir_function *fun,
 		// ==>
 		// reg1 = stack
 		// reg1 = add reg1 const
-		struct ir_insn *new_insn = bpf_ir_create_assign_insn_cg(
-			env, insn, *v0, INSERT_FRONT);
+		struct ir_insn *new_insn = bpf_ir_create_assign_insn_norm(
+			env, insn, dst_pos, *v0, INSERT_FRONT);
 		new_insn->vr_type = IR_VR_TYPE_64;
-		set_insn_dst(env, new_insn, dst_insn);
-		bpf_ir_change_value(env, insn, v0, bpf_ir_value_insn(dst_insn));
-		normalize_assign(env, fun, new_insn);
+		*v0 = bpf_ir_value_vrpos(dst_pos);
+		normalize_assign(new_insn);
+
 	} else if (t0 == STACK && t1 == REG) {
 		// reg1 = add stack reg2
 		// ==>
 		// reg1 = stack
 		// reg1 = add reg1 reg2
-		struct ir_insn *new_insn = bpf_ir_create_assign_insn_cg(
-			env, insn, *v0, INSERT_FRONT);
-		set_insn_dst(env, new_insn, dst_insn);
+		struct ir_insn *new_insn = bpf_ir_create_assign_insn_norm(
+			env, insn, dst_pos, *v0, INSERT_FRONT);
 		new_insn->vr_type = IR_VR_TYPE_64;
-		bpf_ir_change_value(env, insn, v0, bpf_ir_value_insn(dst_insn));
-		normalize_assign(env, fun, new_insn);
+		*v0 = bpf_ir_value_vrpos(dst_pos);
+		normalize_assign(new_insn);
 	} else if (t0 == REG && t1 == REG) {
 		// reg1 = add reg2 reg3
-		u8 reg1 = insn_cg(dst_insn)->alloc_reg;
-		u8 reg2 = insn_cg(v0->data.insn_d)->alloc_reg;
+		u8 reg1 = dst_pos.alloc_reg;
+		u8 reg2 = v0->data.vr_pos.alloc_reg;
 		if (reg1 != reg2) {
 			// reg1 = add reg2 reg3
 			// ==>
 			// reg1 = reg2
 			// reg1 = add reg1 reg3
-			// PRINT_LOG_DEBUG(env, "v0:");
-			// print_ir_insn(env, v0->data.insn_d);
-			// PRINT_LOG_DEBUG(env, "\n");
-			struct ir_insn *new_insn = bpf_ir_create_assign_insn_cg(
-				env, insn, *v0, INSERT_FRONT);
+			bpf_ir_create_assign_insn_norm(env, insn, dst_pos, *v0,
+						       INSERT_FRONT);
 			// DBGASSERT(dst_insn ==
 			// 	  fun->cg_info.regs[reg1]); // Fixed reg?
 			// TODO: Investigate here, why did I write this check?
-			set_insn_dst(env, new_insn, dst_insn);
-			bpf_ir_change_value(env, insn, v0,
-					    bpf_ir_value_insn(dst_insn));
+			*v0 = bpf_ir_value_vrpos(dst_pos);
 		}
 	} else if (t0 == REG && t1 == CONST) {
-		if (allocated_reg(*v0) != allocated_reg_insn(dst_insn)) {
+		if (v0->data.vr_pos.alloc_reg != dst_pos.alloc_reg) {
 			// reg1 = add reg2 const
 			// ==>
 			// reg1 = reg2
 			// reg1 = add reg1 const
-			struct ir_insn *new_insn = bpf_ir_create_assign_insn_cg(
-				env, insn, *v0, INSERT_FRONT);
-			set_insn_dst(env, new_insn, dst_insn);
-			bpf_ir_change_value(env, insn, v0,
-					    bpf_ir_value_insn(dst_insn));
+			bpf_ir_create_assign_insn_norm(env, insn, dst_pos, *v0,
+						       INSERT_FRONT);
+			*v0 = bpf_ir_value_vrpos(dst_pos);
 		}
 	} else if (t0 == CONST && t1 == CONST) {
 		DBGASSERT(v1->const_type == IR_ALU_32);
-		struct ir_insn *load_const_insn =
-			normalize_load_const(env, insn, v0);
-		set_insn_dst(env, load_const_insn, dst_insn);
+		normalize_load_const(env, insn, v0, dst_pos);
 	} else if (t0 == CONST && t1 == REG) {
 		// reg1 = add const reg2
 		// ==>
 		// reg1 = const
 		// reg1 = add reg1 reg2
-		struct ir_insn *load_const_insn =
-			normalize_load_const(env, insn, v0);
-		set_insn_dst(env, load_const_insn, dst_insn);
+		normalize_load_const(env, insn, v0, dst_pos);
 
 	} else {
 		CRITICAL_DUMP(env, "Error");
 	}
 }
 
-static void normalize_getelemptr(struct bpf_ir_env *env,
-				 struct ir_function *fun, struct ir_insn *insn)
+static void normalize_getelemptr(struct bpf_ir_env *env, struct ir_insn *insn)
 {
 	struct ir_value *v0 = &insn->values[0];
 	struct ir_value *v1 = &insn->values[1];
@@ -1540,7 +1528,7 @@ static void normalize_getelemptr(struct bpf_ir_env *env,
 		*v0 = bpf_ir_value_norm_stack_ptr();
 		s64 tmp = v0->data.constant_d + spill_pos; // Assume no overflow
 		*v1 = bpf_ir_value_const32(tmp);
-		normalize_alu(env, fun, insn);
+		normalize_alu(env, insn);
 	}
 	if (t0 == REG) {
 		u8 v0reg = v0->data.vr_pos.alloc_reg;
@@ -1572,40 +1560,37 @@ static void normalize_getelemptr(struct bpf_ir_env *env,
 	}
 }
 
-static void normalize_stackoff(struct bpf_ir_env *env, struct ir_function *fun,
-			       struct ir_insn *insn)
+static void normalize_stackoff(struct ir_insn *insn)
 {
+	// Could be storeraw or loadraw
 	// Stack already shifted
 	struct ir_value addrval = insn->addr_val.value;
 	enum val_type addr_ty = vtype(addrval);
 	// storeraw STACKOFF ?
 	// ==>
 	// storeraw r10 ?
-	if (addr_ty == STACKOFF) {
-		insn->addr_val.offset += insn_cg(addrval.data.insn_d)->spilled;
-		bpf_ir_change_value(env, insn, &insn->addr_val.value,
-				    bpf_ir_value_stack_ptr(fun));
+	if (addr_ty == STACK) {
+		insn->addr_val.offset += addrval.data.vr_pos.spilled;
+		insn->addr_val.value = bpf_ir_value_norm_stack_ptr();
 	}
 }
 
-static void normalize_neg(struct bpf_ir_env *env, struct ir_function *fun,
-			  struct ir_insn *insn)
+static void normalize_neg(struct bpf_ir_env *env, struct ir_insn *insn)
 {
 	struct ir_value *v0 = &insn->values[0];
 	enum val_type t0 = insn->value_num >= 1 ? vtype(*v0) : UNDEF;
 	enum val_type tdst = vtype_insn(insn);
-	struct ir_insn *dst_insn = insn_dst(insn);
 	DBGASSERT(tdst == REG);
+	struct ir_vr_pos dst_pos = insn_norm(insn)->pos;
 	// reg = neg reg ==> OK!
-	if (t0 == REG && allocated_reg(*v0) != allocated_reg_insn(dst_insn)) {
+	if (t0 == REG && v0->data.vr_pos.alloc_reg != dst_pos.alloc_reg) {
 		// reg1 = neg reg2
 		// ==>
 		// reg1 = reg2
 		// reg1 = neg reg1
-		struct ir_insn *new_insn = bpf_ir_create_assign_insn_cg(
-			env, insn, *v0, INSERT_FRONT);
-		set_insn_dst(env, new_insn, dst_insn);
-		bpf_ir_change_value(env, insn, v0, bpf_ir_value_insn(dst_insn));
+		bpf_ir_create_assign_insn_norm(env, insn, dst_pos, *v0,
+					       INSERT_FRONT);
+		*v0 = bpf_ir_value_vrpos(dst_pos);
 	}
 	if (t0 == CONST) {
 		// reg = neg const
@@ -1615,29 +1600,27 @@ static void normalize_neg(struct bpf_ir_env *env, struct ir_function *fun,
 		// ==>
 		// reg = stack
 		// reg = neg reg
-		cgir_load_stack_to_reg(env, fun, insn, v0, IR_VR_TYPE_64,
-				       allocated_reg_insn(dst_insn));
+		cgir_load_stack_to_reg_norm(env, insn, v0, IR_VR_TYPE_64,
+					    dst_pos);
 	}
 }
 
-static void normalize_end(struct bpf_ir_env *env, struct ir_function *fun,
-			  struct ir_insn *insn)
+static void normalize_end(struct bpf_ir_env *env, struct ir_insn *insn)
 {
 	struct ir_value *v0 = &insn->values[0];
 	enum val_type t0 = insn->value_num >= 1 ? vtype(*v0) : UNDEF;
 	enum val_type tdst = vtype_insn(insn);
-	struct ir_insn *dst_insn = insn_dst(insn);
 	DBGASSERT(tdst == REG);
+	struct ir_vr_pos dst_pos = insn_norm(insn)->pos;
 	// reg = end reg
-	if (t0 == REG && allocated_reg(*v0) != allocated_reg_insn(dst_insn)) {
+	if (t0 == REG && v0->data.vr_pos.alloc_reg != dst_pos.alloc_reg) {
 		// reg1 = end reg2
 		// ==>
 		// reg1 = reg2
 		// reg1 = end reg1
-		struct ir_insn *new_insn = bpf_ir_create_assign_insn_cg(
-			env, insn, *v0, INSERT_FRONT);
-		set_insn_dst(env, new_insn, dst_insn);
-		bpf_ir_change_value(env, insn, v0, bpf_ir_value_insn(dst_insn));
+		bpf_ir_create_assign_insn_norm(env, insn, dst_pos, *v0,
+					       INSERT_FRONT);
+		*v0 = bpf_ir_value_vrpos(dst_pos);
 	}
 	// reg = neg const ==> Not supported
 	if (t0 == CONST) {
@@ -1647,8 +1630,8 @@ static void normalize_end(struct bpf_ir_env *env, struct ir_function *fun,
 		// ==>
 		// reg = stack
 		// reg = end reg
-		cgir_load_stack_to_reg(env, fun, insn, v0, IR_VR_TYPE_64,
-				       allocated_reg_insn(dst_insn));
+		cgir_load_stack_to_reg_norm(env, insn, v0, IR_VR_TYPE_64,
+					    dst_pos);
 	}
 }
 
@@ -1666,27 +1649,27 @@ static void normalize(struct bpf_ir_env *env, struct ir_function *fun)
 			} else if (insn->op == IR_INSN_ALLOCARRAY) {
 				// OK
 			} else if (insn->op == IR_INSN_GETELEMPTR) {
-				normalize_getelemptr(env, fun, insn);
+				normalize_getelemptr(env, insn);
 			} else if (insn->op == IR_INSN_STORE) {
 				// Should be converted to ASSIGN
 				CRITICAL("Error");
 			} else if (insn->op == IR_INSN_LOAD) {
 				CRITICAL("Error");
 			} else if (insn->op == IR_INSN_LOADRAW) {
-				normalize_stackoff(env, fun, insn);
+				normalize_stackoff(insn);
 			} else if (insn->op == IR_INSN_LOADIMM_EXTRA) {
 				// OK
 			} else if (insn->op == IR_INSN_STORERAW) {
-				normalize_stackoff(env, fun, insn);
+				normalize_stackoff(insn);
 			} else if (insn->op == IR_INSN_NEG) {
-				normalize_neg(env, fun, insn);
+				normalize_neg(env, insn);
 			} else if (insn->op == IR_INSN_HTOBE ||
 				   insn->op == IR_INSN_HTOLE) {
-				normalize_end(env, fun, insn);
+				normalize_end(env, insn);
 			} else if (bpf_ir_is_bin_alu(insn)) {
-				normalize_alu(env, fun, insn);
+				normalize_alu(env, insn);
 			} else if (insn->op == IR_INSN_ASSIGN) {
-				normalize_assign(env, fun, insn);
+				normalize_assign(insn);
 			} else if (insn->op == IR_INSN_RET) {
 				// OK
 			} else if (insn->op == IR_INSN_CALL) {
