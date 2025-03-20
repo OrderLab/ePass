@@ -4,6 +4,7 @@
 
 int readlog(struct user_opts uopts)
 {
+	int err = 0;
 	FILE *fp = NULL;
 	char *program_name = uopts.prog;
 	fp = fopen(program_name, "r");
@@ -23,7 +24,8 @@ int readlog(struct user_opts uopts)
 		}
 		if (!line[found]) {
 			printf("No `:` found\n");
-			return 1;
+			err = 1;
+			goto end;
 		}
 		u64 s = strtoull(line + found + 1, NULL, 10);
 		// printf("%llu\n", s);
@@ -33,17 +35,19 @@ int readlog(struct user_opts uopts)
 
 	struct bpf_ir_env *env = bpf_ir_init_env(uopts.opts, insns, index);
 	if (!env) {
-		return 1;
+		err = 1;
+		goto end;
 	}
-	int err = bpf_ir_init_opts(env, uopts.gopt, uopts.popt);
+	err = bpf_ir_init_opts(env, uopts.gopt, uopts.popt);
 	if (err) {
-		return err;
+		goto end;
 	}
 	enable_builtin(env);
 	u64 starttime = get_cur_time_ns();
 	bpf_ir_autorun(env);
 	if (env->err) {
-		return env->err;
+		err = env->err;
+		goto end;
 	}
 	u64 tot = get_cur_time_ns() - starttime;
 
@@ -56,6 +60,7 @@ int readlog(struct user_opts uopts)
 	bpf_ir_free_opts(env);
 	bpf_ir_free_env(env);
 
+end:
 	fclose(fp);
-	return 0;
+	return err;
 }

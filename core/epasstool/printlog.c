@@ -16,6 +16,7 @@ static void print_bpf_prog(struct bpf_ir_env *env, const struct bpf_insn *insns,
 
 int printlog(struct user_opts uopts)
 {
+	int err = 0;
 	FILE *fp = NULL;
 	char *program_name = uopts.prog;
 	fp = fopen(program_name, "r");
@@ -35,7 +36,8 @@ int printlog(struct user_opts uopts)
 		}
 		if (!line[found]) {
 			printf("No `:` found\n");
-			return 1;
+			err = -1;
+			goto end;
 		}
 		__u64 s = strtoull(line + found + 1, NULL, 10);
 		// printf("%llu\n", s);
@@ -49,13 +51,15 @@ int printlog(struct user_opts uopts)
 	opts.verbose = 3;
 	struct bpf_ir_env *env = bpf_ir_init_env(opts, insns, index);
 	if (!env) {
-		return 1;
+		err = -1;
+		goto end;
 	}
 	print_bpf_prog(env, insns, index);
 	// bpf_ir_print_log_dbg(env);
 	bpf_ir_free_env(env);
+end:
 	free(insns);
 
 	fclose(fp);
-	return 0;
+	return err;
 }

@@ -69,7 +69,7 @@ int main(int argc, char **argv)
 		MODE_PRINT,
 		MODE_PRINT_LOG,
 	} mode = MODE_NONE;
-	struct user_opts uopts;
+	struct user_opts uopts = { 0 };
 	uopts.gopt[0] = 0;
 	uopts.popt[0] = 0;
 	uopts.prog[0] = 0;
