@@ -3243,7 +3243,9 @@ void bpf_ir_compile(struct bpf_ir_env *env, struct ir_function *fun)
 	// Step 12: Normalize
 	normalize(env, fun);
 	CHECK_ERR();
-	print_ir_prog_cg_alloc(env, fun, "Normalization");
+	print_ir_prog_cg_flatten(env, fun, "Normalization");
+
+	CRITICAL("TODO: Implement the following steps");
 
 	replace_builtin_const(env, fun);
 	CHECK_ERR();
