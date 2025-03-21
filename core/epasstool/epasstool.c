@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include <getopt.h>
 #include "epasstool.h"
 
 // Userspace tool
@@ -59,93 +58,120 @@ static void usage(char *prog)
 	exit(1);
 }
 
-int main(int argc, char **argv)
+static struct user_opts parse_cli(int argc, char **argv)
 {
-	enum {
-		MODE_NONE,
-		MODE_READ,
-		MODE_READLOAD,
-		MODE_READLOG,
-		MODE_PRINT,
-		MODE_PRINT_LOG,
-	} mode = MODE_NONE;
+	char *prog = argv[0];
 	struct user_opts uopts = { 0 };
 	uopts.gopt[0] = 0;
 	uopts.popt[0] = 0;
 	uopts.prog[0] = 0;
 	uopts.no_compile = false;
 	uopts.auto_sec = true;
-	static struct option long_options[] = {
-		{ "mode", required_argument, NULL, 'm' },
-		{ "gopt", required_argument, NULL, 0 },
-		{ "popt", required_argument, NULL, 0 },
-		{ "prog", required_argument, NULL, 'p' },
-		{ "sec", required_argument, NULL, 's' },
-		{ "help", no_argument, NULL, 'h' },
-		{ "pass-only", no_argument, NULL, 0 },
-		{ NULL, 0, NULL, 0 }
-	};
-	int ch = 0;
-	int opt_index = 0;
-	while ((ch = getopt_long(argc, argv, "m:p:s:h", long_options,
-				 &opt_index)) != -1) {
-		if (ch == 0) {
-			// printf("option %s\n", long_options[opt_index].name);
-			if (strcmp(long_options[opt_index].name, "gopt") == 0) {
-				strcpy(uopts.gopt, optarg);
-			} else if (strcmp(long_options[opt_index].name,
-					  "popt") == 0) {
-				strcpy(uopts.popt, optarg);
-			} else if (strcmp(long_options[opt_index].name,
-					  "pass-only") == 0) {
+	if (argc < 2) {
+		usage(prog);
+	}
+	argc--;
+	argv++;
+	if (strcmp(*argv, "read") == 0) {
+		argc--;
+		argv++;
+		uopts.mode = MODE_READ;
+		while (argc > 0) {
+			if (strcmp(*argv, "--load") == 0) {
+				uopts.mode = MODE_READLOAD;
+			} else if (strcmp(*argv, "--log") == 0) {
+				uopts.log = true;
+			} else if (strcmp(*argv, "--pass-only") == 0 ||
+				   strcmp(*argv, "-P") == 0) {
 				uopts.no_compile = true;
-			}
-		} else {
-			switch (ch) {
-			case 'm':
-				if (strcmp(optarg, "read") == 0) {
-					mode = MODE_READ;
-				} else if (strcmp(optarg, "readlog") == 0) {
-					mode = MODE_READLOG;
-				} else if (strcmp(optarg, "print") == 0) {
-					mode = MODE_PRINT;
-				} else if (strcmp(optarg, "readload") == 0) {
-					mode = MODE_READLOAD;
-				} else if (strcmp(optarg, "printlog") == 0) {
-					mode = MODE_PRINT_LOG;
+			} else if (strcmp(*argv, "--gopt") == 0) {
+				uopts.mode = MODE_READLOAD;
+				if (argc < 2) {
+					usage(prog);
 				}
-				break;
-			case 'p':
-				strcpy(uopts.prog, optarg);
-				break;
-			case 's':
+				argc--;
+				argv++;
+				strcpy(uopts.gopt, *argv);
+			} else if (strcmp(*argv, "--popt") == 0) {
+				uopts.mode = MODE_READLOAD;
+				if (argc < 2) {
+					usage(prog);
+				}
+				argc--;
+				argv++;
+				strcpy(uopts.popt, *argv);
+			} else if (strcmp(*argv, "--sec") == 0 ||
+				   strcmp(*argv, "-s") == 0) {
+				if (argc < 2) {
+					usage(prog);
+				}
+				argc--;
+				argv++;
 				uopts.auto_sec = false;
-				strcpy(uopts.sec, optarg);
-				break;
-			case 'h':
-				usage(argv[0]);
-				return 0;
-				break;
-			default:
-				break;
+				strcpy(uopts.sec, *argv);
+			} else {
+				// File
+				if (uopts.prog[0] == 0) {
+					strcpy(uopts.prog, *argv);
+				} else {
+					usage(prog);
+				}
 			}
+			argc--;
+			argv++;
 		}
+		if (uopts.prog[0] == 0) {
+			usage(prog);
+		}
+	} else if (strcmp(*argv, "print") == 0) {
+		argc--;
+		argv++;
+		uopts.mode = MODE_READ;
+		while (argc > 0) {
+			if (strcmp(*argv, "--log") == 0) {
+				uopts.log = true;
+			} else if (strcmp(*argv, "--gopt") == 0) {
+				uopts.mode = MODE_READLOAD;
+				if (argc < 2) {
+					usage(prog);
+				}
+				argc--;
+				argv++;
+				strcpy(uopts.gopt, *argv);
+			} else if (strcmp(*argv, "--popt") == 0) {
+				uopts.mode = MODE_READLOAD;
+				if (argc < 2) {
+					usage(prog);
+				}
+				argc--;
+				argv++;
+				strcpy(uopts.popt, *argv);
+			} else {
+				// File
+				if (uopts.prog[0] == 0) {
+					strcpy(uopts.prog, *argv);
+				} else {
+					usage(prog);
+				}
+			}
+			argc--;
+			argv++;
+		}
+		if (uopts.prog[0] == 0) {
+			usage(prog);
+		}
+	} else {
+		usage(prog);
 	}
 
-	if (mode == MODE_NONE) {
-		printf("Mode not specified\n");
-		usage(argv[0]);
-	}
+	return uopts;
+}
 
-	if (mode == MODE_PRINT_LOG) {
-		return printlog(uopts);
-	}
-	if (mode == MODE_PRINT) {
-		return print(uopts);
-	}
-	if (uopts.prog[0] == 0) {
-		printf("Program not specified\n");
-		usage(argv[0]);
+int main(int argc, char **argv)
+{
+	struct user_opts uopts = parse_cli(argc, argv);
+	if (uopts.mode == MODE_PRINT) {
+		return uopts.log ? printlog(uopts) : print(uopts);
 	}
 
 	// Initialize common options
@@ -168,13 +194,11 @@ int main(int argc, char **argv)
 
 	uopts.opts = opts;
 
-	if (mode == MODE_READLOG) {
-		return readlog(uopts);
+	if (uopts.mode == MODE_READ) {
+		return uopts.log ? readlog(uopts) : read(uopts);
 	}
-	if (mode == MODE_READ) {
-		return read(uopts);
-	}
-	if (mode == MODE_READLOAD) {
+
+	if (uopts.mode == MODE_READLOAD) {
 		return readload(uopts);
 	}
 

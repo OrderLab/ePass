@@ -4,12 +4,15 @@
 
 int readlog(struct user_opts uopts)
 {
+	fprintf(stderr,
+		"Warning: readlog command is only for testing usage.\n");
 	int err = 0;
 	FILE *fp = NULL;
 	char *program_name = uopts.prog;
 	fp = fopen(program_name, "r");
 	if (!fp) {
-		return -1;
+		fprintf(stderr, "Failed to open the file.\n");
+		return 1;
 	}
 	char line[256];
 	struct bpf_insn *insns = malloc_proto(sizeof(struct bpf_insn) * 5000);

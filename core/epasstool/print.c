@@ -18,7 +18,10 @@ static void print_bpf_prog(struct bpf_ir_env *env, const struct bpf_insn *insns,
 int print(struct user_opts uopts)
 {
 	struct bpf_object *obj = bpf_object__open(uopts.prog);
-
+	if (!obj) {
+		fprintf(stderr, "Failed to open the file.\n");
+		return 1;
+	}
 	struct bpf_program *prog = NULL;
 	if (uopts.auto_sec) {
 		prog = bpf_object__next_program(obj, NULL);
@@ -27,6 +30,7 @@ int print(struct user_opts uopts)
 	}
 
 	if (!prog) {
+		fprintf(stderr, "Program not found\n");
 		return 1;
 	}
 	size_t sz = bpf_program__insn_cnt(prog);

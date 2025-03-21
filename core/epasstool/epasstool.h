@@ -12,6 +12,13 @@ struct user_opts {
 	struct bpf_ir_opts opts;
 	bool no_compile;
 	bool auto_sec;
+	bool log;
+
+	enum {
+		MODE_READ,
+		MODE_READLOAD,
+		MODE_PRINT,
+	} mode;
 };
 
 void masking_pass(struct bpf_ir_env *env, struct ir_function *fun, void *param);

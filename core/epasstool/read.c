@@ -1,14 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "bpf/libbpf.h"
 #include "epasstool.h"
-#include "linux/bpf_ir.h"
-#include <stdio.h>
 
 int read(struct user_opts uopts)
 {
 	struct bpf_object *obj = bpf_object__open(uopts.prog);
 	if (!obj) {
-		printf("Failed to open object\n");
+		fprintf(stderr, "Failed to open the file.\n");
 		return 1;
 	}
 	struct bpf_program *prog = NULL;
@@ -19,7 +17,7 @@ int read(struct user_opts uopts)
 	}
 
 	if (!prog) {
-		printf("Program not found\n");
+		fprintf(stderr, "Program not found\n");
 		return 1;
 	}
 	size_t sz = bpf_program__insn_cnt(prog);

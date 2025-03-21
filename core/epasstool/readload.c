@@ -19,6 +19,10 @@ static int callback_fn(struct bpf_program *prog,
 int readload(struct user_opts uopts)
 {
 	struct bpf_object *obj = bpf_object__open(uopts.prog);
+	if (!obj) {
+		fprintf(stderr, "Failed to open the file.\n");
+		return 1;
+	}
 	struct bpf_program *prog = NULL;
 	if (uopts.auto_sec) {
 		prog = bpf_object__next_program(obj, NULL);
@@ -26,6 +30,7 @@ int readload(struct user_opts uopts)
 		prog = bpf_object__find_program_by_name(obj, uopts.sec);
 	}
 	if (!prog) {
+		fprintf(stderr, "Program not found\n");
 		return 1;
 	}
 	size_t sz = bpf_program__insn_cnt(prog);

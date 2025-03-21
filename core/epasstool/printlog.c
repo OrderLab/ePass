@@ -21,6 +21,7 @@ int printlog(struct user_opts uopts)
 	char *program_name = uopts.prog;
 	fp = fopen(program_name, "r");
 	if (!fp) {
+		fprintf(stderr, "Failed to open the file.\n");
 		return -1;
 	}
 	char line[256];
