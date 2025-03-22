@@ -3,6 +3,10 @@
 
 // Userspace tool
 
+#ifndef EPASS_VERSION
+#define EPASS_VERSION "undefined"
+#endif
+
 static const struct function_pass pre_passes_def[] = {
 	DEF_FUNC_PASS(remove_trivial_phi, "remove_trivial_phi", true),
 };
@@ -43,17 +47,25 @@ void enable_builtin(struct bpf_ir_env *env)
 	}
 }
 
-static void usage(char *prog)
+static void usage(const char *prog)
 {
-	printf("Usage: %s --mode <mode> --prog <prog> [--sec <sec>] "
-	       "[--gopt <gopt>] [--popt <popt>] --pass-only\n",
-	       prog);
-	printf("Modes:\n");
-	printf("  read: Run ePass from object file\n");
-	printf("  readload: Run ePass from object file and load it with modified bytecode\n");
-	printf("  readlog: Run ePass from log\n");
-	printf("  print: Print BPF program\n");
-	printf("  printlog: Print BPF program from log\n");
+	fprintf(stderr,
+		"Usage: %s <command> [options] <file>\n\n"
+		"Commands:\n"
+		"  read   \tRead (lift, transform and compile) the specified file\n"
+		"  print  \tPrint the specified file\n\n"
+		"Options:\n"
+		"  --log        \tUse log (.txt) as input\n"
+		"  --load       \tRead with loading mode\n"
+		"  --pass-only, -P \tSkip compilation\n"
+		"  --gopt <arg> \tSpecify global optimization option\n"
+		"  --popt <arg> \tSpecify pass optimization option\n"
+		"  --sec, -s <arg> \tSpecify ELF section manually\n\n"
+		"Examples:\n"
+		"  %s read a.o\n"
+		"  %s read --log --gopt verbose=3 myfile.txt\n"
+		"  %s print a.o\n",
+		prog, prog, prog, prog);
 
 	exit(1);
 }
