@@ -2,7 +2,7 @@
 #include "bpf/libbpf.h"
 #include "epasstool.h"
 
-int read(struct user_opts uopts)
+int epass_read(struct user_opts uopts)
 {
 	struct bpf_object *obj = bpf_object__open(uopts.prog);
 	if (!obj) {

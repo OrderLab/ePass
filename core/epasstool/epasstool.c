@@ -191,7 +191,7 @@ int main(int argc, char **argv)
 	struct user_opts uopts = parse_cli(argc, argv);
 	bool is_elf = is_elf_file(uopts.prog);
 	if (uopts.mode == MODE_PRINT) {
-		return is_elf ? print(uopts) : printlog(uopts);
+		return is_elf ? epass_print(uopts) : epass_printlog(uopts);
 	}
 
 	// Initialize common options
@@ -215,11 +215,11 @@ int main(int argc, char **argv)
 	uopts.opts = opts;
 
 	if (uopts.mode == MODE_READ) {
-		return is_elf ? read(uopts) : readlog(uopts);
+		return is_elf ? epass_read(uopts) : epass_readlog(uopts);
 	}
 
 	if (uopts.mode == MODE_READLOAD) {
-		return readload(uopts);
+		return epass_readload(uopts);
 	}
 
 	return 0;

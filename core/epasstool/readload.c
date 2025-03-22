@@ -16,7 +16,7 @@ static int callback_fn(struct bpf_program *prog,
 	}
 }
 
-int readload(struct user_opts uopts)
+int epass_readload(struct user_opts uopts)
 {
 	struct bpf_object *obj = bpf_object__open(uopts.prog);
 	if (!obj) {

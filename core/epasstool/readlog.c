@@ -2,7 +2,7 @@
 
 #include "epasstool.h"
 
-int readlog(struct user_opts uopts)
+int epass_readlog(struct user_opts uopts)
 {
 	fprintf(stderr,
 		"Warning: readlog command is only for testing usage.\n");

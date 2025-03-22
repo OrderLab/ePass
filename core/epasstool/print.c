@@ -15,7 +15,7 @@ static void print_bpf_prog(struct bpf_ir_env *env, const struct bpf_insn *insns,
 	}
 }
 
-int print(struct user_opts uopts)
+int epass_print(struct user_opts uopts)
 {
 	struct bpf_object *obj = bpf_object__open(uopts.prog);
 	if (!obj) {

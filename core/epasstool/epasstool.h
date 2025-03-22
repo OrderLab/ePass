@@ -24,15 +24,15 @@ void masking_pass(struct bpf_ir_env *env, struct ir_function *fun, void *param);
 
 void test_pass1(struct bpf_ir_env *env, struct ir_function *fun, void *param);
 
-int printlog(struct user_opts uopts);
+int epass_printlog(struct user_opts uopts);
 
-int print(struct user_opts uopts);
+int epass_print(struct user_opts uopts);
 
-int read(struct user_opts uopts);
+int epass_read(struct user_opts uopts);
 
-int readload(struct user_opts uopts);
+int epass_readload(struct user_opts uopts);
 
-int readlog(struct user_opts uopts);
+int epass_readlog(struct user_opts uopts);
 
 void enable_builtin(struct bpf_ir_env *env);
 

@@ -14,7 +14,7 @@ static void print_bpf_prog(struct bpf_ir_env *env, const struct bpf_insn *insns,
 	}
 }
 
-int printlog(struct user_opts uopts)
+int epass_printlog(struct user_opts uopts)
 {
 	int err = 0;
 	FILE *fp = NULL;
