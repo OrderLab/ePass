@@ -12,7 +12,6 @@ struct user_opts {
 	struct bpf_ir_opts opts;
 	bool no_compile;
 	bool auto_sec;
-	bool log;
 
 	enum {
 		MODE_READ,
