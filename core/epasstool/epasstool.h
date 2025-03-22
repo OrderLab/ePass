@@ -8,6 +8,7 @@ struct user_opts {
 	char gopt[64];
 	char popt[64];
 	char prog[64];
+	char prog_out[64];
 	char sec[64];
 	struct bpf_ir_opts opts;
 	bool no_compile;
@@ -15,7 +16,6 @@ struct user_opts {
 
 	enum {
 		MODE_READ,
-		MODE_READLOAD,
 		MODE_PRINT,
 	} mode;
 };

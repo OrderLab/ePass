@@ -55,11 +55,11 @@ static void usage(const char *prog)
 		"  read   \tRead (lift, transform and compile) the specified file\n"
 		"  print  \tPrint the specified file\n\n"
 		"Options:\n"
-		"  --load       \tRead with loading mode\n"
 		"  --pass-only, -P \tSkip compilation\n"
 		"  --gopt <arg> \tSpecify global optimization option\n"
 		"  --popt <arg> \tSpecify pass optimization option\n"
-		"  --sec, -s <arg> \tSpecify ELF section manually\n\n"
+		"  --sec, -s <arg> \tSpecify ELF section manually\n"
+		"  -o <arg> \tOutput the modified ELF section\n\n"
 		"Examples:\n"
 		"  %s read a.o\n"
 		"  %s read --gopt verbose=3 myfile.txt\n"
@@ -92,6 +92,7 @@ static struct user_opts parse_cli(int argc, char **argv)
 	uopts.gopt[0] = 0;
 	uopts.popt[0] = 0;
 	uopts.prog[0] = 0;
+	uopts.prog_out[0] = 0;
 	uopts.no_compile = false;
 	uopts.auto_sec = true;
 	if (argc < 2) {
@@ -104,10 +105,8 @@ static struct user_opts parse_cli(int argc, char **argv)
 		argv++;
 		uopts.mode = MODE_READ;
 		while (argc > 0) {
-			if (strcmp(*argv, "--load") == 0) {
-				uopts.mode = MODE_READLOAD;
-			} else if (strcmp(*argv, "--pass-only") == 0 ||
-				   strcmp(*argv, "-P") == 0) {
+			if (strcmp(*argv, "--pass-only") == 0 ||
+			    strcmp(*argv, "-P") == 0) {
 				uopts.no_compile = true;
 			} else if (strcmp(*argv, "--gopt") == 0) {
 				if (argc < 2) {
@@ -132,6 +131,13 @@ static struct user_opts parse_cli(int argc, char **argv)
 				argv++;
 				uopts.auto_sec = false;
 				strcpy(uopts.sec, *argv);
+			} else if (strcmp(*argv, "-o") == 0) {
+				if (argc < 2) {
+					usage(prog);
+				}
+				argc--;
+				argv++;
+				strcpy(uopts.prog_out, *argv);
 			} else {
 				// File
 				if (uopts.prog[0] == 0) {
@@ -216,10 +222,6 @@ int main(int argc, char **argv)
 
 	if (uopts.mode == MODE_READ) {
 		return is_elf ? epass_read(uopts) : epass_readlog(uopts);
-	}
-
-	if (uopts.mode == MODE_READLOAD) {
-		return epass_readload(uopts);
 	}
 
 	return 0;

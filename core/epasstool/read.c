@@ -53,6 +53,17 @@ int epass_read(struct user_opts uopts)
 	       env->lift_time + env->run_time + env->cg_time);
 	printf("program size: %zu->%zu\n", sz, env->insn_cnt);
 
+	if (uopts.prog_out[0]) {
+		// Write the program to a file
+		FILE *f = fopen(uopts.prog_out, "wb");
+		if (!f) {
+			fprintf(stderr, "Failed to open the output file\n");
+			return 1;
+		}
+		fwrite(env->insns, sizeof(struct bpf_insn), env->insn_cnt, f);
+		fclose(f);
+	}
+
 	bpf_ir_free_opts(env);
 	bpf_ir_free_env(env);
 	bpf_object__close(obj);
