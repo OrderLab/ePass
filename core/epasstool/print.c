@@ -34,6 +34,8 @@ int epass_print(struct user_opts uopts)
 		return 1;
 	}
 	size_t sz = bpf_program__insn_cnt(prog);
+
+	printf("Loaded program of size %zu\n", sz);
 	const struct bpf_insn *insn = bpf_program__insns(prog);
 	struct bpf_ir_opts opts = bpf_ir_default_opts();
 	opts.verbose = 3;

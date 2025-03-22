@@ -1711,7 +1711,7 @@ static void print_bpf_prog_dump(struct bpf_ir_env *env,
 		const struct bpf_insn *insn = &insns[i];
 		__u64 data;
 		memcpy(&data, insn, sizeof(struct bpf_insn));
-		PRINT_LOG_DEBUG(env, "insn[%d]: %llu\n", i, data);
+		PRINT_LOG_DEBUG(env, "%llu\n", data);
 	}
 }
 

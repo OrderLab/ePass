@@ -11,7 +11,7 @@ static void print_bpf_prog_dump(FILE *fp, const struct bpf_insn *insns,
 		const struct bpf_insn *insn = &insns[i];
 		__u64 data;
 		memcpy(&data, insn, sizeof(struct bpf_insn));
-		fprintf(fp, "insn[%d]: %llu\n", i, data);
+		fprintf(fp, "%llu\n", data);
 	}
 }
 

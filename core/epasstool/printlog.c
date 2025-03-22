@@ -28,20 +28,10 @@ int epass_printlog(struct user_opts uopts)
 	struct bpf_insn *insns = malloc(sizeof(struct bpf_insn) * 1000);
 	size_t index = 0;
 	while (fgets(line, sizeof(line), fp)) {
-		int found = 0;
-		while (line[found]) {
-			if (line[found] == ':') {
-				break;
-			}
-			found++;
+		__u64 s = strtoull(line, NULL, 10);
+		if (line[0] == '\n') {
+			break;
 		}
-		if (!line[found]) {
-			printf("No `:` found\n");
-			err = -1;
-			goto end;
-		}
-		__u64 s = strtoull(line + found + 1, NULL, 10);
-		// printf("%llu\n", s);
 		memcpy(&insns[index], &s, sizeof(struct bpf_insn));
 		index++;
 	}
