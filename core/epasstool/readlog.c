@@ -36,43 +36,7 @@ int epass_readlog(struct user_opts uopts)
 		index++;
 	}
 
-	struct bpf_ir_env *env = bpf_ir_init_env(uopts.opts, insns, index);
-	if (!env) {
-		err = 1;
-		goto end;
-	}
-	err = bpf_ir_init_opts(env, uopts.gopt, uopts.popt);
-	if (err) {
-		goto end;
-	}
-	enable_builtin(env);
-	u64 starttime = get_cur_time_ns();
-	bpf_ir_autorun(env);
-	if (env->err) {
-		err = env->err;
-		goto end;
-	}
-	u64 tot = get_cur_time_ns() - starttime;
-
-	printf("ePass finished in %lluns\n", tot);
-	printf("lift %lluns\trun %lluns\tcompile %lluns\tsum %lluns\n",
-	       env->lift_time, env->run_time, env->cg_time,
-	       env->lift_time + env->run_time + env->cg_time);
-	printf("program size: %zu->%zu\n", index, env->insn_cnt);
-
-	if (uopts.prog_out[0]) {
-		// Write the program to a file
-		FILE *f = fopen(uopts.prog_out, "wb");
-		if (!f) {
-			fprintf(stderr, "Failed to open the output file\n");
-			return 1;
-		}
-		fwrite(env->insns, sizeof(struct bpf_insn), env->insn_cnt, f);
-		fclose(f);
-	}
-
-	bpf_ir_free_opts(env);
-	bpf_ir_free_env(env);
+	err = epass_run(uopts, insns, index);
 
 end:
 	fclose(fp);

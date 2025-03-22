@@ -9,6 +9,8 @@ struct user_opts {
 	char popt[64];
 	char prog[64];
 	char prog_out[64];
+	enum { OUTPUT_SEC_ONLY, OUTPUT_ELF } output_format;
+
 	char sec[64];
 	struct bpf_ir_opts opts;
 	bool no_compile;
@@ -29,6 +31,8 @@ int epass_printlog(struct user_opts uopts);
 int epass_print(struct user_opts uopts);
 
 int epass_read(struct user_opts uopts);
+
+int epass_run(struct user_opts uopts, const struct bpf_insn *insn, size_t sz);
 
 int epass_readload(struct user_opts uopts);
 

@@ -59,6 +59,7 @@ static void usage(const char *prog)
 		"  --gopt <arg> \tSpecify global optimization option\n"
 		"  --popt <arg> \tSpecify pass optimization option\n"
 		"  --sec, -s <arg> \tSpecify ELF section manually\n"
+		"  -F <arg> \tOutput format. Available formats: sec, elf (default), log.\n"
 		"  -o <arg> \tOutput the modified ELF section\n\n"
 		"Examples:\n"
 		"  %s read a.o\n"
@@ -95,6 +96,7 @@ static struct user_opts parse_cli(int argc, char **argv)
 	uopts.prog_out[0] = 0;
 	uopts.no_compile = false;
 	uopts.auto_sec = true;
+	uopts.output_format = OUTPUT_ELF;
 	if (argc < 2) {
 		usage(prog);
 	}
@@ -138,6 +140,19 @@ static struct user_opts parse_cli(int argc, char **argv)
 				argc--;
 				argv++;
 				strcpy(uopts.prog_out, *argv);
+			} else if (strcmp(*argv, "-F") == 0) {
+				if (argc < 2) {
+					usage(prog);
+				}
+				argc--;
+				argv++;
+				if (strcmp(*argv, "sec") == 0) {
+					uopts.output_format = OUTPUT_SEC_ONLY;
+				} else if (strcmp(*argv, "elf") == 0) {
+					uopts.output_format = OUTPUT_ELF;
+				} else {
+					usage(prog);
+				}
 			} else {
 				// File
 				if (uopts.prog[0] == 0) {
