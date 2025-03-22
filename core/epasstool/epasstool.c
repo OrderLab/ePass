@@ -59,7 +59,8 @@ static void usage(const char *prog)
 		"  --gopt <arg> \tSpecify global optimization option\n"
 		"  --popt <arg> \tSpecify pass optimization option\n"
 		"  --sec, -s <arg> \tSpecify ELF section manually\n"
-		"  -F <arg> \tOutput format. Available formats: sec, elf (default), log.\n"
+		"  --load, -L \tLoad to the kernel after transformation (alpha).\n"
+		"  -F <arg> \tOutput format. Available formats: sec, log (default).\n"
 		"  -o <arg> \tOutput the modified ELF section\n\n"
 		"Examples:\n"
 		"  %s read a.o\n"
@@ -96,7 +97,8 @@ static struct user_opts parse_cli(int argc, char **argv)
 	uopts.prog_out[0] = 0;
 	uopts.no_compile = false;
 	uopts.auto_sec = true;
-	uopts.output_format = OUTPUT_ELF;
+	uopts.output_format = OUTPUT_LOG;
+	uopts.load = false;
 	if (argc < 2) {
 		usage(prog);
 	}
@@ -133,6 +135,9 @@ static struct user_opts parse_cli(int argc, char **argv)
 				argv++;
 				uopts.auto_sec = false;
 				strcpy(uopts.sec, *argv);
+			} else if (strcmp(*argv, "--load") == 0 ||
+				   strcmp(*argv, "-L") == 0) {
+				uopts.load = true;
 			} else if (strcmp(*argv, "-o") == 0) {
 				if (argc < 2) {
 					usage(prog);
@@ -148,8 +153,8 @@ static struct user_opts parse_cli(int argc, char **argv)
 				argv++;
 				if (strcmp(*argv, "sec") == 0) {
 					uopts.output_format = OUTPUT_SEC_ONLY;
-				} else if (strcmp(*argv, "elf") == 0) {
-					uopts.output_format = OUTPUT_ELF;
+				} else if (strcmp(*argv, "log") == 0) {
+					uopts.output_format = OUTPUT_LOG;
 				} else {
 					usage(prog);
 				}
@@ -236,7 +241,18 @@ int main(int argc, char **argv)
 	uopts.opts = opts;
 
 	if (uopts.mode == MODE_READ) {
-		return is_elf ? epass_read(uopts) : epass_readlog(uopts);
+		if (uopts.load) {
+			if (is_elf) {
+				return epass_readload(uopts);
+			} else {
+				fprintf(stderr,
+					"Load is only supported for ELF\n");
+				return 1;
+			}
+		} else {
+			return is_elf ? epass_read(uopts) :
+					epass_readlog(uopts);
+		}
 	}
 
 	return 0;

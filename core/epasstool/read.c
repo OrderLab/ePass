@@ -4,6 +4,17 @@
 #include <unistd.h>
 #include <sys/wait.h>
 
+static void print_bpf_prog_dump(FILE *fp, const struct bpf_insn *insns,
+				size_t len)
+{
+	for (u32 i = 0; i < len; ++i) {
+		const struct bpf_insn *insn = &insns[i];
+		__u64 data;
+		memcpy(&data, insn, sizeof(struct bpf_insn));
+		fprintf(fp, "insn[%d]: %llu\n", i, data);
+	}
+}
+
 int epass_run(struct user_opts uopts, const struct bpf_insn *insn, size_t sz)
 {
 	struct bpf_ir_env *env = bpf_ir_init_env(uopts.opts, insn, sz);
@@ -40,63 +51,21 @@ int epass_run(struct user_opts uopts, const struct bpf_insn *insn, size_t sz)
 	printf("program size: %zu->%zu\n", sz, env->insn_cnt);
 
 	if (uopts.prog_out[0]) {
+		FILE *f = fopen(uopts.prog_out, "wb");
+		if (!f) {
+			fprintf(stderr, "Failed to open the output file\n");
+			err = 1;
+			goto end;
+		}
 		if (uopts.output_format == OUTPUT_SEC_ONLY) {
 			// Write the program to a file
-			FILE *f = fopen(uopts.prog_out, "wb");
-			if (!f) {
-				fprintf(stderr,
-					"Failed to open the output file\n");
-				err = 1;
-				goto end;
-			}
 			fwrite(env->insns, sizeof(struct bpf_insn),
 			       env->insn_cnt, f);
-			fclose(f);
 		}
-
-		if (uopts.output_format == OUTPUT_ELF) {
-			FILE *f = fopen("/tmp/epass_tmp", "wb");
-			if (!f) {
-				fprintf(stderr,
-					"Failed to open the output file\n");
-				err = 1;
-				goto end;
-			}
-			fwrite(env->insns, sizeof(struct bpf_insn),
-			       env->insn_cnt, f);
-			fclose(f);
-			if (err) {
-				fprintf(stderr,
-					"Failed to generate the file\n");
-				err = 1;
-				goto end;
-			}
-			// Call objcopy
-			int childpid;
-			if ((childpid = fork()) == -1) {
-				perror("Can't fork");
-				err = 1;
-				goto end;
-			} else if (childpid == 0) {
-				// Child
-				char default_path[] = "/usr/bin/llvm-objcopy";
-				char *path = getenv("OBJCOPY");
-				if (path == NULL) {
-					path = default_path;
-				}
-				char opts[30];
-				sprintf(opts, "%s=%s", uopts.sec,
-					"/tmp/epass_tmp");
-				execl(path, "llvm-objcopy", "--update-section",
-				      opts, uopts.prog, uopts.prog_out,
-				      (char *)0);
-				fprintf(stderr, "Failed to exec\n");
-				err = 1;
-				goto end;
-			} else {
-				wait(NULL);
-			}
+		if (uopts.output_format == OUTPUT_LOG) {
+			print_bpf_prog_dump(f, env->insns, env->insn_cnt);
 		}
+		fclose(f);
 	}
 
 end:

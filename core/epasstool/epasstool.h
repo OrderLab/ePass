@@ -9,12 +9,13 @@ struct user_opts {
 	char popt[64];
 	char prog[64];
 	char prog_out[64];
-	enum { OUTPUT_SEC_ONLY, OUTPUT_ELF } output_format;
+	enum { OUTPUT_SEC_ONLY, OUTPUT_LOG } output_format;
 
 	char sec[64];
 	struct bpf_ir_opts opts;
 	bool no_compile;
 	bool auto_sec;
+	bool load;
 
 	enum {
 		MODE_READ,
@@ -23,8 +24,6 @@ struct user_opts {
 };
 
 void masking_pass(struct bpf_ir_env *env, struct ir_function *fun, void *param);
-
-void test_pass1(struct bpf_ir_env *env, struct ir_function *fun, void *param);
 
 int epass_printlog(struct user_opts uopts);
 
@@ -43,6 +42,8 @@ void enable_builtin(struct bpf_ir_env *env);
 extern struct bpf_ir_opts common_opts;
 
 // Passes
+
+void test_pass1(struct bpf_ir_env *env, struct ir_function *fun, void *param);
 
 extern const struct builtin_pass_cfg bpf_ir_kern_insn_counter_pass;
 extern const struct builtin_pass_cfg bpf_ir_kern_optimization_pass;

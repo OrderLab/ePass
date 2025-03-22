@@ -4,6 +4,7 @@ add_executable(epasstool
     read.c
     print.c
     printlog.c
+    readload.c
     # Test passes
     test_pass1.c
 )
