@@ -14,31 +14,24 @@ static void print_bpf_prog(struct bpf_ir_env *env, const struct bpf_insn *insns,
 	}
 }
 
-int printlog(struct user_opts uopts)
+int epass_printlog(struct user_opts uopts)
 {
+	int err = 0;
 	FILE *fp = NULL;
 	char *program_name = uopts.prog;
 	fp = fopen(program_name, "r");
 	if (!fp) {
+		fprintf(stderr, "Failed to open the file.\n");
 		return -1;
 	}
 	char line[256];
 	struct bpf_insn *insns = malloc(sizeof(struct bpf_insn) * 1000);
 	size_t index = 0;
 	while (fgets(line, sizeof(line), fp)) {
-		int found = 0;
-		while (line[found]) {
-			if (line[found] == ':') {
-				break;
-			}
-			found++;
+		__u64 s = strtoull(line, NULL, 10);
+		if (line[0] == '\n') {
+			break;
 		}
-		if (!line[found]) {
-			printf("No `:` found\n");
-			return 1;
-		}
-		__u64 s = strtoull(line + found + 1, NULL, 10);
-		// printf("%llu\n", s);
 		memcpy(&insns[index], &s, sizeof(struct bpf_insn));
 		index++;
 	}
@@ -49,13 +42,15 @@ int printlog(struct user_opts uopts)
 	opts.verbose = 3;
 	struct bpf_ir_env *env = bpf_ir_init_env(opts, insns, index);
 	if (!env) {
-		return 1;
+		err = -1;
+		goto end;
 	}
 	print_bpf_prog(env, insns, index);
 	// bpf_ir_print_log_dbg(env);
 	bpf_ir_free_env(env);
+end:
 	free(insns);
 
 	fclose(fp);
-	return 0;
+	return err;
 }

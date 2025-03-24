@@ -10,9 +10,7 @@
             "name": "Debug",
             "program": "${workspaceFolder}/build/epasstool/epass",
             "args": [
-                "-m",
                 "read",
-                "-p",
                 "bpftests/output/empty.o"
             ],
             "cwd": "${workspaceFolder}"

@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include <getopt.h>
 #include "epasstool.h"
 
 // Userspace tool
+
+#ifndef EPASS_VERSION
+#define EPASS_VERSION "undefined"
+#endif
 
 static const struct function_pass pre_passes_def[] = {
 	DEF_FUNC_PASS(remove_trivial_phi, "remove_trivial_phi", true),
@@ -44,108 +47,191 @@ void enable_builtin(struct bpf_ir_env *env)
 	}
 }
 
-static void usage(char *prog)
+static void usage(const char *prog)
 {
-	printf("Usage: %s --mode <mode> --prog <prog> [--sec <sec>] "
-	       "[--gopt <gopt>] [--popt <popt>] --pass-only\n",
-	       prog);
-	printf("Modes:\n");
-	printf("  read: Run ePass from object file\n");
-	printf("  readload: Run ePass from object file and load it with modified bytecode\n");
-	printf("  readlog: Run ePass from log\n");
-	printf("  print: Print BPF program\n");
-	printf("  printlog: Print BPF program from log\n");
+	fprintf(stderr,
+		"Usage: %s <command> [options] <file>\n\n"
+		"Commands:\n"
+		"  read   \tRead (lift, transform and compile) the specified file\n"
+		"  print  \tPrint the specified file\n"
+		"\n"
+		"Options:\n"
+		"  --pass-only, -P \tSkip compilation\n"
+		"  --gopt <arg> \tSpecify global (general) option\n"
+		"  --popt <arg> \tSpecify pass option\n"
+		"  --sec, -s <arg> \tSpecify ELF section manually\n"
+		"  --load, -L \tLoad to the kernel after transformation (alpha)\n"
+		"  -F <arg> \tOutput format. Available formats: sec, log (default)\n"
+		"  -o <arg> \tOutput the modified program\n"
+		"\n"
+		"Available gopt:\n"
+		"  verbose=<level> \tSet the verbose level\n"
+		"  force \tForce to run epass\n"
+		"  enable_coalesce \tEnable coalescing\n"
+		"  print_bpf \tPrint the BPF program (by default)\n"
+		"  print_dump \tPrint the BPF program in dump (log) format\n"
+		"  print_detail \tPrint the BPF program in detail (both bpf and log) format\n"
+		"  no_prog_check \tDisable program check (IR checker)\n"
+		"  printk_log \tEnable printk log\n"
+		"  throw_msg \tEnable throw message\n"
+		"\n"
+		"Examples:\n"
+		"  %s read a.o\n"
+		"  %s read --gopt verbose=3 myfile.txt\n"
+		"  %s print a.o\n"
+		"\n",
+		prog, prog, prog, prog);
 
 	exit(1);
 }
 
-int main(int argc, char **argv)
+bool is_elf_file(const char *file)
 {
-	enum {
-		MODE_NONE,
-		MODE_READ,
-		MODE_READLOAD,
-		MODE_READLOG,
-		MODE_PRINT,
-		MODE_PRINT_LOG,
-	} mode = MODE_NONE;
-	struct user_opts uopts;
+	char magic[4];
+	FILE *f = fopen(file, "rb");
+	if (!f) {
+		return false;
+	}
+	if (fread(magic, 1, 4, f) < 4) {
+		fclose(f);
+		return false; // Not an ELF file
+	}
+	fclose(f);
+	return magic[0] == 0x7f && magic[1] == 'E' && magic[2] == 'L' &&
+	       magic[3] == 'F';
+}
+
+static struct user_opts parse_cli(int argc, char **argv)
+{
+	char *prog = argv[0];
+	struct user_opts uopts = { 0 };
 	uopts.gopt[0] = 0;
 	uopts.popt[0] = 0;
 	uopts.prog[0] = 0;
+	uopts.prog_out[0] = 0;
 	uopts.no_compile = false;
 	uopts.auto_sec = true;
-	static struct option long_options[] = {
-		{ "mode", required_argument, NULL, 'm' },
-		{ "gopt", required_argument, NULL, 0 },
-		{ "popt", required_argument, NULL, 0 },
-		{ "prog", required_argument, NULL, 'p' },
-		{ "sec", required_argument, NULL, 's' },
-		{ "help", no_argument, NULL, 'h' },
-		{ "pass-only", no_argument, NULL, 0 },
-		{ NULL, 0, NULL, 0 }
-	};
-	int ch = 0;
-	int opt_index = 0;
-	while ((ch = getopt_long(argc, argv, "m:p:s:h", long_options,
-				 &opt_index)) != -1) {
-		if (ch == 0) {
-			// printf("option %s\n", long_options[opt_index].name);
-			if (strcmp(long_options[opt_index].name, "gopt") == 0) {
-				strcpy(uopts.gopt, optarg);
-			} else if (strcmp(long_options[opt_index].name,
-					  "popt") == 0) {
-				strcpy(uopts.popt, optarg);
-			} else if (strcmp(long_options[opt_index].name,
-					  "pass-only") == 0) {
+	uopts.output_format = OUTPUT_LOG;
+	uopts.load = false;
+	if (argc < 2) {
+		usage(prog);
+	}
+	argc--;
+	argv++;
+	if (strcmp(*argv, "read") == 0) {
+		argc--;
+		argv++;
+		uopts.mode = MODE_READ;
+		while (argc > 0) {
+			if (strcmp(*argv, "--pass-only") == 0 ||
+			    strcmp(*argv, "-P") == 0) {
 				uopts.no_compile = true;
-			}
-		} else {
-			switch (ch) {
-			case 'm':
-				if (strcmp(optarg, "read") == 0) {
-					mode = MODE_READ;
-				} else if (strcmp(optarg, "readlog") == 0) {
-					mode = MODE_READLOG;
-				} else if (strcmp(optarg, "print") == 0) {
-					mode = MODE_PRINT;
-				} else if (strcmp(optarg, "readload") == 0) {
-					mode = MODE_READLOAD;
-				} else if (strcmp(optarg, "printlog") == 0) {
-					mode = MODE_PRINT_LOG;
+			} else if (strcmp(*argv, "--gopt") == 0) {
+				if (argc < 2) {
+					usage(prog);
 				}
-				break;
-			case 'p':
-				strcpy(uopts.prog, optarg);
-				break;
-			case 's':
+				argc--;
+				argv++;
+				strcpy(uopts.gopt, *argv);
+			} else if (strcmp(*argv, "--popt") == 0) {
+				if (argc < 2) {
+					usage(prog);
+				}
+				argc--;
+				argv++;
+				strcpy(uopts.popt, *argv);
+			} else if (strcmp(*argv, "--sec") == 0 ||
+				   strcmp(*argv, "-s") == 0) {
+				if (argc < 2) {
+					usage(prog);
+				}
+				argc--;
+				argv++;
 				uopts.auto_sec = false;
-				strcpy(uopts.sec, optarg);
-				break;
-			case 'h':
-				usage(argv[0]);
-				return 0;
-				break;
-			default:
-				break;
+				strcpy(uopts.sec, *argv);
+			} else if (strcmp(*argv, "--load") == 0 ||
+				   strcmp(*argv, "-L") == 0) {
+				uopts.load = true;
+			} else if (strcmp(*argv, "-o") == 0) {
+				if (argc < 2) {
+					usage(prog);
+				}
+				argc--;
+				argv++;
+				strcpy(uopts.prog_out, *argv);
+			} else if (strcmp(*argv, "-F") == 0) {
+				if (argc < 2) {
+					usage(prog);
+				}
+				argc--;
+				argv++;
+				if (strcmp(*argv, "sec") == 0) {
+					uopts.output_format = OUTPUT_SEC_ONLY;
+				} else if (strcmp(*argv, "log") == 0) {
+					uopts.output_format = OUTPUT_LOG;
+				} else {
+					usage(prog);
+				}
+			} else {
+				// File
+				if (uopts.prog[0] == 0) {
+					strcpy(uopts.prog, *argv);
+				} else {
+					usage(prog);
+				}
 			}
+			argc--;
+			argv++;
 		}
+		if (uopts.prog[0] == 0) {
+			usage(prog);
+		}
+	} else if (strcmp(*argv, "print") == 0) {
+		argc--;
+		argv++;
+		uopts.mode = MODE_PRINT;
+		while (argc > 0) {
+			if (strcmp(*argv, "--gopt") == 0) {
+				if (argc < 2) {
+					usage(prog);
+				}
+				argc--;
+				argv++;
+				strcpy(uopts.gopt, *argv);
+			} else if (strcmp(*argv, "--popt") == 0) {
+				if (argc < 2) {
+					usage(prog);
+				}
+				argc--;
+				argv++;
+				strcpy(uopts.popt, *argv);
+			} else {
+				// File
+				if (uopts.prog[0] == 0) {
+					strcpy(uopts.prog, *argv);
+				} else {
+					usage(prog);
+				}
+			}
+			argc--;
+			argv++;
+		}
+		if (uopts.prog[0] == 0) {
+			usage(prog);
+		}
+	} else {
+		usage(prog);
 	}
 
-	if (mode == MODE_NONE) {
-		printf("Mode not specified\n");
-		usage(argv[0]);
-	}
+	return uopts;
+}
 
-	if (mode == MODE_PRINT_LOG) {
-		return printlog(uopts);
-	}
-	if (mode == MODE_PRINT) {
-		return print(uopts);
-	}
-	if (uopts.prog[0] == 0) {
-		printf("Program not specified\n");
-		usage(argv[0]);
+int main(int argc, char **argv)
+{
+	struct user_opts uopts = parse_cli(argc, argv);
+	bool is_elf = is_elf_file(uopts.prog);
+	if (uopts.mode == MODE_PRINT) {
+		return is_elf ? epass_print(uopts) : epass_printlog(uopts);
 	}
 
 	// Initialize common options
@@ -168,14 +254,19 @@ int main(int argc, char **argv)
 
 	uopts.opts = opts;
 
-	if (mode == MODE_READLOG) {
-		return readlog(uopts);
-	}
-	if (mode == MODE_READ) {
-		return read(uopts);
-	}
-	if (mode == MODE_READLOAD) {
-		return readload(uopts);
+	if (uopts.mode == MODE_READ) {
+		if (uopts.load) {
+			if (is_elf) {
+				return epass_readload(uopts);
+			} else {
+				fprintf(stderr,
+					"Load is only supported for ELF\n");
+				return 1;
+			}
+		} else {
+			return is_elf ? epass_read(uopts) :
+					epass_readlog(uopts);
+		}
 	}
 
 	return 0;

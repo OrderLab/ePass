@@ -28,7 +28,10 @@ def handle_ir(matches, header, src):
         for arg in args:
             res = rec.findall(arg)
             cargs.append(res[0])
-
+        for a in cargs:
+            if a == "env" or a == "pos_insn" or a == "pos":
+                print("Error: Argument name is reserved")
+                exit(1)
         pargs = ", ".join(args)
         cargs = ", ".join(cargs)
         if len(pargs) > 0:

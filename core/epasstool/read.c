@@ -1,35 +1,29 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "bpf/libbpf.h"
 #include "epasstool.h"
-#include "linux/bpf_ir.h"
-#include <stdio.h>
+#include <unistd.h>
+#include <sys/wait.h>
 
-int read(struct user_opts uopts)
+static void print_bpf_prog_dump(FILE *fp, const struct bpf_insn *insns,
+				size_t len)
 {
-	struct bpf_object *obj = bpf_object__open(uopts.prog);
-	if (!obj) {
-		printf("Failed to open object\n");
-		return 1;
+	for (u32 i = 0; i < len; ++i) {
+		const struct bpf_insn *insn = &insns[i];
+		__u64 data;
+		memcpy(&data, insn, sizeof(struct bpf_insn));
+		fprintf(fp, "%llu\n", data);
 	}
-	struct bpf_program *prog = NULL;
-	if (uopts.auto_sec) {
-		prog = bpf_object__next_program(obj, NULL);
-	} else {
-		prog = bpf_object__find_program_by_name(obj, uopts.sec);
-	}
+}
 
-	if (!prog) {
-		printf("Program not found\n");
-		return 1;
-	}
-	size_t sz = bpf_program__insn_cnt(prog);
-	const struct bpf_insn *insn = bpf_program__insns(prog);
+int epass_run(struct user_opts uopts, const struct bpf_insn *insn, size_t sz)
+{
 	struct bpf_ir_env *env = bpf_ir_init_env(uopts.opts, insn, sz);
 	if (!env) {
 		return 1;
 	}
 	int err = bpf_ir_init_opts(env, uopts.gopt, uopts.popt);
 	if (err) {
+		bpf_ir_free_env(env);
 		return err;
 	}
 	enable_builtin(env);
@@ -46,7 +40,8 @@ int read(struct user_opts uopts)
 	u64 tot = get_cur_time_ns() - starttime;
 
 	if (env->err) {
-		return env->err;
+		err = env->err;
+		goto end;
 	}
 
 	printf("ePass finished in %lluns\n", tot);
@@ -55,8 +50,57 @@ int read(struct user_opts uopts)
 	       env->lift_time + env->run_time + env->cg_time);
 	printf("program size: %zu->%zu\n", sz, env->insn_cnt);
 
+	if (uopts.prog_out[0]) {
+		FILE *f = fopen(uopts.prog_out, "wb");
+		if (!f) {
+			fprintf(stderr, "Failed to open the output file\n");
+			err = 1;
+			goto end;
+		}
+		if (uopts.output_format == OUTPUT_SEC_ONLY) {
+			// Write the program to a file
+			fwrite(env->insns, sizeof(struct bpf_insn),
+			       env->insn_cnt, f);
+		}
+		if (uopts.output_format == OUTPUT_LOG) {
+			print_bpf_prog_dump(f, env->insns, env->insn_cnt);
+		}
+		fclose(f);
+	}
+
+end:
 	bpf_ir_free_opts(env);
 	bpf_ir_free_env(env);
+	return err;
+}
+
+int epass_read(struct user_opts uopts)
+{
+	int err = 0;
+	struct bpf_object *obj = bpf_object__open(uopts.prog);
+	if (!obj) {
+		fprintf(stderr, "Failed to open the file.\n");
+		return 1;
+	}
+	struct bpf_program *prog = NULL;
+	if (uopts.auto_sec) {
+		prog = bpf_object__next_program(obj, NULL);
+		strcpy(uopts.sec, bpf_program__section_name(prog));
+	} else {
+		prog = bpf_object__find_program_by_name(obj, uopts.sec);
+	}
+
+	if (!prog) {
+		fprintf(stderr, "Program not found\n");
+		err = 1;
+		goto end;
+	}
+	size_t sz = bpf_program__insn_cnt(prog);
+	const struct bpf_insn *insn = bpf_program__insns(prog);
+
+	err = epass_run(uopts, insn, sz);
+
+end:
 	bpf_object__close(obj);
-	return 0;
+	return err;
 }

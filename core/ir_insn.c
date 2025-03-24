@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include <linux/bpf_ir.h>
+#include "ir_cg.h"
 
 struct ir_insn *bpf_ir_create_insn_base(struct bpf_ir_env *env,
 					struct ir_basic_block *bb)
@@ -28,6 +29,25 @@ struct ir_insn *bpf_ir_create_insn_base_cg(struct bpf_ir_env *env,
 	}
 	new_insn->op = insn_type;
 	bpf_ir_init_insn_cg(env, new_insn);
+	CHECK_ERR(NULL);
+	return new_insn;
+}
+
+struct ir_insn *bpf_ir_create_insn_base_norm(struct bpf_ir_env *env,
+					     struct ir_basic_block *bb,
+					     struct ir_vr_pos dstpos)
+{
+	struct ir_insn *new_insn = malloc_proto(sizeof(struct ir_insn));
+	if (!new_insn) {
+		env->err = -ENOMEM;
+		PRINT_LOG_DEBUG(env, "Failed to allocate memory for ir_insn\n");
+		return NULL;
+	}
+	new_insn->parent_bb = bb;
+	new_insn->users = bpf_ir_array_null(); // Do not allocate new users
+	new_insn->value_num = 0;
+
+	bpf_ir_init_insn_norm(env, new_insn, dstpos);
 	CHECK_ERR(NULL);
 	return new_insn;
 }
@@ -273,6 +293,17 @@ void bpf_ir_erase_insn(struct bpf_ir_env *env, struct ir_insn *insn)
 	free_proto(insn);
 }
 
+void bpf_ir_erase_insn_norm(struct ir_insn *insn)
+{
+	list_del(&insn->list_ptr);
+	bpf_ir_array_free(&insn->users);
+	struct ir_insn_norm_extra *extra = insn_norm(insn);
+	if (extra) {
+		free_proto(extra);
+	}
+	free_proto(insn);
+}
+
 void bpf_ir_insert_at(struct ir_insn *new_insn, struct ir_insn *insn,
 		      enum insert_position pos)
 {
@@ -461,6 +492,7 @@ create_loadimmextra_insn_base(struct bpf_ir_env *env, struct ir_basic_block *bb,
 	new_insn->imm64 = imm;
 	return new_insn;
 }
+
 static struct ir_insn *
 create_loadimmextra_insn_base_cg(struct bpf_ir_env *env,
 				 struct ir_basic_block *bb,
@@ -468,6 +500,18 @@ create_loadimmextra_insn_base_cg(struct bpf_ir_env *env,
 {
 	struct ir_insn *new_insn =
 		bpf_ir_create_insn_base_cg(env, bb, IR_INSN_LOADIMM_EXTRA);
+	new_insn->imm_extra_type = load_ty;
+	new_insn->imm64 = imm;
+	return new_insn;
+}
+
+static struct ir_insn *create_loadimmextra_insn_base_norm(
+	struct bpf_ir_env *env, struct ir_basic_block *bb,
+	struct ir_vr_pos dstpos, enum ir_loadimm_extra_type load_ty, s64 imm)
+{
+	struct ir_insn *new_insn =
+		bpf_ir_create_insn_base_norm(env, bb, dstpos);
+	new_insn->op = IR_INSN_LOADIMM_EXTRA;
 	new_insn->imm_extra_type = load_ty;
 	new_insn->imm64 = imm;
 	return new_insn;
@@ -614,6 +658,22 @@ create_bin_insn_base_cg(struct bpf_ir_env *env, struct ir_basic_block *bb,
 	new_insn->alu_op = alu_type;
 	bpf_ir_val_add_user(env, val1, new_insn);
 	bpf_ir_val_add_user(env, val2, new_insn);
+	new_insn->value_num = 2;
+	return new_insn;
+}
+
+static struct ir_insn *
+create_bin_insn_base_norm(struct bpf_ir_env *env, struct ir_basic_block *bb,
+			  struct ir_vr_pos dstpos, struct ir_value val1,
+			  struct ir_value val2, enum ir_insn_type ty,
+			  enum ir_alu_op_type alu_type)
+{
+	struct ir_insn *new_insn =
+		bpf_ir_create_insn_base_norm(env, bb, dstpos);
+	new_insn->op = ty;
+	new_insn->values[0] = val1;
+	new_insn->values[1] = val2;
+	new_insn->alu_op = alu_type;
 	new_insn->value_num = 2;
 	return new_insn;
 }
@@ -767,6 +827,21 @@ static struct ir_insn *create_assign_insn_base_cg(struct bpf_ir_env *env,
 	return new_insn;
 }
 
+static struct ir_insn *create_assign_insn_base_norm(struct bpf_ir_env *env,
+						    struct ir_basic_block *bb,
+						    struct ir_vr_pos dstpos,
+						    struct ir_value val)
+{
+	struct ir_insn *new_insn =
+		bpf_ir_create_insn_base_norm(env, bb, dstpos);
+	new_insn->op = IR_INSN_ASSIGN;
+	new_insn->values[0] = val;
+	new_insn->value_num = 1;
+	new_insn->vr_type = IR_VR_TYPE_UNKNOWN;
+	new_insn->alu_op = IR_ALU_UNKNOWN;
+	return new_insn;
+}
+
 static struct ir_insn *create_phi_insn_base(struct bpf_ir_env *env,
 					    struct ir_basic_block *bb)
 {
@@ -857,6 +932,28 @@ struct ir_insn *bpf_ir_create_loadimmextra_insn_bb_cg(
 {
 	struct ir_insn *new_insn =
 		create_loadimmextra_insn_base_cg(env, pos_bb, load_ty, imm);
+	bpf_ir_insert_at_bb(new_insn, pos_bb, pos);
+	return new_insn;
+}
+
+struct ir_insn *bpf_ir_create_loadimmextra_insn_norm(
+	struct bpf_ir_env *env, struct ir_insn *pos_insn,
+	struct ir_vr_pos dstpos, enum ir_loadimm_extra_type load_ty, s64 imm,
+	enum insert_position pos)
+{
+	struct ir_insn *new_insn = create_loadimmextra_insn_base_norm(
+		env, pos_insn->parent_bb, dstpos, load_ty, imm);
+	bpf_ir_insert_at(new_insn, pos_insn, pos);
+	return new_insn;
+}
+
+struct ir_insn *bpf_ir_create_loadimmextra_insn_bb_norm(
+	struct bpf_ir_env *env, struct ir_basic_block *pos_bb,
+	struct ir_vr_pos dstpos, enum ir_loadimm_extra_type load_ty, s64 imm,
+	enum insert_position pos)
+{
+	struct ir_insn *new_insn = create_loadimmextra_insn_base_norm(
+		env, pos_bb, dstpos, load_ty, imm);
 	bpf_ir_insert_at_bb(new_insn, pos_bb, pos);
 	return new_insn;
 }
@@ -1093,6 +1190,31 @@ struct ir_insn *bpf_ir_create_bin_insn_bb_cg(
 {
 	struct ir_insn *new_insn =
 		create_bin_insn_base_cg(env, pos_bb, val1, val2, ty, alu_type);
+	bpf_ir_insert_at_bb(new_insn, pos_bb, pos);
+	return new_insn;
+}
+
+struct ir_insn *
+bpf_ir_create_bin_insn_norm(struct bpf_ir_env *env, struct ir_insn *pos_insn,
+			    struct ir_vr_pos dstpos, struct ir_value val1,
+			    struct ir_value val2, enum ir_insn_type ty,
+			    enum ir_alu_op_type alu_type,
+			    enum insert_position pos)
+{
+	struct ir_insn *new_insn = create_bin_insn_base_norm(
+		env, pos_insn->parent_bb, dstpos, val1, val2, ty, alu_type);
+	bpf_ir_insert_at(new_insn, pos_insn, pos);
+	return new_insn;
+}
+
+struct ir_insn *bpf_ir_create_bin_insn_bb_norm(
+	struct bpf_ir_env *env, struct ir_basic_block *pos_bb,
+	struct ir_vr_pos dstpos, struct ir_value val1, struct ir_value val2,
+	enum ir_insn_type ty, enum ir_alu_op_type alu_type,
+	enum insert_position pos)
+{
+	struct ir_insn *new_insn = create_bin_insn_base_norm(
+		env, pos_bb, dstpos, val1, val2, ty, alu_type);
 	bpf_ir_insert_at_bb(new_insn, pos_bb, pos);
 	return new_insn;
 }
@@ -1341,6 +1463,30 @@ struct ir_insn *bpf_ir_create_assign_insn_bb_cg(struct bpf_ir_env *env,
 						enum insert_position pos)
 {
 	struct ir_insn *new_insn = create_assign_insn_base_cg(env, pos_bb, val);
+	bpf_ir_insert_at_bb(new_insn, pos_bb, pos);
+	return new_insn;
+}
+
+struct ir_insn *bpf_ir_create_assign_insn_norm(struct bpf_ir_env *env,
+					       struct ir_insn *pos_insn,
+					       struct ir_vr_pos dstpos,
+					       struct ir_value val,
+					       enum insert_position pos)
+{
+	struct ir_insn *new_insn = create_assign_insn_base_norm(
+		env, pos_insn->parent_bb, dstpos, val);
+	bpf_ir_insert_at(new_insn, pos_insn, pos);
+	return new_insn;
+}
+
+struct ir_insn *bpf_ir_create_assign_insn_bb_norm(struct bpf_ir_env *env,
+						  struct ir_basic_block *pos_bb,
+						  struct ir_vr_pos dstpos,
+						  struct ir_value val,
+						  enum insert_position pos)
+{
+	struct ir_insn *new_insn =
+		create_assign_insn_base_norm(env, pos_bb, dstpos, val);
 	bpf_ir_insert_at_bb(new_insn, pos_bb, pos);
 	return new_insn;
 }

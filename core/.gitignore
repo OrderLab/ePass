@@ -1,5 +1,3 @@
-read
-probe_insn
-build
-out
-.cache
+build/
+.cache/
+*.user
