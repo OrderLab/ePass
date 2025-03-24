@@ -1002,6 +1002,21 @@ static void liveness_analysis(struct bpf_ir_env *env, struct ir_function *fun)
 	}
 }
 
+static enum val_type vtype_insn_norm(struct ir_insn *insn)
+{
+	struct ir_insn_norm_extra *extra = insn_norm(insn);
+	if (extra->pos.allocated) {
+		if (extra->pos.spilled) {
+			// WARNING: cannot determine whether it's a stackoff
+			return STACK;
+		} else {
+			return REG;
+		}
+	} else {
+		return UNDEF;
+	}
+}
+
 static enum val_type vtype_insn(struct ir_insn *insn)
 {
 	insn = insn_dst(insn);
@@ -1383,7 +1398,7 @@ static void normalize_assign(struct ir_insn *insn)
 {
 	struct ir_value *v0 = &insn->values[0];
 	enum val_type t0 = insn->value_num >= 1 ? vtype(*v0) : UNDEF;
-	enum val_type tdst = vtype_insn(insn);
+	enum val_type tdst = vtype_insn_norm(insn);
 	struct ir_vr_pos dst_pos = insn_norm(insn)->pos;
 	// stack = reg
 	// stack = const32
@@ -1429,7 +1444,7 @@ static void normalize_alu(struct bpf_ir_env *env, struct ir_insn *insn)
 	struct ir_value *v1 = &insn->values[1];
 	enum val_type t0 = insn->value_num >= 1 ? vtype(*v0) : UNDEF;
 	enum val_type t1 = insn->value_num >= 2 ? vtype(*v1) : UNDEF;
-	enum val_type tdst = vtype_insn(insn);
+	enum val_type tdst = vtype_insn_norm(insn);
 	DBGASSERT(tdst == REG);
 	struct ir_vr_pos dst_pos = insn_norm(insn)->pos;
 	if (t1 == REG) {
@@ -1579,7 +1594,7 @@ static void normalize_neg(struct bpf_ir_env *env, struct ir_insn *insn)
 {
 	struct ir_value *v0 = &insn->values[0];
 	enum val_type t0 = insn->value_num >= 1 ? vtype(*v0) : UNDEF;
-	enum val_type tdst = vtype_insn(insn);
+	enum val_type tdst = vtype_insn_norm(insn);
 	DBGASSERT(tdst == REG);
 	struct ir_vr_pos dst_pos = insn_norm(insn)->pos;
 	// reg = neg reg ==> OK!
@@ -1609,7 +1624,7 @@ static void normalize_end(struct bpf_ir_env *env, struct ir_insn *insn)
 {
 	struct ir_value *v0 = &insn->values[0];
 	enum val_type t0 = insn->value_num >= 1 ? vtype(*v0) : UNDEF;
-	enum val_type tdst = vtype_insn(insn);
+	enum val_type tdst = vtype_insn_norm(insn);
 	DBGASSERT(tdst == REG);
 	struct ir_vr_pos dst_pos = insn_norm(insn)->pos;
 	// reg = end reg
