@@ -96,8 +96,7 @@ void test(int initsize)
 	bpf_ir_ptrset_print_dbg(env, &set3, print_key);
 
 	char **tmp;
-	for (tmp = (char **)bpf_ir_ptrset_next(&set3, NULL); tmp;
-	     tmp = (char **)bpf_ir_ptrset_next(&set3, (void **)tmp)) {
+	ptrset_for(tmp, set) {
 		printf("Key: %s\n", *tmp);
 	}
 
