@@ -32,6 +32,7 @@ struct ir_insn_cg_extra {
 	struct ir_value dst;
 
 	// Liveness analysis
+	// Array of struct ir_insn*
 	struct array in;
 	struct array out;
 	struct array gen;
@@ -64,6 +65,22 @@ struct ir_insn_cg_extra {
 	bool nonvr;
 };
 
+struct ir_insn_cg_extra_v2 {
+	// Liveness analysis
+	struct ptrset in;
+	struct ptrset out;
+	struct ptrset gen;
+	struct ptrset kill;
+
+	// Adj list in interference graph
+	struct ptrset adj;
+
+	struct ir_vr_pos vr_pos;
+
+	// Whether this instruction is a non-VR instruction, like a pre-colored register
+	bool nonvr;
+};
+
 enum val_type {
 	UNDEF,
 	REG,
@@ -73,6 +90,8 @@ enum val_type {
 };
 
 #define insn_cg(insn) ((struct ir_insn_cg_extra *)(insn)->user_data)
+
+#define insn_cg_v2(insn) ((struct ir_insn_cg_extra_v2 *)(insn)->user_data)
 
 /* Dst of a instruction
 

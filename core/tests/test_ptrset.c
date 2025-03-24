@@ -93,7 +93,13 @@ void test(int initsize)
 
 	CRITICAL_ASSERT(env, set5.cnt == 2);
 
-	// bpf_ir_ptrset_print_dbg(env, &set3, print_key);
+	bpf_ir_ptrset_print_dbg(env, &set3, print_key);
+
+	char **tmp;
+	for (tmp = (char **)bpf_ir_ptrset_next(&set3, NULL); tmp;
+	     tmp = (char **)bpf_ir_ptrset_next(&set3, (void **)tmp)) {
+		printf("Key: %s\n", *tmp);
+	}
 
 	bpf_ir_ptrset_free(&set);
 	bpf_ir_ptrset_free(&set2);

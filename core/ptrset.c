@@ -121,6 +121,21 @@ void bpf_ir_ptrset_free(struct ptrset *set)
 	set->set = NULL;
 }
 
+void **bpf_ir_ptrset_next(struct ptrset *set, void **keyd)
+{
+	if (keyd == NULL) {
+		return set->set > 0 ? &set->set[0].key : NULL;
+	}
+	struct ptrset_entry *cc = container_of(keyd, struct ptrset_entry, key);
+	while ((size_t)(cc - set->set) < set->size) {
+		if (cc->occupy == 1) {
+			return &cc->key;
+		}
+		cc++;
+	}
+	return NULL;
+}
+
 struct ptrset bpf_ir_ptrset_union(struct bpf_ir_env *env, struct ptrset *set1,
 				  struct ptrset *set2)
 {

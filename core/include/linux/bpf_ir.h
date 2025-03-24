@@ -200,6 +200,8 @@ void bpf_ir_array_clone(struct bpf_ir_env *env, struct array *res,
 
 #define INIT_ARRAY(arr, type) bpf_ir_array_init(arr, sizeof(type))
 
+#define INIT_PTRSET_DEF(set) bpf_ir_ptrset_init(env, set, 8)
+
 /* Array End */
 
 /* Hashtable Start */
@@ -280,6 +282,8 @@ void bpf_ir_ptrset_print_dbg(struct bpf_ir_env *env, struct ptrset *set,
 void bpf_ir_ptrset_clean(struct ptrset *set);
 
 void bpf_ir_ptrset_free(struct ptrset *set);
+
+void **bpf_ir_ptrset_next(struct ptrset *set, void **keyd);
 
 struct ptrset bpf_ir_ptrset_union(struct bpf_ir_env *env, struct ptrset *set1,
 				  struct ptrset *set2);
