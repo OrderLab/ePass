@@ -1901,7 +1901,7 @@ void bpf_ir_compile(struct bpf_ir_env *env, struct ir_function *fun)
 	// Debugging settings
 	fun->cg_info.spill_callee = 0;
 
-	// Step 4: SSA Destruction
+	// SSA Destruction
 	remove_phi(env, fun);
 	CHECK_ERR();
 	print_ir_prog_cg_dst(env, fun, "PHI Removal");
@@ -1941,11 +1941,11 @@ void bpf_ir_compile(struct bpf_ir_env *env, struct ir_function *fun)
 			"\x1B[32m----- Register allocation iteration %d -----\x1B[0m\n",
 			iterations);
 		iterations++;
-		// Step 5: Liveness Analysis
+		// Liveness Analysis
 		liveness_analysis(env, fun);
 		CHECK_ERR();
 
-		// Step 6: Conflict Analysis
+		// Conflict Analysis
 		conflict_analysis(env, fun);
 		CHECK_ERR();
 		if (env->opts.verbose > 2) {
@@ -1953,7 +1953,7 @@ void bpf_ir_compile(struct bpf_ir_env *env, struct ir_function *fun)
 			bpf_ir_print_interference_graph(env, fun);
 		}
 
-		// Step 7: Graph coloring
+		// Graph coloring
 		graph_coloring(env, fun);
 		CHECK_ERR();
 
@@ -1982,7 +1982,7 @@ void bpf_ir_compile(struct bpf_ir_env *env, struct ir_function *fun)
 					       "After Coalescing (reg)");
 		}
 
-		// Step 8: Check if need to spill and spill
+		// Check if need to spill and spill
 		need_spill = check_need_spill(env, fun);
 		CHECK_ERR();
 		print_ir_prog_cg_alloc(env, fun, "Spilling");
@@ -2003,20 +2003,21 @@ void bpf_ir_compile(struct bpf_ir_env *env, struct ir_function *fun)
 	PRINT_LOG_DEBUG(env, "Register allocation finished in %d iterations\n",
 			iterations);
 	print_ir_prog_cg_alloc(env, fun, "After RA & Spilling");
-	// Step 9: Calculate stack size
+
+	// Calculate stack size
 	if (fun->cg_info.spill_callee) {
 		calc_callee_num(fun);
 	}
 	calc_stack_size(fun);
 
-	// Step 10: Shift raw stack operations
+	// Shift raw stack operations
 	add_stack_offset(env, fun, fun->cg_info.stack_offset);
 	CHECK_ERR();
 	print_ir_prog_cg_alloc(env, fun, "Shifting stack access");
 	prog_check_cg(env, fun);
 	CHECK_ERR();
 
-	// Step 11: Spill callee saved registers
+	// Spill callee saved registers
 	if (fun->cg_info.spill_callee) {
 		spill_callee(env, fun);
 		CHECK_ERR();

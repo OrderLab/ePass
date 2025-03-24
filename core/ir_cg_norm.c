@@ -1189,7 +1189,6 @@ void bpf_ir_cg_norm(struct bpf_ir_env *env, struct ir_function *fun)
 
 	print_ir_prog_cg_flatten(env, fun, "Flattening");
 
-	// Step 12: Normalize
 	normalize(env, fun);
 	CHECK_ERR();
 	print_ir_prog_cg_flatten(env, fun, "Normalization");
@@ -1197,18 +1196,15 @@ void bpf_ir_cg_norm(struct bpf_ir_env *env, struct ir_function *fun)
 	replace_builtin_const(env, fun);
 	CHECK_ERR();
 
-	// Step 13: Direct Translation
 	translate(env, fun);
 	CHECK_ERR();
 
 	check_total_insn(env, fun);
 	CHECK_ERR();
 
-	// Step 14: Relocation
 	relocate(env, fun);
 	CHECK_ERR();
 
-	// Step 15: Synthesize
 	synthesize(env, fun);
 	CHECK_ERR();
 
