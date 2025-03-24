@@ -376,6 +376,8 @@ int parse_int(const char *str, int *val);
 
 u64 get_cur_time_ns(void);
 
+#ifdef DEBUG_ALLOC
+
 #define SAFE_MALLOC(dst, size)                            \
 	{                                                 \
 		if (size > 10000000) {                    \
@@ -399,6 +401,28 @@ u64 get_cur_time_ns(void);
 			return NULL;                      \
 		}                                         \
 	}
+
+#else
+
+#define SAFE_MALLOC(dst, size)              \
+	{                                   \
+		dst = malloc_proto(size);   \
+		if (!dst) {                 \
+			env->err = -ENOMEM; \
+			return;             \
+		}                           \
+	}
+
+#define SAFE_MALLOC_RET_NULL(dst, size)     \
+	{                                   \
+		dst = malloc_proto(size);   \
+		if (!dst) {                 \
+			env->err = -ENOMEM; \
+			return NULL;        \
+		}                           \
+	}
+
+#endif
 
 /* LLI End */
 

@@ -66,11 +66,11 @@ struct ir_insn_cg_extra {
 };
 
 struct ir_insn_cg_extra_v2 {
+	struct ir_insn *dst;
+
 	// Liveness analysis
 	struct ptrset in;
 	struct ptrset out;
-	struct ptrset gen;
-	struct ptrset kill;
 
 	// Adj list in interference graph
 	struct ptrset adj;

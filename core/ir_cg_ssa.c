@@ -18,6 +18,7 @@ static void ir_init_insn_cg(struct bpf_ir_env *env, struct ir_insn *insn)
 	SAFE_MALLOC(extra, sizeof(struct ir_insn_cg_extra_v2));
 	insn->user_data = extra;
 
+	extra->dst = bpf_ir_is_void(insn) ? NULL : insn;
 	extra->vr_pos.allocated = false;
 	extra->vr_pos.spilled = 0;
 	extra->vr_pos.spilled_size = 0;
@@ -25,8 +26,6 @@ static void ir_init_insn_cg(struct bpf_ir_env *env, struct ir_insn *insn)
 
 	INIT_PTRSET_DEF(&extra->adj);
 
-	INIT_PTRSET_DEF(&extra->gen);
-	INIT_PTRSET_DEF(&extra->kill);
 	INIT_PTRSET_DEF(&extra->in);
 	INIT_PTRSET_DEF(&extra->out);
 	extra->nonvr = false;
@@ -74,36 +73,17 @@ static void print_insn_extra(struct bpf_ir_env *env, struct ir_insn *insn)
 	if (insn_cg == NULL) {
 		CRITICAL("NULL user data");
 	}
-	PRINT_LOG_DEBUG(env, "--\nGen:");
+	struct ir_insn **pos;
 
-	struct ir_insn **pos;
-	for (size_t i = 0; i < insn_cg->gen.size; i++) {
-		if (insn_cg->gen.set[i].occupy == 1) {
-		}
-	}
-	struct ir_insn **pos;
-	array_for(pos, insn_cg->gen)
-	{
-		struct ir_insn *insn = *pos;
-		PRINT_LOG_DEBUG(env, " ");
-		print_insn_ptr_base(env, insn);
-	}
-	PRINT_LOG_DEBUG(env, "\nKill:");
-	array_for(pos, insn_cg->kill)
-	{
-		struct ir_insn *insn = *pos;
-		PRINT_LOG_DEBUG(env, " ");
-		print_insn_ptr_base(env, insn);
-	}
 	PRINT_LOG_DEBUG(env, "\nIn:");
-	array_for(pos, insn_cg->in)
+	ptrset_for(pos, insn_cg->in)
 	{
 		struct ir_insn *insn = *pos;
 		PRINT_LOG_DEBUG(env, " ");
 		print_insn_ptr_base(env, insn);
 	}
 	PRINT_LOG_DEBUG(env, "\nOut:");
-	array_for(pos, insn_cg->out)
+	ptrset_for(pos, insn_cg->out)
 	{
 		struct ir_insn *insn = *pos;
 		PRINT_LOG_DEBUG(env, " ");
@@ -112,53 +92,46 @@ static void print_insn_extra(struct bpf_ir_env *env, struct ir_insn *insn)
 	PRINT_LOG_DEBUG(env, "\n-------------\n");
 }
 
-// Live variable analysis
-
-static void gen_kill(struct bpf_ir_env *env, struct ir_function *fun)
+static void print_ir_dst_v2(struct bpf_ir_env *env, struct ir_insn *insn)
 {
-	struct ir_basic_block **pos;
-	// For each BB
-	array_for(pos, fun->reachable_bbs)
-	{
-		struct ir_basic_block *bb = *pos;
-		struct ir_insn *pos2;
-		// For each operation
-		list_for_each_entry(pos2, &bb->ir_insn_head, list_ptr) {
-			struct ir_insn *insn_dst = insn_dst(pos2);
-			struct ir_insn_cg_extra *insn_cg = pos2->user_data;
-			if (!bpf_ir_is_void(pos2) && insn_dst) {
-				bpf_ir_array_push_unique(env, &insn_cg->kill,
-							 &insn_dst);
-			}
-			struct array value_uses =
-				bpf_ir_get_operands(env, pos2);
-			struct ir_value **pos3;
-			array_for(pos3, value_uses)
-			{
-				struct ir_value *val = *pos3;
-				if (val->type == IR_VALUE_INSN) {
-					struct ir_insn *insn = val->data.insn_d;
-					DBGASSERT(insn == insn_dst(insn));
-					bpf_ir_array_push_unique(
-						env, &insn_cg->gen, &insn);
-					// array_erase_elem(&insn_cg->kill, insn);
-				}
-			}
-			bpf_ir_array_free(&value_uses);
-		}
+	if (!insn->user_data) {
+		PRINT_LOG_DEBUG(env, "(?)");
+		RAISE_ERROR("NULL userdata found");
 	}
+	insn = insn_cg_v2(insn)->dst;
+	if (insn) {
+		print_insn_ptr_base(env, insn);
+	} else {
+		PRINT_LOG_DEBUG(env, "(NULL)");
+	}
+}
+
+/*
+SSA liveness analysis.
+
+Algorithm from Florian Brandner, Benoit Boissinot, Alain Darte, Benoît Dupont de Dinechin, Fabrice Rastello. Computing Liveness Sets for SSA-Form Programs.
+
+Section 5.2.
+
+*/
+
+static void up_and_mark(struct ir_insn *st, struct ir_insn *v)
+{
+}
+
+static void in_out(struct bpf_ir_env *env, struct ir_function *fun)
+{
 }
 
 static void liveness_analysis(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	// TODO: Encode Calling convention into GEN KILL
-	gen_kill(env, fun);
 	in_out(env, fun);
 	if (env->opts.verbose > 2) {
 		PRINT_LOG_DEBUG(env, "--------------\n");
 		print_ir_prog_advanced(env, fun, NULL, print_insn_extra,
-				       print_ir_dst);
-		print_ir_prog_advanced(env, fun, NULL, NULL, print_ir_dst);
+				       print_ir_dst_v2);
+		print_ir_prog_advanced(env, fun, NULL, NULL, print_ir_dst_v2);
 	}
 }
 
