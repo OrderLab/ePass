@@ -29,12 +29,10 @@ add_library(
   aux/prog_check.c
   aux/disasm.c
   aux/kern_utils.c
-  ir_code_gen.c
+  ir_cg.c
+  ir_cg_norm.c
   lli.c
-  include/linux/bpf_ir.h
-  include/linux/bpf.h
-  include/linux/hash.h
-  include/linux/list.h)
+  include/linux/bpf_ir.h)
 
 add_executable(test_list tests/test_list.c)
 add_executable(test_hashtable tests/test_hashtable.c)

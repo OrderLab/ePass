@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include <linux/bpf_ir.h>
+#include "ir_cg.h"
 
 int bpf_ir_valid_alu_type(enum ir_alu_op_type type)
 {
@@ -164,6 +165,7 @@ static void print_vr_pos(struct bpf_ir_env *env, struct ir_vr_pos *pos)
 		RAISE_ERROR("Not allocated");
 	}
 }
+
 static void print_ir_value_full(struct bpf_ir_env *env, struct ir_value v,
 				void (*print_ir)(struct bpf_ir_env *env,
 						 struct ir_insn *))

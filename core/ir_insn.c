@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include <linux/bpf_ir.h>
+#include "ir_cg.h"
 
 struct ir_insn *bpf_ir_create_insn_base(struct bpf_ir_env *env,
 					struct ir_basic_block *bb)
