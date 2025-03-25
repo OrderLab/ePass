@@ -1389,12 +1389,6 @@ void bpf_ir_div_by_zero(struct bpf_ir_env *env, struct ir_function *fun,
 void bpf_ir_optimize_code_compaction(struct bpf_ir_env *env,
 				     struct ir_function *fun, void *param);
 
-extern const struct function_pass *pre_passes;
-extern const size_t pre_passes_cnt;
-
-extern const struct function_pass *post_passes;
-extern const size_t post_passes_cnt;
-
 void translate_throw(struct bpf_ir_env *env, struct ir_function *fun,
 		     void *param);
 
@@ -1405,6 +1399,15 @@ struct function_pass {
 	bool force_enable;
 	char name[BPF_IR_MAX_PASS_NAME_SIZE];
 };
+
+extern const struct function_pass *pre_passes;
+extern const size_t pre_passes_cnt;
+
+extern const struct function_pass *post_passes;
+extern const size_t post_passes_cnt;
+
+void bpf_ir_run_passes(struct bpf_ir_env *env, struct ir_function *fun,
+		       const struct function_pass *passes, const size_t cnt);
 
 struct custom_pass_cfg {
 	struct function_pass pass;

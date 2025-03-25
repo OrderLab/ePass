@@ -382,6 +382,11 @@ struct array pre_spill(struct bpf_ir_env *env, struct ir_function *fun)
 	return to_spill;
 }
 
+static void spill(struct bpf_ir_env *env, struct ir_function *fun,
+		  struct array *to_spill)
+{
+}
+
 void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	init_cg(env, fun);
@@ -390,10 +395,23 @@ void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun)
 	// Debugging settings
 	fun->cg_info.spill_callee = 0;
 
-	liveness_analysis(env, fun);
+	bool done = false;
 
-	struct array to_spill = pre_spill(env, fun);
+	while (!done) {
+		liveness_analysis(env, fun);
+		struct array to_spill = pre_spill(env, fun);
+		if (to_spill.num_elem == 0) {
+			// No need to spill
+			done = true;
+		} else {
+			// spill
+		}
+		bpf_ir_array_free(&to_spill);
+	}
 
-	bpf_ir_array_free(&to_spill);
+	// Graph coloring
+
+	// Coalesce
+
 	CRITICAL("done");
 }
