@@ -3,6 +3,9 @@
 
 #include <linux/bpf_ir.h>
 
+// Number of colors available (r0 - r9)
+#define RA_COLORS 10
+
 void bpf_ir_init_insn_cg(struct bpf_ir_env *env, struct ir_insn *insn);
 
 void bpf_ir_init_insn_norm(struct bpf_ir_env *env, struct ir_insn *insn,
@@ -75,7 +78,8 @@ struct ir_insn_cg_extra_v2 {
 	// Adj list in interference graph
 	struct ptrset adj;
 
-	u32 lambda;
+	u32 lambda; // used in MCS
+	u32 w; // number of maximalCl that has this vertex. used in pre-spill
 
 	struct ir_vr_pos vr_pos;
 

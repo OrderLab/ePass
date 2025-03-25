@@ -24,6 +24,7 @@ static void ir_init_insn_cg(struct bpf_ir_env *env, struct ir_insn *insn)
 	extra->vr_pos.spilled_size = 0;
 	extra->vr_pos.alloc_reg = 0;
 	extra->lambda = 0;
+	extra->w = 0;
 
 	INIT_PTRSET_DEF(&extra->adj);
 
@@ -156,7 +157,7 @@ static void live_out_at_statement(struct bpf_ir_env *env, struct ptrset *M,
 	struct ir_insn_cg_extra_v2 *se = insn_cg_v2(s);
 	bpf_ir_ptrset_insert(env, &se->out, v);
 	if (se->dst) {
-		if (s != v) {
+		if (se->dst != v) {
 			make_conflict(env, v, s);
 			live_in_at_statement(env, M, s, v);
 		}
@@ -204,7 +205,10 @@ static void liveness_analysis(struct bpf_ir_env *env, struct ir_function *fun)
 		struct ir_insn *v;
 		list_for_each_entry(v, &bb->ir_insn_head, list_ptr) {
 			struct ir_insn_cg_extra_v2 *extra = insn_cg_v2(v);
+			// Clean
 			extra->lambda = 0;
+			extra->w = 0;
+
 			if (extra->dst) {
 				bpf_ir_ptrset_insert(
 					env, &fun->cg_info.all_var_v2, v);
@@ -297,6 +301,88 @@ static struct array mcs(struct bpf_ir_env *env, struct ir_function *fun)
 
 	bpf_ir_ptrset_free(&allvar);
 	return sigma;
+}
+
+static struct ptrset *maxcl_need_spill(struct array *eps)
+{
+	struct ptrset *pos;
+	array_for(pos, (*eps))
+	{
+		if (pos->cnt > RA_COLORS) {
+			return pos;
+		}
+	}
+	return NULL;
+}
+
+void pre_spill(struct bpf_ir_env *env, struct ir_function *fun)
+{
+	// First run maximalCl
+	struct array sigma = mcs(env, fun);
+	struct array eps;
+	INIT_ARRAY(&eps, struct ptrset);
+	for (size_t i = 0; i < sigma.num_elem; ++i) {
+		struct ir_insn *v = *array_get(&sigma, i, struct ir_insn *);
+		struct ir_insn_cg_extra_v2 *vex = insn_cg_v2(v);
+		struct ptrset q;
+		INIT_PTRSET_DEF(&q);
+		bpf_ir_ptrset_insert(env, &q, v);
+		vex->w++;
+		struct ir_insn **pos;
+		ptrset_for(pos, vex->adj)
+		{
+			struct ir_insn *u = *pos;
+
+			for (size_t j = 0; j < i; ++j) {
+				struct ir_insn *v2 =
+					*array_get(&sigma, j, struct ir_insn *);
+				if (v2 == u) {
+					bpf_ir_ptrset_insert(env, &q, u);
+					insn_cg_v2(u)->w++;
+					break;
+				}
+			}
+		}
+		bpf_ir_array_push(env, &eps, &q);
+	}
+
+	struct ptrset *cur;
+	struct array to_spill;
+	INIT_ARRAY(&to_spill, struct ir_insn *);
+	while ((cur = maxcl_need_spill(&eps))) {
+		// cur has more than RA_COLORS nodes
+		u32 max_w = 0;
+		struct ir_insn *max_i = NULL;
+
+		struct ir_insn **pos;
+		ptrset_for(pos, (*cur))
+		{
+			struct ir_insn *v = *pos;
+			struct ir_insn_cg_extra_v2 *vex = insn_cg_v2(v);
+			if (vex->w >= max_w && !vex->nonvr) {
+				// Must be a vr to be spilled
+				max_w = vex->w;
+				max_i = v;
+			}
+		}
+		DBGASSERT(max_i != NULL);
+		// Spill max_i
+		bpf_ir_array_push(env, &to_spill, &max_i);
+
+		struct ptrset *pos2;
+		array_for(pos2, eps)
+		{
+			bpf_ir_ptrset_delete(pos2, max_i);
+		}
+	}
+
+	struct ptrset *pos;
+	array_for(pos, eps)
+	{
+		bpf_ir_ptrset_free(pos);
+	}
+	bpf_ir_array_free(&eps);
+	bpf_ir_array_free(&sigma);
 }
 
 void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun)
