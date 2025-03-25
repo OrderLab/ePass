@@ -290,7 +290,12 @@ static void print_ir_prog_cg_dst(struct bpf_ir_env *env,
 
 static void liveness_analysis(struct bpf_ir_env *env, struct ir_function *fun)
 {
-	// Assumption: dst = insn
+	// Add all real registers to the graph
+	for (int i = 0; i < RA_COLORS; ++i) {
+		bpf_ir_ptrset_insert(env, &fun->cg_info.all_var_v2,
+				     fun->cg_info.regs[i]);
+	}
+
 	bpf_ir_ptrset_clean(&fun->cg_info.all_var_v2);
 	struct ptrset M;
 	INIT_PTRSET_DEF(&M);
@@ -349,8 +354,13 @@ static void liveness_analysis(struct bpf_ir_env *env, struct ir_function *fun)
 	}
 	bpf_ir_ptrset_free(&M);
 
-	// Debug
-	print_ir_prog_cg_dst(env, fun, "Conflict analysis");
+	print_ir_prog_cg_dst(env, fun, "Liveness");
+}
+
+static void print_inetreference_graph(struct bpf_ir_env *env,
+				      struct ir_function *fun)
+{
+	tag_ir(fun);
 	struct ir_insn **pos2;
 	ptrset_for(pos2, fun->cg_info.all_var_v2)
 	{
@@ -550,7 +560,11 @@ void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun)
 	bool done = false;
 	while (!done) {
 		liveness_analysis(env, fun);
+		print_inetreference_graph(env, fun);
+
 		conflict_analysis(env, fun);
+		print_inetreference_graph(env, fun);
+
 		struct array to_spill = pre_spill(env, fun);
 		if (to_spill.num_elem == 0) {
 			// No need to spill
