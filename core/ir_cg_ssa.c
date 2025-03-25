@@ -23,6 +23,7 @@ static void ir_init_insn_cg(struct bpf_ir_env *env, struct ir_insn *insn)
 	extra->vr_pos.spilled = 0;
 	extra->vr_pos.spilled_size = 0;
 	extra->vr_pos.alloc_reg = 0;
+	extra->lambda = 0;
 
 	INIT_PTRSET_DEF(&extra->adj);
 
@@ -203,6 +204,7 @@ static void liveness_analysis(struct bpf_ir_env *env, struct ir_function *fun)
 		struct ir_insn *v;
 		list_for_each_entry(v, &bb->ir_insn_head, list_ptr) {
 			struct ir_insn_cg_extra_v2 *extra = insn_cg_v2(v);
+			extra->lambda = 0;
 			if (extra->dst) {
 				bpf_ir_ptrset_insert(
 					env, &fun->cg_info.all_var_v2, v);
@@ -257,6 +259,44 @@ static void liveness_analysis(struct bpf_ir_env *env, struct ir_function *fun)
 		}
 		PRINT_LOG_DEBUG(env, "\n");
 	}
+}
+
+// Maximum cardinality search
+static struct array mcs(struct bpf_ir_env *env, struct ir_function *fun)
+{
+	struct array sigma;
+	INIT_ARRAY(&sigma, struct ir_insn *);
+	struct ptrset allvar;
+	bpf_ir_ptrset_clone(env, &allvar, &fun->cg_info.all_var_v2);
+	for (size_t i = 0; i < fun->cg_info.all_var_v2.cnt; ++i) {
+		u32 max_l = 0;
+		struct ir_insn *max_i = NULL;
+		struct ir_insn **pos;
+		ptrset_for(pos, allvar)
+		{
+			struct ir_insn_cg_extra_v2 *ex = insn_cg_v2(*pos);
+			if (ex->lambda >= max_l) {
+				max_l = ex->lambda;
+				max_i = *pos;
+			}
+		}
+		DBGASSERT(max_i != NULL);
+		bpf_ir_array_push(env, &sigma, &max_i);
+
+		struct ir_insn_cg_extra_v2 *max_iex = insn_cg_v2(max_i);
+		ptrset_for(pos, max_iex->adj)
+		{
+			if (bpf_ir_ptrset_exists(&allvar, *pos)) {
+				// *pos in allvar /\ N(max_i)
+				insn_cg_v2(*pos)->lambda++;
+			}
+		}
+
+		bpf_ir_ptrset_delete(&allvar, max_i);
+	}
+
+	bpf_ir_ptrset_free(&allvar);
+	return sigma;
 }
 
 void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun)

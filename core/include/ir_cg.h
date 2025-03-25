@@ -75,6 +75,8 @@ struct ir_insn_cg_extra_v2 {
 	// Adj list in interference graph
 	struct ptrset adj;
 
+	u32 lambda;
+
 	struct ir_vr_pos vr_pos;
 
 	// Whether this instruction is a non-VR instruction, like a pre-colored register

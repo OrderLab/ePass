@@ -116,7 +116,9 @@ void bpf_ir_ptrset_clean(struct ptrset *set)
 void bpf_ir_ptrset_free(struct ptrset *set)
 {
 	bpf_ir_ptrset_clean(set);
-	free_proto(set->set);
+	if (set->set) {
+		free_proto(set->set);
+	}
 	set->size = 0;
 	set->set = NULL;
 }
