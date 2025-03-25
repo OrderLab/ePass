@@ -95,9 +95,10 @@ void test(int initsize)
 
 	bpf_ir_ptrset_print_dbg(env, &set3, print_key);
 
-	char **tmp;
-	ptrset_for(tmp, set) {
-		printf("Key: %s\n", *tmp);
+	char **pos;
+	ptrset_for(pos, set3)
+	{
+		printf("Key: %s\n", *pos);
 	}
 
 	bpf_ir_ptrset_free(&set);
@@ -109,10 +110,35 @@ void test(int initsize)
 	bpf_ir_free_env(env);
 }
 
+void test2(void)
+{
+	struct bpf_ir_opts opts = bpf_ir_default_opts();
+	opts.verbose = 5;
+	struct bpf_ir_env *env = bpf_ir_init_env(opts, NULL, 0);
+
+	struct ptrset set;
+	INIT_PTRSET_DEF(&set);
+
+	char ss[10] = "123312";
+
+	bpf_ir_ptrset_insert(env, &set, ss);
+
+	char **pos;
+
+	ptrset_for(pos, set)
+	{
+		printf("Key: %s\n", *pos);
+	}
+
+	bpf_ir_ptrset_free(&set);
+	bpf_ir_free_env(env);
+}
+
 int main(void)
 {
 	for (int i = 1; i < 10; i++) {
 		test(i);
 	}
+	test2();
 	return 0;
 }

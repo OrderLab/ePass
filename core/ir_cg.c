@@ -1893,6 +1893,10 @@ static void spill_array(struct bpf_ir_env *env, struct ir_function *fun)
 
 void bpf_ir_compile(struct bpf_ir_env *env, struct ir_function *fun)
 {
+	if (env->opts.cg_v2) {
+		bpf_ir_compile_v2(env, fun);
+		return;
+	}
 	u64 starttime = get_cur_time_ns();
 	// Init CG, start code generation
 	init_cg(env, fun);

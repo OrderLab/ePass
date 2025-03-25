@@ -123,11 +123,12 @@ void bpf_ir_ptrset_free(struct ptrset *set)
 
 void **bpf_ir_ptrset_next(struct ptrset *set, void **keyd)
 {
+	struct ptrset_entry *cc;
 	if (keyd == NULL) {
-		return set->set > 0 ? &set->set[0].key : NULL;
+		cc = set->set;
+	} else {
+		cc = container_of(keyd, struct ptrset_entry, key) + 1;
 	}
-	struct ptrset_entry *cc = container_of(keyd, struct ptrset_entry, key);
-	cc++;
 	while ((size_t)(cc - set->set) < set->size) {
 		if (cc->occupy == 1) {
 			return &cc->key;

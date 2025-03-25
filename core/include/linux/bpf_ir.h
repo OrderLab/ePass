@@ -65,6 +65,9 @@ struct bpf_ir_opts {
 	// Write an error message to trace when throwing an error
 	bool enable_throw_msg;
 
+	// Use new CG pipeline;
+	bool cg_v2;
+
 	// Verbose level
 	int verbose;
 
@@ -810,6 +813,8 @@ struct code_gen_info {
 	// Array of struct ir_insn*
 	struct array all_var;
 
+	struct ptrset all_var_v2;
+
 	// BPF Register Virtual Instruction (used as dst)
 	struct ir_insn *regs[BPF_REG_10]; // Only use R0-R9
 
@@ -1428,42 +1433,41 @@ struct builtin_pass_cfg {
 };
 
 #define DEF_CUSTOM_PASS(pass_def, check_applyc, param_loadc, param_unloadc) \
-	{                                                                   \
-		.pass = pass_def, .param = NULL, .param_load = param_loadc, \
-		.param_unload = param_unloadc, .check_apply = check_applyc  \
-	}
+	{ .pass = pass_def,                                                 \
+	  .param = NULL,                                                    \
+	  .param_load = param_loadc,                                        \
+	  .param_unload = param_unloadc,                                    \
+	  .check_apply = check_applyc }
 
 #define DEF_BUILTIN_PASS_CFG(namec, param_loadc, param_unloadc) \
-	{                                                       \
-		.name = namec, .param = NULL, .enable = false,  \
-		.enable_cfg = false, .param_load = param_loadc, \
-		.param_unload = param_unloadc                   \
-	}
+	{ .name = namec,                                        \
+	  .param = NULL,                                        \
+	  .enable = false,                                      \
+	  .enable_cfg = false,                                  \
+	  .param_load = param_loadc,                            \
+	  .param_unload = param_unloadc }
 
 #define DEF_BUILTIN_PASS_ENABLE_CFG(namec, param_loadc, param_unloadc) \
-	{                                                              \
-		.name = namec, .param = NULL, .enable = true,          \
-		.enable_cfg = false, .param_load = param_loadc,        \
-		.param_unload = param_unloadc                          \
-	}
+	{ .name = namec,                                               \
+	  .param = NULL,                                               \
+	  .enable = true,                                              \
+	  .enable_cfg = false,                                         \
+	  .param_load = param_loadc,                                   \
+	  .param_unload = param_unloadc }
 
-#define DEF_FUNC_PASS(fun, msg, en_def)                      \
-	{                                                    \
-		.pass = fun, .name = msg, .enabled = en_def, \
-		.force_enable = false                        \
-	}
+#define DEF_FUNC_PASS(fun, msg, en_def) \
+	{ .pass = fun, .name = msg, .enabled = en_def, .force_enable = false }
 
-#define DEF_NON_OVERRIDE_FUNC_PASS(fun, msg)               \
-	{                                                  \
-		.pass = fun, .name = msg, .enabled = true, \
-		.force_enable = true                       \
-	}
+#define DEF_NON_OVERRIDE_FUNC_PASS(fun, msg) \
+	{ .pass = fun, .name = msg, .enabled = true, .force_enable = true }
 
 /* Passes End */
 
 /* Code Gen Start */
 
 void bpf_ir_compile(struct bpf_ir_env *env, struct ir_function *fun);
+
+void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun);
 
 /* Code Gen End */
 
@@ -1489,11 +1493,10 @@ struct ir_address_value bpf_ir_addr_val(struct ir_value value, s16 offset);
 
 struct ir_value bpf_ir_value_stack_ptr(struct ir_function *fun);
 
-#define VR_POS_STACK_PTR                                                 \
-	(struct ir_vr_pos)                                               \
-	{                                                                \
-		.allocated = true, .alloc_reg = BPF_REG_10, .spilled = 0 \
-	}
+#define VR_POS_STACK_PTR                             \
+	(struct ir_vr_pos){ .allocated = true,       \
+			    .alloc_reg = BPF_REG_10, \
+			    .spilled = 0 }
 
 struct ir_value bpf_ir_value_norm_stack_ptr(void);
 

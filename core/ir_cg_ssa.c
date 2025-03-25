@@ -67,6 +67,20 @@ static void init_cg(struct bpf_ir_env *env, struct ir_function *fun)
 	extra->nonvr = true;
 }
 
+static void print_ir_dst_v2(struct bpf_ir_env *env, struct ir_insn *insn)
+{
+	if (!insn->user_data) {
+		PRINT_LOG_DEBUG(env, "(?)");
+		RAISE_ERROR("NULL userdata found");
+	}
+	insn = insn_cg_v2(insn)->dst;
+	if (insn) {
+		print_insn_ptr_base(env, insn);
+	} else {
+		PRINT_LOG_DEBUG(env, "(NULL)");
+	}
+}
+
 static void print_insn_extra(struct bpf_ir_env *env, struct ir_insn *insn)
 {
 	struct ir_insn_cg_extra_v2 *insn_cg = insn->user_data;
@@ -91,21 +105,6 @@ static void print_insn_extra(struct bpf_ir_env *env, struct ir_insn *insn)
 	}
 	PRINT_LOG_DEBUG(env, "\n-------------\n");
 }
-
-static void print_ir_dst_v2(struct bpf_ir_env *env, struct ir_insn *insn)
-{
-	if (!insn->user_data) {
-		PRINT_LOG_DEBUG(env, "(?)");
-		RAISE_ERROR("NULL userdata found");
-	}
-	insn = insn_cg_v2(insn)->dst;
-	if (insn) {
-		print_insn_ptr_base(env, insn);
-	} else {
-		PRINT_LOG_DEBUG(env, "(NULL)");
-	}
-}
-
 /*
 SSA liveness analysis.
 
@@ -115,31 +114,159 @@ Section 5.2.
 
 */
 
-static void up_and_mark(struct ir_insn *st, struct ir_insn *v)
+static void live_in_at_statement(struct bpf_ir_env *env, struct ptrset *M,
+				 struct ir_insn *s, struct ir_insn *v);
+
+static void live_out_at_statement(struct bpf_ir_env *env, struct ptrset *M,
+				  struct ir_insn *s, struct ir_insn *v);
+
+static void make_conflict(struct bpf_ir_env *env, struct ir_insn *v1,
+			  struct ir_insn *v2)
 {
+	struct ir_insn_cg_extra_v2 *v1e = insn_cg_v2(v1);
+	struct ir_insn_cg_extra_v2 *v2e = insn_cg_v2(v2);
+	bpf_ir_ptrset_insert(env, &v1e->adj, v2);
+	bpf_ir_ptrset_insert(env, &v2e->adj, v1);
 }
 
-static void in_out(struct bpf_ir_env *env, struct ir_function *fun)
+static void live_out_at_block(struct bpf_ir_env *env, struct ptrset *M,
+			      struct ir_basic_block *n, struct ir_insn *v)
 {
+	if (!bpf_ir_ptrset_exists(M, n)) {
+		bpf_ir_ptrset_insert(env, M, n);
+		struct ir_insn *last = bpf_ir_get_last_insn(n);
+		if (last) {
+			live_out_at_statement(env, M, last, v);
+		} else {
+			// Empty BB
+			struct array preds = n->preds;
+			struct ir_basic_block **pos;
+			array_for(pos, preds)
+			{
+				live_out_at_block(env, M, *pos, v);
+			}
+		}
+	}
+}
+
+static void live_out_at_statement(struct bpf_ir_env *env, struct ptrset *M,
+				  struct ir_insn *s, struct ir_insn *v)
+{
+	struct ir_insn_cg_extra_v2 *se = insn_cg_v2(s);
+	bpf_ir_ptrset_insert(env, &se->out, v);
+	if (se->dst) {
+		if (s != v) {
+			make_conflict(env, v, s);
+			live_in_at_statement(env, M, s, v);
+		}
+	} else {
+		// s has no dst (no KILL)
+		live_in_at_statement(env, M, s, v);
+	}
+}
+
+static void live_in_at_statement(struct bpf_ir_env *env, struct ptrset *M,
+				 struct ir_insn *s, struct ir_insn *v)
+{
+	bpf_ir_ptrset_insert(env, &(insn_cg_v2(s))->in, v);
+	struct ir_insn *prev = bpf_ir_prev_insn(s);
+	if (prev == NULL) {
+		// First instruction
+		struct ir_basic_block **pos;
+		array_for(pos, s->parent_bb->preds)
+		{
+			live_out_at_block(env, M, *pos, v);
+		}
+	} else {
+		live_out_at_statement(env, M, prev, v);
+	}
+}
+
+static void print_ir_prog_cg_dst(struct bpf_ir_env *env,
+				 struct ir_function *fun, char *msg)
+{
+	PRINT_LOG_DEBUG(env, "\x1B[32m----- CG: %s -----\x1B[0m\n", msg);
+	print_ir_prog_advanced(env, fun, NULL, print_insn_extra,
+			       print_ir_dst_v2);
 }
 
 static void liveness_analysis(struct bpf_ir_env *env, struct ir_function *fun)
 {
-	// TODO: Encode Calling convention into GEN KILL
-	in_out(env, fun);
-	if (env->opts.verbose > 2) {
-		PRINT_LOG_DEBUG(env, "--------------\n");
-		print_ir_prog_advanced(env, fun, NULL, print_insn_extra,
-				       print_ir_dst_v2);
-		print_ir_prog_advanced(env, fun, NULL, NULL, print_ir_dst_v2);
+	// Assumption: dst = insn
+	bpf_ir_ptrset_clean(&fun->cg_info.all_var_v2);
+	struct ptrset M;
+	INIT_PTRSET_DEF(&M);
+	struct ir_basic_block **pos;
+	array_for(pos, fun->reachable_bbs)
+	{
+		struct ir_basic_block *bb = *pos;
+		struct ir_insn *v;
+		list_for_each_entry(v, &bb->ir_insn_head, list_ptr) {
+			struct ir_insn_cg_extra_v2 *extra = insn_cg_v2(v);
+			if (extra->dst) {
+				bpf_ir_ptrset_insert(
+					env, &fun->cg_info.all_var_v2, v);
+				bpf_ir_ptrset_clean(&M);
+				struct ir_insn **pos;
+				array_for(pos, v->users)
+				{
+					struct ir_insn *s = *pos;
+					if (s->op == IR_INSN_PHI) {
+						struct phi_value *pos2;
+						bool found = false;
+						array_for(pos2, s->phi)
+						{
+							if (pos2->value.type ==
+								    IR_VALUE_INSN &&
+							    pos2->value.data.insn_d ==
+								    v) {
+								found = true;
+								live_out_at_block(
+									env, &M,
+									pos2->bb,
+									v);
+								break;
+							}
+						}
+						if (!found) {
+							CRITICAL(
+								"Not found user!");
+						}
+					} else {
+						live_in_at_statement(env, &M, s,
+								     v);
+					}
+				}
+			}
+		}
+	}
+	bpf_ir_ptrset_free(&M);
+
+	// Debug
+	print_ir_prog_cg_dst(env, fun, "Conflict analysis");
+	struct ir_insn **pos2;
+	ptrset_for(pos2, fun->cg_info.all_var_v2)
+	{
+		struct ir_insn *v = *pos2;
+		PRINT_LOG_DEBUG(env, "%%%d: ", v->_insn_id);
+		struct ir_insn **pos3;
+		ptrset_for(pos3, insn_cg_v2(v)->adj)
+		{
+			struct ir_insn *c = *pos3; // conflict vr
+			PRINT_LOG_DEBUG(env, "%%%d ", c->_insn_id);
+		}
+		PRINT_LOG_DEBUG(env, "\n");
 	}
 }
 
-void bpf_ir_compile(struct bpf_ir_env *env, struct ir_function *fun)
+void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	init_cg(env, fun);
 	CHECK_ERR();
 
 	// Debugging settings
 	fun->cg_info.spill_callee = 0;
+
+	liveness_analysis(env, fun);
+	CRITICAL("done");
 }
