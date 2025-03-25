@@ -175,9 +175,12 @@ static void print_ir_dst_v2(struct bpf_ir_env *env, struct ir_insn *insn)
 		PRINT_LOG_DEBUG(env, "(?)");
 		RAISE_ERROR("NULL userdata found");
 	}
+	print_insn_ptr_base(env, insn);
 	insn = insn_cg_v2(insn)->dst;
 	if (insn) {
+		PRINT_LOG_DEBUG(env, "(");
 		print_insn_ptr_base(env, insn);
+		PRINT_LOG_DEBUG(env, ")");
 	} else {
 		PRINT_LOG_DEBUG(env, "(NULL)");
 	}
@@ -280,23 +283,53 @@ static void live_in_at_statement(struct bpf_ir_env *env, struct ptrset *M,
 	}
 }
 
-static void print_ir_prog_cg_dst(struct bpf_ir_env *env,
-				 struct ir_function *fun, char *msg)
+static void print_ir_prog_cg_dst_liveness(struct bpf_ir_env *env,
+					  struct ir_function *fun, char *msg)
 {
 	PRINT_LOG_DEBUG(env, "\x1B[32m----- CG: %s -----\x1B[0m\n", msg);
 	print_ir_prog_advanced(env, fun, NULL, print_insn_extra,
 			       print_ir_dst_v2);
 }
 
+static void print_ir_prog_cg_dst(struct bpf_ir_env *env,
+				 struct ir_function *fun, char *msg)
+{
+	PRINT_LOG_DEBUG(env, "\x1B[32m----- CG: %s -----\x1B[0m\n", msg);
+	print_ir_prog_advanced(env, fun, NULL, NULL, print_ir_dst_v2);
+}
+
+static void print_interference_graph(struct bpf_ir_env *env,
+				     struct ir_function *fun)
+{
+	PRINT_LOG_DEBUG(env,
+			"\x1B[32m----- CG: Interference Graph -----\x1B[0m\n");
+	tag_ir(fun);
+	struct ir_insn **pos2;
+	ptrset_for(pos2, fun->cg_info.all_var_v2)
+	{
+		struct ir_insn *v = *pos2;
+		print_insn_ptr_base(env, v);
+		PRINT_LOG_DEBUG(env, ": ");
+		struct ir_insn **pos3;
+		ptrset_for(pos3, insn_cg_v2(v)->adj)
+		{
+			struct ir_insn *c = *pos3; // conflict vr
+			print_insn_ptr_base(env, c);
+			PRINT_LOG_DEBUG(env, " ");
+		}
+		PRINT_LOG_DEBUG(env, "\n");
+	}
+}
+
 static void liveness_analysis(struct bpf_ir_env *env, struct ir_function *fun)
 {
+	bpf_ir_ptrset_clean(&fun->cg_info.all_var_v2);
 	// Add all real registers to the graph
 	for (int i = 0; i < RA_COLORS; ++i) {
 		bpf_ir_ptrset_insert(env, &fun->cg_info.all_var_v2,
 				     fun->cg_info.regs[i]);
 	}
 
-	bpf_ir_ptrset_clean(&fun->cg_info.all_var_v2);
 	struct ptrset M;
 	INIT_PTRSET_DEF(&M);
 	struct ir_basic_block **pos;
@@ -354,26 +387,7 @@ static void liveness_analysis(struct bpf_ir_env *env, struct ir_function *fun)
 	}
 	bpf_ir_ptrset_free(&M);
 
-	print_ir_prog_cg_dst(env, fun, "Liveness");
-}
-
-static void print_inetreference_graph(struct bpf_ir_env *env,
-				      struct ir_function *fun)
-{
-	tag_ir(fun);
-	struct ir_insn **pos2;
-	ptrset_for(pos2, fun->cg_info.all_var_v2)
-	{
-		struct ir_insn *v = *pos2;
-		PRINT_LOG_DEBUG(env, "%%%d: ", v->_insn_id);
-		struct ir_insn **pos3;
-		ptrset_for(pos3, insn_cg_v2(v)->adj)
-		{
-			struct ir_insn *c = *pos3; // conflict vr
-			PRINT_LOG_DEBUG(env, "%%%d ", c->_insn_id);
-		}
-		PRINT_LOG_DEBUG(env, "\n");
-	}
+	print_ir_prog_cg_dst_liveness(env, fun, "Liveness");
 }
 
 static void caller_constraint(struct bpf_ir_env *env, struct ir_function *fun,
@@ -560,10 +574,12 @@ void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun)
 	bool done = false;
 	while (!done) {
 		liveness_analysis(env, fun);
-		print_inetreference_graph(env, fun);
+		print_interference_graph(env, fun);
+
+		print_ir_prog_cg_dst(env, fun, "After liveness");
 
 		conflict_analysis(env, fun);
-		print_inetreference_graph(env, fun);
+		print_interference_graph(env, fun);
 
 		struct array to_spill = pre_spill(env, fun);
 		if (to_spill.num_elem == 0) {
@@ -571,6 +587,7 @@ void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun)
 			done = true;
 		} else {
 			// spill
+			CRITICAL("todo");
 		}
 		bpf_ir_array_free(&to_spill);
 	}
@@ -579,5 +596,5 @@ void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun)
 
 	// Coalesce
 
-	CRITICAL("done");
+	CRITICAL("todo");
 }
