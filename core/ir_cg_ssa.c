@@ -12,6 +12,11 @@ Pereira, F., and Palsberg, J., "Register Allocation via the Coloring of Chordal 
 
 */
 
+static void set_insn_dst(struct ir_insn *insn, struct ir_insn *dst)
+{
+	insn_cg_v2(insn)->dst = dst;
+}
+
 void bpf_ir_init_insn_cg_v2(struct bpf_ir_env *env, struct ir_insn *insn)
 {
 	struct ir_insn_cg_extra_v2 *extra = NULL;
@@ -89,6 +94,80 @@ static void change_fun_arg(struct bpf_ir_env *env, struct ir_function *fun)
 		}
 	}
 }
+
+static void change_call(struct bpf_ir_env *env, struct ir_function *fun)
+{
+	struct ir_basic_block **pos;
+	array_for(pos, fun->reachable_bbs)
+	{
+		struct ir_basic_block *bb = *pos;
+		struct ir_insn *insn;
+		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
+			if (insn->op == IR_INSN_CALL) {
+				// Change function call args
+				for (u8 i = 0; i < insn->value_num; ++i) {
+					struct ir_value val = insn->values[i];
+					bpf_ir_val_remove_user(val, insn);
+					struct ir_insn *new_insn =
+						bpf_ir_create_assign_insn_cg_v2(
+							env, insn, val,
+							INSERT_FRONT);
+					set_insn_dst(new_insn,
+						     fun->cg_info.regs[i + 1]);
+				}
+				insn->value_num = 0; // Remove all operands
+
+				// Change function call dst
+				insn_cg_v2(insn)->dst = NULL;
+				if (insn->users.num_elem == 0) {
+					continue;
+				}
+				struct ir_insn *new_insn =
+					bpf_ir_create_assign_insn_cg_v2(
+						env, insn,
+						bpf_ir_value_insn(
+							fun->cg_info.regs[0]),
+						INSERT_BACK);
+				bpf_ir_replace_all_usage(
+					env, insn, bpf_ir_value_insn(new_insn));
+			}
+		}
+	}
+}
+
+static void spill_array(struct bpf_ir_env *env, struct ir_function *fun)
+{
+	u32 offset = 0;
+	struct ir_basic_block **pos;
+	array_for(pos, fun->reachable_bbs)
+	{
+		struct ir_basic_block *bb = *pos;
+		struct ir_insn *insn, *tmp;
+		list_for_each_entry_safe(insn, tmp, &bb->ir_insn_head,
+					 list_ptr) {
+			if (insn->op == IR_INSN_ALLOCARRAY) {
+				struct ir_insn_cg_extra_v2 *extra =
+					insn_cg_v2(insn);
+				extra->vr_pos.allocated = true;
+				// Calculate the offset
+				u32 size = insn->array_num *
+					   bpf_ir_sizeof_vr_type(insn->vr_type);
+				if (size == 0) {
+					RAISE_ERROR("Array size is 0");
+				}
+				offset -= (((size - 1) / 8) + 1) * 8;
+				extra->vr_pos.spilled = offset;
+				extra->vr_pos.spilled_size = size;
+				extra->nonvr = true; // Array is not a VR
+				extra->dst = NULL;
+			}
+		}
+	}
+}
+
+/*
+Print utils
+*/
 
 static void print_ir_dst_v2(struct bpf_ir_env *env, struct ir_insn *insn)
 {
@@ -175,7 +254,7 @@ static void live_out_at_statement(struct bpf_ir_env *env, struct ptrset *M,
 	bpf_ir_ptrset_insert(env, &se->out, v);
 	if (se->dst) {
 		if (se->dst != v) {
-			make_conflict(env, v, s);
+			make_conflict(env, v, se->dst);
 			live_in_at_statement(env, M, s, v);
 		}
 	} else {
@@ -227,8 +306,13 @@ static void liveness_analysis(struct bpf_ir_env *env, struct ir_function *fun)
 			extra->w = 0;
 
 			if (extra->dst) {
-				bpf_ir_ptrset_insert(
-					env, &fun->cg_info.all_var_v2, v);
+				if (extra->dst == v) {
+					// dst is a VR
+					bpf_ir_ptrset_insert(
+						env, &fun->cg_info.all_var_v2,
+						v);
+				}
+
 				bpf_ir_ptrset_clean(&M);
 				struct ir_insn **pos;
 				array_for(pos, v->users)
@@ -459,8 +543,11 @@ void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun)
 	// Debugging settings
 	fun->cg_info.spill_callee = 0;
 
-	bool done = false;
+	change_call(env, fun);
+	change_fun_arg(env, fun);
+	spill_array(env, fun);
 
+	bool done = false;
 	while (!done) {
 		liveness_analysis(env, fun);
 		conflict_analysis(env, fun);
