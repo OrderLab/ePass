@@ -2,6 +2,19 @@
 #include <linux/bpf_ir.h>
 #include "ir_cg.h"
 
+/* CG Preparation Passes */
+static struct function_pass cg_init_passes[] = {
+	DEF_NON_OVERRIDE_FUNC_PASS(translate_throw, "translate_throw"),
+	DEF_FUNC_PASS(bpf_ir_optimize_code_compaction, "optimize_compaction",
+		      false),
+	DEF_NON_OVERRIDE_FUNC_PASS(bpf_ir_optimize_ir, "optimize_ir"),
+	DEF_NON_OVERRIDE_FUNC_PASS(bpf_ir_cg_change_fun_arg, "change_fun_arg"),
+	DEF_NON_OVERRIDE_FUNC_PASS(bpf_ir_cg_change_call_pre_cg, "change_call"),
+	DEF_NON_OVERRIDE_FUNC_PASS(bpf_ir_cg_add_stack_offset_pre_cg,
+				   "add_stack_offset"),
+	DEF_NON_OVERRIDE_FUNC_PASS(bpr_ir_cg_to_cssa, "to_cssa"),
+};
+
 static void set_insn_dst(struct bpf_ir_env *env, struct ir_insn *insn,
 			 struct ir_insn *dst)
 {
@@ -1898,6 +1911,10 @@ void bpf_ir_compile(struct bpf_ir_env *env, struct ir_function *fun)
 		return;
 	}
 	u64 starttime = get_cur_time_ns();
+
+	bpf_ir_run_passes(env, fun, cg_init_passes,
+			  sizeof(cg_init_passes) / sizeof(cg_init_passes[0]));
+
 	// Init CG, start code generation
 	init_cg(env, fun);
 	CHECK_ERR();

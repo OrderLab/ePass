@@ -261,6 +261,49 @@ static void liveness_analysis(struct bpf_ir_env *env, struct ir_function *fun)
 	}
 }
 
+static void caller_constraint(struct bpf_ir_env *env, struct ir_function *fun,
+			      struct ir_insn *insn)
+{
+	for (u8 i = BPF_REG_0; i < BPF_REG_6; ++i) {
+		// R0-R5 are caller saved register
+		make_conflict(env, fun->cg_info.regs[i], insn);
+	}
+}
+
+static void conflict_analysis(struct bpf_ir_env *env, struct ir_function *fun)
+{
+	// Add constraints to the graph
+
+	struct ir_basic_block **pos;
+	// For each BB
+	array_for(pos, fun->reachable_bbs)
+	{
+		struct ir_basic_block *bb = *pos;
+		struct ir_insn *insn;
+		// For each operation
+		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
+			struct ir_insn_cg_extra_v2 *insn_cg = insn->user_data;
+			if (insn->op == IR_INSN_CALL) {
+				// Add caller saved register constraints
+				struct ir_insn **pos2;
+				ptrset_for(pos2, insn_cg->in)
+				{
+					struct ir_insn **pos3;
+					ptrset_for(pos3, insn_cg->out)
+					{
+						if (*pos2 == *pos3) {
+							// Live across CALL!
+							caller_constraint(
+								env, fun,
+								*pos2);
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
 // Maximum cardinality search
 static struct array mcs(struct bpf_ir_env *env, struct ir_function *fun)
 {
@@ -399,6 +442,7 @@ void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun)
 
 	while (!done) {
 		liveness_analysis(env, fun);
+		conflict_analysis(env, fun);
 		struct array to_spill = pre_spill(env, fun);
 		if (to_spill.num_elem == 0) {
 			// No need to spill
