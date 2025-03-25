@@ -12,7 +12,7 @@ Pereira, F., and Palsberg, J., "Register Allocation via the Coloring of Chordal 
 
 */
 
-static void ir_init_insn_cg(struct bpf_ir_env *env, struct ir_insn *insn)
+void bpf_ir_init_insn_cg_v2(struct bpf_ir_env *env, struct ir_insn *insn)
 {
 	struct ir_insn_cg_extra_v2 *extra = NULL;
 	SAFE_MALLOC(extra, sizeof(struct ir_insn_cg_extra_v2));
@@ -46,14 +46,14 @@ static void init_cg(struct bpf_ir_env *env, struct ir_function *fun)
 
 		struct ir_insn *insn = NULL;
 		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
-			ir_init_insn_cg(env, insn);
+			bpf_ir_init_insn_cg_v2(env, insn);
 			CHECK_ERR();
 		}
 	}
 
 	for (u8 i = 0; i < BPF_REG_10; ++i) {
 		struct ir_insn *insn = fun->cg_info.regs[i];
-		ir_init_insn_cg(env, insn);
+		bpf_ir_init_insn_cg_v2(env, insn);
 		CHECK_ERR();
 
 		struct ir_insn_cg_extra_v2 *extra = insn_cg_v2(insn);
@@ -62,11 +62,32 @@ static void init_cg(struct bpf_ir_env *env, struct ir_function *fun)
 		extra->vr_pos.allocated = true;
 		extra->nonvr = true;
 	}
-	ir_init_insn_cg(env, fun->sp);
+	bpf_ir_init_insn_cg_v2(env, fun->sp);
 	struct ir_insn_cg_extra_v2 *extra = insn_cg_v2(fun->sp);
 	extra->vr_pos.alloc_reg = 10;
 	extra->vr_pos.allocated = true;
 	extra->nonvr = true;
+}
+
+/*
+Pre RA
+*/
+
+static void change_fun_arg(struct bpf_ir_env *env, struct ir_function *fun)
+{
+	for (u8 i = 0; i < MAX_FUNC_ARG; ++i) {
+		if (fun->function_arg[i]->users.num_elem > 0) {
+			// Insert ASSIGN arg[i] at the beginning of the function
+			struct ir_insn *new_insn =
+				bpf_ir_create_assign_insn_bb_cg_v2(
+					env, fun->entry,
+					bpf_ir_value_insn(
+						fun->cg_info.regs[i + 1]),
+					INSERT_FRONT_AFTER_PHI);
+			bpf_ir_replace_all_usage(env, fun->function_arg[i],
+						 bpf_ir_value_insn(new_insn));
+		}
+	}
 }
 
 static void print_ir_dst_v2(struct bpf_ir_env *env, struct ir_insn *insn)

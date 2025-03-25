@@ -1230,6 +1230,15 @@ struct ir_insn *bpf_ir_create_assign_insn_bb_norm(struct bpf_ir_env *env,
 						  struct ir_value val,
 						  enum insert_position pos);
 
+struct ir_insn *bpf_ir_create_assign_insn_cg_v2(struct bpf_ir_env *env,
+						struct ir_insn *pos_insn,
+						struct ir_value val,
+						enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_assign_insn_bb_cg_v2(
+	struct bpf_ir_env *env, struct ir_basic_block *pos_bb,
+	struct ir_value val, enum insert_position pos);
+
 struct ir_insn *bpf_ir_create_phi_insn(struct bpf_ir_env *env,
 				       struct ir_insn *pos_insn,
 				       enum insert_position pos);
