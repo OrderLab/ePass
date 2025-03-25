@@ -107,13 +107,9 @@ static void print_insn_extra(struct bpf_ir_env *env, struct ir_insn *insn)
 	}
 	PRINT_LOG_DEBUG(env, "\n-------------\n");
 }
+
 /*
 SSA liveness analysis.
-
-Algorithm from Florian Brandner, Benoit Boissinot, Alain Darte, Benoît Dupont de Dinechin, Fabrice Rastello. Computing Liveness Sets for SSA-Form Programs.
-
-Section 5.2.
-
 */
 
 static void live_in_at_statement(struct bpf_ir_env *env, struct ptrset *M,
@@ -315,7 +311,7 @@ static struct ptrset *maxcl_need_spill(struct array *eps)
 	return NULL;
 }
 
-void pre_spill(struct bpf_ir_env *env, struct ir_function *fun)
+struct array pre_spill(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	// First run maximalCl
 	struct array sigma = mcs(env, fun);
@@ -383,6 +379,7 @@ void pre_spill(struct bpf_ir_env *env, struct ir_function *fun)
 	}
 	bpf_ir_array_free(&eps);
 	bpf_ir_array_free(&sigma);
+	return to_spill;
 }
 
 void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun)
@@ -394,5 +391,9 @@ void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun)
 	fun->cg_info.spill_callee = 0;
 
 	liveness_analysis(env, fun);
+
+	struct array to_spill = pre_spill(env, fun);
+
+	bpf_ir_array_free(&to_spill);
 	CRITICAL("done");
 }

@@ -183,10 +183,10 @@ void bpf_ir_ptrset_move(struct ptrset *set1, struct ptrset *set2)
 }
 
 // Clone set2 to set1
+// Make sure set1 is empty (no data)
 void bpf_ir_ptrset_clone(struct bpf_ir_env *env, struct ptrset *set1,
 			 struct ptrset *set2)
 {
-	bpf_ir_ptrset_free(set1);
 	bpf_ir_ptrset_init(env, set1, set2->size);
 	for (size_t i = 0; i < set2->size; ++i) {
 		if (set2->set[i].occupy > 0) {
