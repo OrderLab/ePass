@@ -744,6 +744,63 @@ static void coalescing(struct bpf_ir_env *env, struct ir_function *fun)
 	}
 }
 
+// Remove PHI insn
+// Move out from SSA form
+static void remove_phi(struct bpf_ir_env *env, struct ir_function *fun)
+{
+	struct array phi_insns;
+	INIT_ARRAY(&phi_insns, struct ir_insn *);
+
+	struct ir_basic_block **pos;
+	array_for(pos, fun->reachable_bbs)
+	{
+		struct ir_basic_block *bb = *pos;
+		struct ir_insn *insn;
+		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
+			if (insn->op == IR_INSN_PHI) {
+				DBGASSERT(insn_cg_v2(insn)->dst);
+				// Phi cannot be spilled
+				DBGASSERT(insn_cg_v2(insn_cg_v2(insn)->dst)
+						  ->vr_pos.spilled == 0);
+				bpf_ir_array_push(env, &phi_insns, &insn);
+			} else {
+				break;
+			}
+		}
+	}
+
+	struct ir_insn **pos2;
+	array_for(pos2, phi_insns)
+	{
+		struct ir_insn *insn = *pos2;
+
+		struct ir_vr_pos vrpos = insn_cg_v2(insn)->vr_pos;
+
+		struct phi_value *pos3;
+		array_for(pos3, insn->phi)
+		{
+			struct ir_insn *new_insn =
+				bpf_ir_create_assign_insn_bb_cg_v2(
+					env, pos3->bb, pos3->value,
+					INSERT_BACK_BEFORE_JMP);
+
+			insn_cg_v2(new_insn)->vr_pos = vrpos;
+
+			// Remove use
+			bpf_ir_val_remove_user(pos3->value, insn);
+		}
+
+		bpf_ir_array_free(&insn->phi);
+
+		bpf_ir_replace_all_usage_cg(
+			env, insn,
+			bpf_ir_value_insn(fun->cg_info.regs[vrpos.alloc_reg]));
+		bpf_ir_erase_insn_cg(env, fun, insn);
+	}
+
+	bpf_ir_array_free(&phi_insns);
+}
+
 void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	init_cg(env, fun);
@@ -785,6 +842,8 @@ void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun)
 	// Coalesce
 	coalescing(env, fun);
 	print_ir_prog_cg_alloc(env, fun, "After Coalescing");
+
+	// SSA Out
 
 	CRITICAL("todo");
 }
