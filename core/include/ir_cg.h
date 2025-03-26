@@ -3,10 +3,17 @@
 
 #include <linux/bpf_ir.h>
 
+// Number of colors available (r0 - r9)
+#define RA_COLORS 10
+
 void bpf_ir_init_insn_cg(struct bpf_ir_env *env, struct ir_insn *insn);
 
 void bpf_ir_init_insn_norm(struct bpf_ir_env *env, struct ir_insn *insn,
 			   struct ir_vr_pos pos);
+
+void bpf_ir_cg_norm_v2(struct bpf_ir_env *env, struct ir_function *fun);
+
+void bpf_ir_init_insn_cg_v2(struct bpf_ir_env *env, struct ir_insn *insn);
 
 void bpf_ir_free_insn_cg(struct ir_insn *insn);
 
@@ -32,6 +39,7 @@ struct ir_insn_cg_extra {
 	struct ir_value dst;
 
 	// Liveness analysis
+	// Array of struct ir_insn*
 	struct array in;
 	struct array out;
 	struct array gen;
@@ -64,6 +72,25 @@ struct ir_insn_cg_extra {
 	bool nonvr;
 };
 
+struct ir_insn_cg_extra_v2 {
+	struct ir_insn *dst;
+
+	// Liveness analysis
+	struct ptrset in;
+	struct ptrset out;
+
+	// Adj list in interference graph
+	struct ptrset adj;
+
+	u32 lambda; // used in MCS
+	u32 w; // number of maximalCl that has this vertex. used in pre-spill
+
+	struct ir_vr_pos vr_pos;
+
+	// Whether this instruction is a non-VR instruction, like a pre-colored register
+	bool nonvr;
+};
+
 enum val_type {
 	UNDEF,
 	REG,
@@ -73,6 +100,8 @@ enum val_type {
 };
 
 #define insn_cg(insn) ((struct ir_insn_cg_extra *)(insn)->user_data)
+
+#define insn_cg_v2(insn) ((struct ir_insn_cg_extra_v2 *)(insn)->user_data)
 
 /* Dst of a instruction
 

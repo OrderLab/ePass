@@ -162,7 +162,7 @@ static void print_vr_pos(struct bpf_ir_env *env, struct ir_vr_pos *pos)
 			PRINT_LOG_DEBUG(env, "r%u", pos->alloc_reg);
 		}
 	} else {
-		RAISE_ERROR("Not allocated");
+		PRINT_LOG_DEBUG(env, "(NULL)");
 	}
 }
 

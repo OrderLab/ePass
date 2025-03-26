@@ -65,6 +65,9 @@ struct bpf_ir_opts {
 	// Write an error message to trace when throwing an error
 	bool enable_throw_msg;
 
+	// Use new CG pipeline;
+	bool cg_v2;
+
 	// Verbose level
 	int verbose;
 
@@ -200,6 +203,8 @@ void bpf_ir_array_clone(struct bpf_ir_env *env, struct array *res,
 
 #define INIT_ARRAY(arr, type) bpf_ir_array_init(arr, sizeof(type))
 
+#define INIT_PTRSET_DEF(set) bpf_ir_ptrset_init(env, set, 8)
+
 /* Array End */
 
 /* Hashtable Start */
@@ -281,6 +286,8 @@ void bpf_ir_ptrset_clean(struct ptrset *set);
 
 void bpf_ir_ptrset_free(struct ptrset *set);
 
+void **bpf_ir_ptrset_next(struct ptrset *set, void **keyd);
+
 struct ptrset bpf_ir_ptrset_union(struct bpf_ir_env *env, struct ptrset *set1,
 				  struct ptrset *set2);
 
@@ -296,6 +303,10 @@ void bpf_ir_ptrset_add(struct bpf_ir_env *env, struct ptrset *set1,
 		       struct ptrset *set2);
 
 void bpf_ir_ptrset_minus(struct ptrset *set1, struct ptrset *set2);
+
+#define ptrset_for(pos, set)                                           \
+	for (pos = (typeof(pos))bpf_ir_ptrset_next(&(set), NULL); pos; \
+	     pos = (typeof(pos))bpf_ir_ptrset_next(&(set), (void **)pos))
 
 /* Ptrset End */
 
@@ -368,6 +379,8 @@ int parse_int(const char *str, int *val);
 
 u64 get_cur_time_ns(void);
 
+#ifdef DEBUG_ALLOC
+
 #define SAFE_MALLOC(dst, size)                            \
 	{                                                 \
 		if (size > 10000000) {                    \
@@ -391,6 +404,28 @@ u64 get_cur_time_ns(void);
 			return NULL;                      \
 		}                                         \
 	}
+
+#else
+
+#define SAFE_MALLOC(dst, size)              \
+	{                                   \
+		dst = malloc_proto(size);   \
+		if (!dst) {                 \
+			env->err = -ENOMEM; \
+			return;             \
+		}                           \
+	}
+
+#define SAFE_MALLOC_RET_NULL(dst, size)     \
+	{                                   \
+		dst = malloc_proto(size);   \
+		if (!dst) {                 \
+			env->err = -ENOMEM; \
+			return NULL;        \
+		}                           \
+	}
+
+#endif
 
 /* LLI End */
 
@@ -777,6 +812,8 @@ struct code_gen_info {
 	// All vertex in interference graph
 	// Array of struct ir_insn*
 	struct array all_var;
+
+	struct ptrset all_var_v2;
 
 	// BPF Register Virtual Instruction (used as dst)
 	struct ir_insn *regs[BPF_REG_10]; // Only use R0-R9
@@ -1193,6 +1230,15 @@ struct ir_insn *bpf_ir_create_assign_insn_bb_norm(struct bpf_ir_env *env,
 						  struct ir_value val,
 						  enum insert_position pos);
 
+struct ir_insn *bpf_ir_create_assign_insn_cg_v2(struct bpf_ir_env *env,
+						struct ir_insn *pos_insn,
+						struct ir_value val,
+						enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_assign_insn_bb_cg_v2(
+	struct bpf_ir_env *env, struct ir_basic_block *pos_bb,
+	struct ir_value val, enum insert_position pos);
+
 struct ir_insn *bpf_ir_create_phi_insn(struct bpf_ir_env *env,
 				       struct ir_insn *pos_insn,
 				       enum insert_position pos);
@@ -1352,12 +1398,6 @@ void bpf_ir_div_by_zero(struct bpf_ir_env *env, struct ir_function *fun,
 void bpf_ir_optimize_code_compaction(struct bpf_ir_env *env,
 				     struct ir_function *fun, void *param);
 
-extern const struct function_pass *pre_passes;
-extern const size_t pre_passes_cnt;
-
-extern const struct function_pass *post_passes;
-extern const size_t post_passes_cnt;
-
 void translate_throw(struct bpf_ir_env *env, struct ir_function *fun,
 		     void *param);
 
@@ -1368,6 +1408,15 @@ struct function_pass {
 	bool force_enable;
 	char name[BPF_IR_MAX_PASS_NAME_SIZE];
 };
+
+extern const struct function_pass *pre_passes;
+extern const size_t pre_passes_cnt;
+
+extern const struct function_pass *post_passes;
+extern const size_t post_passes_cnt;
+
+void bpf_ir_run_passes(struct bpf_ir_env *env, struct ir_function *fun,
+		       const struct function_pass *passes, const size_t cnt);
 
 struct custom_pass_cfg {
 	struct function_pass pass;
@@ -1429,6 +1478,8 @@ struct builtin_pass_cfg {
 /* Code Gen Start */
 
 void bpf_ir_compile(struct bpf_ir_env *env, struct ir_function *fun);
+
+void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun);
 
 /* Code Gen End */
 

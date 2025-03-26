@@ -116,9 +116,28 @@ void bpf_ir_ptrset_clean(struct ptrset *set)
 void bpf_ir_ptrset_free(struct ptrset *set)
 {
 	bpf_ir_ptrset_clean(set);
-	free_proto(set->set);
+	if (set->set) {
+		free_proto(set->set);
+	}
 	set->size = 0;
 	set->set = NULL;
+}
+
+void **bpf_ir_ptrset_next(struct ptrset *set, void **keyd)
+{
+	struct ptrset_entry *cc;
+	if (keyd == NULL) {
+		cc = set->set;
+	} else {
+		cc = container_of(keyd, struct ptrset_entry, key) + 1;
+	}
+	while ((size_t)(cc - set->set) < set->size) {
+		if (cc->occupy == 1) {
+			return &cc->key;
+		}
+		cc++;
+	}
+	return NULL;
 }
 
 struct ptrset bpf_ir_ptrset_union(struct bpf_ir_env *env, struct ptrset *set1,
@@ -164,10 +183,10 @@ void bpf_ir_ptrset_move(struct ptrset *set1, struct ptrset *set2)
 }
 
 // Clone set2 to set1
+// Make sure set1 is empty (no data)
 void bpf_ir_ptrset_clone(struct bpf_ir_env *env, struct ptrset *set1,
 			 struct ptrset *set2)
 {
-	bpf_ir_ptrset_free(set1);
 	bpf_ir_ptrset_init(env, set1, set2->size);
 	for (size_t i = 0; i < set2->size; ++i) {
 		if (set2->set[i].occupy > 0) {

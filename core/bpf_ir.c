@@ -1411,6 +1411,7 @@ void bpf_ir_free_function(struct ir_function *fun)
 	bpf_ir_array_free(&fun->reachable_bbs);
 	bpf_ir_array_free(&fun->end_bbs);
 	bpf_ir_array_free(&fun->cg_info.all_var);
+	bpf_ir_ptrset_free(&fun->cg_info.all_var_v2);
 }
 
 static void init_function(struct bpf_ir_env *env, struct ir_function *fun,
@@ -1426,6 +1427,7 @@ static void init_function(struct bpf_ir_env *env, struct ir_function *fun,
 	INIT_ARRAY(&fun->reachable_bbs, struct ir_basic_block *);
 	INIT_ARRAY(&fun->end_bbs, struct ir_basic_block *);
 	INIT_ARRAY(&fun->cg_info.all_var, struct ir_insn *);
+	INIT_PTRSET_DEF(&fun->cg_info.all_var_v2);
 	for (size_t i = 0; i < MAX_BPF_REG; ++i) {
 		struct array *currentDef = &tenv->currentDef[i];
 		bpf_ir_array_free(currentDef);
@@ -1614,19 +1616,19 @@ static void run_single_pass(struct bpf_ir_env *env, struct ir_function *fun,
 	CHECK_ERR();
 }
 
-void bpf_ir_run(struct bpf_ir_env *env, struct ir_function *fun)
+void bpf_ir_run_passes(struct bpf_ir_env *env, struct ir_function *fun,
+		       const struct function_pass *passes, const size_t cnt)
 {
-	u64 starttime = get_cur_time_ns();
-	for (size_t i = 0; i < pre_passes_cnt; ++i) {
+	for (size_t i = 0; i < cnt; ++i) {
 		bool has_override = false;
 		for (size_t j = 0; j < env->opts.builtin_pass_cfg_num; ++j) {
 			if (strcmp(env->opts.builtin_pass_cfg[j].name,
-				   pre_passes[i].name) == 0) {
+				   passes[i].name) == 0) {
 				has_override = true;
-				if (pre_passes[i].force_enable ||
+				if (passes[i].force_enable ||
 				    env->opts.builtin_pass_cfg[j].enable) {
 					run_single_pass(
-						env, fun, &pre_passes[i],
+						env, fun, &passes[i],
 						env->opts.builtin_pass_cfg[j]
 							.param);
 				}
@@ -1634,13 +1636,19 @@ void bpf_ir_run(struct bpf_ir_env *env, struct ir_function *fun)
 			}
 		}
 		if (!has_override) {
-			if (pre_passes[i].enabled) {
-				run_single_pass(env, fun, &pre_passes[i], NULL);
+			if (passes[i].enabled) {
+				run_single_pass(env, fun, &passes[i], NULL);
 			}
 		}
 
 		CHECK_ERR();
 	}
+}
+
+void bpf_ir_run(struct bpf_ir_env *env, struct ir_function *fun)
+{
+	u64 starttime = get_cur_time_ns();
+	bpf_ir_run_passes(env, fun, pre_passes, pre_passes_cnt);
 	for (size_t i = 0; i < env->opts.custom_pass_num; ++i) {
 		if (env->opts.custom_passes[i].pass.enabled) {
 			if (env->opts.custom_passes[i].check_apply) {
@@ -1662,30 +1670,7 @@ void bpf_ir_run(struct bpf_ir_env *env, struct ir_function *fun)
 			CHECK_ERR();
 		}
 	}
-	for (size_t i = 0; i < post_passes_cnt; ++i) {
-		bool has_override = false;
-		for (size_t j = 0; j < env->opts.builtin_pass_cfg_num; ++j) {
-			if (strcmp(env->opts.builtin_pass_cfg[j].name,
-				   post_passes[i].name) == 0) {
-				has_override = true;
-				if (post_passes[i].force_enable ||
-				    env->opts.builtin_pass_cfg[j].enable) {
-					run_single_pass(
-						env, fun, &post_passes[i],
-						env->opts.builtin_pass_cfg[j]
-							.param);
-				}
-				break;
-			}
-		}
-		if (!has_override) {
-			if (post_passes[i].enabled) {
-				run_single_pass(env, fun, &post_passes[i],
-						NULL);
-			}
-		}
-		CHECK_ERR();
-	}
+	bpf_ir_run_passes(env, fun, post_passes, post_passes_cnt);
 
 	env->run_time += get_cur_time_ns() - starttime;
 }
@@ -1825,6 +1810,7 @@ struct bpf_ir_opts bpf_ir_default_opts(void)
 	opts.enable_coalesce = false;
 	opts.force = false;
 	opts.verbose = 1;
+	opts.cg_v2 = false;
 	opts.max_iteration = 10;
 	opts.disable_prog_check = false;
 	opts.enable_throw_msg = false;
