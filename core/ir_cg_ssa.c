@@ -17,6 +17,14 @@ static void set_insn_dst(struct ir_insn *insn, struct ir_insn *dst)
 	insn_cg_v2(insn)->dst = dst;
 }
 
+static void pre_color(struct ir_function *fun, struct ir_insn *insn, u8 reg)
+{
+	set_insn_dst(insn, fun->cg_info.regs[reg]);
+	insn_cg_v2(insn)->vr_pos.allocated = true;
+	insn_cg_v2(insn)->vr_pos.alloc_reg = reg;
+	insn_cg_v2(insn)->vr_pos.spilled = 0;
+}
+
 void bpf_ir_init_insn_cg_v2(struct bpf_ir_env *env, struct ir_insn *insn)
 {
 	struct ir_insn_cg_extra_v2 *extra = NULL;
@@ -112,8 +120,7 @@ static void change_call(struct bpf_ir_env *env, struct ir_function *fun)
 						bpf_ir_create_assign_insn_cg_v2(
 							env, insn, val,
 							INSERT_FRONT);
-					set_insn_dst(new_insn,
-						     fun->cg_info.regs[i + 1]);
+					pre_color(fun, new_insn, i + 1);
 				}
 				insn->value_num = 0; // Remove all operands
 
@@ -183,6 +190,25 @@ static void print_ir_dst_v2(struct bpf_ir_env *env, struct ir_insn *insn)
 		PRINT_LOG_DEBUG(env, ")");
 	} else {
 		PRINT_LOG_DEBUG(env, "(NULL)");
+	}
+}
+
+static void print_ir_alloc_v2(struct bpf_ir_env *env, struct ir_insn *insn)
+{
+	if (!insn->user_data) {
+		PRINT_LOG_DEBUG(env, "(?)");
+		RAISE_ERROR("NULL userdata found");
+	}
+	if (insn_cg_v2(insn)->dst == NULL) {
+		PRINT_LOG_DEBUG(env, "(NULL)");
+		return;
+	}
+	struct ir_vr_pos pos = insn_cg_v2(insn)->vr_pos;
+	DBGASSERT(pos.allocated);
+	if (pos.spilled) {
+		PRINT_LOG_DEBUG(env, "sp+%u", pos.spilled);
+	} else {
+		PRINT_LOG_DEBUG(env, "r%u", pos.alloc_reg);
 	}
 }
 
@@ -296,6 +322,13 @@ static void print_ir_prog_cg_dst(struct bpf_ir_env *env,
 {
 	PRINT_LOG_DEBUG(env, "\x1B[32m----- CG: %s -----\x1B[0m\n", msg);
 	print_ir_prog_advanced(env, fun, NULL, NULL, print_ir_dst_v2);
+}
+
+static void print_ir_prog_cg_alloc(struct bpf_ir_env *env,
+				   struct ir_function *fun, char *msg)
+{
+	PRINT_LOG_DEBUG(env, "\x1B[32m----- CG: %s -----\x1B[0m\n", msg);
+	print_ir_prog_advanced(env, fun, NULL, NULL, print_ir_alloc_v2);
 }
 
 static void print_interference_graph(struct bpf_ir_env *env,
@@ -559,6 +592,45 @@ static void spill(struct bpf_ir_env *env, struct ir_function *fun,
 {
 }
 
+static void coloring(struct bpf_ir_env *env, struct ir_function *fun)
+{
+	struct array sigma = mcs(env, fun);
+	struct ir_insn **pos;
+
+	array_for(pos, sigma)
+	{
+		struct ir_insn *v = *pos;
+		struct ir_insn_cg_extra_v2 *vex = insn_cg_v2(v);
+		if (vex->vr_pos.allocated) {
+			continue;
+		}
+
+		bool used_reg[RA_COLORS] = { 0 };
+		struct ir_insn **pos2;
+		ptrset_for(pos2, vex->adj)
+		{
+			struct ir_insn *insn2 = *pos2; // Adj instruction
+			struct ir_insn_cg_extra_v2 *extra2 = insn_cg_v2(insn2);
+			if (extra2->vr_pos.allocated &&
+			    extra2->vr_pos.spilled == 0) {
+				used_reg[extra2->vr_pos.alloc_reg] = true;
+			}
+		}
+
+		for (u8 i = 0; i < RA_COLORS; i++) {
+			if (!used_reg[i]) {
+				vex->vr_pos.allocated = true;
+				vex->vr_pos.alloc_reg = i;
+				break;
+			}
+		}
+		if (!vex->vr_pos.allocated) {
+			RAISE_ERROR("No register available");
+		}
+	}
+	bpf_ir_array_free(&sigma);
+}
+
 void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	init_cg(env, fun);
@@ -593,6 +665,9 @@ void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun)
 	}
 
 	// Graph coloring
+
+	coloring(env, fun);
+	print_ir_prog_cg_alloc(env, fun, "After Coloring");
 
 	// Coalesce
 
