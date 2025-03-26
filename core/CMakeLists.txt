@@ -32,6 +32,7 @@ add_library(
   ir_cg.c
   ir_cg_ssa.c
   ir_cg_norm.c
+  ir_cg_norm_v2.c
   lli.c
   include/linux/bpf_ir.h)
 

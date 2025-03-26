@@ -844,6 +844,7 @@ void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun)
 	print_ir_prog_cg_alloc(env, fun, "After Coalescing");
 
 	// SSA Out
+	remove_phi(env, fun);
 
 	CRITICAL("todo");
 }

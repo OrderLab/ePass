@@ -11,6 +11,8 @@ void bpf_ir_init_insn_cg(struct bpf_ir_env *env, struct ir_insn *insn);
 void bpf_ir_init_insn_norm(struct bpf_ir_env *env, struct ir_insn *insn,
 			   struct ir_vr_pos pos);
 
+void bpf_ir_cg_norm_v2(struct bpf_ir_env *env, struct ir_function *fun);
+
 void bpf_ir_init_insn_cg_v2(struct bpf_ir_env *env, struct ir_insn *insn);
 
 void bpf_ir_free_insn_cg(struct ir_insn *insn);
