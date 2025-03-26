@@ -642,25 +642,100 @@ static void coalescing(struct bpf_ir_env *env, struct ir_function *fun)
 		list_for_each_entry(v, &bb->ir_insn_head, list_ptr) {
 			struct ir_insn_cg_extra_v2 *extra = insn_cg_v2(v);
 			if (v->op == IR_INSN_ASSIGN) {
+				DBGASSERT(extra->dst);
 				struct ir_insn *v2 = v->values[0].data.insn_d;
-				if (extra->vr_pos.spilled == 0 &&
+				struct ir_insn *v0 = extra->dst;
+				struct ir_insn_cg_extra_v2 *extra_v0 =
+					insn_cg_v2(v0);
+				// v0 = v2
+				if (extra_v0->vr_pos.spilled == 0 &&
 				    v->values[0].type == IR_VALUE_INSN &&
-				    insn_cg_v2(v2)
-						    ->vr_pos.spilled == 0 &&
-				    insn_cg_v2(v2)
-						    ->vr_pos.alloc_reg !=
-					    extra->vr_pos.alloc_reg) {
+				    insn_cg_v2(v2)->vr_pos.spilled == 0 &&
+				    insn_cg_v2(v2)->vr_pos.alloc_reg !=
+					    extra_v0->vr_pos.alloc_reg) {
 					// Coalesce
 					u8 used_colors[RA_COLORS] = { 0 };
 					struct ir_insn **pos2;
-					ptrset_for(pos2, extra->adj)
+					ptrset_for(pos2,
+						   extra_v0->adj) // v0's adj
 					{
 						struct ir_insn *c = *pos2;
-						if (c->op == IR_INSN_ASSIGN) {
-							used_colors[insn_cg_v2(
-									c)
+						struct ir_insn_cg_extra_v2 *cex =
+							insn_cg_v2(c);
+						DBGASSERT(
+							cex->vr_pos.allocated);
+						if (cex->vr_pos.spilled == 0) {
+							used_colors
+								[cex->vr_pos
+									 .alloc_reg] =
+									true;
+						}
+					}
+
+					ptrset_for(
+						pos2,
+						insn_cg_v2(v2)->adj) // v2's adj
+					{
+						struct ir_insn *c = *pos2;
+						struct ir_insn_cg_extra_v2 *cex =
+							insn_cg_v2(c);
+						DBGASSERT(
+							cex->vr_pos.allocated);
+						if (cex->vr_pos.spilled == 0) {
+							used_colors
+								[cex->vr_pos
+									 .alloc_reg] =
+									true;
+						}
+					}
+
+					// There are three cases
+					// 1. Rx = %y
+					// 2. %x = Ry
+					// 3. %x = %y
+
+					if (extra_v0->nonvr) {
+						if (!used_colors
+							    [extra_v0->vr_pos
+								     .alloc_reg]) {
+							// Able to merge
+							insn_cg_v2(v2)
+								->vr_pos
+								.alloc_reg =
+								extra_v0->vr_pos
+									.alloc_reg;
+						}
+					} else if (insn_cg_v2(v2)->nonvr) {
+						if (!used_colors
+							    [insn_cg_v2(v2)
+								     ->vr_pos
+								     .alloc_reg]) {
+							extra_v0->vr_pos
+								.alloc_reg =
+								insn_cg_v2(v2)
 									->vr_pos
-									.alloc_reg] = 1;
+									.alloc_reg;
+						}
+					} else {
+						bool has_unused_color = false;
+						u8 ureg = 0;
+						for (u8 i = 0; i < RA_COLORS;
+						     ++i) {
+							if (!used_colors[i]) {
+								has_unused_color =
+									true;
+								ureg = i;
+								break;
+							}
+						}
+						if (has_unused_color) {
+							extra_v0->vr_pos
+								.alloc_reg =
+								ureg;
+							insn_cg_v2(v2)
+								->vr_pos
+								.alloc_reg =
+								ureg;
 						}
 					}
 				}
