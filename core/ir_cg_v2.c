@@ -859,6 +859,7 @@ static void remove_phi(struct bpf_ir_env *env, struct ir_function *fun)
 
 void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun)
 {
+	u64 starttime = get_cur_time_ns();
 	init_cg(env, fun);
 	CHECK_ERR();
 
@@ -891,7 +892,6 @@ void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun)
 	}
 
 	// Graph coloring
-
 	coloring(env, fun);
 	CHECK_ERR();
 	print_ir_prog_cg_alloc(env, fun, "After Coloring");
@@ -908,4 +908,5 @@ void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun)
 
 	bpf_ir_cg_norm_v2(env, fun);
 	CHECK_ERR();
+	env->cg_time += get_cur_time_ns() - starttime;
 }
