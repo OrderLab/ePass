@@ -893,15 +893,19 @@ void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun)
 	// Graph coloring
 
 	coloring(env, fun);
+	CHECK_ERR();
 	print_ir_prog_cg_alloc(env, fun, "After Coloring");
 
 	// Coalesce
 	coalescing(env, fun);
+	CHECK_ERR();
 	print_ir_prog_cg_alloc(env, fun, "After Coalescing");
 
 	// SSA Out
 	remove_phi(env, fun);
+	CHECK_ERR();
 	print_ir_prog_cg_alloc(env, fun, "SSA Out");
 
-	CRITICAL("todo");
+	bpf_ir_cg_norm_v2(env, fun);
+	CHECK_ERR();
 }

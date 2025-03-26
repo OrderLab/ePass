@@ -448,6 +448,27 @@ static void normalize_end(struct bpf_ir_env *env, struct ir_insn *insn)
 	}
 }
 
+static void normalize_ret(struct bpf_ir_env *env, struct ir_insn *insn)
+{
+	if (insn->value_num == 0) {
+		return;
+	}
+	struct ir_value *v0 = &insn->values[0];
+	enum val_type t0 = insn->value_num >= 1 ? vtype(*v0) : UNDEF;
+	// ret REG
+	// ==>
+	// R0 = REG
+	// ret
+	DBGASSERT(t0 == REG || t0 == CONST);
+	struct ir_vr_pos pos = (struct ir_vr_pos){ .allocated = true,
+						   .alloc_reg = BPF_REG_0,
+						   .spilled = 0 };
+	struct ir_insn *new_insn = bpf_ir_create_assign_insn_norm(
+		env, insn, pos, *v0, INSERT_FRONT);
+	new_insn->vr_type = IR_VR_TYPE_64;
+	insn->value_num = 0;
+}
+
 static void normalize(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	struct ir_basic_block **pos;
@@ -484,7 +505,7 @@ static void normalize(struct bpf_ir_env *env, struct ir_function *fun)
 			} else if (insn->op == IR_INSN_ASSIGN) {
 				normalize_assign(insn);
 			} else if (insn->op == IR_INSN_RET) {
-				// OK
+				normalize_ret(env, insn);
 			} else if (insn->op == IR_INSN_CALL) {
 				// OK
 			} else if (insn->op == IR_INSN_JA) {
