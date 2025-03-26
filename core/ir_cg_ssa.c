@@ -631,6 +631,44 @@ static void coloring(struct bpf_ir_env *env, struct ir_function *fun)
 	bpf_ir_array_free(&sigma);
 }
 
+// Best effort coalescing
+static void coalescing(struct bpf_ir_env *env, struct ir_function *fun)
+{
+	struct ir_basic_block **pos;
+	array_for(pos, fun->reachable_bbs)
+	{
+		struct ir_basic_block *bb = *pos;
+		struct ir_insn *v;
+		list_for_each_entry(v, &bb->ir_insn_head, list_ptr) {
+			struct ir_insn_cg_extra_v2 *extra = insn_cg_v2(v);
+			if (v->op == IR_INSN_ASSIGN) {
+				struct ir_insn *v2 = v->values[0].data.insn_d;
+				if (extra->vr_pos.spilled == 0 &&
+				    v->values[0].type == IR_VALUE_INSN &&
+				    insn_cg_v2(v2)
+						    ->vr_pos.spilled == 0 &&
+				    insn_cg_v2(v2)
+						    ->vr_pos.alloc_reg !=
+					    extra->vr_pos.alloc_reg) {
+					// Coalesce
+					u8 used_colors[RA_COLORS] = { 0 };
+					struct ir_insn **pos2;
+					ptrset_for(pos2, extra->adj)
+					{
+						struct ir_insn *c = *pos2;
+						if (c->op == IR_INSN_ASSIGN) {
+							used_colors[insn_cg_v2(
+									c)
+									->vr_pos
+									.alloc_reg] = 1;
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
 void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	init_cg(env, fun);
@@ -670,6 +708,8 @@ void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun)
 	print_ir_prog_cg_alloc(env, fun, "After Coloring");
 
 	// Coalesce
+	coalescing(env, fun);
+	print_ir_prog_cg_alloc(env, fun, "After Coalescing");
 
 	CRITICAL("todo");
 }
