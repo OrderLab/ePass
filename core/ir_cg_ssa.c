@@ -12,6 +12,52 @@ Pereira, F., and Palsberg, J., "Register Allocation via the Coloring of Chordal 
 
 */
 
+// Erase an instruction.
+// Only used in SSA Out process.
+// Do not use it within RA (it doesn not maintain adj and all_var stuff properly)
+static void erase_insn_cg_v2(struct bpf_ir_env *env, struct ir_function *fun,
+			     struct ir_insn *insn)
+{
+	if (insn->users.num_elem > 0) {
+		struct ir_insn **pos;
+		bool fail = false;
+		array_for(pos, insn->users)
+		{
+			if (*pos != insn) {
+				fail = true;
+				break;
+			}
+		}
+		if (fail) {
+			tag_ir(fun);
+			array_for(pos, insn->users)
+			{
+				print_ir_insn_err(env, *pos, "User");
+			}
+			print_ir_insn_err(env, insn, "Has users");
+			RAISE_ERROR(
+				"Cannot erase a instruction that has (non-self) users");
+		}
+	}
+	struct array operands = bpf_ir_get_operands(env, insn);
+	CHECK_ERR();
+	struct ir_value **pos2;
+	array_for(pos2, operands)
+	{
+		bpf_ir_val_remove_user((**pos2), insn);
+	}
+	bpf_ir_array_free(&operands);
+	list_del(&insn->list_ptr);
+	bpf_ir_array_free(&insn->users);
+
+	struct ir_insn_cg_extra_v2 *extra = insn->user_data;
+	bpf_ir_ptrset_free(&extra->adj);
+	bpf_ir_ptrset_free(&extra->in);
+	bpf_ir_ptrset_free(&extra->out);
+
+	free_proto(insn);
+}
+
 static void set_insn_dst(struct ir_insn *insn, struct ir_insn *dst)
 {
 	insn_cg_v2(insn)->dst = dst;
@@ -415,6 +461,16 @@ static void liveness_analysis(struct bpf_ir_env *env, struct ir_function *fun)
 								     v);
 					}
 				}
+
+				if (v->op == IR_INSN_PHI) {
+					// v is considered LIVE OUT for all preds
+					struct phi_value *pos2;
+					array_for(pos2, v->phi)
+					{
+						live_out_at_block(env, &M,
+								  pos2->bb, v);
+					}
+				}
 			}
 		}
 	}
@@ -795,7 +851,7 @@ static void remove_phi(struct bpf_ir_env *env, struct ir_function *fun)
 		bpf_ir_replace_all_usage_cg(
 			env, insn,
 			bpf_ir_value_insn(fun->cg_info.regs[vrpos.alloc_reg]));
-		bpf_ir_erase_insn_cg(env, fun, insn);
+		erase_insn_cg_v2(env, fun, insn);
 	}
 
 	bpf_ir_array_free(&phi_insns);
@@ -845,6 +901,7 @@ void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun)
 
 	// SSA Out
 	remove_phi(env, fun);
+	print_ir_prog_cg_alloc(env, fun, "SSA Out");
 
 	CRITICAL("todo");
 }
