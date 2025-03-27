@@ -1,3 +1,6 @@
+init:
+	cmake -S . -B build -G Ninja
+
 build: format
 	cmake --build build
 
@@ -27,3 +30,4 @@ test: build
 	./build/test_ptrset
 
 .PHONY: build format kernel readlog read genctor test
+.DEFAULT_GOAL := build
