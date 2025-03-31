@@ -279,8 +279,20 @@ static void normalize_alu(struct bpf_ir_env *env, struct ir_insn *insn)
 	DBGASSERT(tdst == REG);
 	struct ir_vr_pos dst_pos = insn_norm(insn)->pos;
 	if (t1 == REG) {
-		// tdst != t1
-		DBGASSERT(dst_pos.alloc_reg != v1->data.vr_pos.alloc_reg);
+		if (dst_pos.alloc_reg == v1->data.vr_pos.alloc_reg) {
+			if (insn->op == IR_INSN_ADD ||
+			    insn->op == IR_INSN_MUL) {
+				// Switch
+				struct ir_value tmp = *v1;
+				*v1 = *v0;
+				*v0 = tmp;
+				enum val_type tmp2 = t1;
+				t1 = t0;
+				t0 = tmp2;
+			} else {
+				RAISE_ERROR("not supported yet");
+			}
+		}
 	}
 	if (t0 == CONST) {
 		DBGASSERT(v0->const_type == IR_ALU_32);

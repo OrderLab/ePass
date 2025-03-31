@@ -19,14 +19,26 @@
 
 ### NEW
 
-- SPILL 'output/progs_test_asm.o'
-- 'output/tcp_bufs_kern.o'
-- 'output/test_map_in_map.bpf.o'
 - 'output/map_perf_test.bpf.o'
+
+Error: /home/linsy/Projects/ebpf/ePass/core/bpf_ir.c:1478 <gen_bb_succ> Conditional jmp with != 2 successors
+
 - 'output/cpustat_kern.o'
+
+Class 0x03 not supported
+
 - 'output/hbm_out_kern.o'
+
+Class 0x03 not supported
+
 - 'output/evaluation_msan_msan3.o'
+
+double free
+
 - 'output/tcp_rwnd_kern.o'
+
+double free
+
 - 'output/tcp_clamp_kern.o'
 - 'output/tcp_iw_kern.o'
 - 'output/test_current_task_under_cgroup.bpf.o'
