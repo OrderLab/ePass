@@ -377,26 +377,64 @@ static void print_ir_prog_cg_alloc(struct bpf_ir_env *env,
 	print_ir_prog_advanced(env, fun, NULL, NULL, print_ir_alloc_v2);
 }
 
+static void print_insn_ptr_base_dot(struct bpf_ir_env *env,
+				    struct ir_insn *insn)
+{
+	if (insn->op == IR_INSN_REG) {
+		PRINT_LOG_DEBUG(env, "R%u", insn->reg_id);
+		return;
+	}
+	if (insn->op == IR_INSN_FUNCTIONARG) {
+		PRINT_LOG_DEBUG(env, "ARG%u", insn->fun_arg_id);
+		return;
+	}
+	if (insn->_insn_id == SIZET_MAX) {
+		PRINT_LOG_DEBUG(env, "PTR%p", insn);
+		return;
+	}
+	PRINT_LOG_DEBUG(env, "VR%zu", insn->_insn_id);
+}
+
 static void print_interference_graph(struct bpf_ir_env *env,
 				     struct ir_function *fun)
 {
 	PRINT_LOG_DEBUG(env,
 			"\x1B[32m----- CG: Interference Graph -----\x1B[0m\n");
 	tag_ir(fun);
-	struct ir_insn **pos2;
-	ptrset_for(pos2, fun->cg_info.all_var_v2)
-	{
-		struct ir_insn *v = *pos2;
-		print_insn_ptr_base(env, v);
-		PRINT_LOG_DEBUG(env, ": ");
-		struct ir_insn **pos3;
-		ptrset_for(pos3, insn_cg_v2(v)->adj)
+	if (env->opts.dotgraph) {
+		PRINT_LOG_DEBUG(env, "graph {\n");
+		struct ir_insn **pos2;
+		ptrset_for(pos2, fun->cg_info.all_var_v2)
 		{
-			struct ir_insn *c = *pos3; // conflict vr
-			print_insn_ptr_base(env, c);
-			PRINT_LOG_DEBUG(env, " ");
+			struct ir_insn *v = *pos2;
+			struct ir_insn **pos3;
+			ptrset_for(pos3, insn_cg_v2(v)->adj)
+			{
+				PRINT_LOG_DEBUG(env, "\t");
+				print_insn_ptr_base_dot(env, v);
+				PRINT_LOG_DEBUG(env, " -- ");
+				struct ir_insn *c = *pos3; // conflict vr
+				print_insn_ptr_base_dot(env, c);
+				PRINT_LOG_DEBUG(env, ";\n");
+			}
 		}
-		PRINT_LOG_DEBUG(env, "\n");
+		PRINT_LOG_DEBUG(env, "}\n");
+	} else {
+		struct ir_insn **pos2;
+		ptrset_for(pos2, fun->cg_info.all_var_v2)
+		{
+			struct ir_insn *v = *pos2;
+			print_insn_ptr_base(env, v);
+			PRINT_LOG_DEBUG(env, ": ");
+			struct ir_insn **pos3;
+			ptrset_for(pos3, insn_cg_v2(v)->adj)
+			{
+				struct ir_insn *c = *pos3; // conflict vr
+				print_insn_ptr_base(env, c);
+				PRINT_LOG_DEBUG(env, " ");
+			}
+			PRINT_LOG_DEBUG(env, "\n");
+		}
 	}
 }
 

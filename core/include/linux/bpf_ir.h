@@ -68,6 +68,9 @@ struct bpf_ir_opts {
 	// Use new CG pipeline;
 	bool cg_v2;
 
+	// Generate DOT graph for intereference graph
+	bool dotgraph;
+
 	// Verbose level
 	int verbose;
 
