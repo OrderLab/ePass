@@ -106,7 +106,7 @@ def is_correct(prog: str):
     return os.system(f"timeout 2 sudo epass read {prog} --direct-load")
 
 def is_correct_epass(prog: str):
-    return os.system(f"timeout 2 sudo epass read {prog} --load")
+    return os.system(f"timeout 2 sudo epass read {prog} --load --gopt cgv2")
 
 
 def find_correct_progs():
