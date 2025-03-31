@@ -105,6 +105,9 @@ def init():
 def is_correct(prog: str):
     return os.system(f"timeout 2 sudo epass read {prog} --direct-load")
 
+def is_correct_epass(prog: str):
+    return os.system(f"timeout 2 sudo epass read {prog} --load")
+
 
 def find_correct_progs():
     correct_set = []
@@ -112,16 +115,20 @@ def find_correct_progs():
         if is_correct(o) == 0:
             correct_set.append(o)
             print(o)
-    print("---")
+    print("--- SUMMARY ---")
     print(correct_set)
 
 
 def test_correct_progs():
+    failed_progs = []
     for o in CORRECT_PROGS:
-        if is_correct(o) == 0:
-            print(o)
+        if is_correct_epass(o) == 0:
+            print(o, "Passed")
         else:
-            print(f"Error: {o} is an incorrect program!")
+            failed_progs.append(o)
+            print(o, "Failed")
+    print("--- SUMMARY ---")
+    print(failed_progs)
 
 
 if __name__ == "__main__":
