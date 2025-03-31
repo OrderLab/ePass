@@ -34,20 +34,23 @@ int epass_readload(struct user_opts uopts)
 		goto end;
 	}
 
-	// Register the callback
-	struct libbpf_prog_handler_opts handler_opts;
-	handler_opts.sz = sizeof(handler_opts);
-	handler_opts.prog_attach_fn = NULL;
-	handler_opts.prog_setup_fn = NULL;
-	handler_opts.prog_prepare_load_fn = callback_fn;
-	libbpf_register_prog_handler(bpf_program__section_name(prog),
-				     bpf_program__get_type(prog),
-				     bpf_program__expected_attach_type(prog),
-				     &handler_opts);
+	if (!uopts.direct_load) {
+		// Register the callback
+		struct libbpf_prog_handler_opts handler_opts;
+		handler_opts.sz = sizeof(handler_opts);
+		handler_opts.prog_attach_fn = NULL;
+		handler_opts.prog_setup_fn = NULL;
+		handler_opts.prog_prepare_load_fn = callback_fn;
+		libbpf_register_prog_handler(
+			bpf_program__section_name(prog),
+			bpf_program__get_type(prog),
+			bpf_program__expected_attach_type(prog), &handler_opts);
 
-	// Re-open the file to trigger the callback
-	bpf_object__close(obj);
-	obj = bpf_object__open(uopts.prog);
+		// Re-open the file to trigger the callback
+		bpf_object__close(obj);
+		obj = bpf_object__open(uopts.prog);
+	}
+
 #ifdef EPASS_LIBBPF
 	err = bpf_object__load(obj, 0, NULL, NULL);
 #else
