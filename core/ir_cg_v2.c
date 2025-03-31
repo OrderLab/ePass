@@ -745,7 +745,6 @@ static void coloring(struct bpf_ir_env *env, struct ir_function *fun)
 			RAISE_ERROR("No register available");
 		}
 	}
-	bpf_ir_array_free(&sigma);
 }
 
 // Best effort coalescing

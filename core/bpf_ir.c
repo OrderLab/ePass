@@ -1475,6 +1475,8 @@ static void gen_bb_succ(struct bpf_ir_env *env, struct ir_function *fun)
 			if (bb->succs.num_elem != 2) {
 				print_ir_insn_err(env, insn,
 						  "Jump instruction");
+				PRINT_LOG_ERROR(env, "Has %d succ\n",
+						bb->succs.num_elem);
 				RAISE_ERROR(
 					"Conditional jmp with != 2 successors");
 			}
