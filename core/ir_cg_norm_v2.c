@@ -235,6 +235,39 @@ static void normalize_assign(struct ir_insn *insn)
 	}
 }
 
+static void normalize_cond_jmp(struct bpf_ir_env *env, struct ir_insn *insn)
+{
+	struct ir_value *v0 = &insn->values[0];
+	struct ir_value *v1 = &insn->values[1];
+	enum val_type t0 = insn->value_num >= 1 ? vtype(*v0) : UNDEF;
+	enum val_type t1 = insn->value_num >= 2 ? vtype(*v1) : UNDEF;
+
+	if (t0 == CONST) {
+		// jmp const reg
+		if (t1 == CONST) {
+			RAISE_ERROR(
+				"conditional jmp requires at least one variable");
+		}
+		if (insn->op == IR_INSN_JGT) {
+			insn->op = IR_INSN_JLE;
+		} else if (insn->op == IR_INSN_JEQ) {
+		} else if (insn->op == IR_INSN_JNE) {
+		} else if (insn->op == IR_INSN_JLT) {
+			insn->op = IR_INSN_JGE;
+		} else if (insn->op == IR_INSN_JGE) {
+			insn->op = IR_INSN_JLT;
+		} else if (insn->op == IR_INSN_JLE) {
+			insn->op = IR_INSN_JGT;
+		} else {
+			RAISE_ERROR(
+				"does not support signed jump constant yet");
+		}
+		struct ir_value tmp = *v0;
+		*v0 = *v1;
+		*v1 = tmp;
+	}
+}
+
 /* Normalize ALU */
 static void normalize_alu(struct bpf_ir_env *env, struct ir_insn *insn)
 {
@@ -513,8 +546,10 @@ static void normalize(struct bpf_ir_env *env, struct ir_function *fun)
 			} else if (bpf_ir_is_cond_jmp(insn)) {
 				// jmp reg const/reg
 				// or
-				// jmp const/reg reg
-				// OK
+				// jmp const reg
+				// ==>
+				// jmp(REV) reg const
+				normalize_cond_jmp(env, insn);
 			} else {
 				RAISE_ERROR("No such instruction");
 			}
