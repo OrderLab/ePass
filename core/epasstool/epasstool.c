@@ -103,6 +103,7 @@ static struct user_opts parse_cli(int argc, char **argv)
 	uopts.auto_sec = true;
 	uopts.output_format = OUTPUT_LOG;
 	uopts.load = false;
+	uopts.direct_load = false;
 	if (argc < 2) {
 		usage(prog);
 	}
@@ -142,6 +143,9 @@ static struct user_opts parse_cli(int argc, char **argv)
 			} else if (strcmp(*argv, "--load") == 0 ||
 				   strcmp(*argv, "-L") == 0) {
 				uopts.load = true;
+			} else if (strcmp(*argv, "--direct-load") == 0) {
+				uopts.load = true;
+				uopts.direct_load = true;
 			} else if (strcmp(*argv, "-o") == 0) {
 				if (argc < 2) {
 					usage(prog);

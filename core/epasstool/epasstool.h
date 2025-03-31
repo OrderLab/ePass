@@ -14,8 +14,16 @@ struct user_opts {
 	char sec[64];
 	struct bpf_ir_opts opts;
 	bool no_compile;
+
+	// Automatically detect section.
 	bool auto_sec;
+
+	// Load the modified object to kernel.
 	bool load;
+
+	// Do not run ePass transformations before loading to kernel.
+	// Will override `load` to true.
+	bool direct_load;
 
 	enum {
 		MODE_READ,
