@@ -561,10 +561,11 @@ static void conflict_analysis(struct bpf_ir_env *env, struct ir_function *fun)
 }
 
 // Maximum cardinality search
-static struct array mcs(struct bpf_ir_env *env, struct ir_function *fun)
+static void mcs(struct bpf_ir_env *env, struct ir_function *fun)
 {
-	struct array sigma;
-	INIT_ARRAY(&sigma, struct ir_insn *);
+	PRINT_LOG_DEBUG(env, "SEO: ");
+	struct array *sigma = &fun->cg_info.seo;
+	bpf_ir_array_clear(env, sigma);
 	struct ptrset allvar;
 	bpf_ir_ptrset_clone(env, &allvar, &fun->cg_info.all_var_v2);
 	for (size_t i = 0; i < fun->cg_info.all_var_v2.cnt; ++i) {
@@ -580,7 +581,9 @@ static struct array mcs(struct bpf_ir_env *env, struct ir_function *fun)
 			}
 		}
 		DBGASSERT(max_i != NULL);
-		bpf_ir_array_push(env, &sigma, &max_i);
+		bpf_ir_array_push(env, sigma, &max_i);
+		print_insn_ptr_base_dot(env, max_i);
+		PRINT_LOG_DEBUG(env, " ");
 
 		struct ir_insn_cg_extra_v2 *max_iex = insn_cg_v2(max_i);
 		ptrset_for(pos, max_iex->adj)
@@ -595,7 +598,7 @@ static struct array mcs(struct bpf_ir_env *env, struct ir_function *fun)
 	}
 
 	bpf_ir_ptrset_free(&allvar);
-	return sigma;
+	PRINT_LOG_DEBUG(env, "\n");
 }
 
 static struct ptrset *maxcl_need_spill(struct array *eps)
@@ -613,15 +616,20 @@ static struct ptrset *maxcl_need_spill(struct array *eps)
 struct array pre_spill(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	// First run maximalCl
-	struct array sigma = mcs(env, fun);
+	mcs(env, fun);
+	struct array sigma = fun->cg_info.seo;
 	struct array eps;
 	INIT_ARRAY(&eps, struct ptrset);
+	PRINT_LOG_DEBUG(env, "MaxCL:\n");
 	for (size_t i = 0; i < sigma.num_elem; ++i) {
+		PRINT_LOG_DEBUG(env, "%d: ", i);
 		struct ir_insn *v = *array_get(&sigma, i, struct ir_insn *);
 		struct ir_insn_cg_extra_v2 *vex = insn_cg_v2(v);
 		struct ptrset q;
 		INIT_PTRSET_DEF(&q);
 		bpf_ir_ptrset_insert(env, &q, v);
+		print_insn_ptr_base_dot(env, v);
+		PRINT_LOG_DEBUG(env, " ");
 		vex->w++;
 		struct ir_insn **pos;
 		ptrset_for(pos, vex->adj)
@@ -633,11 +641,14 @@ struct array pre_spill(struct bpf_ir_env *env, struct ir_function *fun)
 					*array_get(&sigma, j, struct ir_insn *);
 				if (v2 == u) {
 					bpf_ir_ptrset_insert(env, &q, u);
+					print_insn_ptr_base_dot(env, u);
+					PRINT_LOG_DEBUG(env, " ");
 					insn_cg_v2(u)->w++;
 					break;
 				}
 			}
 		}
+		PRINT_LOG_DEBUG(env, "\n");
 		bpf_ir_array_push(env, &eps, &q);
 	}
 
@@ -677,7 +688,6 @@ struct array pre_spill(struct bpf_ir_env *env, struct ir_function *fun)
 		bpf_ir_ptrset_free(pos);
 	}
 	bpf_ir_array_free(&eps);
-	bpf_ir_array_free(&sigma);
 	return to_spill;
 }
 
@@ -688,7 +698,7 @@ static void spill(struct bpf_ir_env *env, struct ir_function *fun,
 
 static void coloring(struct bpf_ir_env *env, struct ir_function *fun)
 {
-	struct array sigma = mcs(env, fun);
+	struct array sigma = fun->cg_info.seo;
 	struct ir_insn **pos;
 
 	array_for(pos, sigma)

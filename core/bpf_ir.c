@@ -1410,6 +1410,8 @@ void bpf_ir_free_function(struct ir_function *fun)
 	bpf_ir_array_free(&fun->all_bbs);
 	bpf_ir_array_free(&fun->reachable_bbs);
 	bpf_ir_array_free(&fun->end_bbs);
+	bpf_ir_array_free(&fun->cg_info.seo);
+
 	bpf_ir_array_free(&fun->cg_info.all_var);
 	bpf_ir_ptrset_free(&fun->cg_info.all_var_v2);
 }
@@ -1427,6 +1429,7 @@ static void init_function(struct bpf_ir_env *env, struct ir_function *fun,
 	INIT_ARRAY(&fun->reachable_bbs, struct ir_basic_block *);
 	INIT_ARRAY(&fun->end_bbs, struct ir_basic_block *);
 	INIT_ARRAY(&fun->cg_info.all_var, struct ir_insn *);
+	INIT_ARRAY(&fun->cg_info.seo, struct ir_insn *);
 	INIT_PTRSET_DEF(&fun->cg_info.all_var_v2);
 	for (size_t i = 0; i < MAX_BPF_REG; ++i) {
 		struct array *currentDef = &tenv->currentDef[i];

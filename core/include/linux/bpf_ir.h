@@ -816,6 +816,9 @@ struct code_gen_info {
 	// Array of struct ir_insn*
 	struct array all_var;
 
+	// SEO
+	struct array seo;
+
 	struct ptrset all_var_v2;
 
 	// BPF Register Virtual Instruction (used as dst)
