@@ -530,6 +530,14 @@ static void conflict_analysis(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	// Add constraints to the graph
 
+	for (u8 i = 0; i < RA_COLORS; ++i) {
+		for (u8 j = i + 1; j < RA_COLORS; ++j) {
+			// All physical registers are conflicting
+			make_conflict(env, fun->cg_info.regs[i],
+				      fun->cg_info.regs[j]);
+		}
+	}
+
 	struct ir_basic_block **pos;
 	// For each BB
 	array_for(pos, fun->reachable_bbs)
@@ -582,7 +590,7 @@ static void mcs(struct bpf_ir_env *env, struct ir_function *fun)
 		}
 		DBGASSERT(max_i != NULL);
 		bpf_ir_array_push(env, sigma, &max_i);
-		print_insn_ptr_base_dot(env, max_i);
+		print_insn_ptr_base(env, max_i);
 		PRINT_LOG_DEBUG(env, " ");
 
 		struct ir_insn_cg_extra_v2 *max_iex = insn_cg_v2(max_i);
@@ -628,7 +636,7 @@ struct array pre_spill(struct bpf_ir_env *env, struct ir_function *fun)
 		struct ptrset q;
 		INIT_PTRSET_DEF(&q);
 		bpf_ir_ptrset_insert(env, &q, v);
-		print_insn_ptr_base_dot(env, v);
+		print_insn_ptr_base(env, v);
 		PRINT_LOG_DEBUG(env, " ");
 		vex->w++;
 		struct ir_insn **pos;
@@ -641,7 +649,7 @@ struct array pre_spill(struct bpf_ir_env *env, struct ir_function *fun)
 					*array_get(&sigma, j, struct ir_insn *);
 				if (v2 == u) {
 					bpf_ir_ptrset_insert(env, &q, u);
-					print_insn_ptr_base_dot(env, u);
+					print_insn_ptr_base(env, u);
 					PRINT_LOG_DEBUG(env, " ");
 					insn_cg_v2(u)->w++;
 					break;
@@ -652,6 +660,7 @@ struct array pre_spill(struct bpf_ir_env *env, struct ir_function *fun)
 		bpf_ir_array_push(env, &eps, &q);
 	}
 
+	PRINT_LOG_DEBUG(env, "To Spill:\n");
 	struct ptrset *cur;
 	struct array to_spill;
 	INIT_ARRAY(&to_spill, struct ir_insn *);
@@ -675,6 +684,9 @@ struct array pre_spill(struct bpf_ir_env *env, struct ir_function *fun)
 		// Spill max_i
 		bpf_ir_array_push(env, &to_spill, &max_i);
 
+		PRINT_LOG_DEBUG(env, " ");
+		print_insn_ptr_base(env, max_i);
+
 		struct ptrset *pos2;
 		array_for(pos2, eps)
 		{
@@ -682,6 +694,7 @@ struct array pre_spill(struct bpf_ir_env *env, struct ir_function *fun)
 		}
 	}
 
+	PRINT_LOG_DEBUG(env, "\n");
 	struct ptrset *pos;
 	array_for(pos, eps)
 	{
