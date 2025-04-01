@@ -268,8 +268,7 @@ static void add_entrance_info(struct bpf_ir_env *env,
 			((struct bb_entrance_info *)(bb_entrances->data)) + i;
 		if (entry->entrance == entrance_pos) {
 			// Already has this entrance, add a pred
-			bpf_ir_array_push_unique(env, &entry->bb->preds,
-						 &current_pos);
+			bpf_ir_array_push(env, &entry->bb->preds, &current_pos);
 			return;
 		}
 	}
