@@ -767,6 +767,7 @@ static void spill_insn(struct bpf_ir_env *env, struct ir_function *fun,
 	} else if (bpf_ir_is_cond_jmp(insn)) {
 		spill_cond_jump(env, fun, insn);
 	} else if (insn->op == IR_INSN_PHI) {
+		CRITICAL("todo");
 	} else {
 		RAISE_ERROR("No such instruction");
 	}
@@ -1030,7 +1031,12 @@ void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun)
 	spill_array(env, fun);
 
 	bool done = false;
+	u32 iteration = 0;
 	while (!done) {
+		PRINT_LOG_DEBUG(
+			env,
+			"\x1B[32m----- Register allocation iteration %d -----\x1B[0m\n",
+			iteration);
 		clean_cg_data(env, fun);
 		liveness_analysis(env, fun);
 		print_interference_graph(env, fun);
@@ -1049,6 +1055,7 @@ void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun)
 			spill(env, fun, &to_spill);
 		}
 		bpf_ir_array_free(&to_spill);
+		iteration++;
 	}
 
 	// Graph coloring
