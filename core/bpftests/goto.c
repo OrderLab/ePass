@@ -1,0 +1,15 @@
+#include <linux/bpf.h>
+#include <bpf/bpf_helpers.h>
+
+SEC("xdp")
+int prog(void *ctx)
+{
+	asm volatile(".byte 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00" ::
+			     :);
+	asm volatile(".byte 0x05, 0x00, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00" ::
+			     :);
+
+	return 0;
+}
+
+char _license[] SEC("license") = "GPL";
