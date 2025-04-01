@@ -7,6 +7,7 @@ struct user_opts *uopts_g = NULL;
 static int callback_fn(struct bpf_program *prog,
 		       struct bpf_prog_load_opts *opts, long cookie)
 {
+	uopts_g->bpfprog = prog;
 	return epass_run(*uopts_g, bpf_program__insns(prog),
 			 bpf_program__insn_cnt(prog));
 }

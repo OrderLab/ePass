@@ -15,6 +15,8 @@ struct user_opts {
 	struct bpf_ir_opts opts;
 	bool no_compile;
 
+	struct bpf_program *bpfprog;
+
 	// Automatically detect section.
 	bool auto_sec;
 

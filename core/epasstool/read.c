@@ -52,6 +52,11 @@ int epass_run(struct user_opts uopts, const struct bpf_insn *insn, size_t sz)
 			env->lift_time + env->run_time + env->cg_time);
 	PRINT_LOG_DEBUG(env, "program size: %zu->%zu\n", sz, env->insn_cnt);
 
+	if (uopts.bpfprog) {
+		err = bpf_program__set_insns(uopts.bpfprog, env->insns,
+					     env->insn_cnt);
+	}
+
 	if (uopts.prog_out[0]) {
 		FILE *f = fopen(uopts.prog_out, "wb");
 		if (!f) {
