@@ -27,6 +27,7 @@ int epass_run(struct user_opts uopts, const struct bpf_insn *insn, size_t sz)
 		return err;
 	}
 	enable_builtin(env);
+	PRINT_LOG_DEBUG(env, "Running ePass on section %s\n", uopts.sec);
 	u64 starttime = get_cur_time_ns();
 	if (uopts.no_compile) {
 		struct ir_function *fun =

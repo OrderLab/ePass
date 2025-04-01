@@ -991,6 +991,12 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 	for (size_t i = 0; i < bb->len; ++i) {
 		struct pre_ir_insn insn = bb->pre_insns[i];
 		u8 code = insn.opcode;
+		struct bpf_insn t_insn;
+		t_insn.code = code;
+		t_insn.dst_reg = insn.dst_reg;
+		t_insn.src_reg = insn.src_reg;
+		t_insn.off = insn.off;
+		t_insn.imm = insn.imm;
 		if (BPF_CLASS(code) == BPF_ALU ||
 		    BPF_CLASS(code) == BPF_ALU64) {
 			// ALU class
@@ -1278,9 +1284,11 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 						    sizeof(helper_func_arg_num) /
 							    sizeof(helper_func_arg_num
 									   [0])) {
+						bpf_ir_print_bpf_insn(env,
+								      &t_insn);
 						PRINT_LOG_ERROR(
 							env,
-							"unknown helper function %d at %d\n",
+							"Unknown helper function %d at %d\n",
 							insn.imm, insn.pos);
 						RAISE_ERROR(
 							"Unsupported helper function");
@@ -1336,12 +1344,6 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 			}
 		} else {
 			// TODO
-			struct bpf_insn t_insn;
-			t_insn.code = code;
-			t_insn.dst_reg = insn.dst_reg;
-			t_insn.src_reg = insn.src_reg;
-			t_insn.off = insn.off;
-			t_insn.imm = insn.imm;
 			bpf_ir_print_bpf_insn(env, &t_insn);
 			PRINT_LOG_ERROR(env, "Class 0x%02x not supported\n",
 					BPF_CLASS(code));

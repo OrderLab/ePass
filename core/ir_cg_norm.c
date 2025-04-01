@@ -494,6 +494,7 @@ static void normalize(struct bpf_ir_env *env, struct ir_function *fun)
 			} else {
 				RAISE_ERROR("No such instruction");
 			}
+			CHECK_ERR();
 		}
 	}
 }
@@ -1060,6 +1061,7 @@ static void translate(struct bpf_ir_env *env, struct ir_function *fun)
 			} else {
 				RAISE_ERROR("No such instruction");
 			}
+			CHECK_ERR();
 		}
 	}
 }

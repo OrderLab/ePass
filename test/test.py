@@ -106,7 +106,7 @@ def is_correct(prog: str):
     return os.system(f"timeout 2 sudo epass read {prog} --direct-load")
 
 def is_correct_epass(prog: str):
-    return os.system(f"timeout 2 sudo epass read {prog} --load")
+    return os.system(f"timeout 2 sudo epass read {prog} --load --gopt cgv2")
 
 
 def find_correct_progs():
@@ -123,10 +123,10 @@ def test_correct_progs():
     failed_progs = []
     for o in CORRECT_PROGS:
         if is_correct_epass(o) == 0:
-            print(o, "Passed")
+            print(f"\x1B[32m {o} Passed\x1B[0m")
         else:
             failed_progs.append(o)
-            print(o, "Failed")
+            print(f"\x1B[31m {o} Failed\x1B[0m")
     print("--- SUMMARY ---")
     print(failed_progs)
 

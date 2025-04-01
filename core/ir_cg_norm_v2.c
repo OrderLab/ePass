@@ -290,6 +290,7 @@ static void normalize_alu(struct bpf_ir_env *env, struct ir_insn *insn)
 				t1 = t0;
 				t0 = tmp2;
 			} else {
+				print_raw_ir_insn(env, insn);
 				RAISE_ERROR("not supported yet");
 			}
 		}
@@ -565,6 +566,7 @@ static void normalize(struct bpf_ir_env *env, struct ir_function *fun)
 			} else {
 				RAISE_ERROR("No such instruction");
 			}
+			CHECK_ERR();
 		}
 	}
 }
