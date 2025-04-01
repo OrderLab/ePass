@@ -280,8 +280,7 @@ static void normalize_alu(struct bpf_ir_env *env, struct ir_insn *insn)
 	struct ir_vr_pos dst_pos = insn_norm(insn)->pos;
 	if (t1 == REG) {
 		if (dst_pos.alloc_reg == v1->data.vr_pos.alloc_reg) {
-			if (insn->op == IR_INSN_ADD ||
-			    insn->op == IR_INSN_MUL) {
+			if (bpf_ir_is_commutative_alu(insn)) {
 				// Switch
 				struct ir_value tmp = *v1;
 				*v1 = *v0;
@@ -291,7 +290,8 @@ static void normalize_alu(struct bpf_ir_env *env, struct ir_insn *insn)
 				t0 = tmp2;
 			} else {
 				print_raw_ir_insn(env, insn);
-				RAISE_ERROR("not supported yet");
+				RAISE_ERROR(
+					"non-commutative ALU op not supported yet");
 			}
 		}
 	}
