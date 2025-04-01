@@ -4,6 +4,7 @@
 #include "linux/bpf.h"
 
 #ifndef __KERNEL__
+
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>
@@ -14,10 +15,6 @@
 #include <stdint.h>
 #include <time.h>
 
-// Used to simulate kernel functions
-#include "list.h"
-#include "hash.h"
-
 typedef __s8 s8;
 typedef __u8 u8;
 typedef __s16 s16;
@@ -27,7 +24,15 @@ typedef __u32 u32;
 typedef __s64 s64;
 typedef __u64 u64;
 
+#ifdef LIBBPF
+#else
+// Used to simulate kernel functions
+#include "list.h"
+#include "hash.h"
+
 #define SIZET_MAX SIZE_MAX
+
+#endif
 
 #else
 
