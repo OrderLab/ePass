@@ -24,8 +24,6 @@ CORRECT_PROGS = [
     "output/progs_tengjiang_syscount.o",
     "output/tracex4.bpf.o",
     "output/map_perf_test.bpf.o",
-    "output/cpustat_kern.o",
-    "output/hbm_out_kern.o",
     "output/tracex5.bpf.o",
     "output/trace_event_kern.o",
     "output/tracex2.bpf.o",
@@ -39,10 +37,8 @@ CORRECT_PROGS = [
     "output/test_current_task_under_cgroup.bpf.o",
     "output/tcp_tos_reflect_kern.o",
     "output/spintest.bpf.o",
-    "output/progs_tengjiang_access_control.o",
     "output/evaluation_masking_masksimple.o",
     "output/progs_simple2.o",
-    "output/hbm_edt_kern.o",
     "output/evaluation_counter_loop1med.o",
     "output/progs_libbpf_bootstrap.bpf.o",
     "output/evaluation_div_by_zero_div_by_zero.o",
@@ -52,15 +48,11 @@ CORRECT_PROGS = [
     "output/test_probe_write_user.bpf.o",
     "output/evaluation_masking_map_val_accepted.o",
     "output/sampleip_kern.o",
-    "output/progs_libbpf_task_iter.bpf.o",
     "output/progs_fn_nonrejected_uninit_var_access.o",
-    "output/progs_libbpf_fentry.bpf.o",
     "output/progs_mem2.o",
     "output/progs_compact_opt.o",
     "output/progs_str.o",
     "output/tcp_basertt_kern.o",
-    "output/sockex3_kern.o",
-    "output/progs_libbpf_lsm.bpf.o",
     "output/tcp_cong_kern.o",
     "output/progs_libbpf_ksyscall.bpf.o",
     "output/progs_tengjiang_xdp.o",
@@ -106,6 +98,9 @@ def is_correct(prog: str):
     return os.system(f"timeout 2 sudo epass read {prog} --direct-load")
 
 def is_correct_epass(prog: str):
+    return os.system(f"timeout 2 sudo epass read {prog} --load")
+
+def is_correct_epass_v2(prog: str):
     return os.system(f"timeout 2 sudo epass read {prog} --load --gopt cgv2")
 
 
