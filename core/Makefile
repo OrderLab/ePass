@@ -8,7 +8,6 @@ buildall: genctor
 	cmake --build build
 
 format:
-	rm -f tests/vmlinux.h
 	./scripts/format.sh
 
 genctor:

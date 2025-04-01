@@ -1336,6 +1336,13 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 			}
 		} else {
 			// TODO
+			struct bpf_insn t_insn;
+			t_insn.code = code;
+			t_insn.dst_reg = insn.dst_reg;
+			t_insn.src_reg = insn.src_reg;
+			t_insn.off = insn.off;
+			t_insn.imm = insn.imm;
+			bpf_ir_print_bpf_insn(env, &t_insn);
 			PRINT_LOG_ERROR(env, "Class 0x%02x not supported\n",
 					BPF_CLASS(code));
 			RAISE_ERROR("Not supported");
