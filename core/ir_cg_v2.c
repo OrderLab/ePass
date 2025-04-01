@@ -438,15 +438,53 @@ static void print_interference_graph(struct bpf_ir_env *env,
 	}
 }
 
-static void liveness_analysis(struct bpf_ir_env *env, struct ir_function *fun)
+static void clean_cg_data_insn(struct ir_insn *insn)
+{
+	struct ir_insn_cg_extra_v2 *extra = insn->user_data;
+	if (extra) {
+		bpf_ir_ptrset_clean(&extra->adj);
+		bpf_ir_ptrset_clean(&extra->in);
+		bpf_ir_ptrset_clean(&extra->out);
+		extra->lambda = 0;
+		extra->w = 0;
+
+		if (!extra->nonvr && extra->dst == insn) {
+			extra->vr_pos.allocated = false;
+		}
+	}
+}
+
+// Clean data generated during each iteration of RA
+static void clean_cg_data(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	bpf_ir_ptrset_clean(&fun->cg_info.all_var_v2);
 	// Add all real registers to the graph
 	for (int i = 0; i < RA_COLORS; ++i) {
 		bpf_ir_ptrset_insert(env, &fun->cg_info.all_var_v2,
 				     fun->cg_info.regs[i]);
+		clean_cg_data_insn(fun->cg_info.regs[i]);
 	}
 
+	// Note. there should be no use of function arg anymore as they are replaced by
+	// %0 = R1
+	// etc.
+
+	struct ir_basic_block **pos;
+	array_for(pos, fun->reachable_bbs)
+	{
+		struct ir_basic_block *bb = *pos;
+		struct ir_insn *v;
+		list_for_each_entry(v, &bb->ir_insn_head, list_ptr) {
+			struct ir_insn_cg_extra_v2 *extra = insn_cg_v2(v);
+			if (extra->dst) {
+				clean_cg_data_insn(v);
+			}
+		}
+	}
+}
+
+static void liveness_analysis(struct bpf_ir_env *env, struct ir_function *fun)
+{
 	struct ptrset M;
 	INIT_PTRSET_DEF(&M);
 	struct ir_basic_block **pos;
@@ -456,9 +494,6 @@ static void liveness_analysis(struct bpf_ir_env *env, struct ir_function *fun)
 		struct ir_insn *v;
 		list_for_each_entry(v, &bb->ir_insn_head, list_ptr) {
 			struct ir_insn_cg_extra_v2 *extra = insn_cg_v2(v);
-			// Clean
-			extra->lambda = 0;
-			extra->w = 0;
 
 			if (extra->dst) {
 				if (extra->dst == v) {
@@ -704,9 +739,73 @@ struct array pre_spill(struct bpf_ir_env *env, struct ir_function *fun)
 	return to_spill;
 }
 
+static void spill_insn(struct bpf_ir_env *env, struct ir_function *fun,
+		       struct ir_insn *insn)
+{
+	if (insn->op == IR_INSN_GETELEMPTR) {
+		spill_getelemptr(env, fun, insn);
+	} else if (insn->op == IR_INSN_STORE) {
+		spill_store(env, fun, insn);
+	} else if (insn->op == IR_INSN_LOAD) {
+		spill_load(env, fun, insn);
+	} else if (insn->op == IR_INSN_LOADRAW) {
+		spill_loadraw(env, fun, insn);
+	} else if (insn->op == IR_INSN_LOADIMM_EXTRA) {
+		spill_loadrawextra(env, fun, insn);
+	} else if (insn->op == IR_INSN_STORERAW) {
+		spill_storeraw(env, fun, insn);
+	} else if (insn->op == IR_INSN_NEG) {
+		spill_neg(env, fun, insn);
+	} else if (insn->op == IR_INSN_HTOBE || insn->op == IR_INSN_HTOLE) {
+		spill_end(env, fun, insn);
+	} else if (bpf_ir_is_bin_alu(insn)) {
+		spill_alu(env, fun, insn);
+	} else if (insn->op == IR_INSN_ASSIGN) {
+		spill_assign(env, fun, insn);
+	} else if (insn->op == IR_INSN_RET) {
+		spill_ret(env, fun, insn);
+	} else if (bpf_ir_is_cond_jmp(insn)) {
+		spill_cond_jump(env, fun, insn);
+	} else if (insn->op == IR_INSN_PHI) {
+	} else {
+		RAISE_ERROR("No such instruction");
+	}
+	CHECK_ERR();
+}
+
+static inline s32 get_new_spill(struct ir_function *fun)
+{
+	fun->cg_info.stack_offset -= 8;
+	return fun->cg_info.stack_offset;
+}
+
 static void spill(struct bpf_ir_env *env, struct ir_function *fun,
 		  struct array *to_spill)
 {
+	struct ptrset insns;
+	INIT_PTRSET_DEF(&insns);
+	struct ir_insn **pos;
+	array_for(pos, (*to_spill))
+	{
+		bpf_ir_ptrset_insert(env, &insns, *pos);
+		struct ir_insn_cg_extra_v2 *extra = (*pos)->user_data;
+		extra->vr_pos.allocated = true;
+		extra->vr_pos.spilled_size = 8;
+		extra->vr_pos.spilled = get_new_spill(fun);
+		struct ir_insn **pos2;
+		array_for(pos2, (*pos)->users)
+		{
+			bpf_ir_ptrset_insert(env, &insns, *pos2);
+		}
+	}
+
+	ptrset_for(pos, insns)
+	{
+		spill_insn(env, fun, *pos);
+		CHECK_ERR();
+	}
+
+	bpf_ir_ptrset_free(&insns);
 }
 
 static void coloring(struct bpf_ir_env *env, struct ir_function *fun)
@@ -932,6 +1031,7 @@ void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun)
 
 	bool done = false;
 	while (!done) {
+		clean_cg_data(env, fun);
 		liveness_analysis(env, fun);
 		print_interference_graph(env, fun);
 
@@ -946,7 +1046,7 @@ void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun)
 			done = true;
 		} else {
 			// spill
-			CRITICAL("todo");
+			spill(env, fun, &to_spill);
 		}
 		bpf_ir_array_free(&to_spill);
 	}

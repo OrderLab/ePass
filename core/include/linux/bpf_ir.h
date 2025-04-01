@@ -498,7 +498,7 @@ struct ir_vr_pos {
 	bool allocated;
 	u32 spilled_size; // Spilled
 	u8 alloc_reg; // Not spilled
-	s32 spilled;
+	s32 spilled; // 0 -> not spilled; X -> spilled at X
 };
 
 /*

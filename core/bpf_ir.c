@@ -1439,6 +1439,7 @@ static void init_function(struct bpf_ir_env *env, struct ir_function *fun,
 	INIT_ARRAY(&fun->cg_info.all_var, struct ir_insn *);
 	INIT_ARRAY(&fun->cg_info.seo, struct ir_insn *);
 	INIT_PTRSET_DEF(&fun->cg_info.all_var_v2);
+	fun->cg_info.stack_offset = 0;
 	for (size_t i = 0; i < MAX_BPF_REG; ++i) {
 		struct array *currentDef = &tenv->currentDef[i];
 		bpf_ir_array_free(currentDef);
