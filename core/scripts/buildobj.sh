@@ -6,9 +6,6 @@ files=$(find . -iname '*.c' -not -path "./build/*" -not -path "./tests/*" -not -
 
 for file in $files; do
   name=$(basename $file)
-  gcc -O2 -Iinclude -c $file -o build/$name.o &
-done
-
-for job in `jobs -p`; do
-    wait $job
+  echo "  CC       $name.o"
+  gcc -O2 -Iinclude -c $file -o build/$name.o
 done
