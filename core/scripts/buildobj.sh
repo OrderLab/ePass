@@ -6,6 +6,9 @@ files=$(find . -iname '*.c' -not -path "./build/*" -not -path "./tests/*" -not -
 
 for file in $files; do
   name=$(basename $file)
-  echo "  CC       $name.o"
-  gcc -O2 -Iinclude -c $file -o build/$name.o
+  if [ ! -f build/$name.o ]; then
+    echo "  CC       $name.o"
+    gcc -O2 -Iinclude -c $file -o build/$name.o
+  fi
 done
+
