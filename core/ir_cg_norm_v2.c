@@ -1277,10 +1277,8 @@ void bpf_ir_cg_norm_v2(struct bpf_ir_env *env, struct ir_function *fun)
 	relocate(env, fun);
 	CHECK_ERR();
 
-	if (!env->opts.fake_run) {
-		synthesize(env, fun);
-		CHECK_ERR();
-	}
+	synthesize(env, fun);
+	CHECK_ERR();
 
 	// Free CG resources
 	free_cg_final(fun);

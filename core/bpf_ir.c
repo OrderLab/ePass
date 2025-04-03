@@ -1813,6 +1813,10 @@ void bpf_ir_autorun(struct bpf_ir_env *env)
 
 	// Free the memory
 	bpf_ir_free_function(fun);
+
+	if (env->opts.fake_run) {
+		RAISE_ERROR("Fake run finished");
+	}
 }
 
 struct bpf_ir_opts bpf_ir_default_opts(void)
