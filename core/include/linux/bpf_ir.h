@@ -70,6 +70,9 @@ struct bpf_ir_opts {
 	// Write an error message to trace when throwing an error
 	bool enable_throw_msg;
 
+	// Do not actually change the bytecode
+	bool fake_run;
+
 	// Use new CG pipeline;
 	bool cg_v2;
 
