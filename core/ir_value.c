@@ -100,6 +100,11 @@ struct ir_value bpf_ir_value_stack_ptr(struct ir_function *fun)
 	return bpf_ir_value_insn(fun->sp);
 }
 
+struct ir_value bpf_ir_value_r0(struct ir_function *fun)
+{
+	return bpf_ir_value_insn(fun->cg_info.regs[0]);
+}
+
 struct ir_value bpf_ir_value_norm_stack_ptr(void)
 {
 	return bpf_ir_value_vrpos(VR_POS_STACK_PTR);

@@ -448,7 +448,10 @@ static void clean_cg_data_insn(struct ir_insn *insn)
 		extra->lambda = 0;
 		extra->w = 0;
 
-		if (!extra->nonvr && extra->dst == insn) {
+		if (!extra->nonvr && extra->dst == insn &&
+		    extra->vr_pos.allocated && extra->vr_pos.spilled == 0) {
+			// Clean register allocation
+			// Do not remove stack allocation
 			extra->vr_pos.allocated = false;
 		}
 	}
@@ -737,6 +740,75 @@ struct array pre_spill(struct bpf_ir_env *env, struct ir_function *fun)
 	}
 	bpf_ir_array_free(&eps);
 	return to_spill;
+}
+
+static enum val_type vtype_insn(struct ir_insn *insn)
+{
+	struct ir_insn_cg_extra_v2 *extra = insn_cg_v2(insn);
+	if (extra->vr_pos.allocated) {
+		if (extra->vr_pos.spilled) {
+			return STACK;
+		} else {
+			return REG;
+		}
+	} else {
+		return UNDEF;
+	}
+}
+
+static enum val_type vtype(struct ir_value val)
+{
+	if (val.type == IR_VALUE_INSN) {
+		return vtype_insn(val.data.insn_d);
+	} else if (val.type == IR_VALUE_CONSTANT ||
+		   val.type == IR_VALUE_CONSTANT_RAWOFF ||
+		   val.type == IR_VALUE_CONSTANT_RAWOFF_REV) {
+		return CONST;
+	} else {
+		CRITICAL("No such value type for dst");
+	}
+}
+
+static void spill_getelemptr(struct bpf_ir_env *env, struct ir_function *fun,
+			     struct ir_insn *insn)
+{
+	struct ir_value *v0 = &insn->values[0];
+	struct ir_value *v1 = &insn->values[1];
+	struct ir_insn_cg_extra_v2 *extra = insn_cg_v2(insn);
+	enum val_type t0 = insn->value_num >= 1 ? vtype(*v0) : UNDEF;
+	enum val_type t1 = insn->value_num >= 2 ? vtype(*v1) : UNDEF;
+	enum val_type tdst = vtype_insn(insn);
+	// struct ir_insn *dst_insn = insn_dst(insn);
+	DBGASSERT(v1->type == IR_VALUE_INSN);
+	DBGASSERT(v1->data.insn_d->op == IR_INSN_ALLOCARRAY);
+	DBGASSERT(t1 == STACK);
+	if (tdst == STACK) {
+		// stack = getelemptr reg ptr
+		// ==>
+		// R0 = getelemptr reg ptr
+		// stack = R0
+
+		// struct ir_insn *new_insn = bpf_ir_create_getelemptr_insn_cg(
+		// 	env, insn, v1->data.insn_d, *v0, INSERT_FRONT);
+		// bpf_ir_val_remove_user(*v1, insn);
+
+		// bpf_ir_change_value(env, insn, v0,
+		// 		    bpf_ir_value_insn(fun->cg_info.regs[0]));
+		// insn->value_num = 1;
+		// insn->op = IR_INSN_ASSIGN;
+		// set_insn_dst(env, new_insn, fun->cg_info.regs[0]);
+		// spill_getelemptr(env, fun, insn);
+		struct ir_insn *new_insn = bpf_ir_create_assign_insn_cg_v2(
+			env, insn, bpf_ir_value_insn(insn), INSERT_BACK);
+		insn_cg_v2(new_insn)->vr_pos = extra->vr_pos;
+		extra->vr_pos.spilled = 0;
+	}
+	if (t0 == STACK) {
+		cgir_load_stack_to_reg(env, fun, insn, v0, IR_VR_TYPE_64, 0);
+	}
+	if (t0 == CONST && v0->const_type == IR_ALU_64) {
+		cgir_load_const_to_reg(env, fun, insn, v0, 0);
+	}
 }
 
 static void spill_insn(struct bpf_ir_env *env, struct ir_function *fun,
