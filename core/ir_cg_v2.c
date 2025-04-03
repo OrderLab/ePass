@@ -1124,6 +1124,7 @@ void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun)
 			done = true;
 		} else {
 			// spill
+			RAISE_ERROR("todo");
 			spill(env, fun, &to_spill);
 		}
 		bpf_ir_array_free(&to_spill);
