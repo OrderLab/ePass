@@ -769,81 +769,81 @@ static enum val_type vtype(struct ir_value val)
 	}
 }
 
-static void spill_getelemptr(struct bpf_ir_env *env, struct ir_function *fun,
-			     struct ir_insn *insn)
-{
-	struct ir_value *v0 = &insn->values[0];
-	struct ir_value *v1 = &insn->values[1];
-	struct ir_insn_cg_extra_v2 *extra = insn_cg_v2(insn);
-	enum val_type t0 = insn->value_num >= 1 ? vtype(*v0) : UNDEF;
-	enum val_type t1 = insn->value_num >= 2 ? vtype(*v1) : UNDEF;
-	enum val_type tdst = vtype_insn(insn);
-	// struct ir_insn *dst_insn = insn_dst(insn);
-	DBGASSERT(v1->type == IR_VALUE_INSN);
-	DBGASSERT(v1->data.insn_d->op == IR_INSN_ALLOCARRAY);
-	DBGASSERT(t1 == STACK);
-	if (tdst == STACK) {
-		// stack = getelemptr reg ptr
-		// ==>
-		// R0 = getelemptr reg ptr
-		// stack = R0
+// static void spill_getelemptr(struct bpf_ir_env *env, struct ir_function *fun,
+// 			     struct ir_insn *insn)
+// {
+// 	struct ir_value *v0 = &insn->values[0];
+// 	struct ir_value *v1 = &insn->values[1];
+// 	struct ir_insn_cg_extra_v2 *extra = insn_cg_v2(insn);
+// 	enum val_type t0 = insn->value_num >= 1 ? vtype(*v0) : UNDEF;
+// 	enum val_type t1 = insn->value_num >= 2 ? vtype(*v1) : UNDEF;
+// 	enum val_type tdst = vtype_insn(insn);
+// 	// struct ir_insn *dst_insn = insn_dst(insn);
+// 	DBGASSERT(v1->type == IR_VALUE_INSN);
+// 	DBGASSERT(v1->data.insn_d->op == IR_INSN_ALLOCARRAY);
+// 	DBGASSERT(t1 == STACK);
+// 	if (tdst == STACK) {
+// 		// stack = getelemptr reg ptr
+// 		// ==>
+// 		// R0 = getelemptr reg ptr
+// 		// stack = R0
 
-		// struct ir_insn *new_insn = bpf_ir_create_getelemptr_insn_cg(
-		// 	env, insn, v1->data.insn_d, *v0, INSERT_FRONT);
-		// bpf_ir_val_remove_user(*v1, insn);
+// 		// struct ir_insn *new_insn = bpf_ir_create_getelemptr_insn_cg(
+// 		// 	env, insn, v1->data.insn_d, *v0, INSERT_FRONT);
+// 		// bpf_ir_val_remove_user(*v1, insn);
 
-		// bpf_ir_change_value(env, insn, v0,
-		// 		    bpf_ir_value_insn(fun->cg_info.regs[0]));
-		// insn->value_num = 1;
-		// insn->op = IR_INSN_ASSIGN;
-		// set_insn_dst(env, new_insn, fun->cg_info.regs[0]);
-		// spill_getelemptr(env, fun, insn);
-		struct ir_insn *new_insn = bpf_ir_create_assign_insn_cg_v2(
-			env, insn, bpf_ir_value_insn(insn), INSERT_BACK);
-		insn_cg_v2(new_insn)->vr_pos = extra->vr_pos;
-		extra->vr_pos.spilled = 0;
-	}
-	if (t0 == STACK) {
-		cgir_load_stack_to_reg(env, fun, insn, v0, IR_VR_TYPE_64, 0);
-	}
-	if (t0 == CONST && v0->const_type == IR_ALU_64) {
-		cgir_load_const_to_reg(env, fun, insn, v0, 0);
-	}
-}
+// 		// bpf_ir_change_value(env, insn, v0,
+// 		// 		    bpf_ir_value_insn(fun->cg_info.regs[0]));
+// 		// insn->value_num = 1;
+// 		// insn->op = IR_INSN_ASSIGN;
+// 		// set_insn_dst(env, new_insn, fun->cg_info.regs[0]);
+// 		// spill_getelemptr(env, fun, insn);
+// 		struct ir_insn *new_insn = bpf_ir_create_assign_insn_cg_v2(
+// 			env, insn, bpf_ir_value_insn(insn), INSERT_BACK);
+// 		insn_cg_v2(new_insn)->vr_pos = extra->vr_pos;
+// 		extra->vr_pos.spilled = 0;
+// 	}
+// 	if (t0 == STACK) {
+// 		cgir_load_stack_to_reg(env, fun, insn, v0, IR_VR_TYPE_64, 0);
+// 	}
+// 	if (t0 == CONST && v0->const_type == IR_ALU_64) {
+// 		cgir_load_const_to_reg(env, fun, insn, v0, 0);
+// 	}
+// }
 
 static void spill_insn(struct bpf_ir_env *env, struct ir_function *fun,
 		       struct ir_insn *insn)
 {
-	if (insn->op == IR_INSN_GETELEMPTR) {
-		spill_getelemptr(env, fun, insn);
-	} else if (insn->op == IR_INSN_STORE) {
-		spill_store(env, fun, insn);
-	} else if (insn->op == IR_INSN_LOAD) {
-		spill_load(env, fun, insn);
-	} else if (insn->op == IR_INSN_LOADRAW) {
-		spill_loadraw(env, fun, insn);
-	} else if (insn->op == IR_INSN_LOADIMM_EXTRA) {
-		spill_loadrawextra(env, fun, insn);
-	} else if (insn->op == IR_INSN_STORERAW) {
-		spill_storeraw(env, fun, insn);
-	} else if (insn->op == IR_INSN_NEG) {
-		spill_neg(env, fun, insn);
-	} else if (insn->op == IR_INSN_HTOBE || insn->op == IR_INSN_HTOLE) {
-		spill_end(env, fun, insn);
-	} else if (bpf_ir_is_bin_alu(insn)) {
-		spill_alu(env, fun, insn);
-	} else if (insn->op == IR_INSN_ASSIGN) {
-		spill_assign(env, fun, insn);
-	} else if (insn->op == IR_INSN_RET) {
-		spill_ret(env, fun, insn);
-	} else if (bpf_ir_is_cond_jmp(insn)) {
-		spill_cond_jump(env, fun, insn);
-	} else if (insn->op == IR_INSN_PHI) {
-		CRITICAL("todo");
-	} else {
-		RAISE_ERROR("No such instruction");
-	}
-	CHECK_ERR();
+	// 	if (insn->op == IR_INSN_GETELEMPTR) {
+	// 		spill_getelemptr(env, fun, insn);
+	// 	} else if (insn->op == IR_INSN_STORE) {
+	// 		spill_store(env, fun, insn);
+	// 	} else if (insn->op == IR_INSN_LOAD) {
+	// 		spill_load(env, fun, insn);
+	// 	} else if (insn->op == IR_INSN_LOADRAW) {
+	// 		spill_loadraw(env, fun, insn);
+	// 	} else if (insn->op == IR_INSN_LOADIMM_EXTRA) {
+	// 		spill_loadrawextra(env, fun, insn);
+	// 	} else if (insn->op == IR_INSN_STORERAW) {
+	// 		spill_storeraw(env, fun, insn);
+	// 	} else if (insn->op == IR_INSN_NEG) {
+	// 		spill_neg(env, fun, insn);
+	// 	} else if (insn->op == IR_INSN_HTOBE || insn->op == IR_INSN_HTOLE) {
+	// 		spill_end(env, fun, insn);
+	// 	} else if (bpf_ir_is_bin_alu(insn)) {
+	// 		spill_alu(env, fun, insn);
+	// 	} else if (insn->op == IR_INSN_ASSIGN) {
+	// 		spill_assign(env, fun, insn);
+	// 	} else if (insn->op == IR_INSN_RET) {
+	// 		spill_ret(env, fun, insn);
+	// 	} else if (bpf_ir_is_cond_jmp(insn)) {
+	// 		spill_cond_jump(env, fun, insn);
+	// 	} else if (insn->op == IR_INSN_PHI) {
+	// 		CRITICAL("todo");
+	// 	} else {
+	// 		RAISE_ERROR("No such instruction");
+	// 	}
+	// 	CHECK_ERR();
 }
 
 static inline s32 get_new_spill(struct ir_function *fun)

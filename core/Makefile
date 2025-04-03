@@ -1,11 +1,10 @@
-init:
-	cmake -S . -B build -G Ninja
+BUILD_DIR = build
 
 build: format
-	cmake --build build
+	cmake --build $(BUILD_DIR)
 
 buildall: genctor
-	cmake --build build
+	cmake --build $(BUILD_DIR)
 
 format:
 	./scripts/format.sh
@@ -17,16 +16,19 @@ genctor:
 kernel: build
 	./scripts/gen_kernel.sh
 
-read: build
-	epasstool -m read -p tests/output/${NAME}.o -s prog --gopt verbose=3
-
-readlog: build
-	epasstool -m readlog -p tests/log/${NAME}.txt --gopt verbose=3
-
 test: build
-	./build/test_list
-	./build/test_hashtable
-	./build/test_ptrset
+	./$(BUILD_DIR)/test_list
+	./$(BUILD_DIR)/test_hashtable
+	./$(BUILD_DIR)/test_ptrset
 
-.PHONY: build format kernel readlog read genctor test
+configure:
+	@mkdir -p $(BUILD_DIR)
+	@if [ ! -f $(BUILD_DIR)/CMakeCache.txt ]; then \
+		echo "Initializing CMake..."; \
+		cmake -S . -B $(BUILD_DIR) -G Ninja; \
+	fi
+
+dist: configure build
+
+.PHONY: build format kernel readlog read genctor test configure
 .DEFAULT_GOAL := build
