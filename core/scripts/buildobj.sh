@@ -1,11 +1,14 @@
 #!/bin/bash
-if [ ! -d $1 ]; then
-  echo "Directory does not exists"
-  exit 1
-fi
+
+mkdir -p build
 
 files=$(find . -iname '*.c' -not -path "./build/*" -not -path "./tests/*" -not -path "./bpftests/*" -not -path "./epasstool/*")
 
 for file in $files; do
-    cp $file $1/
+  name=$(basename $file)
+  gcc -O2 -Iinclude -c $file -o build/$name.o &
+done
+
+for job in `jobs -p`; do
+    wait $job
 done

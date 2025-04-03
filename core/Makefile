@@ -28,7 +28,8 @@ configure:
 		cmake -S . -B $(BUILD_DIR) -G Ninja; \
 	fi
 
-dist: configure build
+buildobj:
+	./scripts/buildobj.sh
 
-.PHONY: build format kernel readlog read genctor test configure
+.PHONY: build format kernel genctor test configure buildobj
 .DEFAULT_GOAL := build
