@@ -114,6 +114,8 @@ Note. This could be only applied to an instruction with return value.
 */
 #define insn_dst(insn) insn_cg(insn)->dst.data.insn_d
 
+#define insn_dst_v2(insn) insn_cg_v2(insn)->dst
+
 #define insn_norm(insn) ((struct ir_insn_norm_extra *)(insn)->user_data)
 
 void bpf_ir_cg_norm(struct bpf_ir_env *env, struct ir_function *fun);

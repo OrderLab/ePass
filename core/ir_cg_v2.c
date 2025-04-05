@@ -919,7 +919,7 @@ static void spill(struct bpf_ir_env *env, struct ir_function *fun,
 		// %1 = alloc <pos>
 		// ..
 		// %tmp = ...
-		// store %tmp, %1
+		// store %1, %tmp
 		struct ir_insn *alloc_insn;
 
 		DBGASSERT(v->op != IR_INSN_CALL);
@@ -937,6 +937,12 @@ static void spill(struct bpf_ir_env *env, struct ir_function *fun,
 			insn_cg_v2(alloc_insn)->vr_pos.spilled =
 				get_new_spill(fun);
 			insn_cg_v2(alloc_insn)->vr_pos.spilled_size = 8;
+
+			struct ir_insn *store_insn =
+				bpf_ir_create_store_insn_cg_v2(
+					env, v, alloc_insn,
+					bpf_ir_value_insn(v), INSERT_BACK);
+			DBGASSERT(insn_dst_v2(store_insn) == NULL);
 		}
 
 		// struct ir_insn **pos2;
