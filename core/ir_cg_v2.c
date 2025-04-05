@@ -906,30 +906,53 @@ static inline s32 get_new_spill(struct ir_function *fun)
 static void spill(struct bpf_ir_env *env, struct ir_function *fun,
 		  struct array *to_spill)
 {
-	struct ptrset insns;
-	INIT_PTRSET_DEF(&insns);
+	// struct ptrset insns;
+	// INIT_PTRSET_DEF(&insns);
 	struct ir_insn **pos;
 	array_for(pos, (*to_spill))
 	{
-		bpf_ir_ptrset_insert(env, &insns, *pos);
-		struct ir_insn_cg_extra_v2 *extra = (*pos)->user_data;
-		extra->vr_pos.allocated = true;
-		extra->vr_pos.spilled_size = 8;
-		extra->vr_pos.spilled = get_new_spill(fun);
-		struct ir_insn **pos2;
-		array_for(pos2, (*pos)->users)
-		{
-			bpf_ir_ptrset_insert(env, &insns, *pos2);
+		struct ir_insn *v = *pos;
+		// struct ir_insn_cg_extra_v2 *extra = (*pos)->user_data;
+
+		// v = ...
+		// ==>
+		// %1 = alloc <pos>
+		// ..
+		// %tmp = ...
+		// store %tmp, %1
+		struct ir_insn *alloc_insn;
+
+		DBGASSERT(v->op != IR_INSN_CALL);
+		DBGASSERT(v->op != IR_INSN_ALLOCARRAY);
+
+		if (v->op == IR_INSN_ALLOC) {
+			// spill alloc
+			CRITICAL("todo");
+		} else {
+			alloc_insn = bpf_ir_create_alloc_insn_bb_cgv2(
+				env, fun->entry, IR_VR_TYPE_64,
+				INSERT_FRONT_AFTER_PHI);
+			insn_cg_v2(alloc_insn)->finalized = true;
+			insn_cg_v2(alloc_insn)->vr_pos.allocated = true;
+			insn_cg_v2(alloc_insn)->vr_pos.spilled =
+				get_new_spill(fun);
+			insn_cg_v2(alloc_insn)->vr_pos.spilled_size = 8;
 		}
+
+		// struct ir_insn **pos2;
+		// array_for(pos2, (*pos)->users)
+		// {
+		// 	bpf_ir_ptrset_insert(env, &insns, *pos2);
+		// }
 	}
 
-	ptrset_for(pos, insns)
-	{
-		spill_insn(env, fun, *pos);
-		CHECK_ERR();
-	}
+	// ptrset_for(pos, insns)
+	// {
+	// 	spill_insn(env, fun, *pos);
+	// 	CHECK_ERR();
+	// }
 
-	bpf_ir_ptrset_free(&insns);
+	// bpf_ir_ptrset_free(&insns);
 }
 
 static void coloring(struct bpf_ir_env *env, struct ir_function *fun)
