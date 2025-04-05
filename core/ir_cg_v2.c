@@ -929,7 +929,7 @@ static void spill(struct bpf_ir_env *env, struct ir_function *fun,
 			// spill alloc
 			CRITICAL("todo");
 		} else {
-			alloc_insn = bpf_ir_create_alloc_insn_bb_cgv2(
+			alloc_insn = bpf_ir_create_alloc_insn_bb_cg_v2(
 				env, fun->entry, IR_VR_TYPE_64,
 				INSERT_FRONT_AFTER_PHI);
 			insn_cg_v2(alloc_insn)->finalized = true;
