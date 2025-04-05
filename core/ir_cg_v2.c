@@ -863,7 +863,7 @@ static enum val_type vtype(struct ir_value val)
 // }
 
 static void spill_insn(struct bpf_ir_env *env, struct ir_function *fun,
-		       struct ir_insn *insn)
+		       struct ir_insn *insn, struct ir_insn *alloc_insn)
 {
 	// 	if (insn->op == IR_INSN_GETELEMPTR) {
 	// 		spill_getelemptr(env, fun, insn);
@@ -906,13 +906,10 @@ static inline s32 get_new_spill(struct ir_function *fun)
 static void spill(struct bpf_ir_env *env, struct ir_function *fun,
 		  struct array *to_spill)
 {
-	// struct ptrset insns;
-	// INIT_PTRSET_DEF(&insns);
 	struct ir_insn **pos;
 	array_for(pos, (*to_spill))
 	{
 		struct ir_insn *v = *pos;
-		// struct ir_insn_cg_extra_v2 *extra = (*pos)->user_data;
 
 		// v = ...
 		// ==>
@@ -920,6 +917,7 @@ static void spill(struct bpf_ir_env *env, struct ir_function *fun,
 		// ..
 		// %tmp = ...
 		// store %1, %tmp
+
 		struct ir_insn *alloc_insn;
 
 		DBGASSERT(v->op != IR_INSN_CALL);
@@ -927,7 +925,7 @@ static void spill(struct bpf_ir_env *env, struct ir_function *fun,
 
 		if (v->op == IR_INSN_ALLOC) {
 			// spill alloc
-			CRITICAL("todo");
+			alloc_insn = v;
 		} else {
 			alloc_insn = bpf_ir_create_alloc_insn_bb_cg_v2(
 				env, fun->entry, IR_VR_TYPE_64,
@@ -945,20 +943,14 @@ static void spill(struct bpf_ir_env *env, struct ir_function *fun,
 			DBGASSERT(insn_dst_v2(store_insn) == NULL);
 		}
 
-		// struct ir_insn **pos2;
-		// array_for(pos2, (*pos)->users)
-		// {
-		// 	bpf_ir_ptrset_insert(env, &insns, *pos2);
-		// }
+		// Spill every user of v (spill-everywhere algorithm)
+		struct ir_insn **pos2;
+		array_for(pos2, (*pos)->users)
+		{
+			spill_insn(env, fun, *pos2, alloc_insn);
+			CHECK_ERR();
+		}
 	}
-
-	// ptrset_for(pos, insns)
-	// {
-	// 	spill_insn(env, fun, *pos);
-	// 	CHECK_ERR();
-	// }
-
-	// bpf_ir_ptrset_free(&insns);
 }
 
 static void coloring(struct bpf_ir_env *env, struct ir_function *fun)
