@@ -85,6 +85,11 @@ struct ir_insn_cg_extra_v2 {
 	u32 lambda; // used in MCS
 	u32 w; // number of maximalCl that has this vertex. used in pre-spill
 
+	// Whether the vr_pos is finalized (pre-colored)
+	// If not finalized, vr_pos will be cleaned in each iteration
+	// of RA
+	bool finalized;
+
 	struct ir_vr_pos vr_pos;
 
 	// Whether this instruction is a non-VR instruction, like a pre-colored register

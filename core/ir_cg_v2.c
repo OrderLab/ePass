@@ -65,7 +65,7 @@ static void set_insn_dst(struct ir_insn *insn, struct ir_insn *dst)
 
 static void pre_color(struct ir_function *fun, struct ir_insn *insn, u8 reg)
 {
-	set_insn_dst(insn, fun->cg_info.regs[reg]);
+	insn_cg_v2(insn)->finalized = true;
 	insn_cg_v2(insn)->vr_pos.allocated = true;
 	insn_cg_v2(insn)->vr_pos.alloc_reg = reg;
 	insn_cg_v2(insn)->vr_pos.spilled = 0;
@@ -82,6 +82,7 @@ void bpf_ir_init_insn_cg_v2(struct bpf_ir_env *env, struct ir_insn *insn)
 	extra->vr_pos.spilled = 0;
 	extra->vr_pos.spilled_size = 0;
 	extra->vr_pos.alloc_reg = 0;
+	extra->finalized = false;
 	extra->lambda = 0;
 	extra->w = 0;
 
@@ -120,12 +121,14 @@ static void init_cg(struct bpf_ir_env *env, struct ir_function *fun)
 		extra->vr_pos.alloc_reg = i;
 		extra->vr_pos.allocated = true;
 		extra->nonvr = true;
+		extra->finalized = true;
 	}
 	bpf_ir_init_insn_cg_v2(env, fun->sp);
 	struct ir_insn_cg_extra_v2 *extra = insn_cg_v2(fun->sp);
 	extra->vr_pos.alloc_reg = 10;
 	extra->vr_pos.allocated = true;
 	extra->nonvr = true;
+	extra->finalized = true;
 }
 
 /*
@@ -171,7 +174,7 @@ static void change_call(struct bpf_ir_env *env, struct ir_function *fun)
 				insn->value_num = 0; // Remove all operands
 
 				// Change function call dst
-				insn_cg_v2(insn)->dst = NULL;
+				set_insn_dst(insn, NULL);
 				if (insn->users.num_elem == 0) {
 					continue;
 				}
@@ -209,7 +212,9 @@ static void spill_array(struct bpf_ir_env *env, struct ir_function *fun)
 					RAISE_ERROR("Array size is 0");
 				}
 				offset -= (((size - 1) / 8) + 1) * 8;
-				extra->vr_pos.spilled = offset;
+				CRITICAL("todo");
+				extra->vr_pos.spilled =
+					offset; // Wrong!!! !TODO!
 				extra->vr_pos.spilled_size = size;
 				extra->nonvr = true; // Array is not a VR
 				extra->dst = NULL;
@@ -228,12 +233,19 @@ static void print_ir_dst_v2(struct bpf_ir_env *env, struct ir_insn *insn)
 		PRINT_LOG_DEBUG(env, "(?)");
 		RAISE_ERROR("NULL userdata found");
 	}
-	print_insn_ptr_base(env, insn);
 	insn = insn_cg_v2(insn)->dst;
 	if (insn) {
-		PRINT_LOG_DEBUG(env, "(");
-		print_insn_ptr_base(env, insn);
-		PRINT_LOG_DEBUG(env, ")");
+		struct ir_vr_pos pos = insn_cg_v2(insn)->vr_pos;
+		if (pos.allocated) {
+			// Pre-colored
+			if (pos.spilled) {
+				PRINT_LOG_DEBUG(env, "SP+%u", pos.spilled);
+			} else {
+				PRINT_LOG_DEBUG(env, "R%u", pos.alloc_reg);
+			}
+		} else {
+			print_insn_ptr_base(env, insn);
+		}
 	} else {
 		PRINT_LOG_DEBUG(env, "(NULL)");
 	}
@@ -287,58 +299,91 @@ static void print_insn_extra(struct bpf_ir_env *env, struct ir_insn *insn)
 SSA liveness analysis.
 */
 
-static void live_in_at_statement(struct bpf_ir_env *env, struct ptrset *M,
+static void live_in_at_statement(struct bpf_ir_env *env,
+				 struct ir_function *fun, struct ptrset *M,
 				 struct ir_insn *s, struct ir_insn *v);
 
-static void live_out_at_statement(struct bpf_ir_env *env, struct ptrset *M,
+static void live_out_at_statement(struct bpf_ir_env *env,
+				  struct ir_function *fun, struct ptrset *M,
 				  struct ir_insn *s, struct ir_insn *v);
 
-static void make_conflict(struct bpf_ir_env *env, struct ir_insn *v1,
-			  struct ir_insn *v2)
+static void make_conflict(struct bpf_ir_env *env, struct ir_function *fun,
+			  struct ir_insn *v1, struct ir_insn *v2)
 {
 	struct ir_insn_cg_extra_v2 *v1e = insn_cg_v2(v1);
 	struct ir_insn_cg_extra_v2 *v2e = insn_cg_v2(v2);
-	bpf_ir_ptrset_insert(env, &v1e->adj, v2);
-	bpf_ir_ptrset_insert(env, &v2e->adj, v1);
+	struct ir_insn *r1 = v1;
+	struct ir_insn *r2 = v2;
+	if (v1e->finalized) {
+		DBGASSERT(v1e->vr_pos.allocated);
+	}
+	if (v1e->vr_pos.allocated) {
+		DBGASSERT(v1e->finalized);
+		if (v1e->vr_pos.spilled) {
+			// v1 is pre-spilled, no conflict
+			return;
+		} else {
+			r1 = fun->cg_info.regs[v1e->vr_pos.alloc_reg];
+		}
+	}
+	if (v2e->finalized) {
+		DBGASSERT(v2e->vr_pos.allocated);
+	}
+	if (v2e->vr_pos.allocated) {
+		DBGASSERT(v2e->finalized);
+		if (v2e->vr_pos.spilled) {
+			// v2 is pre-spilled, no conflict
+			return;
+		} else {
+			r2 = fun->cg_info.regs[v2e->vr_pos.alloc_reg];
+		}
+	}
+	struct ir_insn_cg_extra_v2 *r1e = insn_cg_v2(r1);
+	struct ir_insn_cg_extra_v2 *r2e = insn_cg_v2(r2);
+	bpf_ir_ptrset_insert(env, &r1e->adj, r2);
+	bpf_ir_ptrset_insert(env, &r2e->adj, r1);
 }
 
-static void live_out_at_block(struct bpf_ir_env *env, struct ptrset *M,
-			      struct ir_basic_block *n, struct ir_insn *v)
+static void live_out_at_block(struct bpf_ir_env *env, struct ir_function *fun,
+			      struct ptrset *M, struct ir_basic_block *n,
+			      struct ir_insn *v)
 {
 	if (!bpf_ir_ptrset_exists(M, n)) {
 		bpf_ir_ptrset_insert(env, M, n);
 		struct ir_insn *last = bpf_ir_get_last_insn(n);
 		if (last) {
-			live_out_at_statement(env, M, last, v);
+			live_out_at_statement(env, fun, M, last, v);
 		} else {
 			// Empty BB
 			struct array preds = n->preds;
 			struct ir_basic_block **pos;
 			array_for(pos, preds)
 			{
-				live_out_at_block(env, M, *pos, v);
+				live_out_at_block(env, fun, M, *pos, v);
 			}
 		}
 	}
 }
 
-static void live_out_at_statement(struct bpf_ir_env *env, struct ptrset *M,
+static void live_out_at_statement(struct bpf_ir_env *env,
+				  struct ir_function *fun, struct ptrset *M,
 				  struct ir_insn *s, struct ir_insn *v)
 {
 	struct ir_insn_cg_extra_v2 *se = insn_cg_v2(s);
 	bpf_ir_ptrset_insert(env, &se->out, v);
 	if (se->dst) {
 		if (se->dst != v) {
-			make_conflict(env, v, se->dst);
-			live_in_at_statement(env, M, s, v);
+			make_conflict(env, fun, v, se->dst);
+			live_in_at_statement(env, fun, M, s, v);
 		}
 	} else {
 		// s has no dst (no KILL)
-		live_in_at_statement(env, M, s, v);
+		live_in_at_statement(env, fun, M, s, v);
 	}
 }
 
-static void live_in_at_statement(struct bpf_ir_env *env, struct ptrset *M,
+static void live_in_at_statement(struct bpf_ir_env *env,
+				 struct ir_function *fun, struct ptrset *M,
 				 struct ir_insn *s, struct ir_insn *v)
 {
 	bpf_ir_ptrset_insert(env, &(insn_cg_v2(s))->in, v);
@@ -348,10 +393,10 @@ static void live_in_at_statement(struct bpf_ir_env *env, struct ptrset *M,
 		struct ir_basic_block **pos;
 		array_for(pos, s->parent_bb->preds)
 		{
-			live_out_at_block(env, M, *pos, v);
+			live_out_at_block(env, fun, M, *pos, v);
 		}
 	} else {
-		live_out_at_statement(env, M, prev, v);
+		live_out_at_statement(env, fun, M, prev, v);
 	}
 }
 
@@ -448,10 +493,8 @@ static void clean_cg_data_insn(struct ir_insn *insn)
 		extra->lambda = 0;
 		extra->w = 0;
 
-		if (!extra->nonvr && extra->dst == insn &&
-		    extra->vr_pos.allocated && extra->vr_pos.spilled == 0) {
+		if (!extra->finalized) {
 			// Clean register allocation
-			// Do not remove stack allocation
 			extra->vr_pos.allocated = false;
 		}
 	}
@@ -498,13 +541,12 @@ static void liveness_analysis(struct bpf_ir_env *env, struct ir_function *fun)
 		list_for_each_entry(v, &bb->ir_insn_head, list_ptr) {
 			struct ir_insn_cg_extra_v2 *extra = insn_cg_v2(v);
 
-			if (extra->dst) {
-				if (extra->dst == v) {
-					// dst is a VR
-					bpf_ir_ptrset_insert(
-						env, &fun->cg_info.all_var_v2,
-						v);
-				}
+			if (extra->dst && !extra->finalized) {
+				DBGASSERT(extra->dst == v);
+				// Note. Assume pre-colored register VR has no users
+				// dst is a VR
+				bpf_ir_ptrset_insert(
+					env, &fun->cg_info.all_var_v2, v);
 
 				bpf_ir_ptrset_clean(&M);
 				struct ir_insn **pos;
@@ -522,7 +564,8 @@ static void liveness_analysis(struct bpf_ir_env *env, struct ir_function *fun)
 								    v) {
 								found = true;
 								live_out_at_block(
-									env, &M,
+									env,
+									fun, &M,
 									pos2->bb,
 									v);
 								break;
@@ -533,8 +576,8 @@ static void liveness_analysis(struct bpf_ir_env *env, struct ir_function *fun)
 								"Not found user!");
 						}
 					} else {
-						live_in_at_statement(env, &M, s,
-								     v);
+						live_in_at_statement(env, fun,
+								     &M, s, v);
 					}
 				}
 
@@ -543,7 +586,7 @@ static void liveness_analysis(struct bpf_ir_env *env, struct ir_function *fun)
 					struct phi_value *pos2;
 					array_for(pos2, v->phi)
 					{
-						live_out_at_block(env, &M,
+						live_out_at_block(env, fun, &M,
 								  pos2->bb, v);
 					}
 				}
@@ -560,7 +603,7 @@ static void caller_constraint(struct bpf_ir_env *env, struct ir_function *fun,
 {
 	for (u8 i = BPF_REG_0; i < BPF_REG_6; ++i) {
 		// R0-R5 are caller saved register
-		make_conflict(env, fun->cg_info.regs[i], insn);
+		make_conflict(env, fun, fun->cg_info.regs[i], insn);
 	}
 }
 
@@ -571,7 +614,7 @@ static void conflict_analysis(struct bpf_ir_env *env, struct ir_function *fun)
 	for (u8 i = 0; i < RA_COLORS; ++i) {
 		for (u8 j = i + 1; j < RA_COLORS; ++j) {
 			// All physical registers are conflicting
-			make_conflict(env, fun->cg_info.regs[i],
+			make_conflict(env, fun, fun->cg_info.regs[i],
 				      fun->cg_info.regs[j]);
 		}
 	}

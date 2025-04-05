@@ -207,3 +207,17 @@ The form that could be directly mapped to a bytecode instruction.
 REG = REG
 REG = CONST32
 ```
+
+# CG v2
+
+## dst
+
+Two cases:
+
+dst(insn) == insn
+
+Meaning: This is a VR. (may be pre-colored)
+
+dst(insn) == NULL
+
+Meaning: No output from this instruction.
