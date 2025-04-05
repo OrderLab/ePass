@@ -263,10 +263,18 @@ static void print_ir_alloc_v2(struct bpf_ir_env *env, struct ir_insn *insn)
 	}
 	struct ir_vr_pos pos = insn_cg_v2(insn)->vr_pos;
 	DBGASSERT(pos.allocated);
-	if (pos.spilled) {
-		PRINT_LOG_DEBUG(env, "sp+%u", pos.spilled);
+	if (insn_cg_v2(insn)->finalized) {
+		if (pos.spilled) {
+			PRINT_LOG_DEBUG(env, "SP+%u", pos.spilled);
+		} else {
+			PRINT_LOG_DEBUG(env, "R%u", pos.alloc_reg);
+		}
 	} else {
-		PRINT_LOG_DEBUG(env, "r%u", pos.alloc_reg);
+		if (pos.spilled) {
+			PRINT_LOG_DEBUG(env, "sp+%u", pos.spilled);
+		} else {
+			PRINT_LOG_DEBUG(env, "r%u", pos.alloc_reg);
+		}
 	}
 }
 
@@ -975,20 +983,18 @@ static void coalescing(struct bpf_ir_env *env, struct ir_function *fun)
 			if (v->op == IR_INSN_ASSIGN) {
 				DBGASSERT(extra->dst);
 				struct ir_insn *v2 = v->values[0].data.insn_d;
-				struct ir_insn *v0 = extra->dst;
-				struct ir_insn_cg_extra_v2 *extra_v0 =
-					insn_cg_v2(v0);
-				// v0 = v2
-				if (extra_v0->vr_pos.spilled == 0 &&
+				struct ir_insn_cg_extra_v2 *v2e =
+					insn_cg_v2(v2);
+				// v = v2
+				if (extra->vr_pos.spilled == 0 &&
 				    v->values[0].type == IR_VALUE_INSN &&
-				    insn_cg_v2(v2)->vr_pos.spilled == 0 &&
-				    insn_cg_v2(v2)->vr_pos.alloc_reg !=
-					    extra_v0->vr_pos.alloc_reg) {
+				    v2e->vr_pos.spilled == 0 &&
+				    v2e->vr_pos.alloc_reg !=
+					    extra->vr_pos.alloc_reg) {
 					// Coalesce
 					u8 used_colors[RA_COLORS] = { 0 };
 					struct ir_insn **pos2;
-					ptrset_for(pos2,
-						   extra_v0->adj) // v0's adj
+					ptrset_for(pos2, extra->adj) // v0's adj
 					{
 						struct ir_insn *c = *pos2;
 						struct ir_insn_cg_extra_v2 *cex =
@@ -1003,9 +1009,7 @@ static void coalescing(struct bpf_ir_env *env, struct ir_function *fun)
 						}
 					}
 
-					ptrset_for(
-						pos2,
-						insn_cg_v2(v2)->adj) // v2's adj
+					ptrset_for(pos2, v2e->adj) // v2's adj
 					{
 						struct ir_insn *c = *pos2;
 						struct ir_insn_cg_extra_v2 *cex =
@@ -1025,26 +1029,21 @@ static void coalescing(struct bpf_ir_env *env, struct ir_function *fun)
 					// 2. %x = Ry
 					// 3. %x = %y
 
-					if (extra_v0->nonvr) {
+					if (extra->finalized) {
 						if (!used_colors
-							    [extra_v0->vr_pos
+							    [extra->vr_pos
 								     .alloc_reg]) {
 							// Able to merge
-							insn_cg_v2(v2)
-								->vr_pos
-								.alloc_reg =
-								extra_v0->vr_pos
+							v2e->vr_pos.alloc_reg =
+								extra->vr_pos
 									.alloc_reg;
 						}
-					} else if (insn_cg_v2(v2)->nonvr) {
+					} else if (v2e->finalized) {
 						if (!used_colors
-							    [insn_cg_v2(v2)
-								     ->vr_pos
+							    [v2e->vr_pos
 								     .alloc_reg]) {
-							extra_v0->vr_pos
-								.alloc_reg =
-								insn_cg_v2(v2)
-									->vr_pos
+							extra->vr_pos.alloc_reg =
+								v2e->vr_pos
 									.alloc_reg;
 						}
 					} else {
@@ -1060,12 +1059,9 @@ static void coalescing(struct bpf_ir_env *env, struct ir_function *fun)
 							}
 						}
 						if (has_unused_color) {
-							extra_v0->vr_pos
-								.alloc_reg =
+							extra->vr_pos.alloc_reg =
 								ureg;
-							insn_cg_v2(v2)
-								->vr_pos
-								.alloc_reg =
+							v2e->vr_pos.alloc_reg =
 								ureg;
 						}
 					}
