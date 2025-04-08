@@ -323,6 +323,10 @@ void bpf_ir_erase_insn_norm(struct ir_insn *insn)
 void bpf_ir_insert_at(struct ir_insn *new_insn, struct ir_insn *insn,
 		      enum insert_position pos)
 {
+	if (insn->op == IR_INSN_PHI && new_insn->op != IR_INSN_PHI) {
+		bpf_ir_insert_at_bb(new_insn, insn->parent_bb, INSERT_FRONT_AFTER_PHI);
+		return;
+	}
 	if (pos == INSERT_BACK) {
 		list_add(&new_insn->list_ptr, &insn->list_ptr);
 	} else if (pos == INSERT_FRONT) {
