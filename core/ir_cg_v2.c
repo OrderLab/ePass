@@ -12,6 +12,16 @@ Pereira, F., and Palsberg, J., "Register Allocation via the Coloring of Chordal 
 
 */
 
+/* CG Preparation Passes */
+static struct function_pass cg_init_passes[] = {
+	DEF_NON_OVERRIDE_FUNC_PASS(translate_throw, "translate_throw"),
+	DEF_FUNC_PASS(bpf_ir_optimize_code_compaction, "optimize_compaction",
+		      false),
+	DEF_NON_OVERRIDE_FUNC_PASS(bpf_ir_optimize_ir, "optimize_ir"),
+	// DEF_NON_OVERRIDE_FUNC_PASS(bpf_ir_cg_add_stack_offset_pre_cg,
+	// 			   "add_stack_offset"),
+};
+
 // Erase an instruction.
 // Only used in SSA Out process.
 // Do not use it within RA (it doesn not maintain adj and all_var stuff properly)
@@ -1139,6 +1149,11 @@ static void remove_phi(struct bpf_ir_env *env, struct ir_function *fun)
 void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	u64 starttime = get_cur_time_ns();
+
+	bpf_ir_run_passes(env, fun, cg_init_passes,
+			  sizeof(cg_init_passes) / sizeof(cg_init_passes[0]));
+	CHECK_ERR();
+
 	init_cg(env, fun);
 	CHECK_ERR();
 

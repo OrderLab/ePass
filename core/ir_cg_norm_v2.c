@@ -419,6 +419,32 @@ static void normalize_getelemptr(struct bpf_ir_env *env, struct ir_insn *insn)
 	}
 }
 
+static void normalize_store(struct bpf_ir_env *env, struct ir_insn *insn)
+{
+	struct ir_value *v0 = &insn->values[0];
+	struct ir_value *v1 = &insn->values[1];
+	// store v0, v1
+	// ==>
+	// v0 = v1
+	insn->op = IR_INSN_ASSIGN;
+	insn_norm(insn)->pos = v0->data.vr_pos;
+	*v0 = *v1;
+	insn->value_num = 1;
+	normalize_assign(insn);
+}
+
+static void normalize_load(struct bpf_ir_env *env, struct ir_insn *insn)
+{
+	// struct ir_value *v0 = &insn->values[0];
+	// enum val_type t0 = insn->value_num >= 1 ? vtype(*v0) : UNDEF;
+	// enum val_type tdst = vtype_insn_norm(insn);
+	// reg1 = load reg2
+	// ==>
+	// reg1 = reg2
+	insn->op = IR_INSN_ASSIGN;
+	normalize_assign(insn);
+}
+
 static void normalize_stackoff(struct ir_insn *insn)
 {
 	// Could be storeraw or loadraw
@@ -531,10 +557,9 @@ static void normalize(struct bpf_ir_env *env, struct ir_function *fun)
 			} else if (insn->op == IR_INSN_GETELEMPTR) {
 				normalize_getelemptr(env, insn);
 			} else if (insn->op == IR_INSN_STORE) {
-				// Should be converted to ASSIGN
-				CRITICAL("Error");
+				normalize_store(env, insn);
 			} else if (insn->op == IR_INSN_LOAD) {
-				CRITICAL("Error");
+				normalize_load(env, insn);
 			} else if (insn->op == IR_INSN_LOADRAW) {
 				normalize_stackoff(insn);
 			} else if (insn->op == IR_INSN_LOADIMM_EXTRA) {

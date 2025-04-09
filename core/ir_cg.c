@@ -1914,6 +1914,7 @@ void bpf_ir_compile(struct bpf_ir_env *env, struct ir_function *fun)
 
 	bpf_ir_run_passes(env, fun, cg_init_passes,
 			  sizeof(cg_init_passes) / sizeof(cg_init_passes[0]));
+	CHECK_ERR();
 
 	// Init CG, start code generation
 	init_cg(env, fun);

@@ -461,7 +461,6 @@ static void normalize(struct bpf_ir_env *env, struct ir_function *fun)
 			} else if (insn->op == IR_INSN_GETELEMPTR) {
 				normalize_getelemptr(env, insn);
 			} else if (insn->op == IR_INSN_STORE) {
-				// Should be converted to ASSIGN
 				CRITICAL("Error");
 			} else if (insn->op == IR_INSN_LOAD) {
 				CRITICAL("Error");
