@@ -239,7 +239,7 @@ static void print_ir_dst_v2(struct bpf_ir_env *env, struct ir_insn *insn)
 		if (pos.allocated) {
 			// Pre-colored
 			if (pos.spilled) {
-				PRINT_LOG_DEBUG(env, "SP+%u", pos.spilled);
+				PRINT_LOG_DEBUG(env, "SP+%d", pos.spilled);
 			} else {
 				PRINT_LOG_DEBUG(env, "R%u", pos.alloc_reg);
 			}
@@ -265,13 +265,13 @@ static void print_ir_alloc_v2(struct bpf_ir_env *env, struct ir_insn *insn)
 	DBGASSERT(pos.allocated);
 	if (insn_cg_v2(insn)->finalized) {
 		if (pos.spilled) {
-			PRINT_LOG_DEBUG(env, "SP+%u", pos.spilled);
+			PRINT_LOG_DEBUG(env, "SP+%d", pos.spilled);
 		} else {
 			PRINT_LOG_DEBUG(env, "R%u", pos.alloc_reg);
 		}
 	} else {
 		if (pos.spilled) {
-			PRINT_LOG_DEBUG(env, "sp+%u", pos.spilled);
+			PRINT_LOG_DEBUG(env, "sp+%d", pos.spilled);
 		} else {
 			PRINT_LOG_DEBUG(env, "r%u", pos.alloc_reg);
 		}
@@ -981,42 +981,43 @@ static void coalescing(struct bpf_ir_env *env, struct ir_function *fun)
 		struct ir_basic_block *bb = *pos;
 		struct ir_insn *v;
 		list_for_each_entry(v, &bb->ir_insn_head, list_ptr) {
+			struct ir_insn *v1 = v;
 			struct ir_insn *v2 = NULL;
-			// v = v2
-			if (v->op == IR_INSN_ASSIGN) {
-				if (v->values[0].type != IR_VALUE_INSN) {
+			// v1 = v2
+			if (v1->op == IR_INSN_ASSIGN) {
+				if (v1->values[0].type != IR_VALUE_INSN) {
 					continue;
 				}
-				v2 = v->values[0].data.insn_d;
+				v2 = v1->values[0].data.insn_d;
 				// v = v2
-			} else if (v->op == IR_INSN_STORE) {
+			} else if (v1->op == IR_INSN_STORE) {
 				// store v[0], v[1]
-				DBGASSERT(v->values[0].type == IR_VALUE_INSN);
-				DBGASSERT(v->values[0].data.insn_d->op ==
+				DBGASSERT(v1->values[0].type == IR_VALUE_INSN);
+				DBGASSERT(v1->values[0].data.insn_d->op ==
 					  IR_INSN_ALLOC);
-				if (v->values[1].type != IR_VALUE_INSN) {
+				if (v1->values[1].type != IR_VALUE_INSN) {
 					continue;
 				}
-				v2 = v->values[1].data.insn_d;
-				v = v->values[0].data.insn_d;
-			} else if (v->op == IR_INSN_LOAD) {
+				v2 = v1->values[1].data.insn_d;
+				v1 = v1->values[0].data.insn_d;
+			} else if (v1->op == IR_INSN_LOAD) {
 				// v = load val[0]
-				DBGASSERT(v->values[0].type == IR_VALUE_INSN);
-				DBGASSERT(v->values[0].data.insn_d->op ==
+				DBGASSERT(v1->values[0].type == IR_VALUE_INSN);
+				DBGASSERT(v1->values[0].data.insn_d->op ==
 					  IR_INSN_ALLOC);
-				v2 = v->values[0].data.insn_d;
+				v2 = v1->values[0].data.insn_d;
 			} else {
 				continue;
 			}
-			struct ir_insn_cg_extra_v2 *extra = insn_cg_v2(v);
+			struct ir_insn_cg_extra_v2 *v1e = insn_cg_v2(v1);
 			struct ir_insn_cg_extra_v2 *v2e = insn_cg_v2(v2);
-			if (extra->vr_pos.spilled == 0 &&
+			if (v1e->vr_pos.spilled == 0 &&
 			    v2e->vr_pos.spilled == 0 &&
-			    v2e->vr_pos.alloc_reg != extra->vr_pos.alloc_reg) {
+			    v2e->vr_pos.alloc_reg != v1e->vr_pos.alloc_reg) {
 				// Coalesce
 				u8 used_colors[RA_COLORS] = { 0 };
 				struct ir_insn **pos2;
-				ptrset_for(pos2, extra->adj) // v0's adj
+				ptrset_for(pos2, v1e->adj) // v0's adj
 				{
 					struct ir_insn *c = *pos2;
 					struct ir_insn_cg_extra_v2 *cex =
@@ -1047,16 +1048,15 @@ static void coalescing(struct bpf_ir_env *env, struct ir_function *fun)
 				// 2. %x = Ry
 				// 3. %x = %y
 
-				if (extra->finalized) {
-					if (!used_colors[extra->vr_pos
-								 .alloc_reg]) {
+				if (v1e->finalized) {
+					if (!used_colors[v1e->vr_pos.alloc_reg]) {
 						// Able to merge
 						v2e->vr_pos.alloc_reg =
-							extra->vr_pos.alloc_reg;
+							v1e->vr_pos.alloc_reg;
 					}
 				} else if (v2e->finalized) {
 					if (!used_colors[v2e->vr_pos.alloc_reg]) {
-						extra->vr_pos.alloc_reg =
+						v1e->vr_pos.alloc_reg =
 							v2e->vr_pos.alloc_reg;
 					}
 				} else {
@@ -1070,7 +1070,7 @@ static void coalescing(struct bpf_ir_env *env, struct ir_function *fun)
 						}
 					}
 					if (has_unused_color) {
-						extra->vr_pos.alloc_reg = ureg;
+						v1e->vr_pos.alloc_reg = ureg;
 						v2e->vr_pos.alloc_reg = ureg;
 					}
 				}
@@ -1172,10 +1172,13 @@ void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun)
 		} else {
 			// spill
 			spill(env, fun, &to_spill);
+			print_ir_prog_cg_dst(env, fun, "After Spill");
 		}
 		bpf_ir_array_free(&to_spill);
 		iteration++;
 	}
+
+	PRINT_LOG_DEBUG(env, "RA finished in %u iterations\n", iteration);
 
 	// Graph coloring
 	coloring(env, fun);
