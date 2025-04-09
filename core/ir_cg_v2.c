@@ -802,7 +802,18 @@ static struct ir_insn *cgir_load_stack(struct bpf_ir_env *env,
 	struct ir_insn *tmp = bpf_ir_create_load_insn_cg_v2(
 		env, insn, bpf_ir_value_insn(alloc_insn), INSERT_FRONT);
 	tmp->vr_type = alloc_insn->vr_type;
+	return tmp;
+}
 
+static struct ir_insn *cgir_load_stack_bb_end(struct bpf_ir_env *env,
+					      struct ir_function *fun,
+					      struct ir_basic_block *bb,
+					      struct ir_insn *alloc_insn)
+{
+	DBGASSERT(alloc_insn->op == IR_INSN_ALLOC);
+	struct ir_insn *tmp = bpf_ir_create_load_insn_bb_cg_v2(
+		env, bb, bpf_ir_value_insn(alloc_insn), INSERT_BACK_BEFORE_JMP);
+	tmp->vr_type = alloc_insn->vr_type;
 	return tmp;
 }
 
@@ -819,7 +830,20 @@ static void spill_insn(struct bpf_ir_env *env, struct ir_function *fun,
 				      bpf_ir_value_insn(insn))) {
 		// load INSN
 	} else if (insn->op == IR_INSN_PHI) {
-		RAISE_ERROR("todo");
+		struct phi_value *val;
+		array_for(val, insn->phi)
+		{
+			if (val->value.type == IR_VALUE_INSN &&
+			    val->value.data.insn_d == v) {
+				// val uses v, spill it
+				struct ir_insn *spilled_load =
+					cgir_load_stack_bb_end(
+						env, fun, val->bb, alloc_insn);
+				bpf_ir_change_value(
+					env, insn, &val->value,
+					bpf_ir_value_insn(spilled_load));
+			}
+		}
 	} else {
 		// General case
 		struct ir_insn *spilled_load =
