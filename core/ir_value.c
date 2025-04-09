@@ -16,6 +16,22 @@ bool bpf_ir_value_equal(struct ir_value a, struct ir_value b)
 	if (a.type == IR_VALUE_INSN) {
 		return a.data.insn_d == b.data.insn_d;
 	}
+	if (a.type == IR_VALUE_FLATTEN_DST) {
+		if (a.data.vr_pos.allocated != b.data.vr_pos.allocated) {
+			return false;
+		}
+		if (a.data.vr_pos.spilled != b.data.vr_pos.spilled) {
+			return false;
+		}
+		if (a.data.vr_pos.spilled == 0) {
+			return a.data.vr_pos.alloc_reg ==
+			       b.data.vr_pos.alloc_reg;
+		} else {
+			return a.data.vr_pos.spilled_size ==
+			       b.data.vr_pos.spilled_size;
+		}
+		return true;
+	}
 	CRITICAL("Error");
 }
 
@@ -110,6 +126,7 @@ struct ir_value bpf_ir_value_norm_stack_ptr(void)
 	return bpf_ir_value_vrpos(VR_POS_STACK_PTR);
 }
 
+// Change the value of old to new in instruction insn
 void bpf_ir_change_value(struct bpf_ir_env *env, struct ir_insn *insn,
 			 struct ir_value *old, struct ir_value new)
 {

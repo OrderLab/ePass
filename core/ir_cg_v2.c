@@ -58,9 +58,9 @@ static void erase_insn_cg_v2(struct bpf_ir_env *env, struct ir_function *fun,
 	free_proto(insn);
 }
 
-static void set_insn_dst(struct ir_insn *insn, struct ir_insn *dst)
+static void remove_insn_dst(struct ir_insn *insn)
 {
-	insn_cg_v2(insn)->dst = dst;
+	insn_cg_v2(insn)->dst = NULL;
 }
 
 static void pre_color(struct ir_function *fun, struct ir_insn *insn, u8 reg)
@@ -174,7 +174,7 @@ static void change_call(struct bpf_ir_env *env, struct ir_function *fun)
 				insn->value_num = 0; // Remove all operands
 
 				// Change function call dst
-				set_insn_dst(insn, NULL);
+				remove_insn_dst(insn);
 				if (insn->users.num_elem == 0) {
 					continue;
 				}
@@ -793,143 +793,54 @@ struct array pre_spill(struct bpf_ir_env *env, struct ir_function *fun)
 	return to_spill;
 }
 
-static enum val_type vtype_insn(struct ir_insn *insn)
+static struct ir_insn *cgir_load_stack(struct bpf_ir_env *env,
+				       struct ir_function *fun,
+				       struct ir_insn *insn,
+				       struct ir_insn *alloc_insn)
 {
-	struct ir_insn_cg_extra_v2 *extra = insn_cg_v2(insn);
-	if (extra->vr_pos.allocated) {
-		if (extra->vr_pos.spilled) {
-			return STACK;
-		} else {
-			return REG;
-		}
-	} else {
-		return UNDEF;
-	}
-}
+	DBGASSERT(alloc_insn->op == IR_INSN_ALLOC);
+	struct ir_insn *tmp = bpf_ir_create_load_insn_cg_v2(
+		env, insn, bpf_ir_value_insn(alloc_insn), INSERT_FRONT);
+	tmp->vr_type = alloc_insn->vr_type;
 
-static enum val_type vtype(struct ir_value val)
-{
-	if (val.type == IR_VALUE_INSN) {
-		return vtype_insn(val.data.insn_d);
-	} else if (val.type == IR_VALUE_CONSTANT ||
-		   val.type == IR_VALUE_CONSTANT_RAWOFF ||
-		   val.type == IR_VALUE_CONSTANT_RAWOFF_REV) {
-		return CONST;
-	} else {
-		CRITICAL("No such value type for dst");
-	}
-}
-
-// static void spill_getelemptr(struct bpf_ir_env *env, struct ir_function *fun,
-// 			     struct ir_insn *insn)
-// {
-// 	struct ir_value *v0 = &insn->values[0];
-// 	struct ir_value *v1 = &insn->values[1];
-// 	struct ir_insn_cg_extra_v2 *extra = insn_cg_v2(insn);
-// 	enum val_type t0 = insn->value_num >= 1 ? vtype(*v0) : UNDEF;
-// 	enum val_type t1 = insn->value_num >= 2 ? vtype(*v1) : UNDEF;
-// 	enum val_type tdst = vtype_insn(insn);
-// 	// struct ir_insn *dst_insn = insn_dst(insn);
-// 	DBGASSERT(v1->type == IR_VALUE_INSN);
-// 	DBGASSERT(v1->data.insn_d->op == IR_INSN_ALLOCARRAY);
-// 	DBGASSERT(t1 == STACK);
-// 	if (tdst == STACK) {
-// 		// stack = getelemptr reg ptr
-// 		// ==>
-// 		// R0 = getelemptr reg ptr
-// 		// stack = R0
-
-// 		// struct ir_insn *new_insn = bpf_ir_create_getelemptr_insn_cg(
-// 		// 	env, insn, v1->data.insn_d, *v0, INSERT_FRONT);
-// 		// bpf_ir_val_remove_user(*v1, insn);
-
-// 		// bpf_ir_change_value(env, insn, v0,
-// 		// 		    bpf_ir_value_insn(fun->cg_info.regs[0]));
-// 		// insn->value_num = 1;
-// 		// insn->op = IR_INSN_ASSIGN;
-// 		// set_insn_dst(env, new_insn, fun->cg_info.regs[0]);
-// 		// spill_getelemptr(env, fun, insn);
-// 		struct ir_insn *new_insn = bpf_ir_create_assign_insn_cg_v2(
-// 			env, insn, bpf_ir_value_insn(insn), INSERT_BACK);
-// 		insn_cg_v2(new_insn)->vr_pos = extra->vr_pos;
-// 		extra->vr_pos.spilled = 0;
-// 	}
-// 	if (t0 == STACK) {
-// 		cgir_load_stack_to_reg(env, fun, insn, v0, IR_VR_TYPE_64, 0);
-// 	}
-// 	if (t0 == CONST && v0->const_type == IR_ALU_64) {
-// 		cgir_load_const_to_reg(env, fun, insn, v0, 0);
-// 	}
-// }
-
-static void spill_store(struct bpf_ir_env *env, struct ir_function *fun,
-			struct ir_insn *insn)
-{
-	struct ir_value *v0 = &insn->values[0];
-	struct ir_value *v1 = &insn->values[1];
-	// store v0(dst) v1
-	// Equivalent to `v0 = v1`
-	insn->op = IR_INSN_ASSIGN;
-	DBGASSERT(v0->type ==
-		  IR_VALUE_INSN); // Should be guaranteed by prog_check
-	DBGASSERT(v0->data.insn_d->op == IR_INSN_ALLOC);
-	insn->vr_type = v0->data.insn_d->vr_type;
-	DBGASSERT(insn_cg(insn)->dst.type == IR_VALUE_UNDEF);
-	DBGASSERT(insn->users.num_elem == 0); // Store has no users
-	bpf_ir_val_remove_user(*v0, insn);
-	set_insn_dst(env, insn, v0->data.insn_d);
-	insn->value_num = 1;
-	*v0 = *v1;
-	spill_assign(env, fun, insn);
-}
-
-static void spill_load(struct bpf_ir_env *env, struct ir_function *fun,
-		       struct ir_insn *insn)
-{
-	struct ir_value *v0 = &insn->values[0];
-	// stack = load stack
-	// stack = load reg
-	// reg = load reg
-	// reg = load stack
-	insn->op = IR_INSN_ASSIGN;
-	DBGASSERT(v0->type ==
-		  IR_VALUE_INSN); // Should be guaranteed by prog_check
-	DBGASSERT(v0->data.insn_d->op == IR_INSN_ALLOC);
-	insn->vr_type = v0->data.insn_d->vr_type;
-	spill_assign(env, fun, insn);
+	return tmp;
 }
 
 static void spill_insn(struct bpf_ir_env *env, struct ir_function *fun,
-		       struct ir_insn *insn, struct ir_insn *alloc_insn)
+		       struct ir_insn *insn, struct ir_insn *alloc_insn,
+		       struct ir_insn *v)
 {
-	if (insn->op == IR_INSN_STORE) {
-		spill_store(env, fun, insn);
-	} else if (insn->op == IR_INSN_LOAD) {
-		spill_load(env, fun, insn);
-		// 	} else if (insn->op == IR_INSN_LOADRAW) {
-		// 		spill_loadraw(env, fun, insn);
-		// 	} else if (insn->op == IR_INSN_LOADIMM_EXTRA) {
-		// 		spill_loadrawextra(env, fun, insn);
-		// 	} else if (insn->op == IR_INSN_STORERAW) {
-		// 		spill_storeraw(env, fun, insn);
-		// 	} else if (insn->op == IR_INSN_NEG) {
-		// 		spill_neg(env, fun, insn);
-		// 	} else if (insn->op == IR_INSN_HTOBE || insn->op == IR_INSN_HTOLE) {
-		// 		spill_end(env, fun, insn);
-		// 	} else if (bpf_ir_is_bin_alu(insn)) {
-		// 		spill_alu(env, fun, insn);
-		// 	} else if (insn->op == IR_INSN_ASSIGN) {
-		// 		spill_assign(env, fun, insn);
-		// 	} else if (insn->op == IR_INSN_RET) {
-		// 		spill_ret(env, fun, insn);
-		// 	} else if (bpf_ir_is_cond_jmp(insn)) {
-		// 		spill_cond_jump(env, fun, insn);
-		// 	} else if (insn->op == IR_INSN_PHI) {
-		// 		CRITICAL("todo");
-		// 	} else if (insn->op == IR_INSN_GETELEMPTR) {
-		// 		spill_getelemptr(env, fun, insn);
+	// INSN is spilled on stack
+	if (insn->op == IR_INSN_STORE &&
+	    bpf_ir_value_equal(insn->values[0], bpf_ir_value_insn(insn))) {
+		// store INSN xxx
+	} else if (insn->op == IR_INSN_LOAD &&
+		   bpf_ir_value_equal(insn->values[0],
+				      bpf_ir_value_insn(insn))) {
+		// load INSN
+	} else if (insn->op == IR_INSN_PHI) {
+		RAISE_ERROR("todo");
 	} else {
-		RAISE_ERROR("No such instruction");
+		// General case
+		struct ir_insn *spilled_load =
+			cgir_load_stack(env, fun, insn, alloc_insn);
+
+		struct array uses = bpf_ir_get_operands(env, insn);
+		struct ir_value **pos;
+
+		array_for(pos, uses)
+		{
+			struct ir_value *val = *pos;
+			if (val->type == IR_VALUE_INSN &&
+			    val->data.insn_d == v) {
+				// val uses v, spill it
+				bpf_ir_change_value(
+					env, insn, val,
+					bpf_ir_value_insn(spilled_load));
+			}
+		}
+
+		bpf_ir_array_free(&uses);
 	}
 	CHECK_ERR();
 }
@@ -967,6 +878,8 @@ static void spill(struct bpf_ir_env *env, struct ir_function *fun,
 			alloc_insn = bpf_ir_create_alloc_insn_bb_cg_v2(
 				env, fun->entry, IR_VR_TYPE_64,
 				INSERT_FRONT_AFTER_PHI);
+			// Finalize stack spilled value
+			// so that it will not change in next iteration
 			insn_cg_v2(alloc_insn)->finalized = true;
 			insn_cg_v2(alloc_insn)->vr_pos.allocated = true;
 			insn_cg_v2(alloc_insn)->vr_pos.spilled =
@@ -981,12 +894,19 @@ static void spill(struct bpf_ir_env *env, struct ir_function *fun,
 		}
 
 		// Spill every user of v (spill-everywhere algorithm)
+
+		// First clone a copy of users
+		struct array users;
+		bpf_ir_array_clone(env, &users, &v->users);
+
 		struct ir_insn **pos2;
-		array_for(pos2, (*pos)->users)
+		array_for(pos2, users)
 		{
-			spill_insn(env, fun, *pos2, alloc_insn);
+			spill_insn(env, fun, *pos2, alloc_insn, v);
 			CHECK_ERR();
 		}
+
+		bpf_ir_array_free(&users);
 	}
 }
 
@@ -1026,6 +946,11 @@ static void coloring(struct bpf_ir_env *env, struct ir_function *fun)
 			RAISE_ERROR("No register available");
 		}
 	}
+}
+
+static void optimize_alloc(struct bpf_ir_env *env, struct ir_function *fun)
+{
+	RAISE_ERROR("todo");
 }
 
 // Best effort coalescing
@@ -1231,6 +1156,9 @@ void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun)
 	coloring(env, fun);
 	CHECK_ERR();
 	print_ir_prog_cg_alloc(env, fun, "After Coloring");
+
+	// Change store/load to assign
+	optimize_alloc(env, fun);
 
 	// Coalesce
 	coalescing(env, fun);

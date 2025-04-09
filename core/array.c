@@ -74,6 +74,7 @@ void bpf_ir_array_clear(struct bpf_ir_env *env, struct array *arr)
 	arr->num_elem = 0;
 }
 
+// No need to initialize the res array
 void bpf_ir_array_clone(struct bpf_ir_env *env, struct array *res,
 			struct array *arr)
 {
