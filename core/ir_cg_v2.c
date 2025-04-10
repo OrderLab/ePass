@@ -605,6 +605,7 @@ static void liveness_analysis(struct bpf_ir_env *env, struct ir_function *fun)
 					}
 				}
 
+				// TODO: Wrong!!!
 				if (v->op == IR_INSN_PHI) {
 					// v is considered LIVE OUT for all preds
 					struct phi_value *pos2;
@@ -982,6 +983,67 @@ static void coloring(struct bpf_ir_env *env, struct ir_function *fun)
 	}
 }
 
+static void coalesce(struct ir_insn *v1, struct ir_insn *v2)
+{
+	struct ir_insn_cg_extra_v2 *v1e = insn_cg_v2(v1);
+	struct ir_insn_cg_extra_v2 *v2e = insn_cg_v2(v2);
+	if (v1e->vr_pos.spilled == 0 && v2e->vr_pos.spilled == 0 &&
+	    v2e->vr_pos.alloc_reg != v1e->vr_pos.alloc_reg) {
+		// Coalesce
+		u8 used_colors[RA_COLORS] = { 0 };
+		struct ir_insn **pos2;
+		ptrset_for(pos2, v1e->adj) // v1's adj
+		{
+			struct ir_insn *c = *pos2;
+			struct ir_insn_cg_extra_v2 *cex = insn_cg_v2(c);
+			DBGASSERT(cex->vr_pos.allocated);
+			if (cex->vr_pos.spilled == 0) {
+				used_colors[cex->vr_pos.alloc_reg] = true;
+			}
+		}
+
+		ptrset_for(pos2, v2e->adj) // v2's adj
+		{
+			struct ir_insn *c = *pos2;
+			struct ir_insn_cg_extra_v2 *cex = insn_cg_v2(c);
+			DBGASSERT(cex->vr_pos.allocated);
+			if (cex->vr_pos.spilled == 0) {
+				used_colors[cex->vr_pos.alloc_reg] = true;
+			}
+		}
+
+		// There are three cases
+		// 1. Rx = %y
+		// 2. %x = Ry
+		// 3. %x = %y
+
+		if (v1e->finalized) {
+			if (!used_colors[v1e->vr_pos.alloc_reg]) {
+				// Able to merge
+				v2e->vr_pos.alloc_reg = v1e->vr_pos.alloc_reg;
+			}
+		} else if (v2e->finalized) {
+			if (!used_colors[v2e->vr_pos.alloc_reg]) {
+				v1e->vr_pos.alloc_reg = v2e->vr_pos.alloc_reg;
+			}
+		} else {
+			bool has_unused_color = false;
+			u8 ureg = 0;
+			for (u8 i = 0; i < RA_COLORS; ++i) {
+				if (!used_colors[i]) {
+					has_unused_color = true;
+					ureg = i;
+					break;
+				}
+			}
+			if (has_unused_color) {
+				v1e->vr_pos.alloc_reg = ureg;
+				v2e->vr_pos.alloc_reg = ureg;
+			}
+		}
+	}
+}
+
 // Best effort coalescing
 static void coalescing(struct bpf_ir_env *env, struct ir_function *fun)
 {
@@ -999,7 +1061,7 @@ static void coalescing(struct bpf_ir_env *env, struct ir_function *fun)
 					continue;
 				}
 				v2 = v1->values[0].data.insn_d;
-				// v = v2
+				coalesce(v1, v2);
 			} else if (v1->op == IR_INSN_STORE) {
 				// store v[0], v[1]
 				DBGASSERT(v1->values[0].type == IR_VALUE_INSN);
@@ -1010,78 +1072,22 @@ static void coalescing(struct bpf_ir_env *env, struct ir_function *fun)
 				}
 				v2 = v1->values[1].data.insn_d;
 				v1 = v1->values[0].data.insn_d;
+				coalesce(v1, v2);
 			} else if (v1->op == IR_INSN_LOAD) {
 				// v = load val[0]
 				DBGASSERT(v1->values[0].type == IR_VALUE_INSN);
 				DBGASSERT(v1->values[0].data.insn_d->op ==
 					  IR_INSN_ALLOC);
 				v2 = v1->values[0].data.insn_d;
-			} else {
-				continue;
-			}
-			struct ir_insn_cg_extra_v2 *v1e = insn_cg_v2(v1);
-			struct ir_insn_cg_extra_v2 *v2e = insn_cg_v2(v2);
-			if (v1e->vr_pos.spilled == 0 &&
-			    v2e->vr_pos.spilled == 0 &&
-			    v2e->vr_pos.alloc_reg != v1e->vr_pos.alloc_reg) {
-				// Coalesce
-				u8 used_colors[RA_COLORS] = { 0 };
-				struct ir_insn **pos2;
-				ptrset_for(pos2, v1e->adj) // v0's adj
+				coalesce(v1, v2);
+			} else if (v1->op == IR_INSN_PHI) {
+				// v = phi <...>
+				struct phi_value *pos2;
+				array_for(pos2, v1->phi)
 				{
-					struct ir_insn *c = *pos2;
-					struct ir_insn_cg_extra_v2 *cex =
-						insn_cg_v2(c);
-					DBGASSERT(cex->vr_pos.allocated);
-					if (cex->vr_pos.spilled == 0) {
-						used_colors[cex->vr_pos
-								    .alloc_reg] =
-							true;
-					}
-				}
-
-				ptrset_for(pos2, v2e->adj) // v2's adj
-				{
-					struct ir_insn *c = *pos2;
-					struct ir_insn_cg_extra_v2 *cex =
-						insn_cg_v2(c);
-					DBGASSERT(cex->vr_pos.allocated);
-					if (cex->vr_pos.spilled == 0) {
-						used_colors[cex->vr_pos
-								    .alloc_reg] =
-							true;
-					}
-				}
-
-				// There are three cases
-				// 1. Rx = %y
-				// 2. %x = Ry
-				// 3. %x = %y
-
-				if (v1e->finalized) {
-					if (!used_colors[v1e->vr_pos.alloc_reg]) {
-						// Able to merge
-						v2e->vr_pos.alloc_reg =
-							v1e->vr_pos.alloc_reg;
-					}
-				} else if (v2e->finalized) {
-					if (!used_colors[v2e->vr_pos.alloc_reg]) {
-						v1e->vr_pos.alloc_reg =
-							v2e->vr_pos.alloc_reg;
-					}
-				} else {
-					bool has_unused_color = false;
-					u8 ureg = 0;
-					for (u8 i = 0; i < RA_COLORS; ++i) {
-						if (!used_colors[i]) {
-							has_unused_color = true;
-							ureg = i;
-							break;
-						}
-					}
-					if (has_unused_color) {
-						v1e->vr_pos.alloc_reg = ureg;
-						v2e->vr_pos.alloc_reg = ureg;
+					if (pos2->value.type == IR_VALUE_INSN) {
+						v2 = pos2->value.data.insn_d;
+						coalesce(v1, v2);
 					}
 				}
 			}
@@ -1220,6 +1226,9 @@ void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun)
 	bool done = false;
 	u32 iteration = 0;
 	while (!done) {
+		if (iteration > 5) {
+			RAISE_ERROR("Too many iterations");
+		}
 		PRINT_LOG_DEBUG(
 			env,
 			"\x1B[32m----- Register allocation iteration %d -----\x1B[0m\n",

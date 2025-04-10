@@ -226,4 +226,5 @@ def test_correct_progs_v2():
 if __name__ == "__main__":
     init()
     # find_correct_progs()
-    test_correct_progs()
+    # test_correct_progs()
+    test_correct_progs_v2()
