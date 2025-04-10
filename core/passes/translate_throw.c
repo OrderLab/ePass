@@ -185,8 +185,8 @@ void translate_throw_helper(struct bpf_ir_env *env, struct ir_function *fun)
 	}
 }
 
-void translate_throw(struct bpf_ir_env *env, struct ir_function *fun,
-		     void *param)
+void translate_throw_df(struct bpf_ir_env *env, struct ir_function *fun,
+			void *param)
 {
 	// Initialize
 	struct ir_basic_block **pos;
@@ -301,5 +301,23 @@ void translate_throw(struct bpf_ir_env *env, struct ir_function *fun,
 		struct ir_basic_block *bb = *pos;
 		free_bb_extra(bb);
 		CHECK_ERR();
+	}
+}
+
+void translate_throw(struct bpf_ir_env *env, struct ir_function *fun,
+		     void *param)
+{
+	struct ir_basic_block **pos;
+	array_for(pos, fun->reachable_bbs)
+	{
+		struct ir_basic_block *bb = *pos;
+		struct ir_insn *insn;
+		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
+			if (insn->op == IR_INSN_THROW) {
+				insn->op = IR_INSN_RET;
+				insn->value_num = 1;
+				insn->values[0] = bpf_ir_value_const32(1);
+			}
+		}
 	}
 }

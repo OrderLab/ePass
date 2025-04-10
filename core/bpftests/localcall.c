@@ -18,7 +18,7 @@ int prog(void *ctx)
 	int j = bpf_ktime_get_ns() % 10;
 	int k = test(j);
 	k += test2(j);
-    a[k] = 0;
+	a[k] = 0;
 	bpf_printk("hello %d", k);
 	bpf_printk("hello %d", a[4]);
 	return 0;
