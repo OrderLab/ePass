@@ -12,7 +12,7 @@ static int callback_fn(struct bpf_program *prog,
 			 bpf_program__insn_cnt(prog));
 }
 
-int epass_readload(struct user_opts uopts)
+int epass_load(struct user_opts uopts)
 {
 	int err = 0;
 	uopts_g = &uopts;
@@ -34,23 +34,6 @@ int epass_readload(struct user_opts uopts)
 		err = 1;
 		goto end;
 	}
-
-	// if (!uopts.direct_load) {
-	// 	// Register the callback
-	// 	struct libbpf_prog_handler_opts handler_opts;
-	// 	handler_opts.sz = sizeof(handler_opts);
-	// 	handler_opts.prog_attach_fn = NULL;
-	// 	handler_opts.prog_setup_fn = NULL;
-	// 	handler_opts.prog_prepare_load_fn = callback_fn;
-	// 	libbpf_register_prog_handler(
-	// 		bpf_program__section_name(prog),
-	// 		bpf_program__get_type(prog),
-	// 		bpf_program__expected_attach_type(prog), &handler_opts);
-
-	// 	// Re-open the file to trigger the callback
-	// 	bpf_object__close(obj);
-	// 	obj = bpf_object__open(uopts.prog);
-	// }
 
 	err = bpf_object__load(obj);
 

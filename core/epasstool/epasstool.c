@@ -140,9 +140,6 @@ static struct user_opts parse_cli(int argc, char **argv)
 				argv++;
 				uopts.auto_sec = false;
 				strcpy(uopts.sec, *argv);
-			} else if (strcmp(*argv, "--load") == 0 ||
-				   strcmp(*argv, "-L") == 0) {
-				uopts.load = true;
 			} else if (strcmp(*argv, "-o") == 0) {
 				if (argc < 2) {
 					usage(prog);
@@ -219,7 +216,36 @@ static struct user_opts parse_cli(int argc, char **argv)
 		if (uopts.prog[0] == 0) {
 			usage(prog);
 		}
-	} else {
+	} else if (strcmp(*argv, "load") == 0) {
+		argc--;
+		argv++;
+		uopts.mode = MODE_LOAD;
+		while (argc > 0) {
+			if (strcmp(*argv, "--sec") == 0 ||
+			    strcmp(*argv, "-s") == 0) {
+				if (argc < 2) {
+					usage(prog);
+				}
+				argc--;
+				argv++;
+				uopts.auto_sec = false;
+				strcpy(uopts.sec, *argv);
+			} else {
+				// File
+				if (uopts.prog[0] == 0) {
+					strcpy(uopts.prog, *argv);
+				} else {
+					usage(prog);
+				}
+			}
+			argc--;
+			argv++;
+		}
+		if (uopts.prog[0] == 0) {
+			usage(prog);
+		}
+	}
+	{
 		usage(prog);
 	}
 
@@ -232,6 +258,15 @@ int main(int argc, char **argv)
 	bool is_elf = is_elf_file(uopts.prog);
 	if (uopts.mode == MODE_PRINT) {
 		return is_elf ? epass_print(uopts) : epass_printlog(uopts);
+	}
+
+	if (uopts.mode == MODE_LOAD) {
+		if (is_elf) {
+			return epass_load(uopts);
+		} else {
+			fprintf(stderr, "Load is only supported for ELF\n");
+			return 1;
+		}
 	}
 
 	// Initialize common options
@@ -255,18 +290,7 @@ int main(int argc, char **argv)
 	uopts.opts = opts;
 
 	if (uopts.mode == MODE_READ) {
-		if (uopts.load) {
-			if (is_elf) {
-				return epass_readload(uopts);
-			} else {
-				fprintf(stderr,
-					"Load is only supported for ELF\n");
-				return 1;
-			}
-		} else {
-			return is_elf ? epass_read(uopts) :
-					epass_readlog(uopts);
-		}
+		return is_elf ? epass_read(uopts) : epass_readlog(uopts);
 	}
 
 	return 0;
