@@ -18,8 +18,8 @@ static struct function_pass cg_init_passes[] = {
 	DEF_FUNC_PASS(bpf_ir_optimize_code_compaction, "optimize_compaction",
 		      false),
 	DEF_NON_OVERRIDE_FUNC_PASS(bpf_ir_optimize_ir, "optimize_ir"),
-	// DEF_NON_OVERRIDE_FUNC_PASS(bpf_ir_cg_add_stack_offset_pre_cg,
-	// 			   "add_stack_offset"),
+	DEF_NON_OVERRIDE_FUNC_PASS(bpf_ir_cg_add_stack_offset_pre_cg,
+				   "add_stack_offset"),
 };
 
 // Erase an instruction.
@@ -201,9 +201,14 @@ static void change_call(struct bpf_ir_env *env, struct ir_function *fun)
 	}
 }
 
+static inline s32 get_new_spill(struct ir_function *fun, u32 size)
+{
+	fun->cg_info.stack_offset -= size;
+	return fun->cg_info.stack_offset;
+}
+
 static void spill_array(struct bpf_ir_env *env, struct ir_function *fun)
 {
-	u32 offset = 0;
 	struct ir_basic_block **pos;
 	array_for(pos, fun->reachable_bbs)
 	{
@@ -221,12 +226,12 @@ static void spill_array(struct bpf_ir_env *env, struct ir_function *fun)
 				if (size == 0) {
 					RAISE_ERROR("Array size is 0");
 				}
-				offset -= (((size - 1) / 8) + 1) * 8;
-				CRITICAL("todo");
+				// Round up to 8 bytes
+				// u32 roundup_size = (((size - 1) / 8) + 1) * 8;
+				u32 roundup_size = (size + 7) & ~7;
 				extra->vr_pos.spilled =
-					offset; // Wrong!!! !TODO!
+					get_new_spill(fun, roundup_size);
 				extra->vr_pos.spilled_size = size;
-				extra->nonvr = true; // Array is not a VR
 				extra->dst = NULL;
 			}
 		}
@@ -880,12 +885,6 @@ static void spill_insn(struct bpf_ir_env *env, struct ir_function *fun,
 	CHECK_ERR();
 }
 
-static inline s32 get_new_spill(struct ir_function *fun)
-{
-	fun->cg_info.stack_offset -= 8;
-	return fun->cg_info.stack_offset;
-}
-
 static void spill(struct bpf_ir_env *env, struct ir_function *fun,
 		  struct array *to_spill)
 {
@@ -929,7 +928,7 @@ static void spill(struct bpf_ir_env *env, struct ir_function *fun,
 		// so that it will not change in next iteration
 		insn_cg_v2(alloc_insn)->finalized = true;
 		insn_cg_v2(alloc_insn)->vr_pos.allocated = true;
-		insn_cg_v2(alloc_insn)->vr_pos.spilled = get_new_spill(fun);
+		insn_cg_v2(alloc_insn)->vr_pos.spilled = get_new_spill(fun, 8);
 		insn_cg_v2(alloc_insn)->vr_pos.spilled_size = 8;
 
 		// Spill every user of v (spill-everywhere algorithm)
@@ -1090,6 +1089,54 @@ static void coalescing(struct bpf_ir_env *env, struct ir_function *fun)
 	}
 }
 
+static void add_stack_offset(struct bpf_ir_env *env, struct ir_function *fun,
+			     s16 offset)
+{
+	struct ir_basic_block **pos;
+	// For each BB
+	array_for(pos, fun->reachable_bbs)
+	{
+		struct ir_basic_block *bb = *pos;
+		struct ir_insn *insn;
+		// For each operation
+		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
+			if (insn->op == IR_INSN_LOADRAW ||
+			    insn->op == IR_INSN_STORERAW) {
+				if (insn->addr_val.offset_type ==
+				    IR_VALUE_CONSTANT_RAWOFF) {
+					insn->addr_val.offset += offset;
+					insn->addr_val.offset_type =
+						IR_VALUE_CONSTANT;
+					continue;
+				} else if (insn->addr_val.offset_type ==
+					   IR_VALUE_CONSTANT_RAWOFF_REV) {
+					insn->addr_val.offset -= offset;
+					insn->addr_val.offset_type =
+						IR_VALUE_CONSTANT;
+					continue;
+				}
+			}
+			struct array value_uses =
+				bpf_ir_get_operands(env, insn);
+			struct ir_value **pos2;
+			array_for(pos2, value_uses)
+			{
+				struct ir_value *val = *pos2;
+				if (val->type == IR_VALUE_CONSTANT_RAWOFF) {
+					// Stack pointer as value
+					val->data.constant_d += offset;
+					val->type = IR_VALUE_CONSTANT;
+				} else if (val->type ==
+					   IR_VALUE_CONSTANT_RAWOFF_REV) {
+					val->data.constant_d -= offset;
+					val->type = IR_VALUE_CONSTANT;
+				}
+			}
+			bpf_ir_array_free(&value_uses);
+		}
+	}
+}
+
 // Remove PHI insn
 // Move out from SSA form
 static void remove_phi(struct bpf_ir_env *env, struct ir_function *fun)
@@ -1162,8 +1209,13 @@ void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun)
 	fun->cg_info.spill_callee = 0;
 
 	change_call(env, fun);
+	CHECK_ERR();
+
 	change_fun_arg(env, fun);
+	CHECK_ERR();
+
 	spill_array(env, fun);
+	CHECK_ERR();
 
 	bool done = false;
 	u32 iteration = 0;
@@ -1188,6 +1240,8 @@ void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun)
 		} else {
 			// spill
 			spill(env, fun, &to_spill);
+			bpf_ir_prog_check(env, fun);
+			CHECK_ERR();
 			print_ir_prog_cg_dst(env, fun, "After Spill");
 		}
 		bpf_ir_array_free(&to_spill);
@@ -1205,6 +1259,8 @@ void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun)
 	coalescing(env, fun);
 	CHECK_ERR();
 	print_ir_prog_cg_alloc(env, fun, "After Coalescing");
+
+	add_stack_offset(env, fun, fun->cg_info.stack_offset);
 
 	// SSA Out
 	remove_phi(env, fun);

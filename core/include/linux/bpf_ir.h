@@ -474,7 +474,10 @@ enum ir_builtin_constant {
 enum ir_value_type {
 	IR_VALUE_CONSTANT,
 	// A constant value in raw operations to be added during code generation
+	// e.g. if the const is 10, then after CG, it will be 10 + stack shift
 	IR_VALUE_CONSTANT_RAWOFF,
+
+	// e.g. if the const is 10, then after CG, it will be 10 - stack shift
 	IR_VALUE_CONSTANT_RAWOFF_REV,
 	IR_VALUE_INSN,
 	IR_VALUE_FLATTEN_DST, // Used only in code generation
