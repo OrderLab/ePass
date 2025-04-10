@@ -22,30 +22,12 @@ int inline spill(int cr, int ci)
 	return i;
 }
 
-void inline pk(char s)
-{
-	bpf_trace_printk("%c", 1, s);
-}
-
-void inline pk_l(char *s)
-{
-	bpf_trace_printk("%s", 1, s);
-}
-
 SEC("xdp")
 int prog(void *ctx)
 {
 	int s = spill(1, 2);
-	// static char ores[10] = "helloggg";
-	// static char res[10] = "helloworld";
-	// for (int i = 0; i < 10; ++i) {
-	// 	pk(res[i]);
-	// }
-	// pk_l(res);
-	// pk_l(ores);
-	// pk(res[0]);
-	// res[0] = s;
-	return s;
+	bpf_printk("%d\n", s);
+	return 0;
 }
 
 char _license[] SEC("license") = "GPL";

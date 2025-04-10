@@ -1063,6 +1063,11 @@ static void coalesce(struct ir_insn *v1, struct ir_insn *v2)
 	}
 }
 
+static bool has_conflict(struct ir_insn *v1, struct ir_insn *v2)
+{
+	return bpf_ir_ptrset_exists(&insn_cg_v2(v1)->adj, v2);
+}
+
 // Best effort coalescing
 static void coalescing(struct bpf_ir_env *env, struct ir_function *fun)
 {
@@ -1110,6 +1115,17 @@ static void coalescing(struct bpf_ir_env *env, struct ir_function *fun)
 					}
 				}
 			}
+			// else if (bpf_ir_is_bin_alu(v1)) {
+			// 	// v1 = ALU v2 XX
+			// 	if (v1->values[0].type != IR_VALUE_INSN) {
+			// 		continue;
+			// 	}
+			// 	v2 = v1->values[0].data.insn_d;
+			// 	if (!has_conflict(
+			// 		    v1, v2)) { // Must have no conflict
+			// 		coalesce(v1, v2);
+			// 	}
+			// }
 		}
 	}
 }
