@@ -4,10 +4,10 @@
 int inline spill(int cr, int ci)
 {
 	int i = 0;
-	int zr = 0;
-	int zi = 0;
-	int zk = 0;
-	int zl = 0;
+	int zr = 114514;
+	int zi = 404;
+	int zk = 111;
+	int zl = -10000;
 
 	while (i < 100 &&
 	       zr * zr + zi * zi + zk * zk - zl * zl * (zi - 1) < 4) {
@@ -19,7 +19,7 @@ int inline spill(int cr, int ci)
 
 		i = i + 1;
 	}
-	return i;
+	return zl + zk + zi + zr;
 }
 
 SEC("xdp")

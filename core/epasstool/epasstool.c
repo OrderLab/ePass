@@ -243,8 +243,7 @@ static struct user_opts parse_cli(int argc, char **argv)
 		if (uopts.prog[0] == 0) {
 			usage(prog);
 		}
-	}
-	{
+	} else {
 		usage(prog);
 	}
 
