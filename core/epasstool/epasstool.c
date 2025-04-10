@@ -102,7 +102,6 @@ static struct user_opts parse_cli(int argc, char **argv)
 	uopts.no_compile = false;
 	uopts.auto_sec = true;
 	uopts.output_format = OUTPUT_LOG;
-	uopts.load = false;
 	uopts.bpfprog = NULL;
 	if (argc < 2) {
 		usage(prog);
