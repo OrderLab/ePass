@@ -20,12 +20,8 @@ struct user_opts {
 	// Automatically detect section.
 	bool auto_sec;
 
-	// Load the modified object to kernel.
+	// Load the unmodified object to kernel.
 	bool load;
-
-	// Do not run ePass transformations before loading to kernel.
-	// Will override `load` to true.
-	bool direct_load;
 
 	enum {
 		MODE_READ,

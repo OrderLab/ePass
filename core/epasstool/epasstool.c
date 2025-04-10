@@ -50,7 +50,7 @@ static void usage(const char *prog)
 		"  --gopt <arg> \tSpecify global (general) option\n"
 		"  --popt <arg> \tSpecify pass option\n"
 		"  --sec, -s <arg> \tSpecify ELF section manually\n"
-		"  --load, -L \tLoad to the kernel after transformation (alpha)\n"
+		"  --load, -L \tLoad to the kernel (alpha)\n"
 		"  -F <arg> \tOutput format. Available formats: sec, log (default)\n"
 		"  -o <arg> \tOutput the modified program\n"
 		"\n"
@@ -103,7 +103,6 @@ static struct user_opts parse_cli(int argc, char **argv)
 	uopts.auto_sec = true;
 	uopts.output_format = OUTPUT_LOG;
 	uopts.load = false;
-	uopts.direct_load = false;
 	uopts.bpfprog = NULL;
 	if (argc < 2) {
 		usage(prog);
@@ -144,9 +143,6 @@ static struct user_opts parse_cli(int argc, char **argv)
 			} else if (strcmp(*argv, "--load") == 0 ||
 				   strcmp(*argv, "-L") == 0) {
 				uopts.load = true;
-			} else if (strcmp(*argv, "--direct-load") == 0) {
-				uopts.load = true;
-				uopts.direct_load = true;
 			} else if (strcmp(*argv, "-o") == 0) {
 				if (argc < 2) {
 					usage(prog);

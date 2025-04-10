@@ -3,10 +3,7 @@ project(epass VERSION 0.1.1 LANGUAGES C)
 set(CMAKE_C_FLAGS
     "${CMAKE_C_FLAGS} -Werror -Wstrict-prototypes -Wenum-compare -Wunused-variable -Wunused-but-set-variable -Wsign-compare -O3"
 )
-option(EPASS_LIBBPF "Compile with ePass libbpf" OFF)
-if(EPASS_LIBBPF)
-  add_definitions(-DEPASS_LIBBPF)
-endif(EPASS_LIBBPF)
+
 add_library(
   epass STATIC
   bpf_ir.c
