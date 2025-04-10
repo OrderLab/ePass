@@ -387,6 +387,8 @@ static void live_out_at_statement(struct bpf_ir_env *env,
 				  struct ir_function *fun, struct ptrset *M,
 				  struct ir_insn *s, struct ir_insn *v)
 {
+	// PRINT_LOG_DEBUG(env, "%%%d live out at statement %%%d\n", v->_insn_id,
+	// 		s->_insn_id);
 	struct ir_insn_cg_extra_v2 *se = insn_cg_v2(s);
 	bpf_ir_ptrset_insert(env, &se->out, v);
 	if (se->dst) {
@@ -404,6 +406,8 @@ static void live_in_at_statement(struct bpf_ir_env *env,
 				 struct ir_function *fun, struct ptrset *M,
 				 struct ir_insn *s, struct ir_insn *v)
 {
+	// PRINT_LOG_DEBUG(env, "%%%d live in at statement %%%d\n", v->_insn_id,
+	// 		s->_insn_id);
 	bpf_ir_ptrset_insert(env, &(insn_cg_v2(s))->in, v);
 	struct ir_insn *prev = bpf_ir_prev_insn(s);
 	if (prev == NULL) {
@@ -539,10 +543,7 @@ static void clean_cg_data(struct bpf_ir_env *env, struct ir_function *fun)
 		struct ir_basic_block *bb = *pos;
 		struct ir_insn *v;
 		list_for_each_entry(v, &bb->ir_insn_head, list_ptr) {
-			struct ir_insn_cg_extra_v2 *extra = insn_cg_v2(v);
-			if (extra->dst) {
-				clean_cg_data_insn(v);
-			}
+			clean_cg_data_insn(v);
 		}
 	}
 }
@@ -905,6 +906,10 @@ static void spill(struct bpf_ir_env *env, struct ir_function *fun,
 		DBGASSERT(v->op != IR_INSN_CALL);
 		DBGASSERT(v->op != IR_INSN_ALLOCARRAY);
 
+		// First clone a copy of users
+		struct array users;
+		bpf_ir_array_clone(env, &users, &v->users);
+
 		if (v->op == IR_INSN_ALLOC) {
 			// spill load and store instruction
 			alloc_insn = v;
@@ -928,10 +933,6 @@ static void spill(struct bpf_ir_env *env, struct ir_function *fun,
 		insn_cg_v2(alloc_insn)->vr_pos.spilled_size = 8;
 
 		// Spill every user of v (spill-everywhere algorithm)
-
-		// First clone a copy of users
-		struct array users;
-		bpf_ir_array_clone(env, &users, &v->users);
 
 		struct ir_insn **pos2;
 		array_for(pos2, users)
