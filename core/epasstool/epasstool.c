@@ -200,6 +200,15 @@ static struct user_opts parse_cli(int argc, char **argv)
 				argc--;
 				argv++;
 				strcpy(uopts.popt, *argv);
+			} else if (strcmp(*argv, "--sec") == 0 ||
+				   strcmp(*argv, "-s") == 0) {
+				if (argc < 2) {
+					usage(prog);
+				}
+				argc--;
+				argv++;
+				uopts.auto_sec = false;
+				strcpy(uopts.sec, *argv);
 			} else {
 				// File
 				if (uopts.prog[0] == 0) {

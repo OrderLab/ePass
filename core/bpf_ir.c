@@ -1273,8 +1273,22 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 				set_insn_raw_pos(new_insn, insn.pos);
 				new_insn->op = IR_INSN_CALL;
 				new_insn->fid = insn.imm;
+				if (insn.src_reg == 1) {
+					// call PC += offset
+					RAISE_ERROR(
+						"BPF-local functions not supported");
+				}
+				if (insn.src_reg == 2) {
+					// platform-specific helper function imm
+					RAISE_ERROR(
+						"Platform-specific helper function not supported");
+				}
 				if (insn.imm < 0) {
 					new_insn->value_num = 0;
+					PRINT_LOG_ERROR(
+						env,
+						"Unknown helper function %d at %d\n",
+						insn.imm, insn.pos);
 					RAISE_ERROR(
 						"Not supported function call\n");
 				} else {
