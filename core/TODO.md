@@ -1,5 +1,3 @@
 # TODOs
 
-- [ ] Simultaneous PHI move
-- [ ] Liveness analysis for PHI
-- [ ] Coalesce conflict VR
+- [ ] Preference for coloring
