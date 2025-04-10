@@ -367,6 +367,26 @@ static void make_conflict(struct bpf_ir_env *env, struct ir_function *fun,
 	bpf_ir_ptrset_insert(env, &r2e->adj, r1);
 }
 
+static void live_out_at_block_no_propagate(struct bpf_ir_env *env,
+					   struct ir_function *fun,
+					   struct ir_basic_block *n,
+					   struct ir_insn *v)
+{
+	struct ir_insn *last = bpf_ir_get_last_insn(n);
+	if (last) {
+		struct ir_insn_cg_extra_v2 *se = insn_cg_v2(last);
+		bpf_ir_ptrset_insert(env, &se->out, v);
+	} else {
+		// Empty BB
+		struct array preds = n->preds;
+		struct ir_basic_block **pos;
+		array_for(pos, preds)
+		{
+			live_out_at_block_no_propagate(env, fun, *pos, v);
+		}
+	}
+}
+
 static void live_out_at_block(struct bpf_ir_env *env, struct ir_function *fun,
 			      struct ptrset *M, struct ir_basic_block *n,
 			      struct ir_insn *v)
@@ -605,14 +625,13 @@ static void liveness_analysis(struct bpf_ir_env *env, struct ir_function *fun)
 					}
 				}
 
-				// TODO: Wrong!!!
 				if (v->op == IR_INSN_PHI) {
-					// v is considered LIVE OUT for all preds
+					// v is considered LIVE OUT for all preds (only last insn, no propagation)
 					struct phi_value *pos2;
 					array_for(pos2, v->phi)
 					{
-						live_out_at_block(env, fun, &M,
-								  pos2->bb, v);
+						live_out_at_block_no_propagate(
+							env, fun, pos2->bb, v);
 					}
 				}
 			}

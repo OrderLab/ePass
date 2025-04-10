@@ -1041,6 +1041,20 @@ struct ir_insn *bpf_ir_create_neg_insn_bb_cg(struct bpf_ir_env *env,
 					     struct ir_value val,
 					     enum insert_position pos);
 
+struct ir_insn *bpf_ir_create_neg_insn_norm(struct bpf_ir_env *env,
+					    struct ir_insn *pos_insn,
+					    struct ir_vr_pos dstpos,
+					    enum ir_alu_op_type alu_type,
+					    struct ir_value val,
+					    enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_neg_insn_bb_norm(struct bpf_ir_env *env,
+					       struct ir_basic_block *pos_bb,
+					       struct ir_vr_pos dstpos,
+					       enum ir_alu_op_type alu_type,
+					       struct ir_value val,
+					       enum insert_position pos);
+
 struct ir_insn *bpf_ir_create_end_insn(struct bpf_ir_env *env,
 				       struct ir_insn *pos_insn,
 				       enum ir_insn_type ty, u32 swap_width,

@@ -607,6 +607,21 @@ static struct ir_insn *create_neg_insn_base_cg(struct bpf_ir_env *env,
 	return new_insn;
 }
 
+static struct ir_insn *create_neg_insn_base_norm(struct bpf_ir_env *env,
+						 struct ir_basic_block *bb,
+						 struct ir_vr_pos dstpos,
+						 enum ir_alu_op_type alu_type,
+						 struct ir_value val)
+{
+	struct ir_insn *new_insn =
+		bpf_ir_create_insn_base_norm(env, bb, dstpos);
+	new_insn->op = IR_INSN_NEG;
+	new_insn->values[0] = val;
+	new_insn->value_num = 1;
+	new_insn->alu_op = alu_type;
+	return new_insn;
+}
+
 static struct ir_insn *create_end_insn_base(struct bpf_ir_env *env,
 					    struct ir_basic_block *bb,
 					    enum ir_insn_type ty,
@@ -1146,6 +1161,32 @@ struct ir_insn *bpf_ir_create_neg_insn_bb_cg(struct bpf_ir_env *env,
 {
 	struct ir_insn *new_insn =
 		create_neg_insn_base_cg(env, pos_bb, alu_type, val);
+	bpf_ir_insert_at_bb(new_insn, pos_bb, pos);
+	return new_insn;
+}
+
+struct ir_insn *bpf_ir_create_neg_insn_norm(struct bpf_ir_env *env,
+					    struct ir_insn *pos_insn,
+					    struct ir_vr_pos dstpos,
+					    enum ir_alu_op_type alu_type,
+					    struct ir_value val,
+					    enum insert_position pos)
+{
+	struct ir_insn *new_insn = create_neg_insn_base_norm(
+		env, pos_insn->parent_bb, dstpos, alu_type, val);
+	bpf_ir_insert_at(new_insn, pos_insn, pos);
+	return new_insn;
+}
+
+struct ir_insn *bpf_ir_create_neg_insn_bb_norm(struct bpf_ir_env *env,
+					       struct ir_basic_block *pos_bb,
+					       struct ir_vr_pos dstpos,
+					       enum ir_alu_op_type alu_type,
+					       struct ir_value val,
+					       enum insert_position pos)
+{
+	struct ir_insn *new_insn =
+		create_neg_insn_base_norm(env, pos_bb, dstpos, alu_type, val);
 	bpf_ir_insert_at_bb(new_insn, pos_bb, pos);
 	return new_insn;
 }

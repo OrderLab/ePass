@@ -288,6 +288,21 @@ static void normalize_alu(struct bpf_ir_env *env, struct ir_insn *insn)
 				enum val_type tmp2 = t1;
 				t1 = t0;
 				t0 = tmp2;
+			} else if (insn->op == IR_INSN_SUB) {
+				// reg1 = sub XX reg1
+				// ==>
+				// reg1 = -reg1
+				// reg1 = add reg1 XX
+				bpf_ir_create_neg_insn_norm(env, insn, dst_pos,
+							    IR_ALU_64, *v1,
+							    INSERT_FRONT);
+				insn->op = IR_INSN_ADD;
+				struct ir_value tmp = *v1;
+				*v1 = *v0;
+				*v0 = tmp;
+				enum val_type tmp2 = t1;
+				t1 = t0;
+				t0 = tmp2;
 			} else {
 				print_raw_ir_insn(env, insn);
 				RAISE_ERROR(
