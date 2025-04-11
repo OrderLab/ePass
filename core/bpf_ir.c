@@ -1532,71 +1532,105 @@ static void gen_bb_succ(struct bpf_ir_env *env, struct ir_function *fun)
 	}
 }
 
-static void add_reach(struct bpf_ir_env *env, struct ir_function *fun,
-		      struct ir_basic_block *bb)
+// Find the head of the chain
+static struct ir_basic_block *find_chain_head(struct ir_basic_block *bb)
 {
-	if (bb->_visited) {
-		return;
+	if (bb->preds.num_elem == 0) {
+		return bb;
 	}
-	// bb->_visited = 1;
-	// bpf_ir_array_push(env, &fun->reachable_bbs, &bb);
+	struct ir_basic_block *pred = NULL;
+	struct ir_basic_block **pos;
+	array_for(pos, bb->preds)
+	{
+		struct ir_basic_block *bb2 = *pos;
+		if (bb2->succs.num_elem == 1) {
+			struct ir_insn *lastinsn = bpf_ir_get_last_insn(bb2);
+			if (lastinsn && lastinsn->op == IR_INSN_JA) {
+				// Not pred
+			} else {
+				if (pred) {
+					// Multiple preds, error
+					return NULL;
+				} else {
+					pred = bb2;
+				}
+			}
+		} else if (bb2->succs.num_elem == 2) {
+			struct ir_basic_block **succ0 =
+				bpf_ir_array_get_void(&bb2->succs, 0);
+			if (*succ0 == bb) {
+				// This is a pred
+				if (pred) {
+					// Multiple preds, error
+					return NULL;
+				} else {
+					pred = bb2;
+				}
+			}
+		} else {
+			return NULL;
+		}
+	}
+	if (pred == NULL) {
+		// bb is head
+		return bb;
+	}
+	return find_chain_head(pred);
+}
+
+static void add_reach(struct bpf_ir_env *env, struct ir_function *fun)
+{
 	struct array todo;
 	INIT_ARRAY(&todo, struct ir_basic_block *);
-
-	// struct ir_basic_block **succ;
-	// bool first = false;
-	// array_for(succ, bb->succs)
-	// {
-	// 	if (!first && bb->succs.num_elem > 1) {
-	// 		first = true;
-	// 		// Check if visited
-	// 		if ((*succ)->_visited) {
-	// 			RAISE_ERROR("Loop BB detected");
-	// 		}
-	// 	}
-	// 	add_reach(env, fun, *succ);
-	// }
-
-	// First Test sanity ... TODO!
-
-	struct ir_basic_block *cur_bb = bb;
-
-	while (1) {
-		cur_bb->_visited = 1;
-		bpf_ir_array_push(env, &fun->reachable_bbs, &cur_bb);
-		if (cur_bb->succs.num_elem == 0) {
-			break;
+	bpf_ir_array_push(env, &todo, fun->entry);
+	size_t queue_head = 0;
+	while (queue_head < todo.num_elem) {
+		struct ir_basic_block **tmp =
+			bpf_ir_array_get_void(&todo, queue_head);
+		struct ir_basic_block *bb = *tmp;
+		queue_head++;
+		if (bb->_visited) {
+			continue;
 		}
-
-		struct ir_basic_block **succ1 =
-			bpf_ir_array_get_void(&cur_bb->succs, 0);
-		if ((*succ1)->_visited) {
-			break;
+		bb = find_chain_head(bb);
+		if (!bb) {
+			RAISE_ERROR("Cannot find chain, invalid CFG");
 		}
-		if (cur_bb->succs.num_elem == 1) {
-			// Check if end with JA
-			struct ir_insn *lastinsn = bpf_ir_get_last_insn(cur_bb);
-			if (lastinsn && lastinsn->op == IR_INSN_JA) {
-				struct ir_basic_block **succ2 =
-					bpf_ir_array_get_void(&cur_bb->succs,
-							      0);
-				bpf_ir_array_push(env, &todo, succ2);
-				break;
+		// If bb has not been visited, its chain head is not visited
+		DBGASSERT(!bb->_visited);
+
+		// Visit this chain
+		bool end = false;
+		while (!end) {
+			bb->_visited = 1;
+			bpf_ir_array_push(env, &fun->reachable_bbs, &bb);
+			if (bb->succs.num_elem == 0) {
+				// End of the chain
+				end = true;
+			} else if (bb->succs.num_elem == 1) {
+				struct ir_insn *lastinsn =
+					bpf_ir_get_last_insn(bb);
+				if (lastinsn && lastinsn->op == IR_INSN_JA) {
+					end = true;
+				} else {
+					struct ir_basic_block **succ =
+						bpf_ir_array_get_void(
+							&bb->succs, 0);
+					bb = *succ;
+				}
+			} else if (bb->succs.num_elem == 2) {
+				// bb = succ0, add succ1 to todo
+				struct ir_basic_block **succ0 =
+					bpf_ir_array_get_void(&bb->succs, 0);
+				struct ir_basic_block **succ1 =
+					bpf_ir_array_get_void(&bb->succs, 1);
+
+				bb = *succ0;
+				bpf_ir_array_push(env, &todo, *succ1);
+			} else {
+				RAISE_ERROR(">2 successors, invalid CFG");
 			}
-		} else if (cur_bb->succs.num_elem == 2) {
-			struct ir_basic_block **succ2 =
-				bpf_ir_array_get_void(&cur_bb->succs, 1);
-			bpf_ir_array_push(env, &todo, succ2);
-		} else {
-			CRITICAL("Not possible: BB with >2 succs");
 		}
-		cur_bb = *succ1;
-	}
-
-	struct ir_basic_block **pos;
-	array_for(pos, todo)
-	{
-		add_reach(env, fun, *pos);
 	}
 
 	bpf_ir_array_free(&todo);
@@ -1606,7 +1640,7 @@ static void gen_reachable_bbs(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	bpf_ir_clean_visited(fun);
 	bpf_ir_array_clear(env, &fun->reachable_bbs);
-	add_reach(env, fun, fun->entry);
+	add_reach(env, fun);
 }
 
 static void gen_end_bbs(struct bpf_ir_env *env, struct ir_function *fun)
