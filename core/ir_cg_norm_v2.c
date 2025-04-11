@@ -253,11 +253,11 @@ static void normalize_cond_jmp(struct bpf_ir_env *env, struct ir_insn *insn)
 		} else if (insn->op == IR_INSN_JEQ) {
 		} else if (insn->op == IR_INSN_JNE) {
 		} else if (insn->op == IR_INSN_JLT) {
-			insn->op = IR_INSN_JGE;
-		} else if (insn->op == IR_INSN_JGE) {
-			insn->op = IR_INSN_JLT;
-		} else if (insn->op == IR_INSN_JLE) {
 			insn->op = IR_INSN_JGT;
+		} else if (insn->op == IR_INSN_JGE) {
+			insn->op = IR_INSN_JLE;
+		} else if (insn->op == IR_INSN_JLE) {
+			insn->op = IR_INSN_JGE;
 		} else {
 			RAISE_ERROR(
 				"does not support signed jump constant yet");
