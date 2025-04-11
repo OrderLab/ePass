@@ -1,32 +1,38 @@
 #include <linux/bpf.h>
 #include <bpf/bpf_helpers.h>
 
-int inline spill(int cr, int ci)
+int __always_inline spill(int cr, int ci)
 {
-	int i = 0;
-	int zr = 114514;
-	int zi = 404;
-	int zk = 111;
-	int zl = -10000;
+	int i = 1;
+	int zr = cr;
+	int zi = ci;
+	int zk = cr + ci;
+	int zl = cr - ci;
 
-	while (i < 100 &&
-	       zr * zr + zi * zi + zk * zk - zl * zl * (zi - 1) < 4) {
+	while (i < 10) {
 		int t = zr * zr - zi * zi + cr;
-		zi = 2 * zr * zi + ci;
 		zr = t;
-		zk = 3 * zr - zi * zi * zk * zr;
+		zi = 2 * zr * zi + ci;
+		zk = 3 * zr - zi * zk * zr;
 		zl = zl + 1;
 
 		i = i + 1;
 	}
-	return zl + zk + zi + zr;
+	return zl + zk + zi + zr + ci + cr;
 }
 
 SEC("xdp")
 int prog(void *ctx)
 {
-	int s = spill(1, 2);
-	bpf_printk("%d\n", s);
+	int tot = 0;
+	for (int i = 0; i < 10; ++i) {
+		for (int j = i; j < 10; ++j) {
+			int s = spill(i, j);
+			tot += s;
+		}
+	}
+	bpf_printk("tot: %d\n", tot);
+	// 1535866789
 	return 0;
 }
 
