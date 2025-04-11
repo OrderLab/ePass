@@ -245,8 +245,24 @@ static void normalize_cond_jmp(struct bpf_ir_env *env, struct ir_insn *insn)
 	if (t0 == CONST) {
 		// jmp const reg
 		if (t1 == CONST) {
-			RAISE_ERROR(
-				"conditional jmp requires at least one variable");
+			if (insn->op == IR_INSN_JNE) {
+				if (v0->data.constant_d !=
+				    v1->data.constant_d) {
+					// Jump
+					insn->op = IR_INSN_JA;
+					insn->value_num = 0;
+					insn->bb1 =
+						insn->bb2; // Jump to the next
+					insn->bb2 = NULL;
+				} else {
+					// No jump
+					bpf_ir_erase_insn_norm(insn);
+				}
+			} else {
+				RAISE_ERROR(
+					"conditional jmp requires at least one variable");
+			}
+			return;
 		}
 		if (insn->op == IR_INSN_JGT) {
 			insn->op = IR_INSN_JLT;

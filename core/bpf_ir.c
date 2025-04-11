@@ -1841,7 +1841,8 @@ void bpf_ir_autorun(struct bpf_ir_env *env)
 	env->executed = true;
 	const struct bpf_insn *insns = env->insns;
 	size_t len = env->insn_cnt;
-	if (len > env->opts.max_insns) {
+	if (env->opts.max_insns > 0 && len > env->opts.max_insns) {
+		PRINT_LOG_ERROR(env, "Program size: %zu\n", len);
 		RAISE_ERROR("Program too large");
 	}
 	print_bpf_prog(env, insns, len);
