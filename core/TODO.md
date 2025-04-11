@@ -1,3 +1,3 @@
 # TODOs
 
-- [ ] Preference for coloring
+- [ ] Conflict for same register

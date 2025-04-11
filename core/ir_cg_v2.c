@@ -238,6 +238,52 @@ static void spill_array(struct bpf_ir_env *env, struct ir_function *fun)
 	}
 }
 
+// Spill constants based on BPF ISA
+static void spill_const(struct bpf_ir_env *env, struct ir_function *fun)
+{
+	struct ir_basic_block **pos;
+	array_for(pos, fun->reachable_bbs)
+	{
+		struct ir_basic_block *bb = *pos;
+		struct ir_insn *insn, *tmp;
+		list_for_each_entry_safe(insn, tmp, &bb->ir_insn_head,
+					 list_ptr) {
+			if (bpf_ir_is_bin_alu(insn) &&
+			    !bpf_ir_is_commutative_alu(insn)) {
+				struct ir_value *val = &insn->values[0];
+				if (val->type == IR_VALUE_CONSTANT) {
+					// Change constant to a register
+					struct ir_insn *new_insn =
+						bpf_ir_create_assign_insn_cg_v2(
+							env, insn, *val,
+							INSERT_FRONT);
+					bpf_ir_change_value(
+						env, insn, val,
+						bpf_ir_value_insn(new_insn));
+				}
+			}
+			if (bpf_ir_is_cond_jmp(insn) && insn->value_num == 2) {
+				// jmp v0 v1, cannot be all constants
+				struct ir_value *v0 = &insn->values[1];
+				struct ir_value *v1 = &insn->values[0];
+				if (v0->type == IR_VALUE_CONSTANT &&
+				    v1->type == IR_VALUE_CONSTANT) {
+					// ==>
+					// tmp = v0
+					// jmp tmp v1
+					struct ir_insn *new_insn =
+						bpf_ir_create_assign_insn_cg_v2(
+							env, insn, *v0,
+							INSERT_FRONT);
+					bpf_ir_change_value(
+						env, insn, v0,
+						bpf_ir_value_insn(new_insn));
+				}
+			}
+		}
+	}
+}
+
 /*
 Print utils
 */
@@ -445,6 +491,13 @@ static void live_in_at_statement(struct bpf_ir_env *env,
 	} else {
 		live_out_at_statement(env, fun, M, prev, v);
 	}
+}
+
+static void print_ir_prog_cg(struct bpf_ir_env *env, struct ir_function *fun,
+			     char *msg)
+{
+	PRINT_LOG_DEBUG(env, "\x1B[32m----- CG: %s -----\x1B[0m\n", msg);
+	print_ir_prog_advanced(env, fun, NULL, NULL, NULL);
 }
 
 static void print_ir_prog_cg_dst_liveness(struct bpf_ir_env *env,
@@ -1115,17 +1168,6 @@ static void coalescing(struct bpf_ir_env *env, struct ir_function *fun)
 					}
 				}
 			}
-			// else if (bpf_ir_is_bin_alu(v1)) {
-			// 	// v1 = ALU v2 XX
-			// 	if (v1->values[0].type != IR_VALUE_INSN) {
-			// 		continue;
-			// 	}
-			// 	v2 = v1->values[0].data.insn_d;
-			// 	if (!has_conflict(
-			// 		    v1, v2)) { // Must have no conflict
-			// 		coalesce(v1, v2);
-			// 	}
-			// }
 		}
 	}
 }
@@ -1251,12 +1293,19 @@ void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun)
 
 	change_call(env, fun);
 	CHECK_ERR();
+	print_ir_prog_cg(env, fun, "After Change call");
 
 	change_fun_arg(env, fun);
 	CHECK_ERR();
+	print_ir_prog_cg(env, fun, "After Change fun");
 
 	spill_array(env, fun);
 	CHECK_ERR();
+	print_ir_prog_cg(env, fun, "After Spill Array");
+
+	spill_const(env, fun);
+	CHECK_ERR();
+	print_ir_prog_cg(env, fun, "After Spill Const");
 
 	bool done = false;
 	u32 iteration = 0;
