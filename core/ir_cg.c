@@ -1952,8 +1952,6 @@ void bpf_ir_compile(struct bpf_ir_env *env, struct ir_function *fun)
 	prog_check_cg(env, fun);
 	CHECK_ERR();
 
-	// print_ir_prog_reachable(fun);
-
 	bool need_spill = true;
 	int iterations = 0;
 

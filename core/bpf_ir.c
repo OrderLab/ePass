@@ -1582,7 +1582,7 @@ static void add_reach(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	struct array todo;
 	INIT_ARRAY(&todo, struct ir_basic_block *);
-	bpf_ir_array_push(env, &todo, fun->entry);
+	bpf_ir_array_push(env, &todo, &fun->entry);
 	size_t queue_head = 0;
 	while (queue_head < todo.num_elem) {
 		struct ir_basic_block **tmp =
@@ -1626,7 +1626,7 @@ static void add_reach(struct bpf_ir_env *env, struct ir_function *fun)
 					bpf_ir_array_get_void(&bb->succs, 1);
 
 				bb = *succ0;
-				bpf_ir_array_push(env, &todo, *succ1);
+				bpf_ir_array_push(env, &todo, succ1);
 			} else {
 				RAISE_ERROR(">2 successors, invalid CFG");
 			}

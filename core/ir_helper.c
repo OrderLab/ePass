@@ -542,32 +542,19 @@ void print_ir_bb_no_rec(
 	}
 }
 
-void print_ir_bb(struct bpf_ir_env *env, struct ir_basic_block *bb,
+void print_ir_bb(struct bpf_ir_env *env, struct ir_function *fun,
 		 void (*post_bb)(struct bpf_ir_env *env,
 				 struct ir_basic_block *),
 		 void (*post_insn)(struct bpf_ir_env *env, struct ir_insn *),
 		 void (*print_insn_name)(struct bpf_ir_env *env,
 					 struct ir_insn *))
 {
-	if (bb->_visited) {
-		return;
-	}
-	bb->_visited = 1;
-	print_ir_bb_no_rec(env, bb, post_bb, post_insn, print_insn_name);
-	for (size_t i = 0; i < bb->succs.num_elem; ++i) {
-		struct ir_basic_block *next =
-			((struct ir_basic_block **)(bb->succs.data))[i];
-		print_ir_bb(env, next, post_bb, post_insn, print_insn_name);
-	}
-}
-
-void print_ir_prog_reachable(struct bpf_ir_env *env, struct ir_function *fun)
-{
 	struct ir_basic_block **pos;
 	array_for(pos, fun->reachable_bbs)
 	{
 		struct ir_basic_block *bb = *pos;
-		print_ir_bb_no_rec(env, bb, NULL, NULL, NULL);
+		print_ir_bb_no_rec(env, bb, post_bb, post_insn,
+				   print_insn_name);
 	}
 }
 
@@ -635,12 +622,12 @@ void print_bb_succ(struct bpf_ir_env *env, struct ir_basic_block *bb)
 void print_ir_prog(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	tag_ir(fun);
-	print_ir_bb(env, fun->entry, NULL, NULL, NULL);
+	print_ir_bb(env, fun, NULL, NULL, NULL);
 }
 
 void print_ir_prog_notag(struct bpf_ir_env *env, struct ir_function *fun)
 {
-	print_ir_bb(env, fun->entry, NULL, NULL, NULL);
+	print_ir_bb(env, fun, NULL, NULL, NULL);
 }
 
 void print_ir_dst(struct bpf_ir_env *env, struct ir_insn *insn)
@@ -690,7 +677,7 @@ void print_ir_prog_advanced(
 	void (*print_insn_name)(struct bpf_ir_env *env, struct ir_insn *))
 {
 	tag_ir(fun);
-	print_ir_bb(env, fun->entry, post_bb, post_insn, print_insn_name);
+	print_ir_bb(env, fun, post_bb, post_insn, print_insn_name);
 }
 
 void print_ir_insn_err_full(struct bpf_ir_env *env, struct ir_insn *insn,
