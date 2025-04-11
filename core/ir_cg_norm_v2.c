@@ -249,7 +249,7 @@ static void normalize_cond_jmp(struct bpf_ir_env *env, struct ir_insn *insn)
 				"conditional jmp requires at least one variable");
 		}
 		if (insn->op == IR_INSN_JGT) {
-			insn->op = IR_INSN_JLE;
+			insn->op = IR_INSN_JLT;
 		} else if (insn->op == IR_INSN_JEQ) {
 		} else if (insn->op == IR_INSN_JNE) {
 		} else if (insn->op == IR_INSN_JLT) {
