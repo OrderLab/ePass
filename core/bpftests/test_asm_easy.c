@@ -33,10 +33,9 @@ int prog(void *ctx)
 		}
 	}
 	bpf_printk("tot: %d\n", tot);
-    // 1535866789
+	// 1535866789
 
 	return 0;
 }
-
 
 char _license[] SEC("license") = "GPL";
