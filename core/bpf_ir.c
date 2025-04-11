@@ -1274,7 +1274,9 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 				new_insn->op = IR_INSN_CALL;
 				new_insn->fid = insn.imm;
 				if (insn.src_reg == 1) {
-					// call PC += offset
+					// call PC+offset
+					PRINT_LOG_ERROR(env, "call PC+%d\n",
+							insn.off);
 					RAISE_ERROR(
 						"BPF-local functions not supported");
 				}
