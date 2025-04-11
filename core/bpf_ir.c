@@ -1308,21 +1308,28 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 							"Unsupported helper function");
 					}
 					if (helper_func_arg_num[insn.imm] < 0) {
-						// Variable length, infer from previous instructions
-						new_insn->value_num = 0;
-						// used[x] means whether there exists a usage of register x + 1
-						for (u8 j = 0; j < MAX_FUNC_ARG;
-						     ++j) {
-							if (is_variable_defined(
-								    tenv,
-								    j + BPF_REG_1,
-								    bb)) {
-								new_insn->value_num =
-									j +
-									BPF_REG_1;
-							} else {
-								break;
+						if (insn.imm == 6) {
+							// printk instruction
+							// Variable length, infer from previous instructions
+							new_insn->value_num = 2;
+							// used[x] means whether there exists a usage of register x + 1
+							for (u8 j = 2;
+							     j < MAX_FUNC_ARG;
+							     ++j) {
+								if (is_variable_defined(
+									    tenv,
+									    j + BPF_REG_1,
+									    bb)) {
+									new_insn->value_num =
+										j +
+										BPF_REG_1;
+								} else {
+									break;
+								}
 							}
+						} else {
+							RAISE_ERROR(
+								"Unknown helper function");
 						}
 					} else {
 						new_insn->value_num =
