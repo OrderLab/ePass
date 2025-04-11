@@ -109,7 +109,7 @@ static int apply_global_opt(struct bpf_ir_env *env, const char *opt)
 		env->opts.enable_printk_log = true;
 	} else if (strcmp(opt, "throw_msg") == 0) {
 		env->opts.enable_throw_msg = true;
-	} else if (strcmp(opt, "fr") == 0) {
+	} else if (strcmp(opt, "fakerun") == 0) {
 		env->opts.fake_run = true;
 	} else if (strcmp(opt, "cgv2") == 0) {
 		env->opts.cg_v2 = true;
@@ -125,6 +125,16 @@ static int apply_global_opt(struct bpf_ir_env *env, const char *opt)
 			return -EINVAL;
 		}
 		env->opts.verbose = res;
+	} else if (strncmp(opt, "maxinsns=", 9) == 0) {
+		int res = 0;
+		int err = parse_int(opt + 9, &res);
+		if (err) {
+			return err;
+		}
+		if (res <= 0) {
+			return -EINVAL;
+		}
+		env->opts.max_insns = res;
 	} else if (strncmp(opt, "maxit=", 6) == 0) {
 		int res = 0;
 		int err = parse_int(opt + 6, &res);

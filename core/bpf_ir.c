@@ -1841,6 +1841,9 @@ void bpf_ir_autorun(struct bpf_ir_env *env)
 	env->executed = true;
 	const struct bpf_insn *insns = env->insns;
 	size_t len = env->insn_cnt;
+	if (len > env->opts.max_insns) {
+		RAISE_ERROR("Program too large");
+	}
 	print_bpf_prog(env, insns, len);
 	struct ir_function *fun = bpf_ir_lift(env, insns, len);
 	CHECK_ERR();
@@ -1893,6 +1896,7 @@ struct bpf_ir_opts bpf_ir_default_opts(void)
 	opts.disable_prog_check = false;
 	opts.enable_throw_msg = false;
 	opts.enable_printk_log = false;
+	opts.max_insns = 0;
 	return opts;
 }
 
