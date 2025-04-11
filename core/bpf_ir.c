@@ -1807,6 +1807,7 @@ void bpf_ir_autorun(struct bpf_ir_env *env)
 	env->executed = true;
 	const struct bpf_insn *insns = env->insns;
 	size_t len = env->insn_cnt;
+	print_bpf_prog(env, insns, len);
 	struct ir_function *fun = bpf_ir_lift(env, insns, len);
 	CHECK_ERR();
 
