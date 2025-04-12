@@ -742,6 +742,14 @@ static void conflict_analysis(struct bpf_ir_env *env, struct ir_function *fun)
 					}
 				}
 			}
+			if (bpf_ir_is_bin_alu(insn)) {
+				// a = ALU b c
+				if (insn->values[1].type == IR_VALUE_INSN) {
+					make_conflict(
+						env, fun, insn,
+						insn->values[1].data.insn_d);
+				}
+			}
 		}
 	}
 }
