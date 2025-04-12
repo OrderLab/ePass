@@ -613,6 +613,8 @@ enum ir_insn_type {
 	IR_INSN_JLT,
 	IR_INSN_JLE,
 	IR_INSN_JNE,
+	IR_INSN_JSGE,
+	IR_INSN_JSLE,
 	IR_INSN_JSGT,
 	IR_INSN_JSLT,
 	// PHI

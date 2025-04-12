@@ -274,6 +274,10 @@ static void normalize_cond_jmp(struct bpf_ir_env *env, struct ir_insn *insn)
 			insn->op = IR_INSN_JLE;
 		} else if (insn->op == IR_INSN_JLE) {
 			insn->op = IR_INSN_JGE;
+		} else if (insn->op == IR_INSN_JSGE) {
+			insn->op = IR_INSN_JSLE;
+		} else if (insn->op == IR_INSN_JSLE) {
+			insn->op = IR_INSN_JSGE;
 		} else if (insn->op == IR_INSN_JSGT) {
 			insn->op = IR_INSN_JSLT;
 		} else if (insn->op == IR_INSN_JSLT) {
@@ -793,6 +797,10 @@ static int jmp_code(enum ir_insn_type insn)
 		return BPF_JGT;
 	case IR_INSN_JGE:
 		return BPF_JGE;
+	case IR_INSN_JSGE:
+		return BPF_JSGE;
+	case IR_INSN_JSLE:
+		return BPF_JSLE;
 	case IR_INSN_JSGT:
 		return BPF_JSGT;
 	case IR_INSN_JSLT:

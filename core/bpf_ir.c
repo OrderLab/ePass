@@ -1282,6 +1282,14 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 				// PC += offset if dst != src
 				create_cond_jmp(env, tenv, bb, insn,
 						IR_INSN_JNE, alu_ty);
+			} else if (BPF_OP(code) == BPF_JSGE) {
+				// PC += offset if dst s>= src
+				create_cond_jmp(env, tenv, bb, insn,
+						IR_INSN_JSGE, alu_ty);
+			} else if (BPF_OP(code) == BPF_JSLE) {
+				// PC += offset if dst s<= src
+				create_cond_jmp(env, tenv, bb, insn,
+						IR_INSN_JSLE, alu_ty);
 			} else if (BPF_OP(code) == BPF_JSGT) {
 				// PC += offset if dst s> src
 				create_cond_jmp(env, tenv, bb, insn,

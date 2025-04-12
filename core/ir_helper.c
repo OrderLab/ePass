@@ -462,6 +462,12 @@ void print_ir_insn_full(struct bpf_ir_env *env, struct ir_insn *insn,
 	case IR_INSN_JNE:
 		print_cond_jmp(env, insn, print_ir, "jne");
 		break;
+	case IR_INSN_JSGE:
+		print_cond_jmp(env, insn, print_ir, "jsge");
+		break;
+	case IR_INSN_JSLE:
+		print_cond_jmp(env, insn, print_ir, "jsle");
+		break;
 	case IR_INSN_JSGT:
 		print_cond_jmp(env, insn, print_ir, "jsgt");
 		break;
