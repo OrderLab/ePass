@@ -274,9 +274,12 @@ static void normalize_cond_jmp(struct bpf_ir_env *env, struct ir_insn *insn)
 			insn->op = IR_INSN_JLE;
 		} else if (insn->op == IR_INSN_JLE) {
 			insn->op = IR_INSN_JGE;
+		} else if (insn->op == IR_INSN_JSGT) {
+			insn->op = IR_INSN_JSLT;
+		} else if (insn->op == IR_INSN_JSLT) {
+			insn->op = IR_INSN_JSGT;
 		} else {
-			RAISE_ERROR(
-				"does not support signed jump constant yet");
+			RAISE_ERROR("unknown conditional jmp operation");
 		}
 		struct ir_value tmp = *v0;
 		*v0 = *v1;

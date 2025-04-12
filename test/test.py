@@ -250,4 +250,4 @@ if __name__ == "__main__":
     init()
     # find_correct_progs()
     # test_correct_progs()
-    test_falco()
+    test_falco_v2()
