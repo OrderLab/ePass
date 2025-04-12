@@ -586,17 +586,16 @@ static void print_interference_graph(struct bpf_ir_env *env,
 static void clean_cg_data_insn(struct ir_insn *insn)
 {
 	struct ir_insn_cg_extra_v2 *extra = insn->user_data;
-	if (extra) {
-		bpf_ir_ptrset_clean(&extra->adj);
-		bpf_ir_ptrset_clean(&extra->in);
-		bpf_ir_ptrset_clean(&extra->out);
-		extra->lambda = 0;
-		extra->w = 0;
+	DBGASSERT(extra);
+	bpf_ir_ptrset_clean(&extra->adj);
+	bpf_ir_ptrset_clean(&extra->in);
+	bpf_ir_ptrset_clean(&extra->out);
+	extra->lambda = 0;
+	extra->w = 0;
 
-		if (!extra->finalized) {
-			// Clean register allocation
-			extra->vr_pos.allocated = false;
-		}
+	if (!extra->finalized) {
+		// Clean register allocation
+		extra->vr_pos.allocated = false;
 	}
 }
 
@@ -1314,6 +1313,9 @@ void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun)
 	spill_const(env, fun);
 	CHECK_ERR();
 	print_ir_prog_cg(env, fun, "After Spill Const");
+
+	bpf_ir_cg_prog_check(env, fun);
+	CHECK_ERR();
 
 	bool done = false;
 	u32 iteration = 0;

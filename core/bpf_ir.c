@@ -1624,9 +1624,11 @@ static void add_reach(struct bpf_ir_env *env, struct ir_function *fun)
 		DBGASSERT(!bb->_visited);
 
 		// Visit this chain
+		// PRINT_LOG_DEBUG(env, "Chain:");
 		bool end = false;
 		while (!end) {
 			bb->_visited = 1;
+			// PRINT_LOG_DEBUG(env, " %d", bb->_id);
 			bpf_ir_array_push(env, &fun->reachable_bbs, &bb);
 			if (bb->succs.num_elem == 0) {
 				// End of the chain
@@ -1635,6 +1637,8 @@ static void add_reach(struct bpf_ir_env *env, struct ir_function *fun)
 				struct ir_insn *lastinsn =
 					bpf_ir_get_last_insn(bb);
 				if (lastinsn && lastinsn->op == IR_INSN_JA) {
+					bpf_ir_array_push(env, &todo,
+							  &lastinsn->bb1);
 					end = true;
 				} else {
 					struct ir_basic_block **succ =
@@ -1655,6 +1659,7 @@ static void add_reach(struct bpf_ir_env *env, struct ir_function *fun)
 				RAISE_ERROR(">2 successors, invalid CFG");
 			}
 		}
+		// PRINT_LOG_DEBUG(env, "\n");
 	}
 
 	bpf_ir_array_free(&todo);
@@ -1663,8 +1668,14 @@ static void add_reach(struct bpf_ir_env *env, struct ir_function *fun)
 static void gen_reachable_bbs(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	bpf_ir_clean_visited(fun);
+	// size_t cnt = 0;
+	// size_t bb_cnt = 0;
+	// assign_id(fun->entry, &cnt, &bb_cnt);
+	// bpf_ir_clean_visited(fun);
+
 	bpf_ir_array_clear(env, &fun->reachable_bbs);
 	add_reach(env, fun);
+	// bpf_ir_clean_id(fun);
 }
 
 static void gen_end_bbs(struct bpf_ir_env *env, struct ir_function *fun)

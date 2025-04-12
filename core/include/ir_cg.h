@@ -120,4 +120,6 @@ Note. This could be only applied to an instruction with return value.
 
 void bpf_ir_cg_norm(struct bpf_ir_env *env, struct ir_function *fun);
 
+void bpf_ir_cg_prog_check(struct bpf_ir_env *env, struct ir_function *fun);
+
 #endif
