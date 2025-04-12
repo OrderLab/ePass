@@ -25,14 +25,20 @@ int epass_printlog(struct user_opts uopts)
 		return -1;
 	}
 	char line[256];
-	struct bpf_insn *insns = malloc(sizeof(struct bpf_insn) * 1000);
+	struct array insns_array;
+	struct bpf_ir_env tenv; // tmp
+	INIT_ARRAY(&insns_array, struct bpf_insn);
+	// struct bpf_insn *insns = malloc(sizeof(struct bpf_insn) * 1000);
 	size_t index = 0;
 	while (fgets(line, sizeof(line), fp)) {
 		__u64 s = strtoull(line, NULL, 10);
 		if (line[0] == '\n') {
 			break;
 		}
-		memcpy(&insns[index], &s, sizeof(struct bpf_insn));
+		struct bpf_insn tmp;
+		memcpy(&tmp, &s, sizeof(struct bpf_insn));
+		bpf_ir_array_push(&tenv, &insns_array, &tmp);
+
 		index++;
 	}
 
@@ -40,16 +46,16 @@ int epass_printlog(struct user_opts uopts)
 
 	struct bpf_ir_opts opts = bpf_ir_default_opts();
 	opts.verbose = 3;
-	struct bpf_ir_env *env = bpf_ir_init_env(opts, insns, index);
+	struct bpf_ir_env *env = bpf_ir_init_env(opts, insns_array.data, index);
 	if (!env) {
 		err = -1;
 		goto end;
 	}
-	print_bpf_prog(env, insns, index);
+	print_bpf_prog(env, insns_array.data, index);
 	// bpf_ir_print_log_dbg(env);
 	bpf_ir_free_env(env);
 end:
-	free(insns);
+	bpf_ir_array_free(&insns_array);
 
 	fclose(fp);
 	return err;
