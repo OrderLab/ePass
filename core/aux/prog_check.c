@@ -360,6 +360,8 @@ static void check_jumping(struct bpf_ir_env *env, struct ir_function *fun)
 			if (bb->succs.num_elem != 1) {
 				// Error
 				print_ir_bb_err(env, bb);
+				PRINT_LOG_ERROR(env, "Succ num: %d != 1\n",
+						bb->succs.num_elem);
 				RAISE_ERROR("Succ num error");
 			}
 		}

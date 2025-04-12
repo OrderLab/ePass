@@ -222,9 +222,32 @@ def test_correct_progs_v2():
     print("--- SUMMARY ---")
     print(failed_progs)
 
+def test_falco():
+    failed_progs = []
+    for o in range(339):
+        prog = f"progs/falco/prog{o+1}.txt"
+        if is_correct_epass(prog) == 0:
+            print(f"\x1b[32m {prog} Passed\x1b[0m")
+        else:
+            failed_progs.append(prog)
+            print(f"\x1b[31m {prog} Failed\x1b[0m")
+    print("--- SUMMARY ---")
+    print(failed_progs)
+
+def test_falco_v2():
+    failed_progs = []
+    for o in range(339):
+        prog = f"progs/falco/prog{o+1}.txt"
+        if is_correct_epass_v2(prog) == 0:
+            print(f"\x1b[32m {prog} Passed\x1b[0m")
+        else:
+            failed_progs.append(prog)
+            print(f"\x1b[31m {prog} Failed\x1b[0m")
+    print("--- SUMMARY ---")
+    print(failed_progs)
 
 if __name__ == "__main__":
     init()
     # find_correct_progs()
     # test_correct_progs()
-    test_correct_progs_v2()
+    test_falco()

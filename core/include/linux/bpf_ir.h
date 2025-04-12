@@ -814,8 +814,7 @@ struct ir_basic_block *bpf_ir_init_bb_raw(void);
 // Main interface
 void bpf_ir_autorun(struct bpf_ir_env *env);
 
-struct ir_function *bpf_ir_lift(struct bpf_ir_env *env,
-				const struct bpf_insn *insns, size_t len);
+struct ir_function *bpf_ir_lift(struct bpf_ir_env *env);
 
 void bpf_ir_run(struct bpf_ir_env *env, struct ir_function *fun);
 

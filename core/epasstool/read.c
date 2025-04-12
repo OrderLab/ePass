@@ -30,8 +30,7 @@ int epass_run(struct user_opts uopts, const struct bpf_insn *insn, size_t sz)
 	PRINT_LOG_DEBUG(env, "Running ePass on section %s\n", uopts.sec);
 	u64 starttime = get_cur_time_ns();
 	if (uopts.no_compile) {
-		struct ir_function *fun =
-			bpf_ir_lift(env, env->insns, env->insn_cnt);
+		struct ir_function *fun = bpf_ir_lift(env);
 		CHECK_ERR(0);
 		bpf_ir_run(env, fun);
 		bpf_ir_free_function(fun);

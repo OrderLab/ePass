@@ -243,15 +243,16 @@ static int compare_num(const void *a, const void *b)
 	return 0;
 }
 
-static bool is_raw_insn_breakpoint(u8 code)
+static bool is_raw_insn_breakpoint(const struct bpf_insn *insn)
 {
+	u8 code = insn->code;
 	// exit, jmp (not call) is breakpoint
 	if (BPF_CLASS(code) == BPF_JMP || BPF_CLASS(code) == BPF_JMP32) {
-		if (BPF_OP(code) != BPF_CALL) {
-			return true;
-		} else {
+		if (BPF_OP(code) == BPF_CALL) {
 			// call is not a breakpoint
 			return false;
+		} else {
+			return true;
 		}
 	}
 	return false;
@@ -277,8 +278,7 @@ static void add_entrance_info(struct bpf_ir_env *env,
 	INIT_ARRAY(&preds, size_t);
 	if (entrance_pos >= 1) {
 		size_t last_pos = entrance_pos - 1;
-		u8 code = insns[last_pos].code;
-		if (!is_raw_insn_breakpoint(code)) { // Error!
+		if (!is_raw_insn_breakpoint(&insns[last_pos])) { // Error!
 			// Breaking point
 			// rx = ...
 			// BB Entrance
@@ -354,14 +354,38 @@ static s64 to_s64(s32 imm, s32 next_imm)
 }
 
 static void gen_bb(struct bpf_ir_env *env, struct bb_info *ret,
-		   const struct bpf_insn *insns, size_t len)
+		   struct bpf_insn *insns, size_t len)
 {
+	// Remove pc+0 instructions
+	for (size_t i = 0; i < len; ++i) {
+		struct bpf_insn *insn = &insns[i];
+		u8 code = insn->code;
+		if (BPF_CLASS(code) == BPF_JMP ||
+		    BPF_CLASS(code) == BPF_JMP32) {
+			if ((BPF_OP(code) >= BPF_JEQ &&
+			     BPF_OP(code) <= BPF_JSGE) ||
+			    (BPF_OP(code) >= BPF_JLT &&
+			     BPF_OP(code) <= BPF_JSLE)) {
+				// Conditional jump
+				if (insn->off == 0) {
+					// pc+0
+					// Change to a nop (r0 = r0)
+					insn->code = BPF_MOV | BPF_ALU64 |
+						     BPF_X;
+					insn->dst_reg = BPF_REG_0;
+					insn->src_reg = BPF_REG_0;
+					insn->imm = 0;
+					insn->off = 0;
+				}
+			}
+		}
+	}
 	struct array bb_entrance;
 	INIT_ARRAY(&bb_entrance, struct bb_entrance_info);
 	// First, scan the code to find all the BB entrances
 	for (size_t i = 0; i < len; ++i) {
-		struct bpf_insn insn = insns[i];
-		u8 code = insn.code;
+		struct bpf_insn *insn = &insns[i];
+		u8 code = insn->code;
 		if (BPF_CLASS(code) == BPF_JMP ||
 		    BPF_CLASS(code) == BPF_JMP32) {
 			if (BPF_OP(code) == BPF_JA) {
@@ -370,7 +394,7 @@ static void gen_bb(struct bpf_ir_env *env, struct bb_info *ret,
 				if (BPF_CLASS(code) == BPF_JMP) {
 					// JMP class (64 bits)
 					// Add offset
-					pos = (s16)i + insn.off + 1;
+					pos = (s16)i + insn->off + 1;
 				} else {
 					// Impossible by spec
 					RAISE_ERROR(
@@ -387,7 +411,7 @@ static void gen_bb(struct bpf_ir_env *env, struct bb_info *ret,
 			    (BPF_OP(code) >= BPF_JLT &&
 			     BPF_OP(code) <= BPF_JSLE)) {
 				// Add offset
-				size_t pos = (s16)i + insn.off + 1;
+				size_t pos = (s16)i + insn->off + 1;
 				add_entrance_info(env, insns, &bb_entrance, pos,
 						  i);
 				CHECK_ERR();
@@ -1804,12 +1828,11 @@ static void print_bpf_prog(struct bpf_ir_env *env, const struct bpf_insn *insns,
 
 // Interface implementation
 
-struct ir_function *bpf_ir_lift(struct bpf_ir_env *env,
-				const struct bpf_insn *insns, size_t len)
+struct ir_function *bpf_ir_lift(struct bpf_ir_env *env)
 {
 	u64 starttime = get_cur_time_ns();
 	struct bb_info info;
-	gen_bb(env, &info, insns, len);
+	gen_bb(env, &info, env->insns, env->insn_cnt);
 	CHECK_ERR(NULL);
 
 	if (env->opts.verbose > 2) {
@@ -1839,7 +1862,7 @@ struct ir_function *bpf_ir_lift(struct bpf_ir_env *env,
 void bpf_ir_autorun(struct bpf_ir_env *env)
 {
 	env->executed = true;
-	const struct bpf_insn *insns = env->insns;
+	struct bpf_insn *insns = env->insns;
 	size_t len = env->insn_cnt;
 	if (env->opts.max_insns > 0 && len > env->opts.max_insns) {
 		PRINT_LOG_ERROR(env, "Program size: %zu\n", len);
@@ -1853,7 +1876,7 @@ void bpf_ir_autorun(struct bpf_ir_env *env)
 	if (env->opts.print_only) {
 		return;
 	}
-	struct ir_function *fun = bpf_ir_lift(env, insns, len);
+	struct ir_function *fun = bpf_ir_lift(env);
 	CHECK_ERR();
 
 	print_ir_prog(env, fun);
