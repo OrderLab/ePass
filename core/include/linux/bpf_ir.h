@@ -73,6 +73,9 @@ struct bpf_ir_opts {
 	// Do not actually change the bytecode
 	bool fake_run;
 
+	// Print only
+	bool print_only;
+
 	// Limit the instructions to handle
 	u32 max_insns;
 

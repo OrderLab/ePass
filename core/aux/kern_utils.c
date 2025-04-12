@@ -109,6 +109,8 @@ static int apply_global_opt(struct bpf_ir_env *env, const char *opt)
 		env->opts.enable_printk_log = true;
 	} else if (strcmp(opt, "throw_msg") == 0) {
 		env->opts.enable_throw_msg = true;
+	} else if (strcmp(opt, "printonly") == 0) {
+		env->opts.print_only = true;
 	} else if (strcmp(opt, "fakerun") == 0) {
 		env->opts.fake_run = true;
 	} else if (strcmp(opt, "cgv2") == 0) {
