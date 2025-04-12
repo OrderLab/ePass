@@ -533,11 +533,19 @@ static void print_pre_ir_cfg(struct bpf_ir_env *env,
 		return;
 	}
 	bb->visited = 1;
-	PRINT_LOG_DEBUG(env, "BB %ld:\n", bb->id);
+	PRINT_LOG_DEBUG(env, "BB %ld at [%zu, %zu):\n", bb->id, bb->start_pos,
+			bb->end_pos);
 	for (size_t i = 0; i < bb->len; ++i) {
 		struct pre_ir_insn insn = bb->pre_insns[i];
-		PRINT_LOG_DEBUG(env, "%x %x %llx\n", insn.opcode, insn.imm,
-				insn.imm64);
+		struct bpf_insn binsn;
+		binsn.code = insn.opcode;
+		binsn.src_reg = insn.src_reg;
+		binsn.dst_reg = insn.dst_reg;
+		binsn.imm = insn.imm;
+		binsn.off = insn.off;
+		bpf_ir_print_bpf_insn(env, &binsn);
+		// PRINT_LOG_DEBUG(env, "%x %x %llx\n", insn.opcode, insn.imm,
+		// 		insn.imm64);
 	}
 	PRINT_LOG_DEBUG(env, "preds (%ld): ", bb->preds.num_elem);
 	for (size_t i = 0; i < bb->preds.num_elem; ++i) {
