@@ -27,6 +27,7 @@ int epass_run(struct user_opts uopts, const struct bpf_insn *insn, size_t sz)
 		return err;
 	}
 	enable_builtin(env);
+	PRINT_LOG_DEBUG(env, "Running ePass on section %s\n", uopts.sec);
 	u64 starttime = get_cur_time_ns();
 	if (uopts.no_compile) {
 		struct ir_function *fun =
@@ -44,11 +45,17 @@ int epass_run(struct user_opts uopts, const struct bpf_insn *insn, size_t sz)
 		goto end;
 	}
 
-	printf("ePass finished in %lluns\n", tot);
-	printf("lift %lluns\trun %lluns\tcompile %lluns\tsum %lluns\n",
-	       env->lift_time, env->run_time, env->cg_time,
-	       env->lift_time + env->run_time + env->cg_time);
-	printf("program size: %zu->%zu\n", sz, env->insn_cnt);
+	PRINT_LOG_DEBUG(env, "ePass finished in %lluns\n", tot);
+	PRINT_LOG_DEBUG(env,
+			"lift %lluns\trun %lluns\tcompile %lluns\tsum %lluns\n",
+			env->lift_time, env->run_time, env->cg_time,
+			env->lift_time + env->run_time + env->cg_time);
+	PRINT_LOG_DEBUG(env, "program size: %zu->%zu\n", sz, env->insn_cnt);
+
+	if (uopts.bpfprog) {
+		err = bpf_program__set_insns(uopts.bpfprog, env->insns,
+					     env->insn_cnt);
+	}
 
 	if (uopts.prog_out[0]) {
 		FILE *f = fopen(uopts.prog_out, "wb");

@@ -235,6 +235,55 @@ static void normalize_assign(struct ir_insn *insn)
 	}
 }
 
+static void normalize_cond_jmp(struct bpf_ir_env *env, struct ir_insn *insn)
+{
+	struct ir_value *v0 = &insn->values[0];
+	struct ir_value *v1 = &insn->values[1];
+	enum val_type t0 = insn->value_num >= 1 ? vtype(*v0) : UNDEF;
+	enum val_type t1 = insn->value_num >= 2 ? vtype(*v1) : UNDEF;
+
+	if (t0 == CONST) {
+		// jmp const reg
+		if (t1 == CONST) {
+			if (insn->op == IR_INSN_JNE) {
+				if (v0->data.constant_d !=
+				    v1->data.constant_d) {
+					// Jump
+					insn->op = IR_INSN_JA;
+					insn->value_num = 0;
+					insn->bb1 =
+						insn->bb2; // Jump to the next
+					insn->bb2 = NULL;
+				} else {
+					// No jump
+					bpf_ir_erase_insn_norm(insn);
+				}
+			} else {
+				RAISE_ERROR(
+					"conditional jmp requires at least one variable");
+			}
+			return;
+		}
+		if (insn->op == IR_INSN_JGT) {
+			insn->op = IR_INSN_JLT;
+		} else if (insn->op == IR_INSN_JEQ) {
+		} else if (insn->op == IR_INSN_JNE) {
+		} else if (insn->op == IR_INSN_JLT) {
+			insn->op = IR_INSN_JGT;
+		} else if (insn->op == IR_INSN_JGE) {
+			insn->op = IR_INSN_JLE;
+		} else if (insn->op == IR_INSN_JLE) {
+			insn->op = IR_INSN_JGE;
+		} else {
+			RAISE_ERROR(
+				"does not support signed jump constant yet");
+		}
+		struct ir_value tmp = *v0;
+		*v0 = *v1;
+		*v1 = tmp;
+	}
+}
+
 /* Normalize ALU */
 static void normalize_alu(struct bpf_ir_env *env, struct ir_insn *insn)
 {
@@ -246,8 +295,36 @@ static void normalize_alu(struct bpf_ir_env *env, struct ir_insn *insn)
 	DBGASSERT(tdst == REG);
 	struct ir_vr_pos dst_pos = insn_norm(insn)->pos;
 	if (t1 == REG) {
-		// tdst != t1
-		DBGASSERT(dst_pos.alloc_reg != v1->data.vr_pos.alloc_reg);
+		if (dst_pos.alloc_reg == v1->data.vr_pos.alloc_reg) {
+			if (bpf_ir_is_commutative_alu(insn)) {
+				// Switch
+				struct ir_value tmp = *v1;
+				*v1 = *v0;
+				*v0 = tmp;
+				enum val_type tmp2 = t1;
+				t1 = t0;
+				t0 = tmp2;
+			} else if (insn->op == IR_INSN_SUB) {
+				// reg1 = sub XX reg1
+				// ==>
+				// reg1 = -reg1
+				// reg1 = add reg1 XX
+				bpf_ir_create_neg_insn_norm(env, insn, dst_pos,
+							    IR_ALU_64, *v1,
+							    INSERT_FRONT);
+				insn->op = IR_INSN_ADD;
+				struct ir_value tmp = *v1;
+				*v1 = *v0;
+				*v0 = tmp;
+				enum val_type tmp2 = t1;
+				t1 = t0;
+				t0 = tmp2;
+			} else {
+				print_raw_ir_insn(env, insn);
+				RAISE_ERROR(
+					"non-commutative ALU op not supported yet");
+			}
+		}
 	}
 	if (t0 == CONST) {
 		DBGASSERT(v0->const_type == IR_ALU_32);
@@ -373,6 +450,32 @@ static void normalize_getelemptr(struct bpf_ir_env *env, struct ir_insn *insn)
 	}
 }
 
+static void normalize_store(struct bpf_ir_env *env, struct ir_insn *insn)
+{
+	struct ir_value *v0 = &insn->values[0];
+	struct ir_value *v1 = &insn->values[1];
+	// store v0, v1
+	// ==>
+	// v0 = v1
+	insn->op = IR_INSN_ASSIGN;
+	insn_norm(insn)->pos = v0->data.vr_pos;
+	*v0 = *v1;
+	insn->value_num = 1;
+	normalize_assign(insn);
+}
+
+static void normalize_load(struct bpf_ir_env *env, struct ir_insn *insn)
+{
+	// struct ir_value *v0 = &insn->values[0];
+	// enum val_type t0 = insn->value_num >= 1 ? vtype(*v0) : UNDEF;
+	// enum val_type tdst = vtype_insn_norm(insn);
+	// reg1 = load reg2
+	// ==>
+	// reg1 = reg2
+	insn->op = IR_INSN_ASSIGN;
+	normalize_assign(insn);
+}
+
 static void normalize_stackoff(struct ir_insn *insn)
 {
 	// Could be storeraw or loadraw
@@ -485,10 +588,9 @@ static void normalize(struct bpf_ir_env *env, struct ir_function *fun)
 			} else if (insn->op == IR_INSN_GETELEMPTR) {
 				normalize_getelemptr(env, insn);
 			} else if (insn->op == IR_INSN_STORE) {
-				// Should be converted to ASSIGN
-				CRITICAL("Error");
+				normalize_store(env, insn);
 			} else if (insn->op == IR_INSN_LOAD) {
-				CRITICAL("Error");
+				normalize_load(env, insn);
 			} else if (insn->op == IR_INSN_LOADRAW) {
 				normalize_stackoff(insn);
 			} else if (insn->op == IR_INSN_LOADIMM_EXTRA) {
@@ -513,11 +615,14 @@ static void normalize(struct bpf_ir_env *env, struct ir_function *fun)
 			} else if (bpf_ir_is_cond_jmp(insn)) {
 				// jmp reg const/reg
 				// or
-				// jmp const/reg reg
-				// OK
+				// jmp const reg
+				// ==>
+				// jmp(REV) reg const
+				normalize_cond_jmp(env, insn);
 			} else {
 				RAISE_ERROR("No such instruction");
 			}
+			CHECK_ERR();
 		}
 	}
 }

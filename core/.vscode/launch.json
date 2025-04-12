@@ -11,7 +11,7 @@
             "program": "${workspaceFolder}/build/epasstool/epass",
             "args": [
                 "read",
-                "bpftests/output/loop1.o",
+                "bpftests/output/mem2.o",
                 "--gopt",
                 "verbose=3,cgv2"
             ],

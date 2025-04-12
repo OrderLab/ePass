@@ -50,7 +50,7 @@ static void usage(const char *prog)
 		"  --gopt <arg> \tSpecify global (general) option\n"
 		"  --popt <arg> \tSpecify pass option\n"
 		"  --sec, -s <arg> \tSpecify ELF section manually\n"
-		"  --load, -L \tLoad to the kernel after transformation (alpha)\n"
+		"  --load, -L \tLoad to the kernel (alpha)\n"
 		"  -F <arg> \tOutput format. Available formats: sec, log (default)\n"
 		"  -o <arg> \tOutput the modified program\n"
 		"\n"
@@ -102,7 +102,7 @@ static struct user_opts parse_cli(int argc, char **argv)
 	uopts.no_compile = false;
 	uopts.auto_sec = true;
 	uopts.output_format = OUTPUT_LOG;
-	uopts.load = false;
+	uopts.bpfprog = NULL;
 	if (argc < 2) {
 		usage(prog);
 	}
@@ -139,9 +139,6 @@ static struct user_opts parse_cli(int argc, char **argv)
 				argv++;
 				uopts.auto_sec = false;
 				strcpy(uopts.sec, *argv);
-			} else if (strcmp(*argv, "--load") == 0 ||
-				   strcmp(*argv, "-L") == 0) {
-				uopts.load = true;
 			} else if (strcmp(*argv, "-o") == 0) {
 				if (argc < 2) {
 					usage(prog);
@@ -195,6 +192,43 @@ static struct user_opts parse_cli(int argc, char **argv)
 				argc--;
 				argv++;
 				strcpy(uopts.popt, *argv);
+			} else if (strcmp(*argv, "--sec") == 0 ||
+				   strcmp(*argv, "-s") == 0) {
+				if (argc < 2) {
+					usage(prog);
+				}
+				argc--;
+				argv++;
+				uopts.auto_sec = false;
+				strcpy(uopts.sec, *argv);
+			} else {
+				// File
+				if (uopts.prog[0] == 0) {
+					strcpy(uopts.prog, *argv);
+				} else {
+					usage(prog);
+				}
+			}
+			argc--;
+			argv++;
+		}
+		if (uopts.prog[0] == 0) {
+			usage(prog);
+		}
+	} else if (strcmp(*argv, "load") == 0) {
+		argc--;
+		argv++;
+		uopts.mode = MODE_LOAD;
+		while (argc > 0) {
+			if (strcmp(*argv, "--sec") == 0 ||
+			    strcmp(*argv, "-s") == 0) {
+				if (argc < 2) {
+					usage(prog);
+				}
+				argc--;
+				argv++;
+				uopts.auto_sec = false;
+				strcpy(uopts.sec, *argv);
 			} else {
 				// File
 				if (uopts.prog[0] == 0) {
@@ -224,6 +258,15 @@ int main(int argc, char **argv)
 		return is_elf ? epass_print(uopts) : epass_printlog(uopts);
 	}
 
+	if (uopts.mode == MODE_LOAD) {
+		if (is_elf) {
+			return epass_load(uopts);
+		} else {
+			fprintf(stderr, "Load is only supported for ELF\n");
+			return 1;
+		}
+	}
+
 	// Initialize common options
 	common_opts = bpf_ir_default_opts();
 	struct builtin_pass_cfg passes[] = {
@@ -245,18 +288,7 @@ int main(int argc, char **argv)
 	uopts.opts = opts;
 
 	if (uopts.mode == MODE_READ) {
-		if (uopts.load) {
-			if (is_elf) {
-				return epass_readload(uopts);
-			} else {
-				fprintf(stderr,
-					"Load is only supported for ELF\n");
-				return 1;
-			}
-		} else {
-			return is_elf ? epass_read(uopts) :
-					epass_readlog(uopts);
-		}
+		return is_elf ? epass_read(uopts) : epass_readlog(uopts);
 	}
 
 	return 0;

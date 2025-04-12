@@ -268,8 +268,7 @@ static void add_entrance_info(struct bpf_ir_env *env,
 			((struct bb_entrance_info *)(bb_entrances->data)) + i;
 		if (entry->entrance == entrance_pos) {
 			// Already has this entrance, add a pred
-			bpf_ir_array_push_unique(env, &entry->bb->preds,
-						 &current_pos);
+			bpf_ir_array_push(env, &entry->bb->preds, &current_pos);
 			return;
 		}
 	}
@@ -992,6 +991,12 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 	for (size_t i = 0; i < bb->len; ++i) {
 		struct pre_ir_insn insn = bb->pre_insns[i];
 		u8 code = insn.opcode;
+		struct bpf_insn t_insn;
+		t_insn.code = code;
+		t_insn.dst_reg = insn.dst_reg;
+		t_insn.src_reg = insn.src_reg;
+		t_insn.off = insn.off;
+		t_insn.imm = insn.imm;
 		if (BPF_CLASS(code) == BPF_ALU ||
 		    BPF_CLASS(code) == BPF_ALU64) {
 			// ALU class
@@ -1268,8 +1273,24 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 				set_insn_raw_pos(new_insn, insn.pos);
 				new_insn->op = IR_INSN_CALL;
 				new_insn->fid = insn.imm;
+				if (insn.src_reg == 1) {
+					// call PC+offset
+					PRINT_LOG_ERROR(env, "call pc+%d\n",
+							insn.imm);
+					RAISE_ERROR(
+						"BPF-local functions not supported");
+				}
+				if (insn.src_reg == 2) {
+					// platform-specific helper function imm
+					RAISE_ERROR(
+						"Platform-specific helper function not supported");
+				}
 				if (insn.imm < 0) {
 					new_insn->value_num = 0;
+					PRINT_LOG_ERROR(
+						env,
+						"Unknown helper function %d at %d\n",
+						insn.imm, insn.pos);
 					RAISE_ERROR(
 						"Not supported function call\n");
 				} else {
@@ -1279,29 +1300,38 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 						    sizeof(helper_func_arg_num) /
 							    sizeof(helper_func_arg_num
 									   [0])) {
+						bpf_ir_print_bpf_insn(env,
+								      &t_insn);
 						PRINT_LOG_ERROR(
 							env,
-							"unknown helper function %d at %d\n",
+							"Unknown helper function %d at %d\n",
 							insn.imm, insn.pos);
 						RAISE_ERROR(
 							"Unsupported helper function");
 					}
 					if (helper_func_arg_num[insn.imm] < 0) {
-						// Variable length, infer from previous instructions
-						new_insn->value_num = 0;
-						// used[x] means whether there exists a usage of register x + 1
-						for (u8 j = 0; j < MAX_FUNC_ARG;
-						     ++j) {
-							if (is_variable_defined(
-								    tenv,
-								    j + BPF_REG_1,
-								    bb)) {
-								new_insn->value_num =
-									j +
-									BPF_REG_1;
-							} else {
-								break;
+						if (insn.imm == 6) {
+							// printk instruction
+							// Variable length, infer from previous instructions
+							new_insn->value_num = 2;
+							// used[x] means whether there exists a usage of register x + 1
+							for (u8 j = 2;
+							     j < MAX_FUNC_ARG;
+							     ++j) {
+								if (is_variable_defined(
+									    tenv,
+									    j + BPF_REG_1,
+									    bb)) {
+									new_insn->value_num =
+										j +
+										BPF_REG_1;
+								} else {
+									break;
+								}
 							}
+						} else {
+							RAISE_ERROR(
+								"Unknown helper function");
 						}
 					} else {
 						new_insn->value_num =
@@ -1337,6 +1367,7 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 			}
 		} else {
 			// TODO
+			bpf_ir_print_bpf_insn(env, &t_insn);
 			PRINT_LOG_ERROR(env, "Class 0x%02x not supported\n",
 					BPF_CLASS(code));
 			RAISE_ERROR("Not supported");
@@ -1410,6 +1441,8 @@ void bpf_ir_free_function(struct ir_function *fun)
 	bpf_ir_array_free(&fun->all_bbs);
 	bpf_ir_array_free(&fun->reachable_bbs);
 	bpf_ir_array_free(&fun->end_bbs);
+	bpf_ir_array_free(&fun->cg_info.seo);
+
 	bpf_ir_array_free(&fun->cg_info.all_var);
 	bpf_ir_ptrset_free(&fun->cg_info.all_var_v2);
 }
@@ -1427,7 +1460,9 @@ static void init_function(struct bpf_ir_env *env, struct ir_function *fun,
 	INIT_ARRAY(&fun->reachable_bbs, struct ir_basic_block *);
 	INIT_ARRAY(&fun->end_bbs, struct ir_basic_block *);
 	INIT_ARRAY(&fun->cg_info.all_var, struct ir_insn *);
+	INIT_ARRAY(&fun->cg_info.seo, struct ir_insn *);
 	INIT_PTRSET_DEF(&fun->cg_info.all_var_v2);
+	fun->cg_info.stack_offset = 0;
 	for (size_t i = 0; i < MAX_BPF_REG; ++i) {
 		struct array *currentDef = &tenv->currentDef[i];
 		bpf_ir_array_free(currentDef);
@@ -1472,6 +1507,8 @@ static void gen_bb_succ(struct bpf_ir_env *env, struct ir_function *fun)
 			if (bb->succs.num_elem != 2) {
 				print_ir_insn_err(env, insn,
 						  "Jump instruction");
+				PRINT_LOG_ERROR(env, "Has %d succ\n",
+						bb->succs.num_elem);
 				RAISE_ERROR(
 					"Conditional jmp with != 2 successors");
 			}
@@ -1495,71 +1532,105 @@ static void gen_bb_succ(struct bpf_ir_env *env, struct ir_function *fun)
 	}
 }
 
-static void add_reach(struct bpf_ir_env *env, struct ir_function *fun,
-		      struct ir_basic_block *bb)
+// Find the head of the chain
+static struct ir_basic_block *find_chain_head(struct ir_basic_block *bb)
 {
-	if (bb->_visited) {
-		return;
+	if (bb->preds.num_elem == 0) {
+		return bb;
 	}
-	// bb->_visited = 1;
-	// bpf_ir_array_push(env, &fun->reachable_bbs, &bb);
+	struct ir_basic_block *pred = NULL;
+	struct ir_basic_block **pos;
+	array_for(pos, bb->preds)
+	{
+		struct ir_basic_block *bb2 = *pos;
+		if (bb2->succs.num_elem == 1) {
+			struct ir_insn *lastinsn = bpf_ir_get_last_insn(bb2);
+			if (lastinsn && lastinsn->op == IR_INSN_JA) {
+				// Not pred
+			} else {
+				if (pred) {
+					// Multiple preds, error
+					return NULL;
+				} else {
+					pred = bb2;
+				}
+			}
+		} else if (bb2->succs.num_elem == 2) {
+			struct ir_basic_block **succ0 =
+				bpf_ir_array_get_void(&bb2->succs, 0);
+			if (*succ0 == bb) {
+				// This is a pred
+				if (pred) {
+					// Multiple preds, error
+					return NULL;
+				} else {
+					pred = bb2;
+				}
+			}
+		} else {
+			return NULL;
+		}
+	}
+	if (pred == NULL) {
+		// bb is head
+		return bb;
+	}
+	return find_chain_head(pred);
+}
+
+static void add_reach(struct bpf_ir_env *env, struct ir_function *fun)
+{
 	struct array todo;
 	INIT_ARRAY(&todo, struct ir_basic_block *);
-
-	// struct ir_basic_block **succ;
-	// bool first = false;
-	// array_for(succ, bb->succs)
-	// {
-	// 	if (!first && bb->succs.num_elem > 1) {
-	// 		first = true;
-	// 		// Check if visited
-	// 		if ((*succ)->_visited) {
-	// 			RAISE_ERROR("Loop BB detected");
-	// 		}
-	// 	}
-	// 	add_reach(env, fun, *succ);
-	// }
-
-	// First Test sanity ... TODO!
-
-	struct ir_basic_block *cur_bb = bb;
-
-	while (1) {
-		cur_bb->_visited = 1;
-		bpf_ir_array_push(env, &fun->reachable_bbs, &cur_bb);
-		if (cur_bb->succs.num_elem == 0) {
-			break;
+	bpf_ir_array_push(env, &todo, &fun->entry);
+	size_t queue_head = 0;
+	while (queue_head < todo.num_elem) {
+		struct ir_basic_block **tmp =
+			bpf_ir_array_get_void(&todo, queue_head);
+		struct ir_basic_block *bb = *tmp;
+		queue_head++;
+		if (bb->_visited) {
+			continue;
 		}
-
-		struct ir_basic_block **succ1 =
-			bpf_ir_array_get_void(&cur_bb->succs, 0);
-		if ((*succ1)->_visited) {
-			break;
+		bb = find_chain_head(bb);
+		if (!bb) {
+			RAISE_ERROR("Cannot find chain, invalid CFG");
 		}
-		if (cur_bb->succs.num_elem == 1) {
-			// Check if end with JA
-			struct ir_insn *lastinsn = bpf_ir_get_last_insn(cur_bb);
-			if (lastinsn && lastinsn->op == IR_INSN_JA) {
-				struct ir_basic_block **succ2 =
-					bpf_ir_array_get_void(&cur_bb->succs,
-							      0);
-				bpf_ir_array_push(env, &todo, succ2);
-				break;
+		// If bb has not been visited, its chain head is not visited
+		DBGASSERT(!bb->_visited);
+
+		// Visit this chain
+		bool end = false;
+		while (!end) {
+			bb->_visited = 1;
+			bpf_ir_array_push(env, &fun->reachable_bbs, &bb);
+			if (bb->succs.num_elem == 0) {
+				// End of the chain
+				end = true;
+			} else if (bb->succs.num_elem == 1) {
+				struct ir_insn *lastinsn =
+					bpf_ir_get_last_insn(bb);
+				if (lastinsn && lastinsn->op == IR_INSN_JA) {
+					end = true;
+				} else {
+					struct ir_basic_block **succ =
+						bpf_ir_array_get_void(
+							&bb->succs, 0);
+					bb = *succ;
+				}
+			} else if (bb->succs.num_elem == 2) {
+				// bb = succ0, add succ1 to todo
+				struct ir_basic_block **succ0 =
+					bpf_ir_array_get_void(&bb->succs, 0);
+				struct ir_basic_block **succ1 =
+					bpf_ir_array_get_void(&bb->succs, 1);
+
+				bb = *succ0;
+				bpf_ir_array_push(env, &todo, succ1);
+			} else {
+				RAISE_ERROR(">2 successors, invalid CFG");
 			}
-		} else if (cur_bb->succs.num_elem == 2) {
-			struct ir_basic_block **succ2 =
-				bpf_ir_array_get_void(&cur_bb->succs, 1);
-			bpf_ir_array_push(env, &todo, succ2);
-		} else {
-			CRITICAL("Not possible: BB with >2 succs");
 		}
-		cur_bb = *succ1;
-	}
-
-	struct ir_basic_block **pos;
-	array_for(pos, todo)
-	{
-		add_reach(env, fun, *pos);
 	}
 
 	bpf_ir_array_free(&todo);
@@ -1569,7 +1640,7 @@ static void gen_reachable_bbs(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	bpf_ir_clean_visited(fun);
 	bpf_ir_array_clear(env, &fun->reachable_bbs);
-	add_reach(env, fun, fun->entry);
+	add_reach(env, fun);
 }
 
 static void gen_end_bbs(struct bpf_ir_env *env, struct ir_function *fun)
@@ -1770,6 +1841,18 @@ void bpf_ir_autorun(struct bpf_ir_env *env)
 	env->executed = true;
 	const struct bpf_insn *insns = env->insns;
 	size_t len = env->insn_cnt;
+	if (env->opts.max_insns > 0 && len > env->opts.max_insns) {
+		PRINT_LOG_ERROR(env, "Program size: %zu\n", len);
+		RAISE_ERROR("Program too large");
+	}
+
+	PRINT_LOG_DEBUG(env,
+			"--------------------\nOriginal Program, size %zu:\n",
+			len);
+	print_bpf_prog(env, insns, len);
+	if (env->opts.print_only) {
+		return;
+	}
 	struct ir_function *fun = bpf_ir_lift(env, insns, len);
 	CHECK_ERR();
 
@@ -1799,6 +1882,10 @@ void bpf_ir_autorun(struct bpf_ir_env *env)
 
 	// Free the memory
 	bpf_ir_free_function(fun);
+
+	if (env->opts.fake_run) {
+		RAISE_ERROR("Fake run finished");
+	}
 }
 
 struct bpf_ir_opts bpf_ir_default_opts(void)
@@ -1811,10 +1898,14 @@ struct bpf_ir_opts bpf_ir_default_opts(void)
 	opts.force = false;
 	opts.verbose = 1;
 	opts.cg_v2 = false;
+	opts.dotgraph = false;
+	opts.fake_run = false;
 	opts.max_iteration = 10;
 	opts.disable_prog_check = false;
 	opts.enable_throw_msg = false;
 	opts.enable_printk_log = false;
+	opts.max_insns = 0;
+	opts.print_only = false;
 	return opts;
 }
 

@@ -4,7 +4,7 @@
 
 mkdir -p output
 
-files=$(find . \( -path ./env -o -path ./aux -o -path ./pass \) -prune -o -name '*.c' -print)
+files=$(find . \( -path ./env -o -path ./pass \) -prune -o -name '*.c' -print)
 
 rm Makefile
 all_objs=""
@@ -17,6 +17,3 @@ for file in $files; do
 done
 
 echo "all:$all_objs" >> Makefile
-
-gcc aux/fork.c -o output/fork
-gcc aux/test.c -o output/test

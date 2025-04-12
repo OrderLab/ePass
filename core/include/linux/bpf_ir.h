@@ -4,6 +4,7 @@
 #include "linux/bpf.h"
 
 #ifndef __KERNEL__
+
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>
@@ -14,10 +15,6 @@
 #include <stdint.h>
 #include <time.h>
 
-// Used to simulate kernel functions
-#include "list.h"
-#include "hash.h"
-
 typedef __s8 s8;
 typedef __u8 u8;
 typedef __s16 s16;
@@ -27,7 +24,15 @@ typedef __u32 u32;
 typedef __s64 s64;
 typedef __u64 u64;
 
+#ifdef LIBBPF
+#else
+// Used to simulate kernel functions
+#include "list.h"
+#include "hash.h"
+
 #define SIZET_MAX SIZE_MAX
+
+#endif
 
 #else
 
@@ -65,8 +70,20 @@ struct bpf_ir_opts {
 	// Write an error message to trace when throwing an error
 	bool enable_throw_msg;
 
+	// Do not actually change the bytecode
+	bool fake_run;
+
+	// Print only
+	bool print_only;
+
+	// Limit the instructions to handle
+	u32 max_insns;
+
 	// Use new CG pipeline;
 	bool cg_v2;
+
+	// Generate DOT graph for intereference graph
+	bool dotgraph;
 
 	// Verbose level
 	int verbose;
@@ -463,7 +480,10 @@ enum ir_builtin_constant {
 enum ir_value_type {
 	IR_VALUE_CONSTANT,
 	// A constant value in raw operations to be added during code generation
+	// e.g. if the const is 10, then after CG, it will be 10 + stack shift
 	IR_VALUE_CONSTANT_RAWOFF,
+
+	// e.g. if the const is 10, then after CG, it will be 10 - stack shift
 	IR_VALUE_CONSTANT_RAWOFF_REV,
 	IR_VALUE_INSN,
 	IR_VALUE_FLATTEN_DST, // Used only in code generation
@@ -490,7 +510,7 @@ struct ir_vr_pos {
 	bool allocated;
 	u32 spilled_size; // Spilled
 	u8 alloc_reg; // Not spilled
-	s32 spilled;
+	s32 spilled; // 0 -> not spilled; X -> spilled at X
 };
 
 /*
@@ -813,6 +833,9 @@ struct code_gen_info {
 	// Array of struct ir_insn*
 	struct array all_var;
 
+	// SEO
+	struct array seo;
+
 	struct ptrset all_var_v2;
 
 	// BPF Register Virtual Instruction (used as dst)
@@ -931,6 +954,16 @@ struct ir_insn *bpf_ir_create_alloc_insn_bb(struct bpf_ir_env *env,
 					    enum ir_vr_type type,
 					    enum insert_position pos);
 
+struct ir_insn *bpf_ir_create_alloc_insn_cg_v2(struct bpf_ir_env *env,
+					       struct ir_insn *pos_insn,
+					       enum ir_vr_type type,
+					       enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_alloc_insn_bb_cg_v2(struct bpf_ir_env *env,
+						  struct ir_basic_block *pos_bb,
+						  enum ir_vr_type type,
+						  enum insert_position pos);
+
 struct ir_insn *bpf_ir_create_allocarray_insn(struct bpf_ir_env *env,
 					      struct ir_insn *pos_insn,
 					      enum ir_vr_type type, u32 num,
@@ -1014,6 +1047,20 @@ struct ir_insn *bpf_ir_create_neg_insn_bb_cg(struct bpf_ir_env *env,
 					     struct ir_value val,
 					     enum insert_position pos);
 
+struct ir_insn *bpf_ir_create_neg_insn_norm(struct bpf_ir_env *env,
+					    struct ir_insn *pos_insn,
+					    struct ir_vr_pos dstpos,
+					    enum ir_alu_op_type alu_type,
+					    struct ir_value val,
+					    enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_neg_insn_bb_norm(struct bpf_ir_env *env,
+					       struct ir_basic_block *pos_bb,
+					       struct ir_vr_pos dstpos,
+					       enum ir_alu_op_type alu_type,
+					       struct ir_value val,
+					       enum insert_position pos);
+
 struct ir_insn *bpf_ir_create_end_insn(struct bpf_ir_env *env,
 				       struct ir_insn *pos_insn,
 				       enum ir_insn_type ty, u32 swap_width,
@@ -1051,6 +1098,18 @@ struct ir_insn *bpf_ir_create_store_insn_bb(struct bpf_ir_env *env,
 					    struct ir_value val,
 					    enum insert_position pos);
 
+struct ir_insn *bpf_ir_create_store_insn_cg_v2(struct bpf_ir_env *env,
+					       struct ir_insn *pos_insn,
+					       struct ir_insn *insn,
+					       struct ir_value val,
+					       enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_store_insn_bb_cg_v2(struct bpf_ir_env *env,
+						  struct ir_basic_block *pos_bb,
+						  struct ir_insn *insn,
+						  struct ir_value val,
+						  enum insert_position pos);
+
 struct ir_insn *bpf_ir_create_load_insn(struct bpf_ir_env *env,
 					struct ir_insn *pos_insn,
 					struct ir_value val,
@@ -1060,6 +1119,16 @@ struct ir_insn *bpf_ir_create_load_insn_bb(struct bpf_ir_env *env,
 					   struct ir_basic_block *pos_bb,
 					   struct ir_value val,
 					   enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_load_insn_cg_v2(struct bpf_ir_env *env,
+					      struct ir_insn *pos_insn,
+					      struct ir_value val,
+					      enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_load_insn_bb_cg_v2(struct bpf_ir_env *env,
+						 struct ir_basic_block *pos_bb,
+						 struct ir_value val,
+						 enum insert_position pos);
 
 struct ir_insn *
 bpf_ir_create_bin_insn(struct bpf_ir_env *env, struct ir_insn *pos_insn,
@@ -1326,8 +1395,6 @@ void print_ir_prog(struct bpf_ir_env *env, struct ir_function *);
 
 void print_ir_prog_notag(struct bpf_ir_env *env, struct ir_function *fun);
 
-void print_ir_prog_reachable(struct bpf_ir_env *env, struct ir_function *fun);
-
 void print_ir_prog_advanced(struct bpf_ir_env *env, struct ir_function *,
 			    void (*)(struct bpf_ir_env *env,
 				     struct ir_basic_block *),
@@ -1504,6 +1571,8 @@ struct ir_value bpf_ir_value_undef(void);
 struct ir_address_value bpf_ir_addr_val(struct ir_value value, s16 offset);
 
 struct ir_value bpf_ir_value_stack_ptr(struct ir_function *fun);
+
+struct ir_value bpf_ir_value_r0(struct ir_function *fun);
 
 #define VR_POS_STACK_PTR                             \
 	(struct ir_vr_pos){ .allocated = true,       \

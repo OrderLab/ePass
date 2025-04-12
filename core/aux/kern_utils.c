@@ -109,8 +109,14 @@ static int apply_global_opt(struct bpf_ir_env *env, const char *opt)
 		env->opts.enable_printk_log = true;
 	} else if (strcmp(opt, "throw_msg") == 0) {
 		env->opts.enable_throw_msg = true;
+	} else if (strcmp(opt, "printonly") == 0) {
+		env->opts.print_only = true;
+	} else if (strcmp(opt, "fakerun") == 0) {
+		env->opts.fake_run = true;
 	} else if (strcmp(opt, "cgv2") == 0) {
 		env->opts.cg_v2 = true;
+	} else if (strcmp(opt, "dotgraph") == 0) {
+		env->opts.dotgraph = true;
 	} else if (strncmp(opt, "verbose=", 8) == 0) {
 		int res = 0;
 		int err = parse_int(opt + 8, &res);
@@ -121,6 +127,16 @@ static int apply_global_opt(struct bpf_ir_env *env, const char *opt)
 			return -EINVAL;
 		}
 		env->opts.verbose = res;
+	} else if (strncmp(opt, "maxinsns=", 9) == 0) {
+		int res = 0;
+		int err = parse_int(opt + 9, &res);
+		if (err) {
+			return err;
+		}
+		if (res <= 0) {
+			return -EINVAL;
+		}
+		env->opts.max_insns = res;
 	} else if (strncmp(opt, "maxit=", 6) == 0) {
 		int res = 0;
 		int err = parse_int(opt + 6, &res);
@@ -178,37 +194,37 @@ bool bpf_ir_builtin_pass_enabled(struct bpf_ir_env *env, const char *pass_name)
 int bpf_ir_init_opts(struct bpf_ir_env *env, const char *global_opt,
 		     const char *pass_opt)
 {
-	if (!pass_opt || !global_opt) {
-		return -EINVAL;
-	}
 	// Parse global options
 	int err = 0;
-	// const char *p = global_opt;
 	char opt[64];
-	const char *src = global_opt;
-	while (*src) {
-		char *p = opt;
-		GET_OPT(p, src);
-		// PRINT_DBG("Global opt: %s\n", opt);
-		err = apply_global_opt(env, opt);
-		if (err < 0) {
-			return err;
-		}
+	const char *src;
+	if (global_opt) {
+		src = global_opt;
+		while (*src) {
+			char *p = opt;
+			GET_OPT(p, src);
+			// PRINT_DBG("Global opt: %s\n", opt);
+			err = apply_global_opt(env, opt);
+			if (err < 0) {
+				return err;
+			}
 
-		NEXT_OPT(src);
+			NEXT_OPT(src);
+		}
 	}
+	if (pass_opt) {
+		src = pass_opt;
+		while (*src) {
+			char *p = opt;
+			GET_OPT(p, src);
+			// PRINT_DBG("Pass opt: %s\n", opt);
+			err = apply_pass_opt(env, opt);
+			if (err < 0) {
+				return err;
+			}
 
-	src = pass_opt;
-	while (*src) {
-		char *p = opt;
-		GET_OPT(p, src);
-		// PRINT_DBG("Pass opt: %s\n", opt);
-		err = apply_pass_opt(env, opt);
-		if (err < 0) {
-			return err;
+			NEXT_OPT(src);
 		}
-
-		NEXT_OPT(src);
 	}
 	return 0;
 }

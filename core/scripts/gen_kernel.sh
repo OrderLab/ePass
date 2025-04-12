@@ -14,7 +14,7 @@ rm -rf build/kernel
 
 mkdir -p build/kernel
 
-files=$(find . -iname '*.c' -not -path "./build/*" -not -path "./tests/*" -not -path "./epasstool/*")
+files=$(find . -iname '*.c' -not -path "./build/*" -not -path "./tests/*" -not -path "./bpftests/*" -not -path "./epasstool/*")
 
 for file in $files; do
     cp $file build/kernel

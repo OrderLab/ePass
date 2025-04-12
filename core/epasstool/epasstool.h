@@ -14,12 +14,16 @@ struct user_opts {
 	char sec[64];
 	struct bpf_ir_opts opts;
 	bool no_compile;
+
+	struct bpf_program *bpfprog;
+
+	// Automatically detect section.
 	bool auto_sec;
-	bool load;
 
 	enum {
 		MODE_READ,
 		MODE_PRINT,
+		MODE_LOAD,
 	} mode;
 };
 
@@ -33,7 +37,7 @@ int epass_read(struct user_opts uopts);
 
 int epass_run(struct user_opts uopts, const struct bpf_insn *insn, size_t sz);
 
-int epass_readload(struct user_opts uopts);
+int epass_load(struct user_opts uopts);
 
 int epass_readlog(struct user_opts uopts);
 

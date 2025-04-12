@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """
 Run the program w/ and w/o ePass
 

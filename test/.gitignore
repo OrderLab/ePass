@@ -1,5 +1,5 @@
 output/
-env/
+.venv/
 *.pdf
 evalout/
 env.py

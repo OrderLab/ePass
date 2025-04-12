@@ -48,8 +48,6 @@ Why pre-colored?
 
 # TODO
 
-- [ ] Rewrite Normalization, flatten the IR.
-- [ ] Refactor CG to use the simpler pipeline described in "Register Allocation via Coloring of Chordal Graphs"
 - [ ] bpf-to-bpf calls
 
 Move CG builtin passes to `ir_code_gen`.

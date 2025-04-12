@@ -144,7 +144,7 @@ out_submit:
 }
 
 
-static ssize_t append_string(struct http_trace *t, size_t buf_used, const string *s) {
+static __always_inline ssize_t append_string(struct http_trace *t, size_t buf_used, const string *s) {
     if (s->len <= 0 || buf_used >= sizeof(t->buf))
         return 0;
 
