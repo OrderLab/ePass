@@ -1845,6 +1845,10 @@ void bpf_ir_autorun(struct bpf_ir_env *env)
 		PRINT_LOG_ERROR(env, "Program size: %zu\n", len);
 		RAISE_ERROR("Program too large");
 	}
+
+	PRINT_LOG_DEBUG(env,
+			"--------------------\nOriginal Program, size %zu:\n",
+			len);
 	print_bpf_prog(env, insns, len);
 	if (env->opts.print_only) {
 		return;
