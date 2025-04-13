@@ -93,8 +93,8 @@ static int apply_global_opt(struct bpf_ir_env *env, const char *opt)
 {
 	if (strcmp(opt, "force") == 0) {
 		env->opts.force = true;
-	} else if (strcmp(opt, "enable_coalesce") == 0) {
-		env->opts.enable_coalesce = true;
+	} else if (strcmp(opt, "disable_coalesce") == 0) {
+		env->opts.disable_coalesce = true;
 	} else if (strcmp(opt, "print_bpf") == 0) {
 		env->opts.print_mode = BPF_IR_PRINT_BPF;
 	} else if (strcmp(opt, "print_dump") == 0) {

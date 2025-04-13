@@ -1985,7 +1985,7 @@ void bpf_ir_compile(struct bpf_ir_env *env, struct ir_function *fun)
 		CHECK_ERR();
 		print_ir_prog_cg_alloc(env, fun, "After RA");
 
-		if (env->opts.enable_coalesce) {
+		if (!env->opts.disable_coalesce) {
 			bool need_rerun = coalescing(env, fun);
 			CHECK_ERR();
 			if (need_rerun) {

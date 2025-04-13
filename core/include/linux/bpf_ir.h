@@ -64,8 +64,8 @@ struct bpf_ir_opts {
 	// Enable printing log to printk
 	bool enable_printk_log;
 
-	// Enable register coalesce optimization
-	bool enable_coalesce;
+	// Disable register coalesce optimization
+	bool disable_coalesce;
 
 	// Write an error message to trace when throwing an error
 	bool enable_throw_msg;
