@@ -1183,19 +1183,6 @@ static void coalescing(struct bpf_ir_env *env, struct ir_function *fun)
 					  IR_INSN_ALLOC);
 				v2 = v1->values[0].data.insn_d;
 				coalesce(env, v1, v2);
-			} else if (v1->op == IR_INSN_PHI) {
-				// v = phi <...>
-				struct phi_value *pos2;
-				array_for(pos2, v1->phi)
-				{
-					if (pos2->value.type == IR_VALUE_INSN) {
-						v2 = pos2->value.data.insn_d;
-						if (!has_conflict(v1, v2)) {
-							coalesce(env, v1, v2);
-							CHECK_ERR();
-						}
-					}
-				}
 			}
 			CHECK_ERR();
 		}
@@ -1381,10 +1368,12 @@ void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun)
 	CHECK_ERR();
 	print_ir_prog_cg_alloc(env, fun, "After Coloring");
 
-	// Coalesce
-	coalescing(env, fun);
-	CHECK_ERR();
-	print_ir_prog_cg_alloc(env, fun, "After Coalescing");
+	if (env->opts.enable_coalesce) {
+		// Coalesce
+		coalescing(env, fun);
+		CHECK_ERR();
+		print_ir_prog_cg_alloc(env, fun, "After Coalescing");
+	}
 
 	add_stack_offset(env, fun, fun->cg_info.stack_offset);
 
