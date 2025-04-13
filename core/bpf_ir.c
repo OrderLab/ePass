@@ -379,10 +379,9 @@ static void gen_bb(struct bpf_ir_env *env, struct bb_info *ret,
 				if (insn->off == 0) {
 					// pc+0
 					// Change to a nop (r0 = r0)
-					insn->code = BPF_MOV | BPF_ALU64 |
-						     BPF_X;
-					insn->dst_reg = BPF_REG_0;
-					insn->src_reg = BPF_REG_0;
+					insn->code = BPF_JMP | BPF_JA;
+					insn->dst_reg = 0;
+					insn->src_reg = 0;
 					insn->imm = 0;
 					insn->off = 0;
 				}
