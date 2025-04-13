@@ -681,7 +681,6 @@ static void liveness_analysis(struct bpf_ir_env *env, struct ir_function *fun)
 									fun, &M,
 									pos2->bb,
 									v);
-								break;
 							}
 						}
 						if (!found) {
