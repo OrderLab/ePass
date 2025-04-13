@@ -326,9 +326,9 @@ static void print_cond_jmp(struct bpf_ir_env *env, struct ir_insn *insn,
 /**
     Print the IR insn
  */
-void print_ir_insn_full(struct bpf_ir_env *env, struct ir_insn *insn,
-			void (*print_ir)(struct bpf_ir_env *env,
-					 struct ir_insn *))
+static void print_ir_insn_full(struct bpf_ir_env *env, struct ir_insn *insn,
+			       void (*print_ir)(struct bpf_ir_env *env,
+						struct ir_insn *))
 {
 	switch (insn->op) {
 	case IR_INSN_ALLOC:
@@ -480,6 +480,9 @@ void print_ir_insn_full(struct bpf_ir_env *env, struct ir_insn *insn,
 		break;
 	case IR_INSN_ASSIGN:
 		print_ir_value_full(env, insn->values[0], print_ir);
+		break;
+	case IR_INSN_REG:
+		PRINT_LOG_DEBUG(env, "(REG)");
 		break;
 	default:
 		PRINT_LOG_ERROR(env, "Insn code: %d\n", insn->op);

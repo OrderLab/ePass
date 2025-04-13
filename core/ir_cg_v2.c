@@ -1080,7 +1080,13 @@ static void coloring(struct bpf_ir_env *env, struct ir_function *fun)
 	}
 }
 
-static void coalesce(struct ir_insn *v1, struct ir_insn *v2)
+static bool has_conflict(struct ir_insn *v1, struct ir_insn *v2)
+{
+	return bpf_ir_ptrset_exists(&insn_cg_v2(v1)->adj, v2);
+}
+
+static void coalesce(struct bpf_ir_env *env, struct ir_insn *v1,
+		     struct ir_insn *v2)
 {
 	struct ir_insn_cg_extra_v2 *v1e = insn_cg_v2(v1);
 	struct ir_insn_cg_extra_v2 *v2e = insn_cg_v2(v2);
@@ -1141,11 +1147,6 @@ static void coalesce(struct ir_insn *v1, struct ir_insn *v2)
 	}
 }
 
-static bool has_conflict(struct ir_insn *v1, struct ir_insn *v2)
-{
-	return bpf_ir_ptrset_exists(&insn_cg_v2(v1)->adj, v2);
-}
-
 // Best effort coalescing
 static void coalescing(struct bpf_ir_env *env, struct ir_function *fun)
 {
@@ -1163,7 +1164,7 @@ static void coalescing(struct bpf_ir_env *env, struct ir_function *fun)
 					continue;
 				}
 				v2 = v1->values[0].data.insn_d;
-				coalesce(v1, v2);
+				coalesce(env, v1, v2);
 			} else if (v1->op == IR_INSN_STORE) {
 				// store v[0], v[1]
 				DBGASSERT(v1->values[0].type == IR_VALUE_INSN);
@@ -1174,14 +1175,14 @@ static void coalescing(struct bpf_ir_env *env, struct ir_function *fun)
 				}
 				v2 = v1->values[1].data.insn_d;
 				v1 = v1->values[0].data.insn_d;
-				coalesce(v1, v2);
+				coalesce(env, v1, v2);
 			} else if (v1->op == IR_INSN_LOAD) {
 				// v = load val[0]
 				DBGASSERT(v1->values[0].type == IR_VALUE_INSN);
 				DBGASSERT(v1->values[0].data.insn_d->op ==
 					  IR_INSN_ALLOC);
 				v2 = v1->values[0].data.insn_d;
-				coalesce(v1, v2);
+				coalesce(env, v1, v2);
 			} else if (v1->op == IR_INSN_PHI) {
 				// v = phi <...>
 				struct phi_value *pos2;
@@ -1189,10 +1190,14 @@ static void coalescing(struct bpf_ir_env *env, struct ir_function *fun)
 				{
 					if (pos2->value.type == IR_VALUE_INSN) {
 						v2 = pos2->value.data.insn_d;
-						coalesce(v1, v2);
+						if (!has_conflict(v1, v2)) {
+							coalesce(env, v1, v2);
+							CHECK_ERR();
+						}
 					}
 				}
 			}
+			CHECK_ERR();
 		}
 	}
 }
