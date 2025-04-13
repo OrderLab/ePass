@@ -264,6 +264,8 @@ static void add_entrance_info(struct bpf_ir_env *env,
 			      struct array *bb_entrances, size_t entrance_pos,
 			      size_t current_pos)
 {
+	// PRINT_LOG_DEBUG(env, "Add entrance %zu -> %zu\n", current_pos,
+	// 		entrance_pos);
 	for (size_t i = 0; i < bb_entrances->num_elem; ++i) {
 		struct bb_entrance_info *entry =
 			((struct bb_entrance_info *)(bb_entrances->data)) + i;
@@ -303,13 +305,20 @@ static struct pre_ir_basic_block *get_bb_parent(struct array *bb_entrance,
 		(struct bb_entrance_info *)(bb_entrance->data);
 	for (size_t i = 1; i < bb_entrance->num_elem; ++i) {
 		struct bb_entrance_info *entry = bbs + i;
+		struct pre_ir_basic_block *bb = entry->bb;
+		DBGASSERT(bb->start_pos == entry->entrance);
 		if (entry->entrance <= pos) {
 			bb_id++;
 		} else {
 			break;
 		}
 	}
-	return bbs[bb_id].bb;
+	struct pre_ir_basic_block *bb = bbs[bb_id].bb;
+	if (pos >= bb->end_pos) {
+		return NULL;
+	} else {
+		return bb;
+	}
 }
 
 static void init_entrance_info(struct bpf_ir_env *env,
@@ -462,9 +471,26 @@ static void gen_bb(struct bpf_ir_env *env, struct bb_info *ret,
 		real_bb->visited = 0;
 		real_bb->pre_insns = NULL;
 		real_bb->start_pos = entry->entrance;
-		real_bb->end_pos = i + 1 < bb_entrance.num_elem ?
-					   all_bbs[i + 1].entrance :
-					   len;
+		size_t nj = i + 1 < bb_entrance.num_elem ?
+				    all_bbs[i + 1].entrance :
+				    len;
+		real_bb->end_pos = nj;
+		for (size_t j = entry->entrance; j < nj; ++j) {
+			u8 code = env->insns[j].code;
+			if (BPF_CLASS(code) == BPF_JMP ||
+			    BPF_CLASS(code) == BPF_JMP32) {
+				if (BPF_OP(code) == BPF_JA ||
+				    ((BPF_OP(code) >= BPF_JEQ &&
+				      BPF_OP(code) <= BPF_JSGE) ||
+				     (BPF_OP(code) >= BPF_JLT &&
+				      BPF_OP(code) <= BPF_JSLE)) ||
+				    (BPF_OP(code) == BPF_EXIT)) {
+					// end of a bb
+					real_bb->end_pos = j + 1;
+					break;
+				}
+			}
+		}
 		real_bb->filled = 0;
 		real_bb->sealed = 0;
 		real_bb->ir_bb = NULL;
@@ -504,7 +530,8 @@ static void gen_bb(struct bpf_ir_env *env, struct bb_info *ret,
 	}
 	for (size_t i = 0; i < bb_entrance.num_elem; ++i) {
 		struct bb_entrance_info *entry = all_bbs + i;
-
+		// PRINT_LOG_DEBUG(env, "entry %zu -> %zu\n", entry->entrance,
+		// 		entry->bb->start_pos);
 		struct array preds = entry->bb->preds;
 		struct array new_preds;
 		INIT_ARRAY(&new_preds, struct pre_ir_basic_block *);
@@ -513,10 +540,14 @@ static void gen_bb(struct bpf_ir_env *env, struct bb_info *ret,
 			// Get the real parent BB
 			struct pre_ir_basic_block *parent_bb =
 				get_bb_parent(&bb_entrance, pred_pos);
-			// We push the address to the array
-			bpf_ir_array_push(env, &new_preds, &parent_bb);
-			// Add entry->bb to the succ of parent_bb
-			bpf_ir_array_push(env, &parent_bb->succs, &entry->bb);
+
+			if (parent_bb) {
+				// We push the address to the array
+				bpf_ir_array_push(env, &new_preds, &parent_bb);
+				// Add entry->bb to the succ of parent_bb
+				bpf_ir_array_push(env, &parent_bb->succs,
+						  &entry->bb);
+			}
 		}
 		bpf_ir_array_free(&preds);
 		entry->bb->preds = new_preds;
