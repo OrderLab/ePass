@@ -379,6 +379,7 @@ static void live_out_at_statement(struct bpf_ir_env *env,
 static void make_conflict(struct bpf_ir_env *env, struct ir_function *fun,
 			  struct ir_insn *v1, struct ir_insn *v2)
 {
+	DBGASSERT(v1 != v2);
 	struct ir_insn_cg_extra_v2 *v1e = insn_cg_v2(v1);
 	struct ir_insn_cg_extra_v2 *v2e = insn_cg_v2(v2);
 	struct ir_insn *r1 = v1;
@@ -413,22 +414,38 @@ static void make_conflict(struct bpf_ir_env *env, struct ir_function *fun,
 	bpf_ir_ptrset_insert(env, &r2e->adj, r1);
 }
 
-static void live_out_at_block_no_propagate(struct bpf_ir_env *env,
-					   struct ir_function *fun,
-					   struct ir_basic_block *n,
-					   struct ir_insn *v)
+static void phi_conflict_at_block_no_propagate(struct bpf_ir_env *env,
+					       struct ir_function *fun,
+					       struct ir_basic_block *n,
+					       struct ir_insn *v)
 {
 	struct ir_insn *last = bpf_ir_get_last_insn(n);
 	if (last) {
+		struct ptrset *set = NULL;
 		struct ir_insn_cg_extra_v2 *se = insn_cg_v2(last);
-		bpf_ir_ptrset_insert(env, &se->out, v);
+		if (bpf_ir_is_jmp(last)) {
+			// jmp xxx
+			// Conflict with its LIVE-IN
+			set = &se->in;
+		} else {
+			// Conflict with its LIVE-OUT
+			set = &se->out;
+		}
+		struct ir_insn **pos;
+		ptrset_for(pos, *set)
+		{
+			struct ir_insn *insn = *pos;
+			if (insn != v) {
+				make_conflict(env, fun, insn, v);
+			}
+		}
 	} else {
 		// Empty BB
 		struct array preds = n->preds;
 		struct ir_basic_block **pos;
 		array_for(pos, preds)
 		{
-			live_out_at_block_no_propagate(env, fun, *pos, v);
+			phi_conflict_at_block_no_propagate(env, fun, *pos, v);
 		}
 	}
 }
@@ -676,16 +693,6 @@ static void liveness_analysis(struct bpf_ir_env *env, struct ir_function *fun)
 								     &M, s, v);
 					}
 				}
-
-				if (v->op == IR_INSN_PHI) {
-					// v is considered LIVE OUT for all preds (only last insn, no propagation)
-					struct phi_value *pos2;
-					array_for(pos2, v->phi)
-					{
-						live_out_at_block_no_propagate(
-							env, fun, pos2->bb, v);
-					}
-				}
 			}
 		}
 	}
@@ -724,6 +731,17 @@ static void conflict_analysis(struct bpf_ir_env *env, struct ir_function *fun)
 		// For each operation
 		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
 			struct ir_insn_cg_extra_v2 *insn_cg = insn->user_data;
+
+			if (insn->op == IR_INSN_PHI) {
+				// v conflicts with all its predecessors' LIVEOUT
+				struct phi_value *pos2;
+				array_for(pos2, insn->phi)
+				{
+					phi_conflict_at_block_no_propagate(
+						env, fun, pos2->bb, insn);
+				}
+			}
+
 			if (insn->op == IR_INSN_CALL) {
 				// Add caller saved register constraints
 				struct ir_insn **pos2;
