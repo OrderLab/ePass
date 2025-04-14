@@ -2,20 +2,9 @@
 #include "bpf/libbpf.h"
 #include "epasstool.h"
 
-struct user_opts *uopts_g = NULL;
-
-static int callback_fn(struct bpf_program *prog,
-		       struct bpf_prog_load_opts *opts, long cookie)
-{
-	uopts_g->bpfprog = prog;
-	return epass_run(*uopts_g, bpf_program__insns(prog),
-			 bpf_program__insn_cnt(prog));
-}
-
 int epass_load(struct user_opts uopts)
 {
 	int err = 0;
-	uopts_g = &uopts;
 	struct bpf_object *obj = bpf_object__open(uopts.prog);
 	if (!obj) {
 		fprintf(stderr, "Failed to open the file.\n");

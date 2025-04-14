@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 project(epass VERSION 0.1.1 LANGUAGES C)
 set(CMAKE_C_FLAGS
-    "${CMAKE_C_FLAGS} -Werror -Wstrict-prototypes -Wenum-compare -Wunused-variable -Wunused-but-set-variable -Wsign-compare -O3"
+    "${CMAKE_C_FLAGS} -Werror -Wunused-function -Wstrict-prototypes -Wenum-compare -Wunused-variable -Wunused-but-set-variable -Wsign-compare -O3"
 )
 
 add_library(
