@@ -1,6 +1,17 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include <linux/bpf_ir.h>
 
+void msan(struct bpf_ir_env *env, struct ir_function *fun, void *param)
+{
+	// Half space for shadow memory
+	bpf_ir_create_allocarray_insn_bb(env, fun->entry, IR_VR_TYPE_64, 128,
+					 INSERT_FRONT_AFTER_PHI);
+}
+
+/*
+
+// Old MSan
+
 static u8 vr_type_to_size(enum ir_vr_type type)
 {
 	switch (type) {
@@ -141,7 +152,7 @@ static void modify_storeraw(struct bpf_ir_env *env, struct ir_insn *arr,
 				    bpf_ir_value_insn(res1), INSERT_BACK);
 }
 
-void msan(struct bpf_ir_env *env, struct ir_function *fun, void *param)
+void msan_old(struct bpf_ir_env *env, struct ir_function *fun, void *param)
 {
 	// Add the 64B mapping space
 	struct ir_insn *arr = bpf_ir_create_allocarray_insn_bb(
@@ -200,6 +211,7 @@ void msan(struct bpf_ir_env *env, struct ir_function *fun, void *param)
 	bpf_ir_array_free(&storeraw_insns);
 	bpf_ir_array_free(&loadraw_insns);
 }
+*/
 
 const struct builtin_pass_cfg bpf_ir_kern_msan =
 	DEF_BUILTIN_PASS_CFG("msan", NULL, NULL);
