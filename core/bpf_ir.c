@@ -1977,7 +1977,7 @@ struct bpf_ir_opts bpf_ir_default_opts(void)
 	opts.disable_coalesce = false;
 	opts.force = false;
 	opts.verbose = 1;
-	opts.cg_v2 = false;
+	opts.cg_v2 = true;
 	opts.dotgraph = false;
 	opts.fake_run = false;
 	opts.max_iteration = 10;

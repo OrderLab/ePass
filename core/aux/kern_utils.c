@@ -113,8 +113,8 @@ static int apply_global_opt(struct bpf_ir_env *env, const char *opt)
 		env->opts.print_only = true;
 	} else if (strcmp(opt, "fakerun") == 0) {
 		env->opts.fake_run = true;
-	} else if (strcmp(opt, "cgv2") == 0) {
-		env->opts.cg_v2 = true;
+	} else if (strcmp(opt, "cgv1") == 0) {
+		env->opts.cg_v2 = false;
 	} else if (strcmp(opt, "dotgraph") == 0) {
 		env->opts.dotgraph = true;
 	} else if (strncmp(opt, "verbose=", 8) == 0) {
