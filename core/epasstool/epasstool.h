@@ -23,7 +23,6 @@ struct user_opts {
 	enum {
 		MODE_READ,
 		MODE_PRINT,
-		MODE_LOAD,
 	} mode;
 };
 
@@ -36,8 +35,6 @@ int epass_print(struct user_opts uopts);
 int epass_read(struct user_opts uopts);
 
 int epass_run(struct user_opts uopts, const struct bpf_insn *insn, size_t sz);
-
-int epass_load(struct user_opts uopts);
 
 int epass_readlog(struct user_opts uopts);
 
