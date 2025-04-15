@@ -84,6 +84,18 @@ static void change_all_value_to_ir_pos(struct bpf_ir_env *env,
 		struct ir_basic_block *bb = *pos;
 		struct ir_insn *insn;
 		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
+			if (insn->op == IR_INSN_LOAD) {
+				struct ir_value *v = &insn->values[0];
+				DBGASSERT(v->type == IR_VALUE_INSN);
+				DBGASSERT(v->data.insn_d->op == IR_INSN_ALLOC);
+				insn->vr_type = v->data.insn_d->vr_type;
+			}
+			if (insn->op == IR_INSN_STORE) {
+				struct ir_value *v = &insn->values[0];
+				DBGASSERT(v->type == IR_VALUE_INSN);
+				DBGASSERT(v->data.insn_d->op == IR_INSN_ALLOC);
+				insn->vr_type = v->data.insn_d->vr_type;
+			}
 			struct array operands = bpf_ir_get_operands(env, insn);
 			struct ir_value **pos2;
 			array_for(pos2, operands)
@@ -93,6 +105,7 @@ static void change_all_value_to_ir_pos(struct bpf_ir_env *env,
 					struct ir_insn *insn_d = v->data.insn_d;
 					struct ir_insn *dst =
 						insn_cg_v2(insn_d)->dst;
+					DBGASSERT(insn_d == dst);
 					struct ir_insn_cg_extra_v2 *extra =
 						insn_cg_v2(dst);
 					v->type = IR_VALUE_FLATTEN_DST;

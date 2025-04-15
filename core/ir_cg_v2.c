@@ -1029,12 +1029,15 @@ static void spill(struct bpf_ir_env *env, struct ir_function *fun,
 		insn_cg_v2(alloc_insn)->vr_pos.spilled_size = 8;
 
 		// Spill every user of v (spill-everywhere algorithm)
-
-		struct ir_insn **pos2;
-		array_for(pos2, users)
-		{
-			spill_insn(env, fun, *pos2, alloc_insn, v);
-			CHECK_ERR();
+		// If v is an alloc, we do not need to spill it
+		// because it is already spilled
+		if (v->op != IR_INSN_ALLOC) {
+			struct ir_insn **pos2;
+			array_for(pos2, users)
+			{
+				spill_insn(env, fun, *pos2, alloc_insn, v);
+				CHECK_ERR();
+			}
 		}
 
 		bpf_ir_array_free(&users);
