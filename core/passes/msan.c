@@ -41,7 +41,9 @@ static void modify_loadraw(struct bpf_ir_env *env, struct ir_function *fun,
 
 	struct ir_basic_block *err_bb = bpf_ir_create_bb(env, fun);
 
-	bpf_ir_create_throw_insn_bb(env, err_bb, INSERT_BACK);
+	// bpf_ir_create_throw_insn_bb(env, err_bb, INSERT_BACK);
+	bpf_ir_create_ret_insn_bb(env, err_bb, bpf_ir_value_const32(2),
+				  INSERT_BACK);
 
 	bpf_ir_create_jbin_insn(env, tmp, bpf_ir_value_insn(tmp),
 				bpf_ir_value_const32(0), new_bb, err_bb,

@@ -12,7 +12,7 @@ snop: objnop
 	llvm-objdump -S output/$(NAME).o > output/$(NAME).s
 
 load: clean obj
-	sudo LIBBPF_ENABLE_EPASS=1 LIBBPF_EPASS_GOPT="verbose=3" LIBBPF_EPASS_POPT="" bpftool prog load output/$(NAME).o /sys/fs/bpf/$(NAME)
+	sudo LIBBPF_ENABLE_EPASS=0 LIBBPF_EPASS_GOPT="verbose=3" LIBBPF_EPASS_POPT="msan" bpftool prog load output/$(NAME).o /sys/fs/bpf/$(NAME)
 
 autoattach: clean obj
 	sudo bpftool prog load output/$(NAME).o /sys/fs/bpf/$(NAME) autoattach
