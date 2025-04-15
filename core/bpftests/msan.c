@@ -5,14 +5,16 @@ SEC("xdp")
 int prog(void *ctx)
 {
 	int arr[10];
-	for (int i = 0; i < 10; ++i) {
-		arr[i] = i;
-	}
+	arr[5] = 0;
 	int k = bpf_ktime_get_ns() % 10;
-	if (k > 7 || k < 4) {
+	if (k > 7 || k < 3) {
 		return XDP_PASS;
 	}
-	bpf_printk("%d", arr[k]);
+	if (arr[k] == 0) {
+		bpf_printk("k = 5");
+	}else{
+		bpf_printk("uninit");
+	}
 	return XDP_PASS;
 }
 

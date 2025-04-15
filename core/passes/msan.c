@@ -1,8 +1,75 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include <linux/bpf_ir.h>
 
+static void modify_storeraw(struct bpf_ir_env *env, struct ir_insn *arr,
+			    struct ir_insn *insn)
+{
+	PRINT_LOG_DEBUG(env, "Found a stack pointer store at off %d\n",
+			insn->addr_val.offset);
+	// storeraw sp+offset
+	// ==>
+	// storeraw sp+offset
+	// storeraw sp+offset+256, -1
+	struct ir_address_value v = insn->addr_val;
+	v.offset += 256;
+	bpf_ir_create_storeraw_insn(env, insn, insn->vr_type, v,
+				    bpf_ir_value_const64(-1), INSERT_BACK);
+}
+
+static void modify_loadraw(struct bpf_ir_env *env, struct ir_function *fun,
+			   struct ir_insn *arr, struct ir_insn *insn)
+{
+	// Non-sp memory access
+	// loadraw size addr(sp-32)
+	// ==>
+	// tmp = addr + 256
+	// tmp2 = loadraw tmp
+	// if tmp2 != 0 goto err
+	// loadraw size addr(sp-32)
+	// struct ir_insn *tmp = bpf_ir_create_bin_insn(env, insn, insn->addr_val.value,
+	// 					 bpf_ir_value_const32(256),
+	// 					 IR_INSN_ADD, IR_ALU_64,
+	// 					 INSERT_FRONT);
+	struct ir_basic_block *bb = insn->parent_bb;
+	struct ir_address_value v = insn->addr_val;
+	v.offset += 256;
+	struct ir_insn *tmp = bpf_ir_create_loadraw_insn(
+		env, insn, insn->vr_type, v, INSERT_BACK);
+
+	struct ir_basic_block *new_bb =
+		bpf_ir_split_bb(env, fun, tmp, INSERT_BACK);
+
+	struct ir_basic_block *err_bb = bpf_ir_create_bb(env, fun);
+
+	bpf_ir_create_throw_insn_bb(env, err_bb, INSERT_BACK);
+
+	bpf_ir_create_jbin_insn(env, tmp, bpf_ir_value_insn(tmp),
+				bpf_ir_value_const32(0), new_bb, err_bb,
+				IR_INSN_JNE, IR_ALU_64, INSERT_BACK);
+	// Manually connect BBs
+	bpf_ir_connect_bb(env, bb, err_bb);
+}
+
 void msan(struct bpf_ir_env *env, struct ir_function *fun, void *param)
 {
+	struct array storeraw_insns;
+	struct array loadraw_insns;
+	INIT_ARRAY(&storeraw_insns, struct ir_insn *);
+	INIT_ARRAY(&loadraw_insns, struct ir_insn *);
+	struct ir_basic_block **pos;
+	array_for(pos, fun->reachable_bbs)
+	{
+		struct ir_basic_block *bb = *pos;
+		struct ir_insn *insn;
+		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
+			if (insn->op == IR_INSN_STORERAW) {
+				bpf_ir_array_push(env, &storeraw_insns, &insn);
+			}
+			if (insn->op == IR_INSN_LOADRAW) {
+				bpf_ir_array_push(env, &loadraw_insns, &insn);
+			}
+		}
+	}
 	// Half space for shadow memory
 	// 32 * 8 bytes
 	struct ir_insn *arr = bpf_ir_create_allocarray_insn_bb(
@@ -13,6 +80,29 @@ void msan(struct bpf_ir_env *env, struct ir_function *fun, void *param)
 			bpf_ir_addr_val(bpf_ir_value_insn(arr), i * 8),
 			bpf_ir_value_const32(0), INSERT_BACK);
 	}
+
+	struct ir_insn **pos2;
+	array_for(pos2, storeraw_insns)
+	{
+		struct ir_insn *insn = *pos2;
+		if (insn->addr_val.value.type == IR_VALUE_INSN &&
+		    insn->addr_val.value.data.insn_d == fun->sp) {
+			modify_storeraw(env, arr, insn);
+		}
+	}
+	array_for(pos2, loadraw_insns)
+	{
+		struct ir_insn *insn = *pos2;
+		if (insn->addr_val.value.type == IR_VALUE_INSN &&
+		    insn->addr_val.value.data.insn_d == fun->sp) {
+			// Sp memory access
+		} else if (insn->addr_val.value.type == IR_VALUE_INSN) {
+			modify_loadraw(env, fun, arr, insn);
+		}
+	}
+
+	bpf_ir_array_free(&storeraw_insns);
+	bpf_ir_array_free(&loadraw_insns);
 }
 
 /*
