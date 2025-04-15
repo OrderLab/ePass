@@ -12,7 +12,7 @@ int prog(void *ctx)
 	}
 	if (arr[k] == 0) {
 		bpf_printk("k = 5");
-	}else{
+	} else {
 		bpf_printk("uninit");
 	}
 	return XDP_PASS;
