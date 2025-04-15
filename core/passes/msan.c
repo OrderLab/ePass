@@ -4,8 +4,15 @@
 void msan(struct bpf_ir_env *env, struct ir_function *fun, void *param)
 {
 	// Half space for shadow memory
-	bpf_ir_create_allocarray_insn_bb(env, fun->entry, IR_VR_TYPE_64, 128,
-					 INSERT_FRONT_AFTER_PHI);
+	// 32 * 8 bytes
+	struct ir_insn *arr = bpf_ir_create_allocarray_insn_bb(
+		env, fun->entry, IR_VR_TYPE_64, 32, INSERT_FRONT_AFTER_PHI);
+	for (int i = 0; i < 32; ++i) {
+		bpf_ir_create_storeraw_insn(
+			env, arr, IR_VR_TYPE_64,
+			bpf_ir_addr_val(bpf_ir_value_insn(arr), i * 8),
+			bpf_ir_value_const32(0), INSERT_BACK);
+	}
 }
 
 /*

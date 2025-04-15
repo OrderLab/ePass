@@ -220,6 +220,7 @@ static void spill_array(struct bpf_ir_env *env, struct ir_function *fun)
 				struct ir_insn_cg_extra_v2 *extra =
 					insn_cg_v2(insn);
 				extra->vr_pos.allocated = true;
+				extra->finalized = true;
 				// Calculate the offset
 				u32 size = insn->array_num *
 					   bpf_ir_sizeof_vr_type(insn->vr_type);
@@ -232,7 +233,7 @@ static void spill_array(struct bpf_ir_env *env, struct ir_function *fun)
 				extra->vr_pos.spilled =
 					get_new_spill(fun, roundup_size);
 				extra->vr_pos.spilled_size = size;
-				extra->dst = NULL;
+				// extra->dst = NULL;
 			}
 		}
 	}
