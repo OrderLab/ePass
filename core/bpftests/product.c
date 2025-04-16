@@ -34,7 +34,7 @@ int prog(void *ctx)
 	}
 	bpf_printk("sum is %lld\n", sum);
 	// 5250
-	return 0;
+	return XDP_PASS;
 }
 
 char _license[] SEC("license") = "GPL";
