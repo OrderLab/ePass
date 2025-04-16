@@ -13,7 +13,7 @@ static void modify_storeraw(struct bpf_ir_env *env, struct ir_insn *arr,
 	struct ir_address_value v = insn->addr_val;
 	v.offset += 256;
 	bpf_ir_create_storeraw_insn(env, insn, insn->vr_type, v,
-				    bpf_ir_value_const64(-1), INSERT_BACK);
+				    bpf_ir_value_const32(0), INSERT_BACK);
 }
 
 static void modify_loadraw(struct bpf_ir_env *env, struct ir_function *fun,
@@ -80,7 +80,7 @@ void msan(struct bpf_ir_env *env, struct ir_function *fun, void *param)
 		bpf_ir_create_storeraw_insn(
 			env, arr, IR_VR_TYPE_64,
 			bpf_ir_addr_val(bpf_ir_value_insn(arr), i * 8),
-			bpf_ir_value_const32(0), INSERT_BACK);
+			bpf_ir_value_const64(-1), INSERT_BACK);
 	}
 
 	struct ir_insn **pos2;
