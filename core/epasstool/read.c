@@ -100,8 +100,11 @@ int epass_read(struct user_opts uopts)
 		goto end;
 	}
 
+	u64 tot_prog_cnt = 0;
+
 	while (prog) {
 		size_t sz = bpf_program__insn_cnt(prog);
+		tot_prog_cnt += sz;
 		const struct bpf_insn *insn = bpf_program__insns(prog);
 		err = epass_run(uopts, insn, sz);
 
@@ -114,6 +117,8 @@ int epass_read(struct user_opts uopts)
 			prog = NULL;
 		}
 	}
+
+	printf("total cnt: %llu\n", tot_prog_cnt);
 
 end:
 	bpf_object__close(obj);
