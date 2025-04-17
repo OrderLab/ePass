@@ -111,7 +111,7 @@ void msan(struct bpf_ir_env *env, struct ir_function *fun, void *param)
 	{
 		struct ir_insn *insn = *pos2;
 		if (insn->addr_val.value.type == IR_VALUE_INSN &&
-		    insn->addr_val.value.data.insn_d == fun->sp) {
+		    is_sp_access(env, fun, insn->addr_val.value.data.insn_d)) {
 			modify_storeraw(env, arr, insn);
 		}
 	}
@@ -119,13 +119,7 @@ void msan(struct bpf_ir_env *env, struct ir_function *fun, void *param)
 	{
 		struct ir_insn *insn = *pos2;
 		if (insn->addr_val.value.type == IR_VALUE_INSN &&
-		    insn->addr_val.value.data.insn_d == fun->sp) {
-			// Direct Sp memory access
-			modify_loadraw(env, fun, arr, insn);
-		} else if (insn->addr_val.value.type == IR_VALUE_INSN &&
-			   is_sp_access(env, fun,
-					insn->addr_val.value.data.insn_d)) {
-			// Sp memory access
+		    is_sp_access(env, fun, insn->addr_val.value.data.insn_d)) {
 			modify_loadraw(env, fun, arr, insn);
 		}
 	}
