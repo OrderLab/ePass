@@ -243,15 +243,16 @@ static int compare_num(const void *a, const void *b)
 	return 0;
 }
 
-static bool is_raw_insn_breakpoint(u8 code)
+static bool is_raw_insn_breakpoint(const struct bpf_insn *insn)
 {
+	u8 code = insn->code;
 	// exit, jmp (not call) is breakpoint
 	if (BPF_CLASS(code) == BPF_JMP || BPF_CLASS(code) == BPF_JMP32) {
-		if (BPF_OP(code) != BPF_CALL) {
-			return true;
-		} else {
+		if (BPF_OP(code) == BPF_CALL) {
 			// call is not a breakpoint
 			return false;
+		} else {
+			return true;
 		}
 	}
 	return false;
@@ -263,6 +264,8 @@ static void add_entrance_info(struct bpf_ir_env *env,
 			      struct array *bb_entrances, size_t entrance_pos,
 			      size_t current_pos)
 {
+	// PRINT_LOG_DEBUG(env, "Add entrance %zu -> %zu\n", current_pos,
+	// 		entrance_pos);
 	for (size_t i = 0; i < bb_entrances->num_elem; ++i) {
 		struct bb_entrance_info *entry =
 			((struct bb_entrance_info *)(bb_entrances->data)) + i;
@@ -277,8 +280,7 @@ static void add_entrance_info(struct bpf_ir_env *env,
 	INIT_ARRAY(&preds, size_t);
 	if (entrance_pos >= 1) {
 		size_t last_pos = entrance_pos - 1;
-		u8 code = insns[last_pos].code;
-		if (!is_raw_insn_breakpoint(code)) { // Error!
+		if (!is_raw_insn_breakpoint(&insns[last_pos])) { // Error!
 			// Breaking point
 			// rx = ...
 			// BB Entrance
@@ -303,13 +305,20 @@ static struct pre_ir_basic_block *get_bb_parent(struct array *bb_entrance,
 		(struct bb_entrance_info *)(bb_entrance->data);
 	for (size_t i = 1; i < bb_entrance->num_elem; ++i) {
 		struct bb_entrance_info *entry = bbs + i;
+		struct pre_ir_basic_block *bb = entry->bb;
+		DBGASSERT(bb->start_pos == entry->entrance);
 		if (entry->entrance <= pos) {
 			bb_id++;
 		} else {
 			break;
 		}
 	}
-	return bbs[bb_id].bb;
+	struct pre_ir_basic_block *bb = bbs[bb_id].bb;
+	if (pos >= bb->end_pos) {
+		return NULL;
+	} else {
+		return bb;
+	}
 }
 
 static void init_entrance_info(struct bpf_ir_env *env,
@@ -354,14 +363,37 @@ static s64 to_s64(s32 imm, s32 next_imm)
 }
 
 static void gen_bb(struct bpf_ir_env *env, struct bb_info *ret,
-		   const struct bpf_insn *insns, size_t len)
+		   struct bpf_insn *insns, size_t len)
 {
+	// Remove pc+0 instructions
+	for (size_t i = 0; i < len; ++i) {
+		struct bpf_insn *insn = &insns[i];
+		u8 code = insn->code;
+		if (BPF_CLASS(code) == BPF_JMP ||
+		    BPF_CLASS(code) == BPF_JMP32) {
+			if ((BPF_OP(code) >= BPF_JEQ &&
+			     BPF_OP(code) <= BPF_JSGE) ||
+			    (BPF_OP(code) >= BPF_JLT &&
+			     BPF_OP(code) <= BPF_JSLE)) {
+				// Conditional jump
+				if (insn->off == 0) {
+					// pc+0
+					// Change to a nop (r0 = r0)
+					insn->code = BPF_JMP | BPF_JA;
+					insn->dst_reg = 0;
+					insn->src_reg = 0;
+					insn->imm = 0;
+					insn->off = 0;
+				}
+			}
+		}
+	}
 	struct array bb_entrance;
 	INIT_ARRAY(&bb_entrance, struct bb_entrance_info);
 	// First, scan the code to find all the BB entrances
 	for (size_t i = 0; i < len; ++i) {
-		struct bpf_insn insn = insns[i];
-		u8 code = insn.code;
+		struct bpf_insn *insn = &insns[i];
+		u8 code = insn->code;
 		if (BPF_CLASS(code) == BPF_JMP ||
 		    BPF_CLASS(code) == BPF_JMP32) {
 			if (BPF_OP(code) == BPF_JA) {
@@ -370,7 +402,7 @@ static void gen_bb(struct bpf_ir_env *env, struct bb_info *ret,
 				if (BPF_CLASS(code) == BPF_JMP) {
 					// JMP class (64 bits)
 					// Add offset
-					pos = (s16)i + insn.off + 1;
+					pos = (s16)i + insn->off + 1;
 				} else {
 					// Impossible by spec
 					RAISE_ERROR(
@@ -387,7 +419,7 @@ static void gen_bb(struct bpf_ir_env *env, struct bb_info *ret,
 			    (BPF_OP(code) >= BPF_JLT &&
 			     BPF_OP(code) <= BPF_JSLE)) {
 				// Add offset
-				size_t pos = (s16)i + insn.off + 1;
+				size_t pos = (s16)i + insn->off + 1;
 				add_entrance_info(env, insns, &bb_entrance, pos,
 						  i);
 				CHECK_ERR();
@@ -438,9 +470,26 @@ static void gen_bb(struct bpf_ir_env *env, struct bb_info *ret,
 		real_bb->visited = 0;
 		real_bb->pre_insns = NULL;
 		real_bb->start_pos = entry->entrance;
-		real_bb->end_pos = i + 1 < bb_entrance.num_elem ?
-					   all_bbs[i + 1].entrance :
-					   len;
+		size_t nj = i + 1 < bb_entrance.num_elem ?
+				    all_bbs[i + 1].entrance :
+				    len;
+		real_bb->end_pos = nj;
+		for (size_t j = entry->entrance; j < nj; ++j) {
+			u8 code = env->insns[j].code;
+			if (BPF_CLASS(code) == BPF_JMP ||
+			    BPF_CLASS(code) == BPF_JMP32) {
+				if (BPF_OP(code) == BPF_JA ||
+				    ((BPF_OP(code) >= BPF_JEQ &&
+				      BPF_OP(code) <= BPF_JSGE) ||
+				     (BPF_OP(code) >= BPF_JLT &&
+				      BPF_OP(code) <= BPF_JSLE)) ||
+				    (BPF_OP(code) == BPF_EXIT)) {
+					// end of a bb
+					real_bb->end_pos = j + 1;
+					break;
+				}
+			}
+		}
 		real_bb->filled = 0;
 		real_bb->sealed = 0;
 		real_bb->ir_bb = NULL;
@@ -480,7 +529,8 @@ static void gen_bb(struct bpf_ir_env *env, struct bb_info *ret,
 	}
 	for (size_t i = 0; i < bb_entrance.num_elem; ++i) {
 		struct bb_entrance_info *entry = all_bbs + i;
-
+		// PRINT_LOG_DEBUG(env, "entry %zu -> %zu\n", entry->entrance,
+		// 		entry->bb->start_pos);
 		struct array preds = entry->bb->preds;
 		struct array new_preds;
 		INIT_ARRAY(&new_preds, struct pre_ir_basic_block *);
@@ -489,10 +539,14 @@ static void gen_bb(struct bpf_ir_env *env, struct bb_info *ret,
 			// Get the real parent BB
 			struct pre_ir_basic_block *parent_bb =
 				get_bb_parent(&bb_entrance, pred_pos);
-			// We push the address to the array
-			bpf_ir_array_push(env, &new_preds, &parent_bb);
-			// Add entry->bb to the succ of parent_bb
-			bpf_ir_array_push(env, &parent_bb->succs, &entry->bb);
+
+			if (parent_bb) {
+				// We push the address to the array
+				bpf_ir_array_push(env, &new_preds, &parent_bb);
+				// Add entry->bb to the succ of parent_bb
+				bpf_ir_array_push(env, &parent_bb->succs,
+						  &entry->bb);
+			}
 		}
 		bpf_ir_array_free(&preds);
 		entry->bb->preds = new_preds;
@@ -509,11 +563,19 @@ static void print_pre_ir_cfg(struct bpf_ir_env *env,
 		return;
 	}
 	bb->visited = 1;
-	PRINT_LOG_DEBUG(env, "BB %ld:\n", bb->id);
+	PRINT_LOG_DEBUG(env, "BB %ld at [%zu, %zu):\n", bb->id, bb->start_pos,
+			bb->end_pos);
 	for (size_t i = 0; i < bb->len; ++i) {
 		struct pre_ir_insn insn = bb->pre_insns[i];
-		PRINT_LOG_DEBUG(env, "%x %x %llx\n", insn.opcode, insn.imm,
-				insn.imm64);
+		struct bpf_insn binsn;
+		binsn.code = insn.opcode;
+		binsn.src_reg = insn.src_reg;
+		binsn.dst_reg = insn.dst_reg;
+		binsn.imm = insn.imm;
+		binsn.off = insn.off;
+		bpf_ir_print_bpf_insn(env, &binsn);
+		// PRINT_LOG_DEBUG(env, "%x %x %llx\n", insn.opcode, insn.imm,
+		// 		insn.imm64);
 	}
 	PRINT_LOG_DEBUG(env, "preds (%ld): ", bb->preds.num_elem);
 	for (size_t i = 0; i < bb->preds.num_elem; ++i) {
@@ -1258,6 +1320,14 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 				// PC += offset if dst != src
 				create_cond_jmp(env, tenv, bb, insn,
 						IR_INSN_JNE, alu_ty);
+			} else if (BPF_OP(code) == BPF_JSGE) {
+				// PC += offset if dst s>= src
+				create_cond_jmp(env, tenv, bb, insn,
+						IR_INSN_JSGE, alu_ty);
+			} else if (BPF_OP(code) == BPF_JSLE) {
+				// PC += offset if dst s<= src
+				create_cond_jmp(env, tenv, bb, insn,
+						IR_INSN_JSLE, alu_ty);
 			} else if (BPF_OP(code) == BPF_JSGT) {
 				// PC += offset if dst s> src
 				create_cond_jmp(env, tenv, bb, insn,
@@ -1600,9 +1670,11 @@ static void add_reach(struct bpf_ir_env *env, struct ir_function *fun)
 		DBGASSERT(!bb->_visited);
 
 		// Visit this chain
+		// PRINT_LOG_DEBUG(env, "Chain:");
 		bool end = false;
 		while (!end) {
 			bb->_visited = 1;
+			// PRINT_LOG_DEBUG(env, " %d", bb->_id);
 			bpf_ir_array_push(env, &fun->reachable_bbs, &bb);
 			if (bb->succs.num_elem == 0) {
 				// End of the chain
@@ -1611,6 +1683,8 @@ static void add_reach(struct bpf_ir_env *env, struct ir_function *fun)
 				struct ir_insn *lastinsn =
 					bpf_ir_get_last_insn(bb);
 				if (lastinsn && lastinsn->op == IR_INSN_JA) {
+					bpf_ir_array_push(env, &todo,
+							  &lastinsn->bb1);
 					end = true;
 				} else {
 					struct ir_basic_block **succ =
@@ -1631,6 +1705,7 @@ static void add_reach(struct bpf_ir_env *env, struct ir_function *fun)
 				RAISE_ERROR(">2 successors, invalid CFG");
 			}
 		}
+		// PRINT_LOG_DEBUG(env, "\n");
 	}
 
 	bpf_ir_array_free(&todo);
@@ -1639,8 +1714,14 @@ static void add_reach(struct bpf_ir_env *env, struct ir_function *fun)
 static void gen_reachable_bbs(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	bpf_ir_clean_visited(fun);
+	// size_t cnt = 0;
+	// size_t bb_cnt = 0;
+	// assign_id(fun->entry, &cnt, &bb_cnt);
+	// bpf_ir_clean_visited(fun);
+
 	bpf_ir_array_clear(env, &fun->reachable_bbs);
 	add_reach(env, fun);
+	// bpf_ir_clean_id(fun);
 }
 
 static void gen_end_bbs(struct bpf_ir_env *env, struct ir_function *fun)
@@ -1804,12 +1885,11 @@ static void print_bpf_prog(struct bpf_ir_env *env, const struct bpf_insn *insns,
 
 // Interface implementation
 
-struct ir_function *bpf_ir_lift(struct bpf_ir_env *env,
-				const struct bpf_insn *insns, size_t len)
+struct ir_function *bpf_ir_lift(struct bpf_ir_env *env)
 {
 	u64 starttime = get_cur_time_ns();
 	struct bb_info info;
-	gen_bb(env, &info, insns, len);
+	gen_bb(env, &info, env->insns, env->insn_cnt);
 	CHECK_ERR(NULL);
 
 	if (env->opts.verbose > 2) {
@@ -1839,7 +1919,7 @@ struct ir_function *bpf_ir_lift(struct bpf_ir_env *env,
 void bpf_ir_autorun(struct bpf_ir_env *env)
 {
 	env->executed = true;
-	const struct bpf_insn *insns = env->insns;
+	struct bpf_insn *insns = env->insns;
 	size_t len = env->insn_cnt;
 	if (env->opts.max_insns > 0 && len > env->opts.max_insns) {
 		PRINT_LOG_ERROR(env, "Program size: %zu\n", len);
@@ -1853,7 +1933,7 @@ void bpf_ir_autorun(struct bpf_ir_env *env)
 	if (env->opts.print_only) {
 		return;
 	}
-	struct ir_function *fun = bpf_ir_lift(env, insns, len);
+	struct ir_function *fun = bpf_ir_lift(env);
 	CHECK_ERR();
 
 	print_ir_prog(env, fun);
@@ -1894,10 +1974,10 @@ struct bpf_ir_opts bpf_ir_default_opts(void)
 	opts.print_mode = BPF_IR_PRINT_BPF;
 	opts.builtin_pass_cfg_num = 0;
 	opts.custom_pass_num = 0;
-	opts.enable_coalesce = false;
+	opts.disable_coalesce = false;
 	opts.force = false;
 	opts.verbose = 1;
-	opts.cg_v2 = false;
+	opts.cg_v2 = true;
 	opts.dotgraph = false;
 	opts.fake_run = false;
 	opts.max_iteration = 10;

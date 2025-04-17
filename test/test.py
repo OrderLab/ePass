@@ -179,7 +179,7 @@ def init():
 
 
 def is_correct(prog: str):
-    return os.system(f"timeout 2 sudo epass read {prog} --direct-load")
+    return os.system(f"timeout 2 sudo epass load {prog}")
 
 
 def is_correct_epass(prog: str):
@@ -188,6 +188,12 @@ def is_correct_epass(prog: str):
 
 def is_correct_epass_v2(prog: str):
     return os.system(f"timeout 2 sudo epass read {prog} --gopt cgv2")
+
+def is_correct_epass_v2_load(prog: str):
+    cmd = f"timeout 2 sudo LIBBPF_ENABLE_EPASS=1 LIBBPF_EPASS_GOPT=\"cgv2\" bpftool prog load {prog} /sys/fs/bpf/xx"
+    ret = os.system(cmd)
+    os.system(f"sudo rm /sys/fs/bpf/xx")
+    return ret
 
 
 def find_correct_progs():
@@ -202,8 +208,8 @@ def find_correct_progs():
 
 def test_correct_progs():
     failed_progs = []
-    for o in ALL_PROGS:
-        if is_correct_epass(o) == 0:
+    for o in CORRECT_PROGS:
+        if is_correct_epass_v2_load(o) == 0:
             print(f"\x1b[32m {o} Passed\x1b[0m")
         else:
             failed_progs.append(o)
@@ -222,9 +228,32 @@ def test_correct_progs_v2():
     print("--- SUMMARY ---")
     print(failed_progs)
 
+def test_falco():
+    failed_progs = []
+    for o in range(339):
+        prog = f"progs/falco/prog{o+1}.txt"
+        if is_correct_epass(prog) == 0:
+            print(f"\x1b[32m {prog} Passed\x1b[0m")
+        else:
+            failed_progs.append(prog)
+            print(f"\x1b[31m {prog} Failed\x1b[0m")
+    print("--- SUMMARY ---")
+    print(failed_progs)
+
+def test_falco_v2():
+    failed_progs = []
+    for o in range(339):
+        prog = f"progs/falco/prog{o+1}.txt"
+        if is_correct_epass_v2(prog) == 0:
+            print(f"\x1b[32m {prog} Passed\x1b[0m")
+        else:
+            failed_progs.append(prog)
+            print(f"\x1b[31m {prog} Failed\x1b[0m")
+    print("--- SUMMARY ---")
+    print(failed_progs)
 
 if __name__ == "__main__":
     init()
     # find_correct_progs()
-    # test_correct_progs()
-    test_correct_progs_v2()
+    test_correct_progs()
+    # test_falco_v2()

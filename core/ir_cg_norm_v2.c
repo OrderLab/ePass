@@ -84,6 +84,18 @@ static void change_all_value_to_ir_pos(struct bpf_ir_env *env,
 		struct ir_basic_block *bb = *pos;
 		struct ir_insn *insn;
 		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
+			if (insn->op == IR_INSN_LOAD) {
+				struct ir_value *v = &insn->values[0];
+				DBGASSERT(v->type == IR_VALUE_INSN);
+				DBGASSERT(v->data.insn_d->op == IR_INSN_ALLOC);
+				insn->vr_type = v->data.insn_d->vr_type;
+			}
+			if (insn->op == IR_INSN_STORE) {
+				struct ir_value *v = &insn->values[0];
+				DBGASSERT(v->type == IR_VALUE_INSN);
+				DBGASSERT(v->data.insn_d->op == IR_INSN_ALLOC);
+				insn->vr_type = v->data.insn_d->vr_type;
+			}
 			struct array operands = bpf_ir_get_operands(env, insn);
 			struct ir_value **pos2;
 			array_for(pos2, operands)
@@ -93,6 +105,7 @@ static void change_all_value_to_ir_pos(struct bpf_ir_env *env,
 					struct ir_insn *insn_d = v->data.insn_d;
 					struct ir_insn *dst =
 						insn_cg_v2(insn_d)->dst;
+					DBGASSERT(insn_d == dst);
 					struct ir_insn_cg_extra_v2 *extra =
 						insn_cg_v2(dst);
 					v->type = IR_VALUE_FLATTEN_DST;
@@ -274,9 +287,16 @@ static void normalize_cond_jmp(struct bpf_ir_env *env, struct ir_insn *insn)
 			insn->op = IR_INSN_JLE;
 		} else if (insn->op == IR_INSN_JLE) {
 			insn->op = IR_INSN_JGE;
+		} else if (insn->op == IR_INSN_JSGE) {
+			insn->op = IR_INSN_JSLE;
+		} else if (insn->op == IR_INSN_JSLE) {
+			insn->op = IR_INSN_JSGE;
+		} else if (insn->op == IR_INSN_JSGT) {
+			insn->op = IR_INSN_JSLT;
+		} else if (insn->op == IR_INSN_JSLT) {
+			insn->op = IR_INSN_JSGT;
 		} else {
-			RAISE_ERROR(
-				"does not support signed jump constant yet");
+			RAISE_ERROR("unknown conditional jmp operation");
 		}
 		struct ir_value tmp = *v0;
 		*v0 = *v1;
@@ -790,6 +810,10 @@ static int jmp_code(enum ir_insn_type insn)
 		return BPF_JGT;
 	case IR_INSN_JGE:
 		return BPF_JGE;
+	case IR_INSN_JSGE:
+		return BPF_JSGE;
+	case IR_INSN_JSLE:
+		return BPF_JSLE;
 	case IR_INSN_JSGT:
 		return BPF_JSGT;
 	case IR_INSN_JSLT:

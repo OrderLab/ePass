@@ -93,8 +93,8 @@ static int apply_global_opt(struct bpf_ir_env *env, const char *opt)
 {
 	if (strcmp(opt, "force") == 0) {
 		env->opts.force = true;
-	} else if (strcmp(opt, "enable_coalesce") == 0) {
-		env->opts.enable_coalesce = true;
+	} else if (strcmp(opt, "disable_coalesce") == 0) {
+		env->opts.disable_coalesce = true;
 	} else if (strcmp(opt, "print_bpf") == 0) {
 		env->opts.print_mode = BPF_IR_PRINT_BPF;
 	} else if (strcmp(opt, "print_dump") == 0) {
@@ -113,8 +113,8 @@ static int apply_global_opt(struct bpf_ir_env *env, const char *opt)
 		env->opts.print_only = true;
 	} else if (strcmp(opt, "fakerun") == 0) {
 		env->opts.fake_run = true;
-	} else if (strcmp(opt, "cgv2") == 0) {
-		env->opts.cg_v2 = true;
+	} else if (strcmp(opt, "cgv1") == 0) {
+		env->opts.cg_v2 = false;
 	} else if (strcmp(opt, "dotgraph") == 0) {
 		env->opts.dotgraph = true;
 	} else if (strncmp(opt, "verbose=", 8) == 0) {

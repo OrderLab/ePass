@@ -220,6 +220,7 @@ static void spill_array(struct bpf_ir_env *env, struct ir_function *fun)
 				struct ir_insn_cg_extra_v2 *extra =
 					insn_cg_v2(insn);
 				extra->vr_pos.allocated = true;
+				extra->finalized = true;
 				// Calculate the offset
 				u32 size = insn->array_num *
 					   bpf_ir_sizeof_vr_type(insn->vr_type);
@@ -232,7 +233,7 @@ static void spill_array(struct bpf_ir_env *env, struct ir_function *fun)
 				extra->vr_pos.spilled =
 					get_new_spill(fun, roundup_size);
 				extra->vr_pos.spilled_size = size;
-				extra->dst = NULL;
+				// extra->dst = NULL;
 			}
 		}
 	}
@@ -379,6 +380,7 @@ static void live_out_at_statement(struct bpf_ir_env *env,
 static void make_conflict(struct bpf_ir_env *env, struct ir_function *fun,
 			  struct ir_insn *v1, struct ir_insn *v2)
 {
+	DBGASSERT(v1 != v2);
 	struct ir_insn_cg_extra_v2 *v1e = insn_cg_v2(v1);
 	struct ir_insn_cg_extra_v2 *v2e = insn_cg_v2(v2);
 	struct ir_insn *r1 = v1;
@@ -413,22 +415,38 @@ static void make_conflict(struct bpf_ir_env *env, struct ir_function *fun,
 	bpf_ir_ptrset_insert(env, &r2e->adj, r1);
 }
 
-static void live_out_at_block_no_propagate(struct bpf_ir_env *env,
-					   struct ir_function *fun,
-					   struct ir_basic_block *n,
-					   struct ir_insn *v)
+static void phi_conflict_at_block_no_propagate(struct bpf_ir_env *env,
+					       struct ir_function *fun,
+					       struct ir_basic_block *n,
+					       struct ir_insn *v)
 {
 	struct ir_insn *last = bpf_ir_get_last_insn(n);
 	if (last) {
+		struct ptrset *set = NULL;
 		struct ir_insn_cg_extra_v2 *se = insn_cg_v2(last);
-		bpf_ir_ptrset_insert(env, &se->out, v);
+		if (bpf_ir_is_jmp(last)) {
+			// jmp xxx
+			// Conflict with its LIVE-IN
+			set = &se->in;
+		} else {
+			// Conflict with its LIVE-OUT
+			set = &se->out;
+		}
+		struct ir_insn **pos;
+		ptrset_for(pos, *set)
+		{
+			struct ir_insn *insn = *pos;
+			if (insn != v) {
+				make_conflict(env, fun, insn, v);
+			}
+		}
 	} else {
 		// Empty BB
 		struct array preds = n->preds;
 		struct ir_basic_block **pos;
 		array_for(pos, preds)
 		{
-			live_out_at_block_no_propagate(env, fun, *pos, v);
+			phi_conflict_at_block_no_propagate(env, fun, *pos, v);
 		}
 	}
 }
@@ -586,17 +604,16 @@ static void print_interference_graph(struct bpf_ir_env *env,
 static void clean_cg_data_insn(struct ir_insn *insn)
 {
 	struct ir_insn_cg_extra_v2 *extra = insn->user_data;
-	if (extra) {
-		bpf_ir_ptrset_clean(&extra->adj);
-		bpf_ir_ptrset_clean(&extra->in);
-		bpf_ir_ptrset_clean(&extra->out);
-		extra->lambda = 0;
-		extra->w = 0;
+	DBGASSERT(extra);
+	bpf_ir_ptrset_clean(&extra->adj);
+	bpf_ir_ptrset_clean(&extra->in);
+	bpf_ir_ptrset_clean(&extra->out);
+	extra->lambda = 0;
+	extra->w = 0;
 
-		if (!extra->finalized) {
-			// Clean register allocation
-			extra->vr_pos.allocated = false;
-		}
+	if (!extra->finalized) {
+		// Clean register allocation
+		extra->vr_pos.allocated = false;
 	}
 }
 
@@ -665,7 +682,6 @@ static void liveness_analysis(struct bpf_ir_env *env, struct ir_function *fun)
 									fun, &M,
 									pos2->bb,
 									v);
-								break;
 							}
 						}
 						if (!found) {
@@ -675,16 +691,6 @@ static void liveness_analysis(struct bpf_ir_env *env, struct ir_function *fun)
 					} else {
 						live_in_at_statement(env, fun,
 								     &M, s, v);
-					}
-				}
-
-				if (v->op == IR_INSN_PHI) {
-					// v is considered LIVE OUT for all preds (only last insn, no propagation)
-					struct phi_value *pos2;
-					array_for(pos2, v->phi)
-					{
-						live_out_at_block_no_propagate(
-							env, fun, pos2->bb, v);
 					}
 				}
 			}
@@ -725,6 +731,17 @@ static void conflict_analysis(struct bpf_ir_env *env, struct ir_function *fun)
 		// For each operation
 		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
 			struct ir_insn_cg_extra_v2 *insn_cg = insn->user_data;
+
+			if (insn->op == IR_INSN_PHI) {
+				// v conflicts with all its predecessors' LIVEOUT
+				struct phi_value *pos2;
+				array_for(pos2, insn->phi)
+				{
+					phi_conflict_at_block_no_propagate(
+						env, fun, pos2->bb, insn);
+				}
+			}
+
 			if (insn->op == IR_INSN_CALL) {
 				// Add caller saved register constraints
 				struct ir_insn **pos2;
@@ -1013,12 +1030,15 @@ static void spill(struct bpf_ir_env *env, struct ir_function *fun,
 		insn_cg_v2(alloc_insn)->vr_pos.spilled_size = 8;
 
 		// Spill every user of v (spill-everywhere algorithm)
-
-		struct ir_insn **pos2;
-		array_for(pos2, users)
-		{
-			spill_insn(env, fun, *pos2, alloc_insn, v);
-			CHECK_ERR();
+		// If v is an alloc, we do not need to spill it
+		// because it is already spilled
+		if (v->op != IR_INSN_ALLOC) {
+			struct ir_insn **pos2;
+			array_for(pos2, users)
+			{
+				spill_insn(env, fun, *pos2, alloc_insn, v);
+				CHECK_ERR();
+			}
 		}
 
 		bpf_ir_array_free(&users);
@@ -1062,6 +1082,11 @@ static void coloring(struct bpf_ir_env *env, struct ir_function *fun)
 		}
 	}
 }
+
+// static bool has_conflict(struct ir_insn *v1, struct ir_insn *v2)
+// {
+// 	return bpf_ir_ptrset_exists(&insn_cg_v2(v1)->adj, v2);
+// }
 
 static void coalesce(struct ir_insn *v1, struct ir_insn *v2)
 {
@@ -1124,11 +1149,6 @@ static void coalesce(struct ir_insn *v1, struct ir_insn *v2)
 	}
 }
 
-static bool has_conflict(struct ir_insn *v1, struct ir_insn *v2)
-{
-	return bpf_ir_ptrset_exists(&insn_cg_v2(v1)->adj, v2);
-}
-
 // Best effort coalescing
 static void coalescing(struct bpf_ir_env *env, struct ir_function *fun)
 {
@@ -1165,17 +1185,8 @@ static void coalescing(struct bpf_ir_env *env, struct ir_function *fun)
 					  IR_INSN_ALLOC);
 				v2 = v1->values[0].data.insn_d;
 				coalesce(v1, v2);
-			} else if (v1->op == IR_INSN_PHI) {
-				// v = phi <...>
-				struct phi_value *pos2;
-				array_for(pos2, v1->phi)
-				{
-					if (pos2->value.type == IR_VALUE_INSN) {
-						v2 = pos2->value.data.insn_d;
-						coalesce(v1, v2);
-					}
-				}
 			}
+			CHECK_ERR();
 		}
 	}
 }
@@ -1315,6 +1326,9 @@ void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun)
 	CHECK_ERR();
 	print_ir_prog_cg(env, fun, "After Spill Const");
 
+	bpf_ir_cg_prog_check(env, fun);
+	CHECK_ERR();
+
 	bool done = false;
 	u32 iteration = 0;
 	while (!done) {
@@ -1356,10 +1370,12 @@ void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun)
 	CHECK_ERR();
 	print_ir_prog_cg_alloc(env, fun, "After Coloring");
 
-	// Coalesce
-	coalescing(env, fun);
-	CHECK_ERR();
-	print_ir_prog_cg_alloc(env, fun, "After Coalescing");
+	if (!env->opts.disable_coalesce) {
+		// Coalesce
+		coalescing(env, fun);
+		CHECK_ERR();
+		print_ir_prog_cg_alloc(env, fun, "After Coalescing");
+	}
 
 	add_stack_offset(env, fun, fun->cg_info.stack_offset);
 

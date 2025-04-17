@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
-project(epass VERSION 0.1.1 LANGUAGES C)
+project(epass VERSION 0.2.0 LANGUAGES C)
 set(CMAKE_C_FLAGS
-    "${CMAKE_C_FLAGS} -Werror -Wstrict-prototypes -Wenum-compare -Wunused-variable -Wunused-but-set-variable -Wsign-compare -O3"
+    "${CMAKE_C_FLAGS} -Werror -Wunused-function -Wstrict-prototypes -Wenum-compare -Wunused-variable -Wunused-but-set-variable -Wsign-compare -O3"
 )
 
 add_library(
@@ -26,6 +26,7 @@ add_library(
   aux/prog_check.c
   aux/disasm.c
   aux/kern_utils.c
+  aux/cg_prog_check.c
   ir_cg.c
   ir_cg_v2.c
   ir_cg_norm.c

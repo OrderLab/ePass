@@ -50,20 +50,20 @@ static void usage(const char *prog)
 		"  --gopt <arg> \tSpecify global (general) option\n"
 		"  --popt <arg> \tSpecify pass option\n"
 		"  --sec, -s <arg> \tSpecify ELF section manually\n"
-		"  --load, -L \tLoad to the kernel (alpha)\n"
 		"  -F <arg> \tOutput format. Available formats: sec, log (default)\n"
 		"  -o <arg> \tOutput the modified program\n"
 		"\n"
 		"Available gopt:\n"
 		"  verbose=<level> \tSet the verbose level\n"
 		"  force \tForce to run epass\n"
-		"  enable_coalesce \tEnable coalescing\n"
+		"  disable_coalesce \tDisable coalescing\n"
 		"  print_bpf \tPrint the BPF program (by default)\n"
 		"  print_dump \tPrint the BPF program in dump (log) format\n"
 		"  print_detail \tPrint the BPF program in detail (both bpf and log) format\n"
 		"  no_prog_check \tDisable program check (IR checker)\n"
 		"  printk_log \tEnable printk log\n"
 		"  throw_msg \tEnable throw message\n"
+		"  cgv1 \tUse legacy code generator (v1)\n"
 		"\n"
 		"Examples:\n"
 		"  %s read a.o\n"
@@ -215,34 +215,6 @@ static struct user_opts parse_cli(int argc, char **argv)
 		if (uopts.prog[0] == 0) {
 			usage(prog);
 		}
-	} else if (strcmp(*argv, "load") == 0) {
-		argc--;
-		argv++;
-		uopts.mode = MODE_LOAD;
-		while (argc > 0) {
-			if (strcmp(*argv, "--sec") == 0 ||
-			    strcmp(*argv, "-s") == 0) {
-				if (argc < 2) {
-					usage(prog);
-				}
-				argc--;
-				argv++;
-				uopts.auto_sec = false;
-				strcpy(uopts.sec, *argv);
-			} else {
-				// File
-				if (uopts.prog[0] == 0) {
-					strcpy(uopts.prog, *argv);
-				} else {
-					usage(prog);
-				}
-			}
-			argc--;
-			argv++;
-		}
-		if (uopts.prog[0] == 0) {
-			usage(prog);
-		}
 	} else {
 		usage(prog);
 	}
@@ -256,15 +228,6 @@ int main(int argc, char **argv)
 	bool is_elf = is_elf_file(uopts.prog);
 	if (uopts.mode == MODE_PRINT) {
 		return is_elf ? epass_print(uopts) : epass_printlog(uopts);
-	}
-
-	if (uopts.mode == MODE_LOAD) {
-		if (is_elf) {
-			return epass_load(uopts);
-		} else {
-			fprintf(stderr, "Load is only supported for ELF\n");
-			return 1;
-		}
 	}
 
 	// Initialize common options

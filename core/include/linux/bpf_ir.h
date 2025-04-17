@@ -64,8 +64,8 @@ struct bpf_ir_opts {
 	// Enable printing log to printk
 	bool enable_printk_log;
 
-	// Enable register coalesce optimization
-	bool enable_coalesce;
+	// Disable register coalesce optimization
+	bool disable_coalesce;
 
 	// Write an error message to trace when throwing an error
 	bool enable_throw_msg;
@@ -613,6 +613,8 @@ enum ir_insn_type {
 	IR_INSN_JLT,
 	IR_INSN_JLE,
 	IR_INSN_JNE,
+	IR_INSN_JSGE,
+	IR_INSN_JSLE,
 	IR_INSN_JSGT,
 	IR_INSN_JSLT,
 	// PHI
@@ -814,8 +816,7 @@ struct ir_basic_block *bpf_ir_init_bb_raw(void);
 // Main interface
 void bpf_ir_autorun(struct bpf_ir_env *env);
 
-struct ir_function *bpf_ir_lift(struct bpf_ir_env *env,
-				const struct bpf_insn *insns, size_t len);
+struct ir_function *bpf_ir_lift(struct bpf_ir_env *env);
 
 void bpf_ir_run(struct bpf_ir_env *env, struct ir_function *fun);
 
