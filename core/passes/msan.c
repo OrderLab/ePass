@@ -52,6 +52,29 @@ static void modify_loadraw(struct bpf_ir_env *env, struct ir_function *fun,
 	bpf_ir_connect_bb(env, bb, err_bb);
 }
 
+bool is_sp_access(struct bpf_ir_env *env, struct ir_function *fun,
+		  struct ir_insn *insn)
+{
+	if (insn == fun->sp) {
+		return true;
+	}
+	if (bpf_ir_is_bin_alu(insn)) {
+		if (insn->values[0].type == IR_VALUE_INSN) {
+			if (is_sp_access(env, fun,
+					 insn->values[0].data.insn_d)) {
+				return true;
+			}
+		}
+		if (insn->values[1].type == IR_VALUE_INSN) {
+			if (is_sp_access(env, fun,
+					 insn->values[1].data.insn_d)) {
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
 void msan(struct bpf_ir_env *env, struct ir_function *fun, void *param)
 {
 	struct array storeraw_insns;
@@ -97,8 +120,12 @@ void msan(struct bpf_ir_env *env, struct ir_function *fun, void *param)
 		struct ir_insn *insn = *pos2;
 		if (insn->addr_val.value.type == IR_VALUE_INSN &&
 		    insn->addr_val.value.data.insn_d == fun->sp) {
+			// Direct Sp memory access
+			modify_loadraw(env, fun, arr, insn);
+		} else if (insn->addr_val.value.type == IR_VALUE_INSN &&
+			   is_sp_access(env, fun,
+					insn->addr_val.value.data.insn_d)) {
 			// Sp memory access
-		} else if (insn->addr_val.value.type == IR_VALUE_INSN) {
 			modify_loadraw(env, fun, arr, insn);
 		}
 	}
