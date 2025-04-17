@@ -30,26 +30,27 @@ static void modify_loadraw(struct bpf_ir_env *env, struct ir_function *fun,
 	// 					 bpf_ir_value_const32(256),
 	// 					 IR_INSN_ADD, IR_ALU_64,
 	// 					 INSERT_FRONT);
-	struct ir_basic_block *bb = insn->parent_bb;
+	// struct ir_basic_block *bb = insn->parent_bb;
 	struct ir_address_value v = insn->addr_val;
 	v.offset += 256;
-	struct ir_insn *tmp = bpf_ir_create_loadraw_insn(
-		env, insn, insn->vr_type, v, INSERT_BACK);
+	bpf_ir_create_loadraw_insn(env, insn, insn->vr_type, v, INSERT_BACK);
+	// struct ir_insn *tmp = bpf_ir_create_loadraw_insn(
+	// 	env, insn, insn->vr_type, v, INSERT_BACK);
 
-	struct ir_basic_block *new_bb =
-		bpf_ir_split_bb(env, fun, tmp, INSERT_BACK);
+	// struct ir_basic_block *new_bb =
+	// 	bpf_ir_split_bb(env, fun, tmp, INSERT_BACK);
 
-	struct ir_basic_block *err_bb = bpf_ir_create_bb(env, fun);
+	// struct ir_basic_block *err_bb = bpf_ir_create_bb(env, fun);
 
-	// bpf_ir_create_throw_insn_bb(env, err_bb, INSERT_BACK);
-	bpf_ir_create_ret_insn_bb(env, err_bb, bpf_ir_value_const32(2),
-				  INSERT_BACK);
+	// // bpf_ir_create_throw_insn_bb(env, err_bb, INSERT_BACK);
+	// bpf_ir_create_ret_insn_bb(env, err_bb, bpf_ir_value_const32(2),
+	// 			  INSERT_BACK);
 
-	bpf_ir_create_jbin_insn(env, tmp, bpf_ir_value_insn(tmp),
-				bpf_ir_value_const32(0), new_bb, err_bb,
-				IR_INSN_JNE, IR_ALU_64, INSERT_BACK);
-	// Manually connect BBs
-	bpf_ir_connect_bb(env, bb, err_bb);
+	// bpf_ir_create_jbin_insn(env, tmp, bpf_ir_value_insn(tmp),
+	// 			bpf_ir_value_const32(0), new_bb, err_bb,
+	// 			IR_INSN_JNE, IR_ALU_64, INSERT_BACK);
+	// // Manually connect BBs
+	// bpf_ir_connect_bb(env, bb, err_bb);
 }
 
 bool is_sp_access(struct bpf_ir_env *env, struct ir_function *fun,
