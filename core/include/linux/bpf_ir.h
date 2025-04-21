@@ -24,35 +24,38 @@ typedef __u32 u32;
 typedef __s64 s64;
 typedef __u64 u64;
 
-#ifdef LIBBPF
-#else
 // Used to simulate kernel functions
 #include "list.h"
 #include "hash.h"
 
-#define SIZET_MAX SIZE_MAX
+#define PRINT_DBG printf
 
-#endif
+#define CRITICAL(str)                                                       \
+	{                                                                   \
+		printf("%s:%d <%s> %s\n", __FILE__, __LINE__, __FUNCTION__, \
+		       str);                                                \
+		exit(1);                                                    \
+	}
 
 #else
 
 #include <linux/types.h>
-#include <linux/sort.h>
 #include <linux/list.h>
 #include <linux/hash.h>
 
-#define SIZET_MAX ULONG_MAX
+#define PRINT_DBG printk
 
-#define qsort(a, b, c, d) sort(a, b, c, d, NULL)
+#define CRITICAL(str)                                                      \
+	{                                                                  \
+		panic("%s:%d <%s> %s\n", __FILE__, __LINE__, __FUNCTION__, \
+		      str);                                                \
+	}
 
 #endif
 
 /* IR Env Start */
 
 // A environment for communicating with external functions
-
-#define BPF_IR_LOG_SIZE 100000
-#define BPF_IR_MAX_PASS_NAME_SIZE 32
 
 struct custom_pass_cfg;
 struct builtin_pass_cfg;
@@ -160,16 +163,6 @@ void bpf_ir_reset_env(struct bpf_ir_env *env);
 #define PRINT_LOG_DEBUG(...) bpf_ir_print_to_log(2, __VA_ARGS__)
 #define PRINT_LOG_WARNING(...) bpf_ir_print_to_log(1, __VA_ARGS__)
 #define PRINT_LOG_ERROR(...) bpf_ir_print_to_log(0, __VA_ARGS__)
-
-#ifndef __KERNEL__
-
-#define PRINT_DBG printf
-
-#else
-
-#define PRINT_DBG printk
-
-#endif
 
 #define CHECK_ERR(x)      \
 	if (env->err) {   \
@@ -328,24 +321,6 @@ void bpf_ir_ptrset_minus(struct ptrset *set1, struct ptrset *set2);
 /* Ptrset End */
 
 /* DBG Macro Start */
-#ifndef __KERNEL__
-
-#define CRITICAL(str)                                                       \
-	{                                                                   \
-		printf("%s:%d <%s> %s\n", __FILE__, __LINE__, __FUNCTION__, \
-		       str);                                                \
-		exit(1);                                                    \
-	}
-
-#else
-
-#define CRITICAL(str)                                                      \
-	{                                                                  \
-		panic("%s:%d <%s> %s\n", __FILE__, __LINE__, __FUNCTION__, \
-		      str);                                                \
-	}
-
-#endif
 
 #define RAISE_ERROR(str)                                                    \
 	{                                                                   \
@@ -386,84 +361,6 @@ void bpf_ir_ptrset_minus(struct ptrset *set1, struct ptrset *set2);
 
 /* DBG Macro End */
 
-/* LLI Start */
-
-void *malloc_proto(size_t size);
-
-void free_proto(void *ptr);
-
-int parse_int(const char *str, int *val);
-
-u64 get_cur_time_ns(void);
-
-#ifdef DEBUG_ALLOC
-
-#define SAFE_MALLOC(dst, size)                            \
-	{                                                 \
-		if (size > 10000000) {                    \
-			CRITICAL("Incorrect Allocation"); \
-		}                                         \
-		dst = malloc_proto(size);                 \
-		if (!dst) {                               \
-			env->err = -ENOMEM;               \
-			return;                           \
-		}                                         \
-	}
-
-#define SAFE_MALLOC_RET_NULL(dst, size)                   \
-	{                                                 \
-		if (size > 10000000) {                    \
-			CRITICAL("Incorrect Allocation"); \
-		}                                         \
-		dst = malloc_proto(size);                 \
-		if (!dst) {                               \
-			env->err = -ENOMEM;               \
-			return NULL;                      \
-		}                                         \
-	}
-
-#else
-
-#define SAFE_MALLOC(dst, size)              \
-	{                                   \
-		dst = malloc_proto(size);   \
-		if (!dst) {                 \
-			env->err = -ENOMEM; \
-			return;             \
-		}                           \
-	}
-
-#define SAFE_MALLOC_RET_NULL(dst, size)     \
-	{                                   \
-		dst = malloc_proto(size);   \
-		if (!dst) {                 \
-			env->err = -ENOMEM; \
-			return NULL;        \
-		}                           \
-	}
-
-#endif
-
-/* LLI End */
-
-#define MAX_FUNC_ARG 5
-
-enum imm_type { IMM, IMM64 };
-
-/* Pre-IR instructions, similar to `bpf_insn` */
-struct pre_ir_insn {
-	u8 opcode;
-
-	u8 dst_reg;
-	u8 src_reg;
-	s16 off;
-
-	enum imm_type it;
-	s32 imm;
-	s64 imm64; // Immediate constant for 64-bit immediate
-
-	size_t pos; // Original position
-};
 
 enum ir_alu_op_type {
 	IR_ALU_UNKNOWN, // To prevent from not manually setting this type

@@ -551,7 +551,7 @@ static void print_insn_ptr_base_dot(struct bpf_ir_env *env,
 		PRINT_LOG_DEBUG(env, "ARG%u", insn->fun_arg_id);
 		return;
 	}
-	if (insn->_insn_id == SIZET_MAX) {
+	if (insn->_insn_id == (size_t)(-1)) {
 		PRINT_LOG_DEBUG(env, "PTR%p", insn);
 		return;
 	}

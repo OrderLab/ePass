@@ -73,7 +73,7 @@ void print_insn_ptr_base(struct bpf_ir_env *env, struct ir_insn *insn)
 		PRINT_LOG_DEBUG(env, "arg%u", insn->fun_arg_id);
 		return;
 	}
-	if (insn->_insn_id == SIZET_MAX) {
+	if (insn->_insn_id == (size_t)(-1)) {
 		PRINT_LOG_DEBUG(env, "%p", insn);
 		return;
 	}
