@@ -53,6 +53,16 @@ typedef __u64 u64;
 
 #endif
 
+/**
+ * define BPF_IR_LOG_SIZE - Maximum size of the BPF IR log buffer
+ */
+#define BPF_IR_LOG_SIZE 100000
+
+/**
+ * define BPF_IR_MAX_PASS_NAME_SIZE - Maximum length of a BPF IR pass name
+ */
+#define BPF_IR_MAX_PASS_NAME_SIZE 32
+
 /* IR Env Start */
 
 // A environment for communicating with external functions
@@ -60,39 +70,42 @@ typedef __u64 u64;
 struct custom_pass_cfg;
 struct builtin_pass_cfg;
 
+/**
+ * struct bpf_ir_opts - Options for BPF IR processing
+ * @force: Force the use of ePass, even if the verifier passes
+ * @enable_printk_log: Enable printing log messages using printk
+ * @disable_coalesce: Disable register coalescing optimization
+ * @enable_throw_msg: Write an error message to trace when throwing an error
+ * @fake_run: Run without actually modifying the bytecode
+ * @print_only: Print IR without performing transformations
+ * @max_insns: Maximum number of instructions to process
+ * @cg_v2: Use the new code generation (CG) pipeline, enabled by default
+ * @dotgraph: Generate a DOT graph for the interference graph
+ * @verbose: Verbosity level
+ * @disable_prog_check: Disable program checks
+ * @max_iteration: Maximum number of iterations allowed
+ * @print_mode: Printing mode for the IR (e.g., BPF, detail, dump)
+ * @custom_passes: Pointer to an array of custom pass configurations
+ * @custom_pass_num: Number of custom passes
+ * @builtin_pass_cfg: Pointer to an array of built-in pass configurations
+ * @builtin_pass_cfg_num: Number of built-in pass configurations
+ *
+ * This struct defines the set of options used during the intermediate
+ * representation (IR) processing of BPF programs. These options control
+ * transformations, output formats, logging, and optimization behavior.
+ */
 struct bpf_ir_opts {
-	// Force to use ePass, even if verifier passes
 	bool force;
-
-	// Enable printing log to printk
 	bool enable_printk_log;
-
-	// Disable register coalesce optimization
 	bool disable_coalesce;
-
-	// Write an error message to trace when throwing an error
 	bool enable_throw_msg;
-
-	// Do not actually change the bytecode
 	bool fake_run;
-
-	// Print only
 	bool print_only;
-
-	// Limit the instructions to handle
 	u32 max_insns;
-
-	// Use new CG pipeline;
 	bool cg_v2;
-
-	// Generate DOT graph for intereference graph
 	bool dotgraph;
-
-	// Verbose level
 	int verbose;
-
 	bool disable_prog_check;
-
 	u32 max_iteration;
 
 	enum {
@@ -109,16 +122,43 @@ struct bpf_ir_opts {
 	size_t builtin_pass_cfg_num;
 };
 
+/**
+ * bpf_ir_default_opts - Get default BPF IR options
+ *
+ * Returns the default-initialized set of options for BPF IR processing.
+ * These defaults are used to configure the IR pipeline when no custom
+ * settings are provided.
+ *
+ * Return: A struct bpf_ir_opts containing default configuration values.
+ */
 struct bpf_ir_opts bpf_ir_default_opts(void);
 
+/**
+ * struct bpf_ir_env - Environment for BPF IR processing
+ * @err: Internal error code
+ * @insn_cnt: Number of BPF instructions
+ * @insns: Pointer to the array of BPF instructions
+ * @log: Log buffer for BPF IR processing output
+ * @log_pos: Current position in the log buffer
+ * @opts: Options used during BPF IR processing
+ * @lift_time: Time spent lifting bytecode to IR
+ * @run_time: Time spent running IR passes
+ * @cg_time: Time spent in code generation
+ * @executed: Whether the IR pipeline has executed (used in verifier)
+ * @verifier_err: Error code from the verifier
+ * @verifier_log_end_pos: Position in the verifier log buffer where logging ended
+ * @prog_type: BPF program type; may be unspecified in user space
+ * @venv: Pointer to the verifier environment
+ * @verifier_info_map: Mapping from bytecode instruction number to verifier info
+ *
+ * This struct contains the complete state and metadata for processing
+ * a BPF program in the intermediate representation (IR) pipeline.
+ * It includes instructions, options, logging buffers, stats, and
+ * verifier-related metadata.
+ */
 struct bpf_ir_env {
-	// Internal error code
 	int err;
-
-	// Number of instructions
 	size_t insn_cnt;
-
-	// Instructions
 	struct bpf_insn *insns;
 
 	char log[BPF_IR_LOG_SIZE];
@@ -126,49 +166,67 @@ struct bpf_ir_env {
 
 	struct bpf_ir_opts opts;
 
-	// Stats
-
 	u64 lift_time;
 	u64 run_time;
 	u64 cg_time;
 
-	// Verifier information
-
-	// Whether executed, used in verifier
 	bool executed;
-
-	// Verifier error
 	int verifier_err;
-
-	// Verifier log end pos in ubuf
 	u64 verifier_log_end_pos;
 
-	// Prog type
-	// May not be specified in user space
 	enum bpf_prog_type prog_type;
-
-	// Verifier env
 	void *venv;
 
-	// Verifier information map
-	// Bytecode Insn number -> Verifier information (e.g. min max, type)
 	void *verifier_info_map;
 };
 
+/**
+ * bpf_ir_print_to_log - Print a formatted log message to the BPF IR environment log
+ * @level: Log verbosity level (e.g. 0 = error, 3 = info)
+ * @env: Pointer to the BPF IR environment
+ * @fmt: Format string (printf-style)
+ * @...: Variable arguments for the format string
+ *
+ * Appends a formatted log message to the log buffer of the given IR environment.
+ * Used mostly internally. Use PRINT_LOG_INFO() and related functions to print.
+ */
 void bpf_ir_print_to_log(int level, struct bpf_ir_env *env, char *fmt, ...);
 
+/**
+  * bpf_ir_reset_env - Reset the BPF IR environment to initial state
+  * @env: Pointer to the BPF IR environment to reset
+  *
+  * Clears the execution state to prepare for a new IR processing run.
+  */
 void bpf_ir_reset_env(struct bpf_ir_env *env);
 
+/**
+  * PRINT_LOG_INFO - Print an informational message to the BPF IR log
+  */
 #define PRINT_LOG_INFO(...) bpf_ir_print_to_log(3, __VA_ARGS__)
+
+/**
+  * PRINT_LOG_DEBUG - Print a debug message to the BPF IR log
+  */
 #define PRINT_LOG_DEBUG(...) bpf_ir_print_to_log(2, __VA_ARGS__)
+
+/**
+  * PRINT_LOG_WARNING - Print a warning message to the BPF IR log
+  */
 #define PRINT_LOG_WARNING(...) bpf_ir_print_to_log(1, __VA_ARGS__)
+
+/**
+  * PRINT_LOG_ERROR - Print an error message to the BPF IR log
+  */
 #define PRINT_LOG_ERROR(...) bpf_ir_print_to_log(0, __VA_ARGS__)
 
-#define CHECK_ERR(x)      \
-	if (env->err) {   \
-		return x; \
-	}
-
+/**
+  * bpf_ir_print_log_dbg - Print the current IR log content for debugging
+  * @env: Pointer to the BPF IR environment
+  *
+  * Outputs the current content of the IR log buffer for debugging purposes.
+  * Use printf in userspace and printk in kernel
+  */
 void bpf_ir_print_log_dbg(struct bpf_ir_env *env);
 
 /* IR Env End */
@@ -360,7 +418,6 @@ void bpf_ir_ptrset_minus(struct ptrset *set1, struct ptrset *set2);
 	}
 
 /* DBG Macro End */
-
 
 enum ir_alu_op_type {
 	IR_ALU_UNKNOWN, // To prevent from not manually setting this type
@@ -1410,33 +1467,36 @@ struct builtin_pass_cfg {
 };
 
 #define DEF_CUSTOM_PASS(pass_def, check_applyc, param_loadc, param_unloadc) \
-	{ .pass = pass_def,                                                 \
-	  .param = NULL,                                                    \
-	  .param_load = param_loadc,                                        \
-	  .param_unload = param_unloadc,                                    \
-	  .check_apply = check_applyc }
+	{                                                                   \
+		.pass = pass_def, .param = NULL, .param_load = param_loadc, \
+		.param_unload = param_unloadc, .check_apply = check_applyc  \
+	}
 
 #define DEF_BUILTIN_PASS_CFG(namec, param_loadc, param_unloadc) \
-	{ .name = namec,                                        \
-	  .param = NULL,                                        \
-	  .enable = false,                                      \
-	  .enable_cfg = false,                                  \
-	  .param_load = param_loadc,                            \
-	  .param_unload = param_unloadc }
+	{                                                       \
+		.name = namec, .param = NULL, .enable = false,  \
+		.enable_cfg = false, .param_load = param_loadc, \
+		.param_unload = param_unloadc                   \
+	}
 
 #define DEF_BUILTIN_PASS_ENABLE_CFG(namec, param_loadc, param_unloadc) \
-	{ .name = namec,                                               \
-	  .param = NULL,                                               \
-	  .enable = true,                                              \
-	  .enable_cfg = false,                                         \
-	  .param_load = param_loadc,                                   \
-	  .param_unload = param_unloadc }
+	{                                                              \
+		.name = namec, .param = NULL, .enable = true,          \
+		.enable_cfg = false, .param_load = param_loadc,        \
+		.param_unload = param_unloadc                          \
+	}
 
-#define DEF_FUNC_PASS(fun, msg, en_def) \
-	{ .pass = fun, .name = msg, .enabled = en_def, .force_enable = false }
+#define DEF_FUNC_PASS(fun, msg, en_def)                      \
+	{                                                    \
+		.pass = fun, .name = msg, .enabled = en_def, \
+		.force_enable = false                        \
+	}
 
-#define DEF_NON_OVERRIDE_FUNC_PASS(fun, msg) \
-	{ .pass = fun, .name = msg, .enabled = true, .force_enable = true }
+#define DEF_NON_OVERRIDE_FUNC_PASS(fun, msg)               \
+	{                                                  \
+		.pass = fun, .name = msg, .enabled = true, \
+		.force_enable = true                       \
+	}
 
 /* Passes End */
 
@@ -1472,10 +1532,11 @@ struct ir_value bpf_ir_value_stack_ptr(struct ir_function *fun);
 
 struct ir_value bpf_ir_value_r0(struct ir_function *fun);
 
-#define VR_POS_STACK_PTR                             \
-	(struct ir_vr_pos){ .allocated = true,       \
-			    .alloc_reg = BPF_REG_10, \
-			    .spilled = 0 }
+#define VR_POS_STACK_PTR                                                 \
+	(struct ir_vr_pos)                                               \
+	{                                                                \
+		.allocated = true, .alloc_reg = BPF_REG_10, .spilled = 0 \
+	}
 
 struct ir_value bpf_ir_value_norm_stack_ptr(void);
 

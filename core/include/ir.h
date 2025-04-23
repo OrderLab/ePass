@@ -16,8 +16,11 @@ Internal functions and definitions for BPF IR.
 
 #endif
 
-#define BPF_IR_LOG_SIZE 100000
-#define BPF_IR_MAX_PASS_NAME_SIZE 32
+#define CHECK_ERR(x)      \
+	if (env->err) {   \
+		return x; \
+	}
+
 
 /* LLI Start */
 
