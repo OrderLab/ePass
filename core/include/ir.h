@@ -21,7 +21,6 @@ Internal functions and definitions for BPF IR.
 		return x; \
 	}
 
-
 /* LLI Start */
 
 void *malloc_proto(size_t size);
@@ -69,18 +68,16 @@ struct pre_ir_insn {
 	size_t pos; // Original position
 };
 
-
 int bpf_ir_valid_alu_type(enum ir_alu_op_type type);
 
 int bpf_ir_valid_vr_type(enum ir_vr_type type);
-
 
 /**
     Pre-IR BB
 
     This includes many data structures needed to generate the IR.
  */
- struct pre_ir_basic_block {
+struct pre_ir_basic_block {
 	// An ID used to debug
 	size_t id;
 
@@ -109,7 +106,7 @@ int bpf_ir_valid_vr_type(enum ir_vr_type type);
 /**
     The BB value used in currentDef
  */
- struct bb_val {
+struct bb_val {
 	struct pre_ir_basic_block *bb;
 	struct ir_value val;
 };
@@ -125,7 +122,7 @@ struct bb_entrance_info {
 /**
     Generated BB information
  */
- struct bb_info {
+struct bb_info {
 	struct pre_ir_basic_block *entry;
 
 	// Array of bb_entrance_info
@@ -148,6 +145,6 @@ struct ssa_transform_env {
 };
 
 void bpf_ir_run_passes(struct bpf_ir_env *env, struct ir_function *fun,
-	const struct function_pass *passes, const size_t cnt);
+		       const struct function_pass *passes, const size_t cnt);
 
 #endif

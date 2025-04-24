@@ -516,7 +516,6 @@ enum ir_vr_type {
 	IR_VR_TYPE_64,
 };
 
-
 enum ir_loadimm_extra_type {
 	IR_LOADIMM_IMM64 = 0,
 	IR_LOADIMM_MAP_BY_FD,
@@ -628,7 +627,6 @@ struct ir_insn {
 	void *user_data;
 	u8 _visited;
 };
-
 
 enum ir_bb_flag {
 	IR_BB_HAS_COUNTER = 1 << 0,
@@ -762,7 +760,6 @@ void bpf_ir_replace_all_usage_except(struct bpf_ir_env *env,
 
 void bpf_ir_erase_insn(struct bpf_ir_env *env, struct ir_insn *insn);
 
-
 bool bpf_ir_is_last_insn(struct ir_insn *insn);
 
 void bpf_ir_check_no_user(struct bpf_ir_env *env, struct ir_insn *insn);
@@ -793,16 +790,6 @@ struct ir_insn *bpf_ir_create_alloc_insn_bb(struct bpf_ir_env *env,
 					    enum ir_vr_type type,
 					    enum insert_position pos);
 
-struct ir_insn *bpf_ir_create_alloc_insn_cg_v2(struct bpf_ir_env *env,
-					       struct ir_insn *pos_insn,
-					       enum ir_vr_type type,
-					       enum insert_position pos);
-
-struct ir_insn *bpf_ir_create_alloc_insn_bb_cg_v2(struct bpf_ir_env *env,
-						  struct ir_basic_block *pos_bb,
-						  enum ir_vr_type type,
-						  enum insert_position pos);
-
 struct ir_insn *bpf_ir_create_allocarray_insn(struct bpf_ir_env *env,
 					      struct ir_insn *pos_insn,
 					      enum ir_vr_type type, u32 num,
@@ -821,24 +808,6 @@ struct ir_insn *bpf_ir_create_loadimmextra_insn_bb(
 	struct bpf_ir_env *env, struct ir_basic_block *pos_bb,
 	enum ir_loadimm_extra_type load_ty, s64 imm, enum insert_position pos);
 
-struct ir_insn *bpf_ir_create_loadimmextra_insn_cg(
-	struct bpf_ir_env *env, struct ir_insn *pos_insn,
-	enum ir_loadimm_extra_type load_ty, s64 imm, enum insert_position pos);
-
-struct ir_insn *bpf_ir_create_loadimmextra_insn_bb_cg(
-	struct bpf_ir_env *env, struct ir_basic_block *pos_bb,
-	enum ir_loadimm_extra_type load_ty, s64 imm, enum insert_position pos);
-
-struct ir_insn *bpf_ir_create_loadimmextra_insn_norm(
-	struct bpf_ir_env *env, struct ir_insn *pos_insn,
-	struct ir_vr_pos dstpos, enum ir_loadimm_extra_type load_ty, s64 imm,
-	enum insert_position pos);
-
-struct ir_insn *bpf_ir_create_loadimmextra_insn_bb_norm(
-	struct bpf_ir_env *env, struct ir_basic_block *pos_bb,
-	struct ir_vr_pos dstpos, enum ir_loadimm_extra_type load_ty, s64 imm,
-	enum insert_position pos);
-
 struct ir_insn *bpf_ir_create_getelemptr_insn(struct bpf_ir_env *env,
 					      struct ir_insn *pos_insn,
 					      struct ir_insn *alloca_insn,
@@ -850,17 +819,6 @@ struct ir_insn *bpf_ir_create_getelemptr_insn_bb(struct bpf_ir_env *env,
 						 struct ir_insn *alloca_insn,
 						 struct ir_value offset,
 						 enum insert_position pos);
-
-struct ir_insn *bpf_ir_create_getelemptr_insn_cg(struct bpf_ir_env *env,
-						 struct ir_insn *pos_insn,
-						 struct ir_insn *alloca_insn,
-						 struct ir_value offset,
-						 enum insert_position pos);
-
-struct ir_insn *bpf_ir_create_getelemptr_insn_bb_cg(
-	struct bpf_ir_env *env, struct ir_basic_block *pos_bb,
-	struct ir_insn *alloca_insn, struct ir_value offset,
-	enum insert_position pos);
 
 struct ir_insn *bpf_ir_create_neg_insn(struct bpf_ir_env *env,
 				       struct ir_insn *pos_insn,
@@ -874,32 +832,6 @@ struct ir_insn *bpf_ir_create_neg_insn_bb(struct bpf_ir_env *env,
 					  struct ir_value val,
 					  enum insert_position pos);
 
-struct ir_insn *bpf_ir_create_neg_insn_cg(struct bpf_ir_env *env,
-					  struct ir_insn *pos_insn,
-					  enum ir_alu_op_type alu_type,
-					  struct ir_value val,
-					  enum insert_position pos);
-
-struct ir_insn *bpf_ir_create_neg_insn_bb_cg(struct bpf_ir_env *env,
-					     struct ir_basic_block *pos_bb,
-					     enum ir_alu_op_type alu_type,
-					     struct ir_value val,
-					     enum insert_position pos);
-
-struct ir_insn *bpf_ir_create_neg_insn_norm(struct bpf_ir_env *env,
-					    struct ir_insn *pos_insn,
-					    struct ir_vr_pos dstpos,
-					    enum ir_alu_op_type alu_type,
-					    struct ir_value val,
-					    enum insert_position pos);
-
-struct ir_insn *bpf_ir_create_neg_insn_bb_norm(struct bpf_ir_env *env,
-					       struct ir_basic_block *pos_bb,
-					       struct ir_vr_pos dstpos,
-					       enum ir_alu_op_type alu_type,
-					       struct ir_value val,
-					       enum insert_position pos);
-
 struct ir_insn *bpf_ir_create_end_insn(struct bpf_ir_env *env,
 				       struct ir_insn *pos_insn,
 				       enum ir_insn_type ty, u32 swap_width,
@@ -911,19 +843,6 @@ struct ir_insn *bpf_ir_create_end_insn_bb(struct bpf_ir_env *env,
 					  enum ir_insn_type ty, u32 swap_width,
 					  struct ir_value val,
 					  enum insert_position pos);
-
-struct ir_insn *bpf_ir_create_end_insn_cg(struct bpf_ir_env *env,
-					  struct ir_insn *pos_insn,
-					  enum ir_insn_type ty, u32 swap_width,
-					  struct ir_value val,
-					  enum insert_position pos);
-
-struct ir_insn *bpf_ir_create_end_insn_bb_cg(struct bpf_ir_env *env,
-					     struct ir_basic_block *pos_bb,
-					     enum ir_insn_type ty,
-					     u32 swap_width,
-					     struct ir_value val,
-					     enum insert_position pos);
 
 struct ir_insn *bpf_ir_create_store_insn(struct bpf_ir_env *env,
 					 struct ir_insn *pos_insn,
@@ -937,18 +856,6 @@ struct ir_insn *bpf_ir_create_store_insn_bb(struct bpf_ir_env *env,
 					    struct ir_value val,
 					    enum insert_position pos);
 
-struct ir_insn *bpf_ir_create_store_insn_cg_v2(struct bpf_ir_env *env,
-					       struct ir_insn *pos_insn,
-					       struct ir_insn *insn,
-					       struct ir_value val,
-					       enum insert_position pos);
-
-struct ir_insn *bpf_ir_create_store_insn_bb_cg_v2(struct bpf_ir_env *env,
-						  struct ir_basic_block *pos_bb,
-						  struct ir_insn *insn,
-						  struct ir_value val,
-						  enum insert_position pos);
-
 struct ir_insn *bpf_ir_create_load_insn(struct bpf_ir_env *env,
 					struct ir_insn *pos_insn,
 					struct ir_value val,
@@ -958,16 +865,6 @@ struct ir_insn *bpf_ir_create_load_insn_bb(struct bpf_ir_env *env,
 					   struct ir_basic_block *pos_bb,
 					   struct ir_value val,
 					   enum insert_position pos);
-
-struct ir_insn *bpf_ir_create_load_insn_cg_v2(struct bpf_ir_env *env,
-					      struct ir_insn *pos_insn,
-					      struct ir_value val,
-					      enum insert_position pos);
-
-struct ir_insn *bpf_ir_create_load_insn_bb_cg_v2(struct bpf_ir_env *env,
-						 struct ir_basic_block *pos_bb,
-						 struct ir_value val,
-						 enum insert_position pos);
 
 struct ir_insn *
 bpf_ir_create_bin_insn(struct bpf_ir_env *env, struct ir_insn *pos_insn,
@@ -980,30 +877,6 @@ bpf_ir_create_bin_insn_bb(struct bpf_ir_env *env, struct ir_basic_block *pos_bb,
 			  struct ir_value val1, struct ir_value val2,
 			  enum ir_insn_type ty, enum ir_alu_op_type alu_type,
 			  enum insert_position pos);
-
-struct ir_insn *
-bpf_ir_create_bin_insn_cg(struct bpf_ir_env *env, struct ir_insn *pos_insn,
-			  struct ir_value val1, struct ir_value val2,
-			  enum ir_insn_type ty, enum ir_alu_op_type alu_type,
-			  enum insert_position pos);
-
-struct ir_insn *bpf_ir_create_bin_insn_bb_cg(
-	struct bpf_ir_env *env, struct ir_basic_block *pos_bb,
-	struct ir_value val1, struct ir_value val2, enum ir_insn_type ty,
-	enum ir_alu_op_type alu_type, enum insert_position pos);
-
-struct ir_insn *
-bpf_ir_create_bin_insn_norm(struct bpf_ir_env *env, struct ir_insn *pos_insn,
-			    struct ir_vr_pos dstpos, struct ir_value val1,
-			    struct ir_value val2, enum ir_insn_type ty,
-			    enum ir_alu_op_type alu_type,
-			    enum insert_position pos);
-
-struct ir_insn *bpf_ir_create_bin_insn_bb_norm(
-	struct bpf_ir_env *env, struct ir_basic_block *pos_bb,
-	struct ir_vr_pos dstpos, struct ir_value val1, struct ir_value val2,
-	enum ir_insn_type ty, enum ir_alu_op_type alu_type,
-	enum insert_position pos);
 
 struct ir_insn *bpf_ir_create_ja_insn(struct bpf_ir_env *env,
 				      struct ir_insn *pos_insn,
@@ -1068,18 +941,6 @@ struct ir_insn *bpf_ir_create_loadraw_insn_bb(struct bpf_ir_env *env,
 					      struct ir_address_value val,
 					      enum insert_position pos);
 
-struct ir_insn *bpf_ir_create_loadraw_insn_cg(struct bpf_ir_env *env,
-					      struct ir_insn *pos_insn,
-					      enum ir_vr_type type,
-					      struct ir_address_value val,
-					      enum insert_position pos);
-
-struct ir_insn *bpf_ir_create_loadraw_insn_bb_cg(struct bpf_ir_env *env,
-						 struct ir_basic_block *pos_bb,
-						 enum ir_vr_type type,
-						 struct ir_address_value val,
-						 enum insert_position pos);
-
 struct ir_insn *
 bpf_ir_create_storeraw_insn(struct bpf_ir_env *env, struct ir_insn *pos_insn,
 			    enum ir_vr_type type, struct ir_address_value val,
@@ -1092,20 +953,6 @@ struct ir_insn *bpf_ir_create_storeraw_insn_bb(struct bpf_ir_env *env,
 					       struct ir_value to_store,
 					       enum insert_position pos);
 
-struct ir_insn *bpf_ir_create_storeraw_insn_cg(struct bpf_ir_env *env,
-					       struct ir_insn *pos_insn,
-					       enum ir_vr_type type,
-					       struct ir_address_value val,
-					       struct ir_value to_store,
-					       enum insert_position pos);
-
-struct ir_insn *bpf_ir_create_storeraw_insn_bb_cg(struct bpf_ir_env *env,
-						  struct ir_basic_block *pos_bb,
-						  enum ir_vr_type type,
-						  struct ir_address_value val,
-						  struct ir_value to_store,
-						  enum insert_position pos);
-
 struct ir_insn *bpf_ir_create_assign_insn(struct bpf_ir_env *env,
 					  struct ir_insn *pos_insn,
 					  struct ir_value val,
@@ -1115,37 +962,6 @@ struct ir_insn *bpf_ir_create_assign_insn_bb(struct bpf_ir_env *env,
 					     struct ir_basic_block *pos_bb,
 					     struct ir_value val,
 					     enum insert_position pos);
-
-struct ir_insn *bpf_ir_create_assign_insn_cg(struct bpf_ir_env *env,
-					     struct ir_insn *pos_insn,
-					     struct ir_value val,
-					     enum insert_position pos);
-
-struct ir_insn *bpf_ir_create_assign_insn_bb_cg(struct bpf_ir_env *env,
-						struct ir_basic_block *pos_bb,
-						struct ir_value val,
-						enum insert_position pos);
-
-struct ir_insn *bpf_ir_create_assign_insn_norm(struct bpf_ir_env *env,
-					       struct ir_insn *pos_insn,
-					       struct ir_vr_pos dstpos,
-					       struct ir_value val,
-					       enum insert_position pos);
-
-struct ir_insn *bpf_ir_create_assign_insn_bb_norm(struct bpf_ir_env *env,
-						  struct ir_basic_block *pos_bb,
-						  struct ir_vr_pos dstpos,
-						  struct ir_value val,
-						  enum insert_position pos);
-
-struct ir_insn *bpf_ir_create_assign_insn_cg_v2(struct bpf_ir_env *env,
-						struct ir_insn *pos_insn,
-						struct ir_value val,
-						enum insert_position pos);
-
-struct ir_insn *bpf_ir_create_assign_insn_bb_cg_v2(
-	struct bpf_ir_env *env, struct ir_basic_block *pos_bb,
-	struct ir_value val, enum insert_position pos);
 
 struct ir_insn *bpf_ir_create_phi_insn(struct bpf_ir_env *env,
 				       struct ir_insn *pos_insn,
@@ -1340,36 +1156,33 @@ struct builtin_pass_cfg {
 };
 
 #define DEF_CUSTOM_PASS(pass_def, check_applyc, param_loadc, param_unloadc) \
-	{                                                                   \
-		.pass = pass_def, .param = NULL, .param_load = param_loadc, \
-		.param_unload = param_unloadc, .check_apply = check_applyc  \
-	}
+	{ .pass = pass_def,                                                 \
+	  .param = NULL,                                                    \
+	  .param_load = param_loadc,                                        \
+	  .param_unload = param_unloadc,                                    \
+	  .check_apply = check_applyc }
 
 #define DEF_BUILTIN_PASS_CFG(namec, param_loadc, param_unloadc) \
-	{                                                       \
-		.name = namec, .param = NULL, .enable = false,  \
-		.enable_cfg = false, .param_load = param_loadc, \
-		.param_unload = param_unloadc                   \
-	}
+	{ .name = namec,                                        \
+	  .param = NULL,                                        \
+	  .enable = false,                                      \
+	  .enable_cfg = false,                                  \
+	  .param_load = param_loadc,                            \
+	  .param_unload = param_unloadc }
 
 #define DEF_BUILTIN_PASS_ENABLE_CFG(namec, param_loadc, param_unloadc) \
-	{                                                              \
-		.name = namec, .param = NULL, .enable = true,          \
-		.enable_cfg = false, .param_load = param_loadc,        \
-		.param_unload = param_unloadc                          \
-	}
+	{ .name = namec,                                               \
+	  .param = NULL,                                               \
+	  .enable = true,                                              \
+	  .enable_cfg = false,                                         \
+	  .param_load = param_loadc,                                   \
+	  .param_unload = param_unloadc }
 
-#define DEF_FUNC_PASS(fun, msg, en_def)                      \
-	{                                                    \
-		.pass = fun, .name = msg, .enabled = en_def, \
-		.force_enable = false                        \
-	}
+#define DEF_FUNC_PASS(fun, msg, en_def) \
+	{ .pass = fun, .name = msg, .enabled = en_def, .force_enable = false }
 
-#define DEF_NON_OVERRIDE_FUNC_PASS(fun, msg)               \
-	{                                                  \
-		.pass = fun, .name = msg, .enabled = true, \
-		.force_enable = true                       \
-	}
+#define DEF_NON_OVERRIDE_FUNC_PASS(fun, msg) \
+	{ .pass = fun, .name = msg, .enabled = true, .force_enable = true }
 
 /* Passes End */
 
@@ -1405,11 +1218,10 @@ struct ir_value bpf_ir_value_stack_ptr(struct ir_function *fun);
 
 struct ir_value bpf_ir_value_r0(struct ir_function *fun);
 
-#define VR_POS_STACK_PTR                                                 \
-	(struct ir_vr_pos)                                               \
-	{                                                                \
-		.allocated = true, .alloc_reg = BPF_REG_10, .spilled = 0 \
-	}
+#define VR_POS_STACK_PTR                             \
+	(struct ir_vr_pos){ .allocated = true,       \
+			    .alloc_reg = BPF_REG_10, \
+			    .spilled = 0 }
 
 struct ir_value bpf_ir_value_norm_stack_ptr(void);
 
@@ -1421,7 +1233,6 @@ void bpf_ir_change_value(struct bpf_ir_env *env, struct ir_insn *insn,
 /* IR Optimization Start */
 
 /* IR Optimization End */
-
 
 /* Kern Utils Start */
 

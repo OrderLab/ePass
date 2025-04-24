@@ -158,6 +158,187 @@ void bpr_ir_cg_to_cssa(struct bpf_ir_env *env, struct ir_function *fun,
 
 /* Instruction Constructors */
 
+struct ir_insn *bpf_ir_create_alloc_insn_cg_v2(struct bpf_ir_env *env,
+					       struct ir_insn *pos_insn,
+					       enum ir_vr_type type,
+					       enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_alloc_insn_bb_cg_v2(struct bpf_ir_env *env,
+						  struct ir_basic_block *pos_bb,
+						  enum ir_vr_type type,
+						  enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_loadimmextra_insn_cg(
+	struct bpf_ir_env *env, struct ir_insn *pos_insn,
+	enum ir_loadimm_extra_type load_ty, s64 imm, enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_loadimmextra_insn_bb_cg(
+	struct bpf_ir_env *env, struct ir_basic_block *pos_bb,
+	enum ir_loadimm_extra_type load_ty, s64 imm, enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_loadimmextra_insn_norm(
+	struct bpf_ir_env *env, struct ir_insn *pos_insn,
+	struct ir_vr_pos dstpos, enum ir_loadimm_extra_type load_ty, s64 imm,
+	enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_loadimmextra_insn_bb_norm(
+	struct bpf_ir_env *env, struct ir_basic_block *pos_bb,
+	struct ir_vr_pos dstpos, enum ir_loadimm_extra_type load_ty, s64 imm,
+	enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_getelemptr_insn_cg(struct bpf_ir_env *env,
+						 struct ir_insn *pos_insn,
+						 struct ir_insn *alloca_insn,
+						 struct ir_value offset,
+						 enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_getelemptr_insn_bb_cg(
+	struct bpf_ir_env *env, struct ir_basic_block *pos_bb,
+	struct ir_insn *alloca_insn, struct ir_value offset,
+	enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_neg_insn_cg(struct bpf_ir_env *env,
+					  struct ir_insn *pos_insn,
+					  enum ir_alu_op_type alu_type,
+					  struct ir_value val,
+					  enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_neg_insn_bb_cg(struct bpf_ir_env *env,
+					     struct ir_basic_block *pos_bb,
+					     enum ir_alu_op_type alu_type,
+					     struct ir_value val,
+					     enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_neg_insn_norm(struct bpf_ir_env *env,
+					    struct ir_insn *pos_insn,
+					    struct ir_vr_pos dstpos,
+					    enum ir_alu_op_type alu_type,
+					    struct ir_value val,
+					    enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_neg_insn_bb_norm(struct bpf_ir_env *env,
+					       struct ir_basic_block *pos_bb,
+					       struct ir_vr_pos dstpos,
+					       enum ir_alu_op_type alu_type,
+					       struct ir_value val,
+					       enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_end_insn_cg(struct bpf_ir_env *env,
+					  struct ir_insn *pos_insn,
+					  enum ir_insn_type ty, u32 swap_width,
+					  struct ir_value val,
+					  enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_end_insn_bb_cg(struct bpf_ir_env *env,
+					     struct ir_basic_block *pos_bb,
+					     enum ir_insn_type ty,
+					     u32 swap_width,
+					     struct ir_value val,
+					     enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_store_insn_cg_v2(struct bpf_ir_env *env,
+					       struct ir_insn *pos_insn,
+					       struct ir_insn *insn,
+					       struct ir_value val,
+					       enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_store_insn_bb_cg_v2(struct bpf_ir_env *env,
+						  struct ir_basic_block *pos_bb,
+						  struct ir_insn *insn,
+						  struct ir_value val,
+						  enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_load_insn_cg_v2(struct bpf_ir_env *env,
+					      struct ir_insn *pos_insn,
+					      struct ir_value val,
+					      enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_load_insn_bb_cg_v2(struct bpf_ir_env *env,
+						 struct ir_basic_block *pos_bb,
+						 struct ir_value val,
+						 enum insert_position pos);
+
+struct ir_insn *
+bpf_ir_create_bin_insn_cg(struct bpf_ir_env *env, struct ir_insn *pos_insn,
+			  struct ir_value val1, struct ir_value val2,
+			  enum ir_insn_type ty, enum ir_alu_op_type alu_type,
+			  enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_bin_insn_bb_cg(
+	struct bpf_ir_env *env, struct ir_basic_block *pos_bb,
+	struct ir_value val1, struct ir_value val2, enum ir_insn_type ty,
+	enum ir_alu_op_type alu_type, enum insert_position pos);
+
+struct ir_insn *
+bpf_ir_create_bin_insn_norm(struct bpf_ir_env *env, struct ir_insn *pos_insn,
+			    struct ir_vr_pos dstpos, struct ir_value val1,
+			    struct ir_value val2, enum ir_insn_type ty,
+			    enum ir_alu_op_type alu_type,
+			    enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_bin_insn_bb_norm(
+	struct bpf_ir_env *env, struct ir_basic_block *pos_bb,
+	struct ir_vr_pos dstpos, struct ir_value val1, struct ir_value val2,
+	enum ir_insn_type ty, enum ir_alu_op_type alu_type,
+	enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_loadraw_insn_cg(struct bpf_ir_env *env,
+					      struct ir_insn *pos_insn,
+					      enum ir_vr_type type,
+					      struct ir_address_value val,
+					      enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_loadraw_insn_bb_cg(struct bpf_ir_env *env,
+						 struct ir_basic_block *pos_bb,
+						 enum ir_vr_type type,
+						 struct ir_address_value val,
+						 enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_storeraw_insn_cg(struct bpf_ir_env *env,
+					       struct ir_insn *pos_insn,
+					       enum ir_vr_type type,
+					       struct ir_address_value val,
+					       struct ir_value to_store,
+					       enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_storeraw_insn_bb_cg(struct bpf_ir_env *env,
+						  struct ir_basic_block *pos_bb,
+						  enum ir_vr_type type,
+						  struct ir_address_value val,
+						  struct ir_value to_store,
+						  enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_assign_insn_cg(struct bpf_ir_env *env,
+					     struct ir_insn *pos_insn,
+					     struct ir_value val,
+					     enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_assign_insn_bb_cg(struct bpf_ir_env *env,
+						struct ir_basic_block *pos_bb,
+						struct ir_value val,
+						enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_assign_insn_norm(struct bpf_ir_env *env,
+					       struct ir_insn *pos_insn,
+					       struct ir_vr_pos dstpos,
+					       struct ir_value val,
+					       enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_assign_insn_bb_norm(struct bpf_ir_env *env,
+						  struct ir_basic_block *pos_bb,
+						  struct ir_vr_pos dstpos,
+						  struct ir_value val,
+						  enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_assign_insn_cg_v2(struct bpf_ir_env *env,
+						struct ir_insn *pos_insn,
+						struct ir_value val,
+						enum insert_position pos);
+
+struct ir_insn *bpf_ir_create_assign_insn_bb_cg_v2(
+	struct bpf_ir_env *env, struct ir_basic_block *pos_bb,
+	struct ir_value val, enum insert_position pos);
+
 /* Instruction Constructors */
 
 #endif
