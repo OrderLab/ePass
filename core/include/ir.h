@@ -52,9 +52,6 @@ u64 get_cur_time_ns(void);
 
 /* LLI End */
 
-
-#define MAX_FUNC_ARG 5
-
 enum imm_type { IMM, IMM64 };
 
 /* Pre-IR instructions, similar to `bpf_insn` */
@@ -72,5 +69,85 @@ struct pre_ir_insn {
 	size_t pos; // Original position
 };
 
+
+int bpf_ir_valid_alu_type(enum ir_alu_op_type type);
+
+int bpf_ir_valid_vr_type(enum ir_vr_type type);
+
+
+/**
+    Pre-IR BB
+
+    This includes many data structures needed to generate the IR.
+ */
+ struct pre_ir_basic_block {
+	// An ID used to debug
+	size_t id;
+
+	// Start position in the original insns
+	size_t start_pos;
+
+	// End position in the original insns
+	size_t end_pos;
+
+	// The number of instructions in this basic block (modified length)
+	size_t len;
+
+	struct pre_ir_insn *pre_insns;
+
+	struct array preds;
+	struct array succs;
+
+	u8 visited;
+
+	u8 sealed;
+	u8 filled;
+	struct ir_basic_block *ir_bb;
+	struct ir_insn *incompletePhis[MAX_BPF_REG];
+};
+
+/**
+    The BB value used in currentDef
+ */
+ struct bb_val {
+	struct pre_ir_basic_block *bb;
+	struct ir_value val;
+};
+
+/**
+    BB with the raw entrance position
+ */
+struct bb_entrance_info {
+	size_t entrance;
+	struct pre_ir_basic_block *bb;
+};
+
+/**
+    Generated BB information
+ */
+ struct bb_info {
+	struct pre_ir_basic_block *entry;
+
+	// Array of bb_entrance_info
+	struct array all_bbs;
+};
+
+/**
+    The environment data for transformation
+ */
+struct ssa_transform_env {
+	// Array of bb_val (which is (BB, Value) pair)
+	struct array currentDef[MAX_BPF_REG];
+	struct bb_info info;
+
+	// Stack Pointer
+	struct ir_insn *sp;
+
+	// Function argument
+	struct ir_insn *function_arg[MAX_FUNC_ARG];
+};
+
+void bpf_ir_run_passes(struct bpf_ir_env *env, struct ir_function *fun,
+	const struct function_pass *passes, const size_t cnt);
 
 #endif

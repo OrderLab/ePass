@@ -6,6 +6,17 @@
 // Number of colors available (r0 - r9)
 #define RA_COLORS 10
 
+u32 bpf_ir_sizeof_vr_type(enum ir_vr_type type);
+
+void bpf_ir_replace_all_usage_cg(struct bpf_ir_env *env, struct ir_insn *insn,
+				 struct ir_value rep);
+
+/* Erase an instruction during CG. Cannot erase if gen kill sets are used */
+void bpf_ir_erase_insn_cg(struct bpf_ir_env *env, struct ir_function *fun,
+			  struct ir_insn *insn);
+
+void bpf_ir_erase_insn_norm(struct ir_insn *insn);
+
 void bpf_ir_init_insn_cg(struct bpf_ir_env *env, struct ir_insn *insn);
 
 void bpf_ir_init_insn_norm(struct bpf_ir_env *env, struct ir_insn *insn,
@@ -16,6 +27,14 @@ void bpf_ir_cg_norm_v2(struct bpf_ir_env *env, struct ir_function *fun);
 void bpf_ir_init_insn_cg_v2(struct bpf_ir_env *env, struct ir_insn *insn);
 
 void bpf_ir_free_insn_cg(struct ir_insn *insn);
+
+struct ir_bb_cg_extra *bpf_ir_bb_cg(struct ir_basic_block *bb);
+
+void print_ir_dst(struct bpf_ir_env *env, struct ir_insn *insn);
+
+void print_ir_alloc(struct bpf_ir_env *env, struct ir_insn *insn);
+
+void print_ir_flatten(struct bpf_ir_env *env, struct ir_insn *insn);
 
 // Extra information needed for code gen
 struct ir_bb_cg_extra {
@@ -121,5 +140,24 @@ Note. This could be only applied to an instruction with return value.
 void bpf_ir_cg_norm(struct bpf_ir_env *env, struct ir_function *fun);
 
 void bpf_ir_cg_prog_check(struct bpf_ir_env *env, struct ir_function *fun);
+
+void bpf_ir_optimize_ir(struct bpf_ir_env *env, struct ir_function *fun,
+			void *data);
+
+void bpf_ir_cg_change_fun_arg(struct bpf_ir_env *env, struct ir_function *fun,
+			      void *param);
+
+void bpf_ir_cg_change_call_pre_cg(struct bpf_ir_env *env,
+				  struct ir_function *fun, void *param);
+
+void bpf_ir_cg_add_stack_offset_pre_cg(struct bpf_ir_env *env,
+				       struct ir_function *fun, void *param);
+
+void bpr_ir_cg_to_cssa(struct bpf_ir_env *env, struct ir_function *fun,
+		       void *param);
+
+/* Instruction Constructors */
+
+/* Instruction Constructors */
 
 #endif

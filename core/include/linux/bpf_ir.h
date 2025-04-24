@@ -63,6 +63,8 @@ typedef __u64 u64;
  */
 #define BPF_IR_MAX_PASS_NAME_SIZE 32
 
+#define MAX_FUNC_ARG 5
+
 /* IR Env Start */
 
 // A environment for communicating with external functions
@@ -503,8 +505,6 @@ struct phi_value {
 	struct ir_basic_block *bb;
 };
 
-int bpf_ir_valid_alu_type(enum ir_alu_op_type type);
-
 /*
  * Virtual Register Type
  */
@@ -516,7 +516,6 @@ enum ir_vr_type {
 	IR_VR_TYPE_64,
 };
 
-u32 bpf_ir_sizeof_vr_type(enum ir_vr_type type);
 
 enum ir_loadimm_extra_type {
 	IR_LOADIMM_IMM64 = 0,
@@ -527,8 +526,6 @@ enum ir_loadimm_extra_type {
 	IR_LOADIMM_MAP_BY_IDX,
 	IR_LOADIMM_MAP_VAL_IDX,
 };
-
-int bpf_ir_valid_vr_type(enum ir_vr_type type);
 
 enum ir_insn_type {
 	IR_INSN_ALLOC,
@@ -580,40 +577,6 @@ enum ir_insn_type {
 	IR_INSN_FUNCTIONARG, // The function argument store, not an actual instruction
 };
 
-/**
-    INSN =
-          ALLOC <vr_type>
-        | STORE <value:ptr> <value>
-        | LOAD <value:ptr>
-		| ALLOCARRAY <vr_type> <array_num>
-		| GETELEMPTR <ir_address_value>
-        | STORERAW <vr_type> <ir_address_value> <value>
-        | LOADRAW <vr_type> <ir_address_value>
-
-        | ADD <value>, <value>
-        | SUB <value>, <value>
-        | MUL <value>, <value>
-        | LSH <value>, <value>
-        | MOD <value>, <value>
-        | CALL <function id> <values...>
-        | RET <value>
-        | JA <bb>
-        | JEQ <value>, <value>, <bb_next>, <bb>
-        | JGT <value>, <value>, <bb_next>, <bb>
-        | JGE <value>, <value>, <bb_next>, <bb>
-        | JLT <value>, <value>, <bb_next>, <bb>
-        | JLE <value>, <value>, <bb_next>, <bb>
-        | JNE <value>, <value>, <bb_next>, <bb>
-        | PHI <phi_value>
-        (For code gen usage)
-        | ASSIGN <value>
-        | REG
-        (For special usage)
-        | FUNCTIONARG <fid>
-
-    Note. <bb_next> must be the next basic block.
-    ASSIGN dst cannot be callee-saved registers
- */
 struct ir_insn {
 	struct ir_value values[MAX_FUNC_ARG];
 	u8 value_num;
@@ -666,36 +629,6 @@ struct ir_insn {
 	u8 _visited;
 };
 
-/**
-    Pre-IR BB
-
-    This includes many data structures needed to generate the IR.
- */
-struct pre_ir_basic_block {
-	// An ID used to debug
-	size_t id;
-
-	// Start position in the original insns
-	size_t start_pos;
-
-	// End position in the original insns
-	size_t end_pos;
-
-	// The number of instructions in this basic block (modified length)
-	size_t len;
-
-	struct pre_ir_insn *pre_insns;
-
-	struct array preds;
-	struct array succs;
-
-	u8 visited;
-
-	u8 sealed;
-	u8 filled;
-	struct ir_basic_block *ir_bb;
-	struct ir_insn *incompletePhis[MAX_BPF_REG];
-};
 
 enum ir_bb_flag {
 	IR_BB_HAS_COUNTER = 1 << 0,
@@ -720,47 +653,6 @@ struct ir_basic_block {
 
 	// Flag (experimental, may be removed in the future)
 	u32 flag;
-};
-
-/**
-    The BB value used in currentDef
- */
-struct bb_val {
-	struct pre_ir_basic_block *bb;
-	struct ir_value val;
-};
-
-/**
-    BB with the raw entrance position
- */
-struct bb_entrance_info {
-	size_t entrance;
-	struct pre_ir_basic_block *bb;
-};
-
-/**
-    Generated BB information
- */
-struct bb_info {
-	struct pre_ir_basic_block *entry;
-
-	// Array of bb_entrance_info
-	struct array all_bbs;
-};
-
-/**
-    The environment data for transformation
- */
-struct ssa_transform_env {
-	// Array of bb_val (which is (BB, Value) pair)
-	struct array currentDef[MAX_BPF_REG];
-	struct bb_info info;
-
-	// Stack Pointer
-	struct ir_insn *sp;
-
-	// Function argument
-	struct ir_insn *function_arg[MAX_FUNC_ARG];
 };
 
 // Helper functions
@@ -864,20 +756,12 @@ struct array bpf_ir_get_operands_and_dst(struct bpf_ir_env *env,
 void bpf_ir_replace_all_usage(struct bpf_ir_env *env, struct ir_insn *insn,
 			      struct ir_value rep);
 
-void bpf_ir_replace_all_usage_cg(struct bpf_ir_env *env, struct ir_insn *insn,
-				 struct ir_value rep);
-
 void bpf_ir_replace_all_usage_except(struct bpf_ir_env *env,
 				     struct ir_insn *insn, struct ir_value rep,
 				     struct ir_insn *except);
 
 void bpf_ir_erase_insn(struct bpf_ir_env *env, struct ir_insn *insn);
 
-/* Erase an instruction during CG. Cannot erase if gen kill sets are used */
-void bpf_ir_erase_insn_cg(struct bpf_ir_env *env, struct ir_function *fun,
-			  struct ir_insn *insn);
-
-void bpf_ir_erase_insn_norm(struct ir_insn *insn);
 
 bool bpf_ir_is_last_insn(struct ir_insn *insn);
 
@@ -1311,8 +1195,6 @@ void bpf_ir_insert_at_bb(struct ir_insn *new_insn, struct ir_basic_block *bb,
 /// Get the number of instructions in a basic block
 size_t bpf_ir_bb_len(struct ir_basic_block *);
 
-struct ir_bb_cg_extra *bpf_ir_bb_cg(struct ir_basic_block *bb);
-
 struct ir_basic_block *bpf_ir_create_bb(struct bpf_ir_env *env,
 					struct ir_function *fun);
 
@@ -1355,12 +1237,6 @@ void print_ir_prog_advanced(struct bpf_ir_env *env, struct ir_function *,
 				     struct ir_basic_block *),
 			    void (*)(struct bpf_ir_env *env, struct ir_insn *),
 			    void (*)(struct bpf_ir_env *env, struct ir_insn *));
-
-void print_ir_dst(struct bpf_ir_env *env, struct ir_insn *insn);
-
-void print_ir_alloc(struct bpf_ir_env *env, struct ir_insn *insn);
-
-void print_ir_flatten(struct bpf_ir_env *env, struct ir_insn *insn);
 
 void bpf_ir_clean_visited(struct ir_function *);
 
@@ -1436,9 +1312,6 @@ extern const size_t pre_passes_cnt;
 
 extern const struct function_pass *post_passes;
 extern const size_t post_passes_cnt;
-
-void bpf_ir_run_passes(struct bpf_ir_env *env, struct ir_function *fun,
-		       const struct function_pass *passes, const size_t cnt);
 
 struct custom_pass_cfg {
 	struct function_pass pass;
@@ -1547,26 +1420,8 @@ void bpf_ir_change_value(struct bpf_ir_env *env, struct ir_insn *insn,
 
 /* IR Optimization Start */
 
-void bpf_ir_optimize_ir(struct bpf_ir_env *env, struct ir_function *fun,
-			void *data);
-
 /* IR Optimization End */
 
-/* CG Prepare Start */
-
-void bpf_ir_cg_change_fun_arg(struct bpf_ir_env *env, struct ir_function *fun,
-			      void *param);
-
-void bpf_ir_cg_change_call_pre_cg(struct bpf_ir_env *env,
-				  struct ir_function *fun, void *param);
-
-void bpf_ir_cg_add_stack_offset_pre_cg(struct bpf_ir_env *env,
-				       struct ir_function *fun, void *param);
-
-void bpr_ir_cg_to_cssa(struct bpf_ir_env *env, struct ir_function *fun,
-		       void *param);
-
-/* CG Prepare End */
 
 /* Kern Utils Start */
 
