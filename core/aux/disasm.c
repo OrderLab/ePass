@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 // Modified from kernel/bpf/disasm.c
-#include <linux/bpf_ir.h>
+#include "ir.h"
 
 static const char *const bpf_class_string[8] = {
 	[BPF_LD] = "ld",       [BPF_LDX] = "ldx",     [BPF_ST] = "st",

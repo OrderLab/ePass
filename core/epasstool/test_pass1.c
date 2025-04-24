@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include <linux/bpf_ir.h>
+#include "ir.h"
 
 // Testing spill registers
 void test_pass1(struct bpf_ir_env *env, struct ir_function *fun, void *param)

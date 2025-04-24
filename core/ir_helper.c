@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include <linux/bpf_ir.h>
+#include "ir.h"
 #include "ir_cg.h"
 
 int bpf_ir_valid_alu_type(enum ir_alu_op_type type)

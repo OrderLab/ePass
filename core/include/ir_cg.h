@@ -1,7 +1,7 @@
 #ifndef _IR_CG_H
 #define _IR_CG_H
 
-#include <linux/bpf_ir.h>
+#include "ir.h"
 
 // Number of colors available (r0 - r9)
 #define RA_COLORS 10

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include <linux/bpf_ir.h>
+#include "ir.h"
 
 // Pre CG
 void bpf_ir_cg_change_fun_arg(struct bpf_ir_env *env, struct ir_function *fun,

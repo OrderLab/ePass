@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include <linux/bpf_ir.h>
+#include "ir.h"
 
 static int apply_pass_opt(struct bpf_ir_env *env, const char *opt)
 {

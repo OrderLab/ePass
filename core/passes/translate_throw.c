@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include <linux/bpf_ir.h>
+#include "ir.h"
 
 #define RINGBUF_RESERVE 0x83
 #define RINGBUF_SUBMIT 0x84

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include <linux/bpf_ir.h>
+#include "ir.h"
 
 static const s8 helper_func_arg_num[] = {
 	[1] = 2, // map_lookup_elem

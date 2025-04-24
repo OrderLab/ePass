@@ -2,7 +2,7 @@
 #ifndef _EPASS_TOOL_H_
 #define _EPASS_TOOL_H_
 
-#include <linux/bpf_ir.h>
+#include "ir.h"
 
 struct user_opts {
 	char gopt[64];
