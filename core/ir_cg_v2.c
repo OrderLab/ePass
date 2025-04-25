@@ -105,6 +105,26 @@ void bpf_ir_init_insn_cg_v2(struct bpf_ir_env *env, struct ir_insn *insn)
 
 static void init_cg(struct bpf_ir_env *env, struct ir_function *fun)
 {
+	// Initialize cg info
+	SAFE_MALLOC(fun->user_data, sizeof(struct code_gen_info));
+
+	INIT_ARRAY(&cg_info(fun)->all_var, struct ir_insn *);
+	INIT_ARRAY(&cg_info(fun)->seo, struct ir_insn *);
+	INIT_PTRSET_DEF(&cg_info(fun)->all_var_v2);
+	cg_info(fun)->stack_offset = 0;
+
+	for (u8 i = 0; i < BPF_REG_10; ++i) {
+		struct ir_insn *insn;
+		SAFE_MALLOC(cg_info(fun)->regs[i], sizeof(struct ir_insn));
+		// Those should be read-only
+		insn = cg_info(fun)->regs[i];
+		insn->op = IR_INSN_REG;
+		insn->parent_bb = NULL;
+		INIT_ARRAY(&insn->users, struct ir_insn *);
+		insn->value_num = 0;
+		insn->reg_id = i;
+	}
+
 	struct ir_basic_block **pos = NULL;
 	array_for(pos, fun->reachable_bbs)
 	{
@@ -122,7 +142,7 @@ static void init_cg(struct bpf_ir_env *env, struct ir_function *fun)
 	}
 
 	for (u8 i = 0; i < BPF_REG_10; ++i) {
-		struct ir_insn *insn = fun->cg_info.regs[i];
+		struct ir_insn *insn = cg_info(fun)->regs[i];
 		bpf_ir_init_insn_cg_v2(env, insn);
 		CHECK_ERR();
 
@@ -154,7 +174,7 @@ static void change_fun_arg(struct bpf_ir_env *env, struct ir_function *fun)
 				bpf_ir_create_assign_insn_bb_cg_v2(
 					env, fun->entry,
 					bpf_ir_value_insn(
-						fun->cg_info.regs[i + 1]),
+						cg_info(fun)->regs[i + 1]),
 					INSERT_FRONT_AFTER_PHI);
 			bpf_ir_replace_all_usage(env, fun->function_arg[i],
 						 bpf_ir_value_insn(new_insn));
@@ -192,7 +212,7 @@ static void change_call(struct bpf_ir_env *env, struct ir_function *fun)
 					bpf_ir_create_assign_insn_cg_v2(
 						env, insn,
 						bpf_ir_value_insn(
-							fun->cg_info.regs[0]),
+							cg_info(fun)->regs[0]),
 						INSERT_BACK);
 				bpf_ir_replace_all_usage(
 					env, insn, bpf_ir_value_insn(new_insn));
@@ -203,8 +223,8 @@ static void change_call(struct bpf_ir_env *env, struct ir_function *fun)
 
 static inline s32 get_new_spill(struct ir_function *fun, u32 size)
 {
-	fun->cg_info.stack_offset -= size;
-	return fun->cg_info.stack_offset;
+	cg_info(fun)->stack_offset -= size;
+	return cg_info(fun)->stack_offset;
 }
 
 static void spill_array(struct bpf_ir_env *env, struct ir_function *fun)
@@ -394,7 +414,7 @@ static void make_conflict(struct bpf_ir_env *env, struct ir_function *fun,
 			// v1 is pre-spilled, no conflict
 			return;
 		} else {
-			r1 = fun->cg_info.regs[v1e->vr_pos.alloc_reg];
+			r1 = cg_info(fun)->regs[v1e->vr_pos.alloc_reg];
 		}
 	}
 	if (v2e->finalized) {
@@ -406,7 +426,7 @@ static void make_conflict(struct bpf_ir_env *env, struct ir_function *fun,
 			// v2 is pre-spilled, no conflict
 			return;
 		} else {
-			r2 = fun->cg_info.regs[v2e->vr_pos.alloc_reg];
+			r2 = cg_info(fun)->regs[v2e->vr_pos.alloc_reg];
 		}
 	}
 	struct ir_insn_cg_extra_v2 *r1e = insn_cg_v2(r1);
@@ -567,7 +587,7 @@ static void print_interference_graph(struct bpf_ir_env *env,
 	if (env->opts.dotgraph) {
 		PRINT_LOG_DEBUG(env, "graph {\n");
 		struct ir_insn **pos2;
-		ptrset_for(pos2, fun->cg_info.all_var_v2)
+		ptrset_for(pos2, cg_info(fun)->all_var_v2)
 		{
 			struct ir_insn *v = *pos2;
 			struct ir_insn **pos3;
@@ -584,7 +604,7 @@ static void print_interference_graph(struct bpf_ir_env *env,
 		PRINT_LOG_DEBUG(env, "}\n");
 	} else {
 		struct ir_insn **pos2;
-		ptrset_for(pos2, fun->cg_info.all_var_v2)
+		ptrset_for(pos2, cg_info(fun)->all_var_v2)
 		{
 			struct ir_insn *v = *pos2;
 			print_insn_ptr_base(env, v);
@@ -620,12 +640,12 @@ static void clean_cg_data_insn(struct ir_insn *insn)
 // Clean data generated during each iteration of RA
 static void clean_cg_data(struct bpf_ir_env *env, struct ir_function *fun)
 {
-	bpf_ir_ptrset_clean(&fun->cg_info.all_var_v2);
+	bpf_ir_ptrset_clean(&cg_info(fun)->all_var_v2);
 	// Add all real registers to the graph
 	for (int i = 0; i < RA_COLORS; ++i) {
-		bpf_ir_ptrset_insert(env, &fun->cg_info.all_var_v2,
-				     fun->cg_info.regs[i]);
-		clean_cg_data_insn(fun->cg_info.regs[i]);
+		bpf_ir_ptrset_insert(env, &cg_info(fun)->all_var_v2,
+				     cg_info(fun)->regs[i]);
+		clean_cg_data_insn(cg_info(fun)->regs[i]);
 	}
 
 	// Note. there should be no use of function arg anymore as they are replaced by
@@ -660,7 +680,7 @@ static void liveness_analysis(struct bpf_ir_env *env, struct ir_function *fun)
 				// Note. Assume pre-colored register VR has no users
 				// dst is a VR
 				bpf_ir_ptrset_insert(
-					env, &fun->cg_info.all_var_v2, v);
+					env, &cg_info(fun)->all_var_v2, v);
 
 				bpf_ir_ptrset_clean(&M);
 				struct ir_insn **pos;
@@ -706,7 +726,7 @@ static void caller_constraint(struct bpf_ir_env *env, struct ir_function *fun,
 {
 	for (u8 i = BPF_REG_0; i < BPF_REG_6; ++i) {
 		// R0-R5 are caller saved register
-		make_conflict(env, fun, fun->cg_info.regs[i], insn);
+		make_conflict(env, fun, cg_info(fun)->regs[i], insn);
 	}
 }
 
@@ -717,8 +737,8 @@ static void conflict_analysis(struct bpf_ir_env *env, struct ir_function *fun)
 	for (u8 i = 0; i < RA_COLORS; ++i) {
 		for (u8 j = i + 1; j < RA_COLORS; ++j) {
 			// All physical registers are conflicting
-			make_conflict(env, fun, fun->cg_info.regs[i],
-				      fun->cg_info.regs[j]);
+			make_conflict(env, fun, cg_info(fun)->regs[i],
+				      cg_info(fun)->regs[j]);
 		}
 	}
 
@@ -775,11 +795,11 @@ static void conflict_analysis(struct bpf_ir_env *env, struct ir_function *fun)
 static void mcs(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	PRINT_LOG_DEBUG(env, "SEO: ");
-	struct array *sigma = &fun->cg_info.seo;
+	struct array *sigma = &cg_info(fun)->seo;
 	bpf_ir_array_clear(env, sigma);
 	struct ptrset allvar;
-	bpf_ir_ptrset_clone(env, &allvar, &fun->cg_info.all_var_v2);
-	for (size_t i = 0; i < fun->cg_info.all_var_v2.cnt; ++i) {
+	bpf_ir_ptrset_clone(env, &allvar, &cg_info(fun)->all_var_v2);
+	for (size_t i = 0; i < cg_info(fun)->all_var_v2.cnt; ++i) {
 		u32 max_l = 0;
 		struct ir_insn *max_i = NULL;
 		struct ir_insn **pos;
@@ -828,7 +848,7 @@ struct array pre_spill(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	// First run maximalCl
 	mcs(env, fun);
-	struct array sigma = fun->cg_info.seo;
+	struct array sigma = cg_info(fun)->seo;
 	struct array eps;
 	INIT_ARRAY(&eps, struct ptrset);
 	PRINT_LOG_DEBUG(env, "MaxCL:\n");
@@ -1047,7 +1067,7 @@ static void spill(struct bpf_ir_env *env, struct ir_function *fun,
 
 static void coloring(struct bpf_ir_env *env, struct ir_function *fun)
 {
-	struct array sigma = fun->cg_info.seo;
+	struct array sigma = cg_info(fun)->seo;
 	struct ir_insn **pos;
 
 	array_for(pos, sigma)
@@ -1287,9 +1307,9 @@ static void remove_phi(struct bpf_ir_env *env, struct ir_function *fun)
 
 		bpf_ir_array_free(&insn->phi);
 
-		bpf_ir_replace_all_usage_cg(
+		bpf_ir_replace_all_usage(
 			env, insn,
-			bpf_ir_value_insn(fun->cg_info.regs[vrpos.alloc_reg]));
+			bpf_ir_value_insn(cg_info(fun)->regs[vrpos.alloc_reg]));
 		erase_insn_cg_v2(env, fun, insn);
 	}
 
@@ -1308,7 +1328,7 @@ void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun)
 	CHECK_ERR();
 
 	// Debugging settings
-	fun->cg_info.spill_callee = 0;
+	cg_info(fun)->spill_callee = 0;
 
 	change_call(env, fun);
 	CHECK_ERR();
@@ -1377,7 +1397,7 @@ void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun)
 		print_ir_prog_cg_alloc(env, fun, "After Coalescing");
 	}
 
-	add_stack_offset(env, fun, fun->cg_info.stack_offset);
+	add_stack_offset(env, fun, cg_info(fun)->stack_offset);
 
 	// SSA Out
 	remove_phi(env, fun);

@@ -624,28 +624,6 @@ struct bpf_ir_env *bpf_ir_init_env(struct bpf_ir_opts opts,
 
 /* Fun Start */
 
-struct code_gen_info {
-	// All vertex in interference graph
-	// Array of struct ir_insn*
-	struct array all_var;
-
-	// SEO
-	struct array seo;
-
-	struct ptrset all_var_v2;
-
-	// BPF Register Virtual Instruction (used as dst)
-	struct ir_insn *regs[BPF_REG_10]; // Only use R0-R9
-
-	size_t callee_num;
-
-	// The stack offset
-	s32 stack_offset;
-
-	// Whether to spill callee saved registers
-	u8 spill_callee;
-};
-
 struct ir_function {
 	size_t arg_num;
 
@@ -667,10 +645,7 @@ struct ir_function {
 	// Function argument
 	struct ir_insn *function_arg[MAX_FUNC_ARG];
 
-	// Array of struct ir_constraint. Value constraints.
-	struct array value_constraints;
-
-	struct code_gen_info cg_info;
+	void *user_data;
 };
 
 // Find IR instruction based on raw position
@@ -698,10 +673,6 @@ enum insert_position {
 // Return an array of struct ir_value*
 struct array bpf_ir_get_operands(struct bpf_ir_env *env, struct ir_insn *insn);
 
-// Return an array of struct ir_value*
-struct array bpf_ir_get_operands_and_dst(struct bpf_ir_env *env,
-					 struct ir_insn *insn);
-
 void bpf_ir_replace_all_usage(struct bpf_ir_env *env, struct ir_insn *insn,
 			      struct ir_value rep);
 
@@ -712,8 +683,6 @@ void bpf_ir_replace_all_usage_except(struct bpf_ir_env *env,
 void bpf_ir_erase_insn(struct bpf_ir_env *env, struct ir_insn *insn);
 
 bool bpf_ir_is_last_insn(struct ir_insn *insn);
-
-void bpf_ir_check_no_user(struct bpf_ir_env *env, struct ir_insn *insn);
 
 bool bpf_ir_is_void(struct ir_insn *insn);
 
@@ -938,14 +907,6 @@ void bpf_ir_val_remove_user(struct ir_value val, struct ir_insn *user);
 void bpf_ir_replace_operand(struct bpf_ir_env *env, struct ir_insn *insn,
 			    struct ir_value v1, struct ir_value v2);
 
-struct ir_insn *bpf_ir_create_insn_base_cg(struct bpf_ir_env *env,
-					   struct ir_basic_block *bb,
-					   enum ir_insn_type insn_type);
-
-struct ir_insn *bpf_ir_create_insn_base_norm(struct bpf_ir_env *env,
-					     struct ir_basic_block *bb,
-					     struct ir_vr_pos dstpos);
-
 struct ir_insn *bpf_ir_create_insn_base(struct bpf_ir_env *env,
 					struct ir_basic_block *bb);
 
@@ -1138,8 +1099,6 @@ struct builtin_pass_cfg {
 /* Passes End */
 
 /* Code Gen Start */
-
-void bpf_ir_compile(struct bpf_ir_env *env, struct ir_function *fun);
 
 void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun);
 

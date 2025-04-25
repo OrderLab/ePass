@@ -639,39 +639,6 @@ void print_ir_prog_notag(struct bpf_ir_env *env, struct ir_function *fun)
 	print_ir_bb(env, fun, NULL, NULL, NULL);
 }
 
-void print_ir_dst(struct bpf_ir_env *env, struct ir_insn *insn)
-{
-	if (!insn_cg(insn)) {
-		PRINT_LOG_DEBUG(env, "(?)");
-		RAISE_ERROR("NULL userdata found");
-	}
-	insn = insn_dst(insn);
-	if (insn) {
-		print_insn_ptr_base(env, insn);
-	} else {
-		PRINT_LOG_DEBUG(env, "(NULL)");
-	}
-}
-
-void print_ir_alloc(struct bpf_ir_env *env, struct ir_insn *insn)
-{
-	insn = insn_dst(insn);
-	if (insn) {
-		struct ir_insn_cg_extra *extra = insn_cg(insn);
-		if (extra->allocated) {
-			if (extra->spilled) {
-				PRINT_LOG_DEBUG(env, "sp+%d", extra->spilled);
-			} else {
-				PRINT_LOG_DEBUG(env, "r%u", extra->alloc_reg);
-			}
-		} else {
-			RAISE_ERROR("Not allocated");
-		}
-	} else {
-		PRINT_LOG_DEBUG(env, "(NULL)");
-	}
-}
-
 void print_ir_flatten(struct bpf_ir_env *env, struct ir_insn *insn)
 {
 	struct ir_insn_norm_extra *norm = insn_norm(insn);

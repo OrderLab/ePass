@@ -69,7 +69,7 @@ static void remove_all_users(struct ir_function *fun)
 		bpf_ir_array_free(&fun->sp->users);
 	}
 	for (u8 i = 0; i < BPF_REG_10; ++i) {
-		struct ir_insn *insn = fun->cg_info.regs[i];
+		struct ir_insn *insn = cg_info(fun)->regs[i];
 		bpf_ir_array_free(&insn->users);
 	}
 }
@@ -154,7 +154,7 @@ static void cg_to_flatten(struct bpf_ir_env *env, struct ir_function *fun)
 	}
 
 	for (u8 i = 0; i < BPF_REG_10; ++i) {
-		struct ir_insn *insn = fun->cg_info.regs[i];
+		struct ir_insn *insn = cg_info(fun)->regs[i];
 		bpf_ir_free_insn_cg_v2(insn);
 	}
 	bpf_ir_free_insn_cg_v2(fun->sp);
@@ -386,7 +386,7 @@ static void normalize_alu(struct bpf_ir_env *env, struct ir_insn *insn)
 			bpf_ir_create_assign_insn_norm(env, insn, dst_pos, *v0,
 						       INSERT_FRONT);
 			// DBGASSERT(dst_insn ==
-			// 	  fun->cg_info.regs[reg1]); // Fixed reg?
+			// 	  cg_info(fun)->regs[reg1]); // Fixed reg?
 			// TODO: Investigate here, why did I write this check?
 			*v0 = bpf_ir_value_vrpos(dst_pos);
 		}
@@ -1332,6 +1332,16 @@ static void free_cg_final(struct ir_function *fun)
 			insn->user_data = NULL;
 		}
 	}
+	for (u8 i = 0; i < BPF_REG_10; ++i) {
+		struct ir_insn *insn = cg_info(fun)->regs[i];
+		bpf_ir_array_free(&insn->users);
+		free_proto(insn);
+	}
+	bpf_ir_array_free(&cg_info(fun)->seo);
+	bpf_ir_array_free(&cg_info(fun)->all_var);
+	bpf_ir_ptrset_free(&cg_info(fun)->all_var_v2);
+	free_proto(fun->user_data);
+	fun->user_data = NULL;
 }
 
 void bpf_ir_cg_norm_v2(struct bpf_ir_env *env, struct ir_function *fun)

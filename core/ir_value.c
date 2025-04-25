@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include "ir.h"
+#include "ir_cg.h"
 
 bool bpf_ir_value_equal(struct ir_value a, struct ir_value b)
 {
@@ -118,7 +118,7 @@ struct ir_value bpf_ir_value_stack_ptr(struct ir_function *fun)
 
 struct ir_value bpf_ir_value_r0(struct ir_function *fun)
 {
-	return bpf_ir_value_insn(fun->cg_info.regs[0]);
+	return bpf_ir_value_insn(cg_info(fun)->regs[0]);
 }
 
 struct ir_value bpf_ir_value_norm_stack_ptr(void)
