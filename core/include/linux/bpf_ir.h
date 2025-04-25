@@ -1140,10 +1140,6 @@ void bpf_ir_change_value(struct bpf_ir_env *env, struct ir_insn *insn,
 
 /* IR Value End */
 
-/* IR Optimization Start */
-
-/* IR Optimization End */
-
 /* Kern Utils Start */
 
 int bpf_ir_init_opts(struct bpf_ir_env *env, const char *global_opt,

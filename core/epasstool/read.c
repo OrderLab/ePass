@@ -118,7 +118,7 @@ int epass_read(struct user_opts uopts)
 		}
 	}
 
-	printf("total cnt: %llu\n", tot_prog_cnt);
+	printf("processed %llu instructions\n", tot_prog_cnt);
 
 end:
 	bpf_object__close(obj);
