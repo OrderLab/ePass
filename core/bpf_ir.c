@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include <linux/bpf_ir.h>
+#include "ir.h"
 
 static const s8 helper_func_arg_num[] = {
 	[1] = 2, // map_lookup_elem
@@ -1503,18 +1503,9 @@ void bpf_ir_free_function(struct ir_function *fun)
 		bpf_ir_array_free(&fun->sp->users);
 		free_proto(fun->sp);
 	}
-	for (u8 i = 0; i < BPF_REG_10; ++i) {
-		struct ir_insn *insn = fun->cg_info.regs[i];
-		bpf_ir_array_free(&insn->users);
-		free_proto(insn);
-	}
 	bpf_ir_array_free(&fun->all_bbs);
 	bpf_ir_array_free(&fun->reachable_bbs);
 	bpf_ir_array_free(&fun->end_bbs);
-	bpf_ir_array_free(&fun->cg_info.seo);
-
-	bpf_ir_array_free(&fun->cg_info.all_var);
-	bpf_ir_ptrset_free(&fun->cg_info.all_var_v2);
 }
 
 static void init_function(struct bpf_ir_env *env, struct ir_function *fun,
@@ -1529,10 +1520,6 @@ static void init_function(struct bpf_ir_env *env, struct ir_function *fun,
 	INIT_ARRAY(&fun->all_bbs, struct ir_basic_block *);
 	INIT_ARRAY(&fun->reachable_bbs, struct ir_basic_block *);
 	INIT_ARRAY(&fun->end_bbs, struct ir_basic_block *);
-	INIT_ARRAY(&fun->cg_info.all_var, struct ir_insn *);
-	INIT_ARRAY(&fun->cg_info.seo, struct ir_insn *);
-	INIT_PTRSET_DEF(&fun->cg_info.all_var_v2);
-	fun->cg_info.stack_offset = 0;
 	for (size_t i = 0; i < MAX_BPF_REG; ++i) {
 		struct array *currentDef = &tenv->currentDef[i];
 		bpf_ir_array_free(currentDef);
@@ -1547,17 +1534,6 @@ static void init_function(struct bpf_ir_env *env, struct ir_function *fun,
 		bb->ir_bb->user_data = NULL;
 		bpf_ir_array_push(env, &fun->all_bbs, &bb->ir_bb);
 		free_proto(bb);
-	}
-	for (u8 i = 0; i < BPF_REG_10; ++i) {
-		struct ir_insn *insn;
-		SAFE_MALLOC(fun->cg_info.regs[i], sizeof(struct ir_insn));
-		// Those should be read-only
-		insn = fun->cg_info.regs[i];
-		insn->op = IR_INSN_REG;
-		insn->parent_bb = NULL;
-		INIT_ARRAY(&insn->users, struct ir_insn *);
-		insn->value_num = 0;
-		insn->reg_id = i;
 	}
 }
 
@@ -1974,10 +1950,8 @@ struct bpf_ir_opts bpf_ir_default_opts(void)
 	opts.print_mode = BPF_IR_PRINT_BPF;
 	opts.builtin_pass_cfg_num = 0;
 	opts.custom_pass_num = 0;
-	opts.disable_coalesce = false;
 	opts.force = false;
 	opts.verbose = 1;
-	opts.cg_v2 = true;
 	opts.dotgraph = false;
 	opts.fake_run = false;
 	opts.max_iteration = 10;

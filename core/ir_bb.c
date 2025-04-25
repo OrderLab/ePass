@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include <linux/bpf_ir.h>
+#include "ir.h"
 
 size_t bpf_ir_bb_len(struct ir_basic_block *bb)
 {
@@ -122,11 +122,6 @@ struct ir_insn *bpf_ir_get_first_insn(struct ir_basic_block *bb)
 		return NULL;
 	}
 	return list_entry(bb->ir_insn_head.next, struct ir_insn, list_ptr);
-}
-
-struct ir_bb_cg_extra *bpf_ir_bb_cg(struct ir_basic_block *bb)
-{
-	return bb->user_data;
 }
 
 void bpf_ir_bb_create_error_block(struct bpf_ir_env *env,

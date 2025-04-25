@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "bpf/libbpf.h"
 #include "epasstool.h"
-#include <unistd.h>
-#include <sys/wait.h>
 
 static void print_bpf_prog_dump(FILE *fp, const struct bpf_insn *insns,
 				size_t len)
@@ -91,7 +89,7 @@ int epass_read(struct user_opts uopts)
 	struct bpf_program *prog = NULL;
 	if (uopts.auto_sec) {
 		prog = bpf_object__next_program(obj, NULL);
-		strcpy(uopts.sec, bpf_program__section_name(prog));
+		strcpy(uopts.sec, bpf_program__name(prog));
 	} else {
 		prog = bpf_object__find_program_by_name(obj, uopts.sec);
 	}
@@ -101,10 +99,26 @@ int epass_read(struct user_opts uopts)
 		err = 1;
 		goto end;
 	}
-	size_t sz = bpf_program__insn_cnt(prog);
-	const struct bpf_insn *insn = bpf_program__insns(prog);
 
-	err = epass_run(uopts, insn, sz);
+	u64 tot_prog_cnt = 0;
+
+	while (prog) {
+		size_t sz = bpf_program__insn_cnt(prog);
+		tot_prog_cnt += sz;
+		const struct bpf_insn *insn = bpf_program__insns(prog);
+		err = epass_run(uopts, insn, sz);
+
+		if (uopts.auto_sec) {
+			prog = bpf_object__next_program(obj, prog);
+			if (prog) {
+				strcpy(uopts.sec, bpf_program__name(prog));
+			}
+		} else {
+			prog = NULL;
+		}
+	}
+
+	printf("processed %llu instructions\n", tot_prog_cnt);
 
 end:
 	bpf_object__close(obj);

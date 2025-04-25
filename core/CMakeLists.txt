@@ -8,7 +8,6 @@ add_library(
   epass STATIC
   bpf_ir.c
   array.c
-  hashtbl.c
   ptrset.c
   ir_helper.c
   ir_value.c
@@ -28,17 +27,13 @@ add_library(
   aux/kern_utils.c
   aux/cg_prog_check.c
   ir_cg.c
-  ir_cg_v2.c
   ir_cg_norm.c
-  ir_cg_norm_v2.c
   lli.c
   include/linux/bpf_ir.h)
 
 add_executable(test_list tests/test_list.c)
-add_executable(test_hashtable tests/test_hashtable.c)
 add_executable(test_ptrset tests/test_ptrset.c)
 
-target_link_libraries(test_hashtable epass)
 target_link_libraries(test_ptrset epass)
 
 include_directories(include)

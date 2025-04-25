@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include <linux/bpf_ir.h>
+#include "ir.h"
 
 void bpf_ir_div_by_zero(struct bpf_ir_env *env, struct ir_function *fun,
 			void *param)

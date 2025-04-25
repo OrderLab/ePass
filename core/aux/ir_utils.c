@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include <linux/bpf_ir.h>
+#include "ir.h"
 
 // Insert some instructions to print a message
 void bpf_ir_printk_insns(struct bpf_ir_env *env, struct ir_insn *insn,

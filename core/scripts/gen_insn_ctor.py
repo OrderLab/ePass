@@ -5,7 +5,7 @@
 import regex as re
 
 
-def handle_ir(matches, header, src):
+def handle_ir(matches, header_ir, header, src):
     # print(matches)
     for insn,extra, args in matches:
         args = args.split(",")
@@ -62,11 +62,18 @@ struct ir_insn *bpf_ir_{insn}{extra}(struct bpf_ir_env *env, struct ir_insn *pos
 
 struct ir_insn *bpf_ir_{insn}_bb{extra}(struct bpf_ir_env *env, struct ir_basic_block *pos_bb, {pargs} enum insert_position pos);
 """
-        header.append(ir_fun_h)
+        if extra == "":
+            header_ir.append(ir_fun_h)
+        else:
+            header.append(ir_fun_h)
 
-def insert(header, src):
+
+def insert(header_ir, header, src):
+    header_ir = "".join(header_ir)
+    header = "".join(header)
+    src = "".join(src)
     srcfile = ""
-    with open("ir_insn.c") as f:
+    with open("ir_insn.c", "r") as f:
         srcfile = f.read().split("/* Generated Constructors */")
     with open("ir_insn.c", "w") as f:
         f.write(srcfile[0])
@@ -75,9 +82,17 @@ def insert(header, src):
         f.write("\n/* Generated Constructors */")
         f.write(srcfile[2])
     headerfile = ""
-    with open("include/linux/bpf_ir.h") as f:
+    with open("include/linux/bpf_ir.h", "r") as f:
         headerfile = f.read().split("/* Instruction Constructors */")
     with open("include/linux/bpf_ir.h", "w") as f:
+        f.write(headerfile[0])
+        f.write("/* Instruction Constructors */\n")
+        f.write(header_ir)
+        f.write("\n/* Instruction Constructors */")
+        f.write(headerfile[2])
+    with open("include/ir_cg.h", "r") as f:
+        headerfile = f.read().split("/* Instruction Constructors */")
+    with open("include/ir_cg.h", "w") as f:
         f.write(headerfile[0])
         f.write("/* Instruction Constructors */\n")
         f.write(header)
@@ -87,6 +102,7 @@ def insert(header, src):
 
 def main():
     header = []
+    header_ir = []
     src = []
     proto = ""
     with open("ir_insn.c") as f:
@@ -94,11 +110,9 @@ def main():
     regc = r"static struct ir_insn[\*\s]*?(create_.*?_insn)_base(.*?)\(([\s\S]*?)\)"
     regc = re.compile(regc)
     all_matches = regc.findall(proto)
-    handle_ir(all_matches, header, src)
-    header = "".join(header)
-    src = "".join(src)
+    handle_ir(all_matches, header_ir, header, src)
     # print(src)
-    insert(header, src)
+    insert(header_ir, header, src)
 
 
 main()

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include <linux/bpf_ir.h>
+#include "ir_cg.h"
 
 // Pre CG
 void bpf_ir_cg_change_fun_arg(struct bpf_ir_env *env, struct ir_function *fun,
@@ -10,7 +10,7 @@ void bpf_ir_cg_change_fun_arg(struct bpf_ir_env *env, struct ir_function *fun,
 			// Insert ASSIGN arg[i] at the beginning of the function
 			struct ir_insn *new_insn = bpf_ir_create_assign_insn_bb(
 				env, fun->entry,
-				bpf_ir_value_insn(fun->cg_info.regs[i + 1]),
+				bpf_ir_value_insn(cg_info(fun)->regs[i + 1]),
 				INSERT_FRONT_AFTER_PHI);
 			bpf_ir_replace_all_usage(env, fun->function_arg[i],
 						 bpf_ir_value_insn(new_insn));
@@ -37,7 +37,7 @@ void bpf_ir_cg_change_call_pre_cg(struct bpf_ir_env *env,
 					bpf_ir_create_assign_insn(
 						env, insn,
 						bpf_ir_value_insn(
-							fun->cg_info.regs[0]),
+							cg_info(fun)->regs[0]),
 						INSERT_BACK);
 				bpf_ir_replace_all_usage(
 					env, insn, bpf_ir_value_insn(new_insn));

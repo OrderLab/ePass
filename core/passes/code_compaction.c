@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include <linux/bpf_ir.h>
+#include "ir.h"
 
 // An optimization mentioned in MERLIN that is hard to do in LLVM
 
