@@ -25,8 +25,8 @@ static struct function_pass cg_init_passes[] = {
 // Erase an instruction.
 // Only used in SSA Out process.
 // Do not use it within RA (it doesn not maintain adj and all_var stuff properly)
-static void erase_insn_cg_v2(struct bpf_ir_env *env, struct ir_function *fun,
-			     struct ir_insn *insn)
+static void erase_insn_cg(struct bpf_ir_env *env, struct ir_function *fun,
+			  struct ir_insn *insn)
 {
 	if (insn->users.num_elem > 0) {
 		struct ir_insn **pos;
@@ -60,7 +60,7 @@ static void erase_insn_cg_v2(struct bpf_ir_env *env, struct ir_function *fun,
 	list_del(&insn->list_ptr);
 	bpf_ir_array_free(&insn->users);
 
-	struct ir_insn_cg_extra_v2 *extra = insn->user_data;
+	struct ir_insn_cg_extra *extra = insn->user_data;
 	bpf_ir_ptrset_free(&extra->adj);
 	bpf_ir_ptrset_free(&extra->in);
 	bpf_ir_ptrset_free(&extra->out);
@@ -70,21 +70,21 @@ static void erase_insn_cg_v2(struct bpf_ir_env *env, struct ir_function *fun,
 
 static void remove_insn_dst(struct ir_insn *insn)
 {
-	insn_cg_v2(insn)->dst = NULL;
+	insn_dst(insn) = NULL;
 }
 
 static void pre_color(struct ir_function *fun, struct ir_insn *insn, u8 reg)
 {
-	insn_cg_v2(insn)->finalized = true;
-	insn_cg_v2(insn)->vr_pos.allocated = true;
-	insn_cg_v2(insn)->vr_pos.alloc_reg = reg;
-	insn_cg_v2(insn)->vr_pos.spilled = 0;
+	insn_cg(insn)->finalized = true;
+	insn_cg(insn)->vr_pos.allocated = true;
+	insn_cg(insn)->vr_pos.alloc_reg = reg;
+	insn_cg(insn)->vr_pos.spilled = 0;
 }
 
-void bpf_ir_init_insn_cg_v2(struct bpf_ir_env *env, struct ir_insn *insn)
+void bpf_ir_init_insn_cg(struct bpf_ir_env *env, struct ir_insn *insn)
 {
-	struct ir_insn_cg_extra_v2 *extra = NULL;
-	SAFE_MALLOC(extra, sizeof(struct ir_insn_cg_extra_v2));
+	struct ir_insn_cg_extra *extra = NULL;
+	SAFE_MALLOC(extra, sizeof(struct ir_insn_cg_extra));
 	insn->user_data = extra;
 
 	extra->dst = bpf_ir_is_void(insn) ? NULL : insn;
@@ -108,9 +108,8 @@ static void init_cg(struct bpf_ir_env *env, struct ir_function *fun)
 	// Initialize cg info
 	SAFE_MALLOC(fun->user_data, sizeof(struct code_gen_info));
 
-	INIT_ARRAY(&cg_info(fun)->all_var, struct ir_insn *);
 	INIT_ARRAY(&cg_info(fun)->seo, struct ir_insn *);
-	INIT_PTRSET_DEF(&cg_info(fun)->all_var_v2);
+	INIT_PTRSET_DEF(&cg_info(fun)->all_var);
 	cg_info(fun)->stack_offset = 0;
 
 	for (u8 i = 0; i < BPF_REG_10; ++i) {
@@ -136,25 +135,25 @@ static void init_cg(struct bpf_ir_env *env, struct ir_function *fun)
 
 		struct ir_insn *insn = NULL;
 		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
-			bpf_ir_init_insn_cg_v2(env, insn);
+			bpf_ir_init_insn_cg(env, insn);
 			CHECK_ERR();
 		}
 	}
 
 	for (u8 i = 0; i < BPF_REG_10; ++i) {
 		struct ir_insn *insn = cg_info(fun)->regs[i];
-		bpf_ir_init_insn_cg_v2(env, insn);
+		bpf_ir_init_insn_cg(env, insn);
 		CHECK_ERR();
 
-		struct ir_insn_cg_extra_v2 *extra = insn_cg_v2(insn);
+		struct ir_insn_cg_extra *extra = insn_cg(insn);
 		// Pre-colored registers are allocated
 		extra->vr_pos.alloc_reg = i;
 		extra->vr_pos.allocated = true;
 		extra->nonvr = true;
 		extra->finalized = true;
 	}
-	bpf_ir_init_insn_cg_v2(env, fun->sp);
-	struct ir_insn_cg_extra_v2 *extra = insn_cg_v2(fun->sp);
+	bpf_ir_init_insn_cg(env, fun->sp);
+	struct ir_insn_cg_extra *extra = insn_cg(fun->sp);
 	extra->vr_pos.alloc_reg = 10;
 	extra->vr_pos.allocated = true;
 	extra->nonvr = true;
@@ -171,7 +170,7 @@ static void change_fun_arg(struct bpf_ir_env *env, struct ir_function *fun)
 		if (fun->function_arg[i]->users.num_elem > 0) {
 			// Insert ASSIGN arg[i] at the beginning of the function
 			struct ir_insn *new_insn =
-				bpf_ir_create_assign_insn_bb_cg_v2(
+				bpf_ir_create_assign_insn_bb_cg(
 					env, fun->entry,
 					bpf_ir_value_insn(
 						cg_info(fun)->regs[i + 1]),
@@ -196,7 +195,7 @@ static void change_call(struct bpf_ir_env *env, struct ir_function *fun)
 					struct ir_value val = insn->values[i];
 					bpf_ir_val_remove_user(val, insn);
 					struct ir_insn *new_insn =
-						bpf_ir_create_assign_insn_cg_v2(
+						bpf_ir_create_assign_insn_cg(
 							env, insn, val,
 							INSERT_FRONT);
 					pre_color(fun, new_insn, i + 1);
@@ -209,7 +208,7 @@ static void change_call(struct bpf_ir_env *env, struct ir_function *fun)
 					continue;
 				}
 				struct ir_insn *new_insn =
-					bpf_ir_create_assign_insn_cg_v2(
+					bpf_ir_create_assign_insn_cg(
 						env, insn,
 						bpf_ir_value_insn(
 							cg_info(fun)->regs[0]),
@@ -237,8 +236,7 @@ static void spill_array(struct bpf_ir_env *env, struct ir_function *fun)
 		list_for_each_entry_safe(insn, tmp, &bb->ir_insn_head,
 					 list_ptr) {
 			if (insn->op == IR_INSN_ALLOCARRAY) {
-				struct ir_insn_cg_extra_v2 *extra =
-					insn_cg_v2(insn);
+				struct ir_insn_cg_extra *extra = insn_cg(insn);
 				extra->vr_pos.allocated = true;
 				extra->finalized = true;
 				// Calculate the offset
@@ -275,7 +273,7 @@ static void spill_const(struct bpf_ir_env *env, struct ir_function *fun)
 				if (val->type == IR_VALUE_CONSTANT) {
 					// Change constant to a register
 					struct ir_insn *new_insn =
-						bpf_ir_create_assign_insn_cg_v2(
+						bpf_ir_create_assign_insn_cg(
 							env, insn, *val,
 							INSERT_FRONT);
 					bpf_ir_change_value(
@@ -293,7 +291,7 @@ static void spill_const(struct bpf_ir_env *env, struct ir_function *fun)
 					// tmp = v0
 					// jmp tmp v1
 					struct ir_insn *new_insn =
-						bpf_ir_create_assign_insn_cg_v2(
+						bpf_ir_create_assign_insn_cg(
 							env, insn, *v0,
 							INSERT_FRONT);
 					bpf_ir_change_value(
@@ -309,15 +307,15 @@ static void spill_const(struct bpf_ir_env *env, struct ir_function *fun)
 Print utils
 */
 
-static void print_ir_dst_v2(struct bpf_ir_env *env, struct ir_insn *insn)
+static void print_ir_dst(struct bpf_ir_env *env, struct ir_insn *insn)
 {
 	if (!insn->user_data) {
 		PRINT_LOG_DEBUG(env, "(?)");
 		RAISE_ERROR("NULL userdata found");
 	}
-	insn = insn_cg_v2(insn)->dst;
+	insn = insn_dst(insn);
 	if (insn) {
-		struct ir_vr_pos pos = insn_cg_v2(insn)->vr_pos;
+		struct ir_vr_pos pos = insn_cg(insn)->vr_pos;
 		if (pos.allocated) {
 			// Pre-colored
 			if (pos.spilled) {
@@ -333,19 +331,19 @@ static void print_ir_dst_v2(struct bpf_ir_env *env, struct ir_insn *insn)
 	}
 }
 
-static void print_ir_alloc_v2(struct bpf_ir_env *env, struct ir_insn *insn)
+static void print_ir_alloc(struct bpf_ir_env *env, struct ir_insn *insn)
 {
 	if (!insn->user_data) {
 		PRINT_LOG_DEBUG(env, "(?)");
 		RAISE_ERROR("NULL userdata found");
 	}
-	if (insn_cg_v2(insn)->dst == NULL) {
+	if (insn_dst(insn) == NULL) {
 		PRINT_LOG_DEBUG(env, "(NULL)");
 		return;
 	}
-	struct ir_vr_pos pos = insn_cg_v2(insn)->vr_pos;
+	struct ir_vr_pos pos = insn_cg(insn)->vr_pos;
 	DBGASSERT(pos.allocated);
-	if (insn_cg_v2(insn)->finalized) {
+	if (insn_cg(insn)->finalized) {
 		if (pos.spilled) {
 			PRINT_LOG_DEBUG(env, "SP+%d", pos.spilled);
 		} else {
@@ -362,7 +360,7 @@ static void print_ir_alloc_v2(struct bpf_ir_env *env, struct ir_insn *insn)
 
 static void print_insn_extra(struct bpf_ir_env *env, struct ir_insn *insn)
 {
-	struct ir_insn_cg_extra_v2 *insn_cg = insn->user_data;
+	struct ir_insn_cg_extra *insn_cg = insn->user_data;
 	if (insn_cg == NULL) {
 		CRITICAL("NULL user data");
 	}
@@ -401,8 +399,8 @@ static void make_conflict(struct bpf_ir_env *env, struct ir_function *fun,
 			  struct ir_insn *v1, struct ir_insn *v2)
 {
 	DBGASSERT(v1 != v2);
-	struct ir_insn_cg_extra_v2 *v1e = insn_cg_v2(v1);
-	struct ir_insn_cg_extra_v2 *v2e = insn_cg_v2(v2);
+	struct ir_insn_cg_extra *v1e = insn_cg(v1);
+	struct ir_insn_cg_extra *v2e = insn_cg(v2);
 	struct ir_insn *r1 = v1;
 	struct ir_insn *r2 = v2;
 	if (v1e->finalized) {
@@ -429,8 +427,8 @@ static void make_conflict(struct bpf_ir_env *env, struct ir_function *fun,
 			r2 = cg_info(fun)->regs[v2e->vr_pos.alloc_reg];
 		}
 	}
-	struct ir_insn_cg_extra_v2 *r1e = insn_cg_v2(r1);
-	struct ir_insn_cg_extra_v2 *r2e = insn_cg_v2(r2);
+	struct ir_insn_cg_extra *r1e = insn_cg(r1);
+	struct ir_insn_cg_extra *r2e = insn_cg(r2);
 	bpf_ir_ptrset_insert(env, &r1e->adj, r2);
 	bpf_ir_ptrset_insert(env, &r2e->adj, r1);
 }
@@ -443,7 +441,7 @@ static void phi_conflict_at_block_no_propagate(struct bpf_ir_env *env,
 	struct ir_insn *last = bpf_ir_get_last_insn(n);
 	if (last) {
 		struct ptrset *set = NULL;
-		struct ir_insn_cg_extra_v2 *se = insn_cg_v2(last);
+		struct ir_insn_cg_extra *se = insn_cg(last);
 		if (bpf_ir_is_jmp(last)) {
 			// jmp xxx
 			// Conflict with its LIVE-IN
@@ -498,7 +496,7 @@ static void live_out_at_statement(struct bpf_ir_env *env,
 {
 	// PRINT_LOG_DEBUG(env, "%%%d live out at statement %%%d\n", v->_insn_id,
 	// 		s->_insn_id);
-	struct ir_insn_cg_extra_v2 *se = insn_cg_v2(s);
+	struct ir_insn_cg_extra *se = insn_cg(s);
 	bpf_ir_ptrset_insert(env, &se->out, v);
 	if (se->dst) {
 		if (se->dst != v) {
@@ -517,7 +515,7 @@ static void live_in_at_statement(struct bpf_ir_env *env,
 {
 	// PRINT_LOG_DEBUG(env, "%%%d live in at statement %%%d\n", v->_insn_id,
 	// 		s->_insn_id);
-	bpf_ir_ptrset_insert(env, &(insn_cg_v2(s))->in, v);
+	bpf_ir_ptrset_insert(env, &(insn_cg(s))->in, v);
 	struct ir_insn *prev = bpf_ir_prev_insn(s);
 	if (prev == NULL) {
 		// First instruction
@@ -542,22 +540,21 @@ static void print_ir_prog_cg_dst_liveness(struct bpf_ir_env *env,
 					  struct ir_function *fun, char *msg)
 {
 	PRINT_LOG_DEBUG(env, "\x1B[32m----- CG: %s -----\x1B[0m\n", msg);
-	print_ir_prog_advanced(env, fun, NULL, print_insn_extra,
-			       print_ir_dst_v2);
+	print_ir_prog_advanced(env, fun, NULL, print_insn_extra, print_ir_dst);
 }
 
 static void print_ir_prog_cg_dst(struct bpf_ir_env *env,
 				 struct ir_function *fun, char *msg)
 {
 	PRINT_LOG_DEBUG(env, "\x1B[32m----- CG: %s -----\x1B[0m\n", msg);
-	print_ir_prog_advanced(env, fun, NULL, NULL, print_ir_dst_v2);
+	print_ir_prog_advanced(env, fun, NULL, NULL, print_ir_dst);
 }
 
 static void print_ir_prog_cg_alloc(struct bpf_ir_env *env,
 				   struct ir_function *fun, char *msg)
 {
 	PRINT_LOG_DEBUG(env, "\x1B[32m----- CG: %s -----\x1B[0m\n", msg);
-	print_ir_prog_advanced(env, fun, NULL, NULL, print_ir_alloc_v2);
+	print_ir_prog_advanced(env, fun, NULL, NULL, print_ir_alloc);
 }
 
 static void print_insn_ptr_base_dot(struct bpf_ir_env *env,
@@ -587,11 +584,11 @@ static void print_interference_graph(struct bpf_ir_env *env,
 	if (env->opts.dotgraph) {
 		PRINT_LOG_DEBUG(env, "graph {\n");
 		struct ir_insn **pos2;
-		ptrset_for(pos2, cg_info(fun)->all_var_v2)
+		ptrset_for(pos2, cg_info(fun)->all_var)
 		{
 			struct ir_insn *v = *pos2;
 			struct ir_insn **pos3;
-			ptrset_for(pos3, insn_cg_v2(v)->adj)
+			ptrset_for(pos3, insn_cg(v)->adj)
 			{
 				PRINT_LOG_DEBUG(env, "\t");
 				print_insn_ptr_base_dot(env, v);
@@ -604,13 +601,13 @@ static void print_interference_graph(struct bpf_ir_env *env,
 		PRINT_LOG_DEBUG(env, "}\n");
 	} else {
 		struct ir_insn **pos2;
-		ptrset_for(pos2, cg_info(fun)->all_var_v2)
+		ptrset_for(pos2, cg_info(fun)->all_var)
 		{
 			struct ir_insn *v = *pos2;
 			print_insn_ptr_base(env, v);
 			PRINT_LOG_DEBUG(env, ": ");
 			struct ir_insn **pos3;
-			ptrset_for(pos3, insn_cg_v2(v)->adj)
+			ptrset_for(pos3, insn_cg(v)->adj)
 			{
 				struct ir_insn *c = *pos3; // conflict vr
 				print_insn_ptr_base(env, c);
@@ -623,7 +620,7 @@ static void print_interference_graph(struct bpf_ir_env *env,
 
 static void clean_cg_data_insn(struct ir_insn *insn)
 {
-	struct ir_insn_cg_extra_v2 *extra = insn->user_data;
+	struct ir_insn_cg_extra *extra = insn->user_data;
 	DBGASSERT(extra);
 	bpf_ir_ptrset_clean(&extra->adj);
 	bpf_ir_ptrset_clean(&extra->in);
@@ -640,10 +637,10 @@ static void clean_cg_data_insn(struct ir_insn *insn)
 // Clean data generated during each iteration of RA
 static void clean_cg_data(struct bpf_ir_env *env, struct ir_function *fun)
 {
-	bpf_ir_ptrset_clean(&cg_info(fun)->all_var_v2);
+	bpf_ir_ptrset_clean(&cg_info(fun)->all_var);
 	// Add all real registers to the graph
 	for (int i = 0; i < RA_COLORS; ++i) {
-		bpf_ir_ptrset_insert(env, &cg_info(fun)->all_var_v2,
+		bpf_ir_ptrset_insert(env, &cg_info(fun)->all_var,
 				     cg_info(fun)->regs[i]);
 		clean_cg_data_insn(cg_info(fun)->regs[i]);
 	}
@@ -673,14 +670,14 @@ static void liveness_analysis(struct bpf_ir_env *env, struct ir_function *fun)
 		struct ir_basic_block *bb = *pos;
 		struct ir_insn *v;
 		list_for_each_entry(v, &bb->ir_insn_head, list_ptr) {
-			struct ir_insn_cg_extra_v2 *extra = insn_cg_v2(v);
+			struct ir_insn_cg_extra *extra = insn_cg(v);
 
 			if (extra->dst && !extra->finalized) {
 				DBGASSERT(extra->dst == v);
 				// Note. Assume pre-colored register VR has no users
 				// dst is a VR
-				bpf_ir_ptrset_insert(
-					env, &cg_info(fun)->all_var_v2, v);
+				bpf_ir_ptrset_insert(env,
+						     &cg_info(fun)->all_var, v);
 
 				bpf_ir_ptrset_clean(&M);
 				struct ir_insn **pos;
@@ -750,7 +747,7 @@ static void conflict_analysis(struct bpf_ir_env *env, struct ir_function *fun)
 		struct ir_insn *insn;
 		// For each operation
 		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
-			struct ir_insn_cg_extra_v2 *insn_cg = insn->user_data;
+			struct ir_insn_cg_extra *insn_cg = insn->user_data;
 
 			if (insn->op == IR_INSN_PHI) {
 				// v conflicts with all its predecessors' LIVEOUT
@@ -798,14 +795,14 @@ static void mcs(struct bpf_ir_env *env, struct ir_function *fun)
 	struct array *sigma = &cg_info(fun)->seo;
 	bpf_ir_array_clear(env, sigma);
 	struct ptrset allvar;
-	bpf_ir_ptrset_clone(env, &allvar, &cg_info(fun)->all_var_v2);
-	for (size_t i = 0; i < cg_info(fun)->all_var_v2.cnt; ++i) {
+	bpf_ir_ptrset_clone(env, &allvar, &cg_info(fun)->all_var);
+	for (size_t i = 0; i < cg_info(fun)->all_var.cnt; ++i) {
 		u32 max_l = 0;
 		struct ir_insn *max_i = NULL;
 		struct ir_insn **pos;
 		ptrset_for(pos, allvar)
 		{
-			struct ir_insn_cg_extra_v2 *ex = insn_cg_v2(*pos);
+			struct ir_insn_cg_extra *ex = insn_cg(*pos);
 			if (ex->lambda >= max_l) {
 				max_l = ex->lambda;
 				max_i = *pos;
@@ -816,12 +813,12 @@ static void mcs(struct bpf_ir_env *env, struct ir_function *fun)
 		print_insn_ptr_base(env, max_i);
 		PRINT_LOG_DEBUG(env, " ");
 
-		struct ir_insn_cg_extra_v2 *max_iex = insn_cg_v2(max_i);
+		struct ir_insn_cg_extra *max_iex = insn_cg(max_i);
 		ptrset_for(pos, max_iex->adj)
 		{
 			if (bpf_ir_ptrset_exists(&allvar, *pos)) {
 				// *pos in allvar /\ N(max_i)
-				insn_cg_v2(*pos)->lambda++;
+				insn_cg(*pos)->lambda++;
 			}
 		}
 
@@ -855,7 +852,7 @@ struct array pre_spill(struct bpf_ir_env *env, struct ir_function *fun)
 	for (size_t i = 0; i < sigma.num_elem; ++i) {
 		PRINT_LOG_DEBUG(env, "%d: ", i);
 		struct ir_insn *v = *array_get(&sigma, i, struct ir_insn *);
-		struct ir_insn_cg_extra_v2 *vex = insn_cg_v2(v);
+		struct ir_insn_cg_extra *vex = insn_cg(v);
 		struct ptrset q;
 		INIT_PTRSET_DEF(&q);
 		bpf_ir_ptrset_insert(env, &q, v);
@@ -874,7 +871,7 @@ struct array pre_spill(struct bpf_ir_env *env, struct ir_function *fun)
 					bpf_ir_ptrset_insert(env, &q, u);
 					print_insn_ptr_base(env, u);
 					PRINT_LOG_DEBUG(env, " ");
-					insn_cg_v2(u)->w++;
+					insn_cg(u)->w++;
 					break;
 				}
 			}
@@ -896,7 +893,7 @@ struct array pre_spill(struct bpf_ir_env *env, struct ir_function *fun)
 		ptrset_for(pos, (*cur))
 		{
 			struct ir_insn *v = *pos;
-			struct ir_insn_cg_extra_v2 *vex = insn_cg_v2(v);
+			struct ir_insn_cg_extra *vex = insn_cg(v);
 			if (vex->w >= max_w && !vex->nonvr) {
 				// Must be a vr to be spilled
 				max_w = vex->w;
@@ -933,7 +930,7 @@ static struct ir_insn *cgir_load_stack(struct bpf_ir_env *env,
 				       struct ir_insn *alloc_insn)
 {
 	DBGASSERT(alloc_insn->op == IR_INSN_ALLOC);
-	struct ir_insn *tmp = bpf_ir_create_load_insn_cg_v2(
+	struct ir_insn *tmp = bpf_ir_create_load_insn_cg(
 		env, insn, bpf_ir_value_insn(alloc_insn), INSERT_FRONT);
 	tmp->vr_type = alloc_insn->vr_type;
 	return tmp;
@@ -945,7 +942,7 @@ static struct ir_insn *cgir_load_stack_bb_end(struct bpf_ir_env *env,
 					      struct ir_insn *alloc_insn)
 {
 	DBGASSERT(alloc_insn->op == IR_INSN_ALLOC);
-	struct ir_insn *tmp = bpf_ir_create_load_insn_bb_cg_v2(
+	struct ir_insn *tmp = bpf_ir_create_load_insn_bb_cg(
 		env, bb, bpf_ir_value_insn(alloc_insn), INSERT_BACK_BEFORE_JMP);
 	tmp->vr_type = alloc_insn->vr_type;
 	return tmp;
@@ -1031,23 +1028,23 @@ static void spill(struct bpf_ir_env *env, struct ir_function *fun,
 			// spill load and store instruction
 			alloc_insn = v;
 		} else {
-			alloc_insn = bpf_ir_create_alloc_insn_bb_cg_v2(
+			alloc_insn = bpf_ir_create_alloc_insn_bb_cg(
 				env, fun->entry, IR_VR_TYPE_64,
 				INSERT_FRONT_AFTER_PHI);
 
 			struct ir_insn *store_insn =
-				bpf_ir_create_store_insn_cg_v2(
+				bpf_ir_create_store_insn_cg(
 					env, v, alloc_insn,
 					bpf_ir_value_insn(v), INSERT_BACK);
-			DBGASSERT(insn_dst_v2(store_insn) == NULL);
+			DBGASSERT(insn_dst(store_insn) == NULL);
 		}
 
 		// Finalize stack spilled value
 		// so that it will not change in next iteration
-		insn_cg_v2(alloc_insn)->finalized = true;
-		insn_cg_v2(alloc_insn)->vr_pos.allocated = true;
-		insn_cg_v2(alloc_insn)->vr_pos.spilled = get_new_spill(fun, 8);
-		insn_cg_v2(alloc_insn)->vr_pos.spilled_size = 8;
+		insn_cg(alloc_insn)->finalized = true;
+		insn_cg(alloc_insn)->vr_pos.allocated = true;
+		insn_cg(alloc_insn)->vr_pos.spilled = get_new_spill(fun, 8);
+		insn_cg(alloc_insn)->vr_pos.spilled_size = 8;
 
 		// Spill every user of v (spill-everywhere algorithm)
 		// If v is an alloc, we do not need to spill it
@@ -1073,7 +1070,7 @@ static void coloring(struct bpf_ir_env *env, struct ir_function *fun)
 	array_for(pos, sigma)
 	{
 		struct ir_insn *v = *pos;
-		struct ir_insn_cg_extra_v2 *vex = insn_cg_v2(v);
+		struct ir_insn_cg_extra *vex = insn_cg(v);
 		if (vex->vr_pos.allocated) {
 			continue;
 		}
@@ -1083,7 +1080,7 @@ static void coloring(struct bpf_ir_env *env, struct ir_function *fun)
 		ptrset_for(pos2, vex->adj)
 		{
 			struct ir_insn *insn2 = *pos2; // Adj instruction
-			struct ir_insn_cg_extra_v2 *extra2 = insn_cg_v2(insn2);
+			struct ir_insn_cg_extra *extra2 = insn_cg(insn2);
 			if (extra2->vr_pos.allocated &&
 			    extra2->vr_pos.spilled == 0) {
 				used_reg[extra2->vr_pos.alloc_reg] = true;
@@ -1105,13 +1102,13 @@ static void coloring(struct bpf_ir_env *env, struct ir_function *fun)
 
 // static bool has_conflict(struct ir_insn *v1, struct ir_insn *v2)
 // {
-// 	return bpf_ir_ptrset_exists(&insn_cg_v2(v1)->adj, v2);
+// 	return bpf_ir_ptrset_exists(&insn_cg(v1)->adj, v2);
 // }
 
 static void coalesce(struct ir_insn *v1, struct ir_insn *v2)
 {
-	struct ir_insn_cg_extra_v2 *v1e = insn_cg_v2(v1);
-	struct ir_insn_cg_extra_v2 *v2e = insn_cg_v2(v2);
+	struct ir_insn_cg_extra *v1e = insn_cg(v1);
+	struct ir_insn_cg_extra *v2e = insn_cg(v2);
 	if (v1e->vr_pos.spilled == 0 && v2e->vr_pos.spilled == 0 &&
 	    v2e->vr_pos.alloc_reg != v1e->vr_pos.alloc_reg) {
 		// Coalesce
@@ -1120,7 +1117,7 @@ static void coalesce(struct ir_insn *v1, struct ir_insn *v2)
 		ptrset_for(pos2, v1e->adj) // v1's adj
 		{
 			struct ir_insn *c = *pos2;
-			struct ir_insn_cg_extra_v2 *cex = insn_cg_v2(c);
+			struct ir_insn_cg_extra *cex = insn_cg(c);
 			DBGASSERT(cex->vr_pos.allocated);
 			if (cex->vr_pos.spilled == 0) {
 				used_colors[cex->vr_pos.alloc_reg] = true;
@@ -1130,7 +1127,7 @@ static void coalesce(struct ir_insn *v1, struct ir_insn *v2)
 		ptrset_for(pos2, v2e->adj) // v2's adj
 		{
 			struct ir_insn *c = *pos2;
-			struct ir_insn_cg_extra_v2 *cex = insn_cg_v2(c);
+			struct ir_insn_cg_extra *cex = insn_cg(c);
 			DBGASSERT(cex->vr_pos.allocated);
 			if (cex->vr_pos.spilled == 0) {
 				used_colors[cex->vr_pos.alloc_reg] = true;
@@ -1273,10 +1270,9 @@ static void remove_phi(struct bpf_ir_env *env, struct ir_function *fun)
 		struct ir_insn *insn;
 		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
 			if (insn->op == IR_INSN_PHI) {
-				DBGASSERT(insn_cg_v2(insn)->dst);
+				DBGASSERT(insn_dst(insn) == insn);
 				// Phi cannot be spilled
-				DBGASSERT(insn_cg_v2(insn_cg_v2(insn)->dst)
-						  ->vr_pos.spilled == 0);
+				DBGASSERT(insn_cg(insn)->vr_pos.spilled == 0);
 				bpf_ir_array_push(env, &phi_insns, &insn);
 			} else {
 				break;
@@ -1289,17 +1285,17 @@ static void remove_phi(struct bpf_ir_env *env, struct ir_function *fun)
 	{
 		struct ir_insn *insn = *pos2;
 
-		struct ir_vr_pos vrpos = insn_cg_v2(insn)->vr_pos;
+		struct ir_vr_pos vrpos = insn_cg(insn)->vr_pos;
 
 		struct phi_value *pos3;
 		array_for(pos3, insn->phi)
 		{
 			struct ir_insn *new_insn =
-				bpf_ir_create_assign_insn_bb_cg_v2(
+				bpf_ir_create_assign_insn_bb_cg(
 					env, pos3->bb, pos3->value,
 					INSERT_BACK_BEFORE_JMP);
 
-			insn_cg_v2(new_insn)->vr_pos = vrpos;
+			insn_cg(new_insn)->vr_pos = vrpos;
 
 			// Remove use
 			bpf_ir_val_remove_user(pos3->value, insn);
@@ -1310,13 +1306,13 @@ static void remove_phi(struct bpf_ir_env *env, struct ir_function *fun)
 		bpf_ir_replace_all_usage(
 			env, insn,
 			bpf_ir_value_insn(cg_info(fun)->regs[vrpos.alloc_reg]));
-		erase_insn_cg_v2(env, fun, insn);
+		erase_insn_cg(env, fun, insn);
 	}
 
 	bpf_ir_array_free(&phi_insns);
 }
 
-void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun)
+void bpf_ir_compile(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	u64 starttime = get_cur_time_ns();
 
@@ -1402,7 +1398,7 @@ void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun)
 	CHECK_ERR();
 	print_ir_prog_cg_alloc(env, fun, "SSA Out");
 
-	bpf_ir_cg_norm_v2(env, fun);
+	bpf_ir_cg_norm(env, fun);
 	CHECK_ERR();
 	env->cg_time += get_cur_time_ns() - starttime;
 }

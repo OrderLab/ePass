@@ -1922,7 +1922,7 @@ void bpf_ir_autorun(struct bpf_ir_env *env)
 	// End IR manipulation
 	PRINT_LOG_DEBUG(env, "IR Passes Ended!\n");
 
-	bpf_ir_compile_v2(env, fun);
+	bpf_ir_compile(env, fun);
 	CHECK_ERR();
 
 	// Got the bpf bytecode

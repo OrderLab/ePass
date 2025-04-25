@@ -76,12 +76,10 @@ struct builtin_pass_cfg;
  * struct bpf_ir_opts - Options for BPF IR processing
  * @force: Force the use of ePass, even if the verifier passes
  * @enable_printk_log: Enable printing log messages using printk
- * @disable_coalesce: Disable register coalescing optimization
  * @enable_throw_msg: Write an error message to trace when throwing an error
  * @fake_run: Run without actually modifying the bytecode
  * @print_only: Print IR without performing transformations
  * @max_insns: Maximum number of instructions to process
- * @cg_v2: Use the new code generation (CG) pipeline, enabled by default
  * @dotgraph: Generate a DOT graph for the interference graph
  * @verbose: Verbosity level
  * @disable_prog_check: Disable program checks
@@ -1098,7 +1096,7 @@ struct builtin_pass_cfg {
 
 /* Code Gen Start */
 
-void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun);
+void bpf_ir_compile(struct bpf_ir_env *env, struct ir_function *fun);
 
 /* Code Gen End */
 

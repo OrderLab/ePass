@@ -10,7 +10,7 @@ static void check_userdata(struct bpf_ir_env *env, struct ir_function *fun)
 		struct ir_basic_block *bb = *pos;
 		struct ir_insn *insn;
 		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
-			if (!insn_cg_v2(insn)) {
+			if (!insn_cg(insn)) {
 				print_ir_insn_err(env, insn, "No userdata");
 				RAISE_ERROR("No userdata");
 			}

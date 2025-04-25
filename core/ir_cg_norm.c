@@ -4,9 +4,9 @@
 
 // Normalization
 
-static void bpf_ir_free_insn_cg_v2(struct ir_insn *insn)
+static void bpf_ir_free_insn_cg(struct ir_insn *insn)
 {
-	struct ir_insn_cg_extra_v2 *extra = insn_cg_v2(insn);
+	struct ir_insn_cg_extra *extra = insn_cg(insn);
 	bpf_ir_ptrset_free(&extra->adj);
 	bpf_ir_ptrset_free(&extra->in);
 	bpf_ir_ptrset_free(&extra->out);
@@ -103,11 +103,10 @@ static void change_all_value_to_ir_pos(struct bpf_ir_env *env,
 				struct ir_value *v = *pos2;
 				if (v->type == IR_VALUE_INSN) {
 					struct ir_insn *insn_d = v->data.insn_d;
-					struct ir_insn *dst =
-						insn_cg_v2(insn_d)->dst;
+					struct ir_insn *dst = insn_dst(insn_d);
 					DBGASSERT(insn_d == dst);
-					struct ir_insn_cg_extra_v2 *extra =
-						insn_cg_v2(dst);
+					struct ir_insn_cg_extra *extra =
+						insn_cg(dst);
 					v->type = IR_VALUE_FLATTEN_DST;
 					v->data.vr_pos = extra->vr_pos;
 				}
@@ -126,16 +125,15 @@ static void cg_to_flatten(struct bpf_ir_env *env, struct ir_function *fun)
 		struct ir_insn *insn = NULL;
 		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
 			struct ir_vr_pos pos;
-			struct ir_insn_cg_extra_v2 *insn_extra =
-				insn_cg_v2(insn);
+			struct ir_insn_cg_extra *insn_extra = insn_cg(insn);
 			if (!insn_extra->dst) {
 				pos.allocated = false;
 			} else {
-				struct ir_insn_cg_extra_v2 *dst_extra =
-					insn_cg_v2(insn_extra->dst);
+				struct ir_insn_cg_extra *dst_extra =
+					insn_cg(insn_extra->dst);
 				pos = dst_extra->vr_pos;
 			}
-			insn_cg_v2(insn)->vr_pos = pos;
+			insn_cg(insn)->vr_pos = pos;
 		}
 	}
 
@@ -144,9 +142,9 @@ static void cg_to_flatten(struct bpf_ir_env *env, struct ir_function *fun)
 		struct ir_basic_block *bb = *pos;
 		struct ir_insn *insn = NULL;
 		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
-			struct ir_insn_cg_extra_v2 *extra = insn_cg_v2(insn);
+			struct ir_insn_cg_extra *extra = insn_cg(insn);
 			struct ir_vr_pos pos = extra->vr_pos;
-			bpf_ir_free_insn_cg_v2(insn);
+			bpf_ir_free_insn_cg(insn);
 			SAFE_MALLOC(insn->user_data,
 				    sizeof(struct ir_insn_norm_extra));
 			insn_norm(insn)->pos = pos;
@@ -155,9 +153,9 @@ static void cg_to_flatten(struct bpf_ir_env *env, struct ir_function *fun)
 
 	for (u8 i = 0; i < BPF_REG_10; ++i) {
 		struct ir_insn *insn = cg_info(fun)->regs[i];
-		bpf_ir_free_insn_cg_v2(insn);
+		bpf_ir_free_insn_cg(insn);
 	}
-	bpf_ir_free_insn_cg_v2(fun->sp);
+	bpf_ir_free_insn_cg(fun->sp);
 }
 
 static void cgir_load_stack_to_reg_norm(struct bpf_ir_env *env,
@@ -1338,13 +1336,12 @@ static void free_cg_final(struct ir_function *fun)
 		free_proto(insn);
 	}
 	bpf_ir_array_free(&cg_info(fun)->seo);
-	bpf_ir_array_free(&cg_info(fun)->all_var);
-	bpf_ir_ptrset_free(&cg_info(fun)->all_var_v2);
+	bpf_ir_ptrset_free(&cg_info(fun)->all_var);
 	free_proto(fun->user_data);
 	fun->user_data = NULL;
 }
 
-void bpf_ir_cg_norm_v2(struct bpf_ir_env *env, struct ir_function *fun)
+void bpf_ir_cg_norm(struct bpf_ir_env *env, struct ir_function *fun)
 {
 	flatten_ir(env, fun);
 	CHECK_ERR();

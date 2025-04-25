@@ -26,8 +26,8 @@ add_library(
   aux/disasm.c
   aux/kern_utils.c
   aux/cg_prog_check.c
-  ir_cg_v2.c
-  ir_cg_norm_v2.c
+  ir_cg.c
+  ir_cg_norm.c
   lli.c
   include/linux/bpf_ir.h)
 
