@@ -1950,10 +1950,8 @@ struct bpf_ir_opts bpf_ir_default_opts(void)
 	opts.print_mode = BPF_IR_PRINT_BPF;
 	opts.builtin_pass_cfg_num = 0;
 	opts.custom_pass_num = 0;
-	opts.disable_coalesce = false;
 	opts.force = false;
 	opts.verbose = 1;
-	opts.cg_v2 = true;
 	opts.dotgraph = false;
 	opts.fake_run = false;
 	opts.max_iteration = 10;

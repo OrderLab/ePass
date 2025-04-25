@@ -99,12 +99,10 @@ struct builtin_pass_cfg;
 struct bpf_ir_opts {
 	bool force;
 	bool enable_printk_log;
-	bool disable_coalesce;
 	bool enable_throw_msg;
 	bool fake_run;
 	bool print_only;
 	u32 max_insns;
-	bool cg_v2;
 	bool dotgraph;
 	int verbose;
 	bool disable_prog_check;

@@ -1390,12 +1390,10 @@ void bpf_ir_compile_v2(struct bpf_ir_env *env, struct ir_function *fun)
 	CHECK_ERR();
 	print_ir_prog_cg_alloc(env, fun, "After Coloring");
 
-	if (!env->opts.disable_coalesce) {
-		// Coalesce
-		coalescing(env, fun);
-		CHECK_ERR();
-		print_ir_prog_cg_alloc(env, fun, "After Coalescing");
-	}
+	// Coalesce
+	coalescing(env, fun);
+	CHECK_ERR();
+	print_ir_prog_cg_alloc(env, fun, "After Coalescing");
 
 	add_stack_offset(env, fun, cg_info(fun)->stack_offset);
 
