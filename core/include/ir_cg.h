@@ -16,13 +16,7 @@ struct ir_insn *bpf_ir_create_insn_base_norm(struct bpf_ir_env *env,
 
 u32 bpf_ir_sizeof_vr_type(enum ir_vr_type type);
 
-/* Erase an instruction during CG. Cannot erase if gen kill sets are used */
-void bpf_ir_erase_insn_cg(struct bpf_ir_env *env, struct ir_function *fun,
-			  struct ir_insn *insn);
-
 void bpf_ir_erase_insn_norm(struct ir_insn *insn);
-
-void bpf_ir_init_insn_cg(struct bpf_ir_env *env, struct ir_insn *insn);
 
 void bpf_ir_init_insn_norm(struct bpf_ir_env *env, struct ir_insn *insn,
 			   struct ir_vr_pos pos);
@@ -30,12 +24,6 @@ void bpf_ir_init_insn_norm(struct bpf_ir_env *env, struct ir_insn *insn,
 void bpf_ir_cg_norm_v2(struct bpf_ir_env *env, struct ir_function *fun);
 
 void bpf_ir_init_insn_cg_v2(struct bpf_ir_env *env, struct ir_insn *insn);
-
-void bpf_ir_free_insn_cg(struct ir_insn *insn);
-
-struct ir_bb_cg_extra *bpf_ir_bb_cg(struct ir_basic_block *bb);
-
-void print_ir_alloc(struct bpf_ir_env *env, struct ir_insn *insn);
 
 void print_ir_flatten(struct bpf_ir_env *env, struct ir_insn *insn);
 
@@ -118,9 +106,11 @@ enum val_type {
 
 #define insn_norm(insn) ((struct ir_insn_norm_extra *)(insn)->user_data)
 
-void bpf_ir_cg_norm(struct bpf_ir_env *env, struct ir_function *fun);
+#define bb_cg(bb) ((struct ir_bb_cg_extra *)(bb)->user_data)
 
 void bpf_ir_cg_prog_check(struct bpf_ir_env *env, struct ir_function *fun);
+
+void bpf_ir_cg_norm(struct bpf_ir_env *env, struct ir_function *fun);
 
 void bpf_ir_optimize_ir(struct bpf_ir_env *env, struct ir_function *fun,
 			void *data);
