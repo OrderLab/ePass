@@ -1,13 +1,23 @@
 # ePass
 
+[![Build ePass](https://github.com/OrderLab/ePass/actions/workflows/build.yml/badge.svg)](https://github.com/OrderLab/ePass/actions/workflows/build.yml)
+
 ePass is an in-kernel LLVM-like compiler framework that introduces an SSA-based intermediate representation (IR) for eBPF programs. It provides a lifter that lifts eBPF bytecode to ePass IR, a pass runner that runs user-defined passes, and a code generator that compiles IR to eBPF bytecode. Users could write flexible passes using our LLVM-like APIs to analyze and manipulate the IR.
 ePass could work with the verifier to improve its flexibility (i.e. reduce false rejections) and safety (i.e. reduce false acceptance at runtime). It could also be used in userspace for testing.
 
-## Features
+## Key Features
 
 - **IR-based compilation**: Converts BPF programs to an SSA-based intermediate representation for code rewriting
 - **Flexible passes**: ePass core provides various APIs to analyze and manipulate the IR, allowing users to write flexible passes including runtime checks and optimization.
 - **Command-line interface**: Easy-to-use CLI tool for testing in userspace
+
+> ePass is under active development and we are improving its usability and safety. We welcome any suggestions and feedback. Feel free to open issues or contact us.
+
+## Design Goals
+
+- Flexible passes, allowing diverse use cases
+- Working with existing verifier instead of replacing its
+- Keeping kernel safety
 
 ## Prerequisites
 
@@ -15,19 +25,29 @@ ePass could work with the verifier to improve its flexibility (i.e. reduce false
 - **Ninja** (optional, for faster compilation)
 - **libbpf**
 
+## Project Components
+
+- `ePass core`: the core compiler framework
+- `ePass kernel`: Linux kernel 6.5 with ePass core built-in, along with the kernel component and kernel passes
+- `ePass libbpf`: libbpf with ePass support for userspace ePass testing
+- `ePass bpftool`: support for ePass
+
 ## Quick Start
+
+The main development happens in `core` directory. To start, `cd` into `core`.
 
 ### Build
 
 ```bash
-cmake -S . -B build -GNinja
-make
+make configure # Do it once
+
+make build
 ```
 
 ### Install
 
 ```bash
-sudo cmake --install build
+make install
 ```
 
 ### Basic Usage
@@ -45,32 +65,6 @@ epass print prog.o
 
 ## Development
 
-### Build Commands
-
-```bash
-# Format code
-make format
-
-# Configure build system (run for the first time)
-make configure
-
-# Build with generated constructors (run after you create a new instruction)
-make buildall
-
-# Default Build
-make build
-```
-
-### Testing
-
-```bash
-# Run integration tests
-cd test && ./run_tests.sh
-
-# Run Python test suite
-cd test && python test.py
-```
-
 ### Generate Additional Assets
 
 ```bash
@@ -81,46 +75,12 @@ make kernel
 make buildobj
 ```
 
-## Project Structure
 
-```
-ePass/
-├── core/                 # Main compiler implementation
-│   ├── include/          # Header files
-│   ├── docs/             # Technical documentation
-│   ├── passes/           # Optimization passes
-│   ├── aux/              # Auxiliary utilities
-│   ├── epasstool/        # CLI tool
-│   └── tests/            # Simple BPF tests
-├── test/                 # Integration tests and evaluation
-├── rejected/             # Collected rejected programs
-└── tools/                # Helper scripts and utilities
-```
+## Contact and citation
 
-## Contributing
+Feel free to open an issue for question, bug report or feature request! You could also email xiangyiming2002@gmail.com
 
-1. Follow the existing code style and patterns
-2. Run `make format` before submitting changes
-3. Ensure all tests pass
-4. Update documentation as needed
+## Acknowledgement
 
-## Common Development Patterns
+ePass is sponsoredby OrderLab from University of Michigan.
 
-### Iterating Through Instructions
-
-```c
-struct ir_basic_block **pos;
-array_for(pos, fun->reachable_bbs)
-{
-    struct ir_basic_block *bb = *pos;
-    struct ir_insn *insn;
-    list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
-        // Process instruction
-    }
-}
-```
-
-## TODO
-
-- [ ] bpf-to-bpf calls
-- [ ] Full test suite
