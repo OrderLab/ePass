@@ -59,6 +59,12 @@ See [Testing](./docs/TESTING.md).
 
 See [Development](./docs/CONTRIBUTION_GUIDE.md).
 
+## Roadmap and Future Work
+
+- Support bpf-to-bpf calls
+- Support loadng ePass IR to kernel
+- Support compiling ePass IR to machine code directly in JIT
+
 ## Contact and Citation
 
 Feel free to open an issue for question, bug report or feature request! You could also email <xiangyiming2002@gmail.com>.
