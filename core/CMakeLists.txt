@@ -4,6 +4,7 @@ set(CMAKE_C_FLAGS
     "${CMAKE_C_FLAGS} -Werror -Wunused-function -Wstrict-prototypes -Wenum-compare -Wunused-variable -Wunused-but-set-variable -Wsign-compare -O3"
 )
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 add_library(
   epass STATIC
   bpf_ir.c
