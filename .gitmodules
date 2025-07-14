@@ -1,0 +1,15 @@
+[submodule "third-party/ePass-xdp-tools"]
+	path = third-party/ePass-xdp-tools
+	url = git@github.com:OrderLab/ePass-xdp-tools.git
+[submodule "third-party/ePass-falcolib"]
+	path = third-party/ePass-falcolib
+	url = git@github.com:OrderLab/ePass-falcolib.git
+[submodule "ePass-kernel"]
+	path = ePass-kernel
+	url = git@github.com:OrderLab/ePass-kernel.git
+[submodule "third-party/ePass-libbpf"]
+	path = third-party/ePass-libbpf
+	url = git@github.com:OrderLab/ePass-libbpf.git
+[submodule "third-party/ePass-bpftool"]
+	path = third-party/ePass-bpftool
+	url = git@github.com:OrderLab/ePass-bpftool.git
