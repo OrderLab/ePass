@@ -43,6 +43,14 @@ There are some testing projects including `bpftool`, `xdp-tools`, `falcolib` in 
 
 ![Core Architecture](./docs/core_design.png)
 
+#### ePass Built-in Passes (Selected demo passes)
+
+- Instruction counter pass: runtime instruction limit check
+- MSan pass: memory sanitizer for stack memory access
+- Masking pass: fix a false-rejection due to lack of type
+- Helper validation pass: validate helper function arguments to avoid CVE
+- Code compaction pass: an optimization pass to reduce code size
+
 ## Quick Start
 
 There are two ways to use ePass. The first way is to build a linux kernel with ePass builtin, which is used for production. Users could specify ePass options when calling the `BPF` system call. See [Kernel Testing](docs/KERNEL_TESTING.md).
