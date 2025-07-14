@@ -8,16 +8,17 @@ ePass could work with the verifier to improve its flexibility (i.e. reduce false
 ## Key Features
 
 - **IR-based compilation**: Converts BPF programs to an SSA-based intermediate representation for code rewriting
-- **Flexible passes**: ePass core provides various APIs to analyze and manipulate the IR, allowing users to write flexible passes including runtime checks and optimization.
-- **Command-line interface**: Easy-to-use CLI tool for testing in userspace
+- **Flexible passes**: ePass core provides various APIs to analyze and manipulate the IR, allowing users to write flexible passes including static analyzing, runtime checks, and optimization.
+- **User-friendly debugging**: ePass supports compiling to both kernel and userspace for easier debugging.
 
 > ePass is under active development and we are improving its usability and safety. We welcome any suggestions and feedback. Feel free to open issues or contact us.
 
 ## Design Goals
 
-- Flexible passes, allowing diverse use cases
+- Flexible passes for diverse use cases
 - Working with existing verifier instead of replacing its
 - Keeping kernel safety
+- Support both userspace and kernel
 
 ## Prerequisites
 
@@ -27,60 +28,40 @@ ePass could work with the verifier to improve its flexibility (i.e. reduce false
 
 ## Project Components
 
-- `ePass core`: the core compiler framework
+- `ePass core`: the core compiler framework, including a userspace CLI
 - `ePass kernel`: Linux kernel 6.5 with ePass core built-in, along with the kernel component and kernel passes
 - `ePass libbpf`: libbpf with ePass support for userspace ePass testing
-- `ePass bpftool`: support for ePass
+
+There are some testing projects including `bpftool`, `xdp-tools`, `falcolib` in `third-party`. They depend on `ePass libbpf`.
+
+### ePass Overview
+
+![Overview](./docs/overview.png)
+
+### ePass Core
+
+![Core Architecture](./docs/core_design.png)
 
 ## Quick Start
 
-The main development happens in `core` directory. To start, `cd` into `core`.
+There are two ways to use ePass. The first way is to build a linux kernel with ePass builtin, which is used for production. Users could specify ePass options when calling the `BPF` system call. See [Kernel Testing](docs/KERNEL_TESTING.md).
 
-### Build
+The second way is to build ePass in userspace and testing programs without changing the kernel, which is used mainly for testing. Users could specify ePass options via environment variable and use `ePass libbpf`. Programs will be modified in userspace before sending to the kernel. See [Userspace Testing](docs/USERSPACE_TESTING.md).
 
-```bash
-make configure # Do it once
+We recommend users trying ePass in userspace before switching to the ePass kernel version!
 
-make build
-```
+## Testing
 
-### Install
+See [Testing](./docs/TESTING.md).
 
-```bash
-make install
-```
+## Development and Contribution
 
-### Basic Usage
-
-```bash
-# Run ePass on the program
-epass read prog.o
-
-# Run ePass on the program with gopt and popt
-epass read --popt popts --gopt gopts prog.o
-
-# Print the BPF program
-epass print prog.o
-```
-
-## Development
-
-### Generate Additional Assets
-
-```bash
-# Generate kernel objects
-make kernel
-
-# Build ePass object files for libbpf
-make buildobj
-```
-
+See [Development](./docs/CONTRIBUTION_GUIDE.md).
 
 ## Contact and citation
 
-Feel free to open an issue for question, bug report or feature request! You could also email xiangyiming2002@gmail.com
+Feel free to open an issue for question, bug report or feature request! You could also email <xiangyiming2002@gmail.com>.
 
 ## Acknowledgement
 
-ePass is sponsoredby OrderLab from University of Michigan.
-
+ePass is sponsored by [OrderLab](https://orderlab.io/) from University of Michigan.
