@@ -9,10 +9,10 @@ ePass also provides an in-kernel supervisor that cooperates ePass core with the 
 
 - **IR-based compilation**: Converts BPF programs to an SSA-based intermediate representation for code rewriting
 - **Flexible passes**: ePass core provides various APIs to analyze and manipulate the IR, allowing users to write flexible passes including static analyzing, runtime checks, and optimization.
-- **Verifier Aware**: ePass works with the existing verifier. The verifier is better for static verification while ePass focuses more on code rewriting and runtime verification.
+- **Verifier aware**: ePass works with the existing verifier. The verifier is better for static verification while ePass focuses more on code rewriting and runtime verification.
 - **User-friendly debugging**: ePass supports compiling to both kernel and userspace for easier debugging.
 
-> ePass is under active development and we are improving its usability and safety. We welcome any suggestions and feedback. Feel free to open issues or [contact us](#contact-and-citation).
+> ⚠️ Warning: ePass is under active development and we are improving its usability and safety for production use. We welcome any suggestions and feedback. Feel free to open issues or [contact us](#contact-and-citation).
 
 ## Design Goals
 
