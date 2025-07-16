@@ -28,8 +28,11 @@ configure:
 		cmake -S . -B $(BUILD_DIR) -G Ninja; \
 	fi
 
+install: build
+	sudo cmake --install $(BUILD_DIR)
+
 buildobj:
 	./scripts/buildobj.sh
 
-.PHONY: build format kernel genctor test configure buildobj
+.PHONY: build format kernel genctor test configure buildobj install
 .DEFAULT_GOAL := build

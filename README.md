@@ -1,13 +1,25 @@
 # ePass
 
-ePass is an in-kernel LLVM-like compiler framework that introduces an SSA-based intermediate representation (IR) for eBPF programs. It provides a lifter that lifts eBPF bytecode to ePass IR, a pass runner that runs user-defined passes, and a code generator that compiles IR to eBPF bytecode. Users could write flexible passes using our LLVM-like APIs to analyze and manipulate the IR.
-ePass could work with the verifier to improve its flexibility (i.e. reduce false rejections) and safety (i.e. reduce false acceptance at runtime). It could also be used in userspace for testing.
+[![Build ePass](https://github.com/OrderLab/ePass/actions/workflows/build.yml/badge.svg)](https://github.com/OrderLab/ePass/actions/workflows/build.yml)
 
-## Features
+ePass is an in-kernel LLVM-like compiler framework that introduces an SSA-based intermediate representation (IR) for eBPF programs. It provides a lifter that lifts eBPF bytecode to ePass IR, a pass runner that runs user-defined passes, and a code generator that compiles IR to eBPF bytecode. Users could write flexible passes using our LLVM-like APIs to analyze and manipulate the IR.
+ePass also provides an in-kernel supervisor that cooperates ePass core with the verifier to improve its flexibility (i.e. reduce false rejections) and safety (i.e. reduce false acceptance at runtime). It could also be used in userspace for testing.
+
+## Key Features
 
 - **IR-based compilation**: Converts BPF programs to an SSA-based intermediate representation for code rewriting
-- **Flexible passes**: ePass core provides various APIs to analyze and manipulate the IR, allowing users to write flexible passes including runtime checks and optimization.
-- **Command-line interface**: Easy-to-use CLI tool for testing in userspace
+- **Flexible passes**: ePass core provides various APIs to analyze and manipulate the IR, allowing users to write flexible passes including static analyzing, runtime checks, and optimization.
+- **Verifier aware**: ePass works with the existing verifier. The verifier is better for static verification while ePass focuses more on code rewriting and runtime verification.
+- **User-friendly debugging**: ePass supports compiling to both kernel and userspace for easier debugging.
+
+> ⚠️ Warning: ePass is under active development and we are improving its usability and safety for production use. We welcome any suggestions and feedback. Feel free to open issues or [contact us](#contact-and-citation).
+
+## Design Goals
+
+- Flexible passes for diverse use cases
+- Working with existing verifier instead of replacing its
+- Keeping kernel safety
+- Support both userspace and kernel
 
 ## Prerequisites
 
@@ -15,112 +27,56 @@ ePass could work with the verifier to improve its flexibility (i.e. reduce false
 - **Ninja** (optional, for faster compilation)
 - **libbpf**
 
+## Project Components
+
+- `ePass core`: the core compiler framework, including a userspace CLI
+- `ePass kernel`: Linux kernel 6.5 with ePass core built-in, along with the kernel component and kernel passes
+- `ePass libbpf`: libbpf with ePass support for userspace ePass testing
+
+There are some testing projects including `bpftool`, `xdp-tools`, `falcolib` in `third-party`. They depend on `ePass libbpf`.
+
+### ePass Overview
+
+![Overview](./docs/overview.png)
+
+### ePass Core
+
+![Core Architecture](./docs/core_design.png)
+
+#### ePass Built-in Passes (Selected demo passes)
+
+- Instruction counter pass: runtime instruction limit check
+- MSan pass: memory sanitizer for stack memory access
+- Masking pass: fix a false-rejection due to lack of type
+- Helper validation pass: validate helper function arguments to avoid CVE
+- Code compaction pass: an optimization pass to reduce code size
+
 ## Quick Start
 
-### Build
+There are two ways to use ePass. The first way is to build a linux kernel with ePass builtin, which is used for production. Users could specify ePass options when calling the `BPF` system call. See [Kernel Testing](docs/KERNEL_TESTING.md).
 
-```bash
-cmake -S . -B build -GNinja
-make
-```
+The second way is to build ePass in userspace and testing programs without changing the kernel, which is used mainly for testing. Users could specify ePass options via environment variable and use `ePass libbpf`. Programs will be modified in userspace before sending to the kernel. See [Userspace Testing](docs/USERSPACE_TESTING.md).
 
-### Install
+We recommend users trying ePass in userspace before switching to the ePass kernel version!
 
-```bash
-sudo cmake --install build
-```
+## Testing
 
-### Basic Usage
+See [Testing](./docs/TESTING.md).
 
-```bash
-# Run ePass on the program
-epass read prog.o
+## Development and Contribution
 
-# Run ePass on the program with gopt and popt
-epass read --popt popts --gopt gopts prog.o
+See [Development](./docs/CONTRIBUTION_GUIDE.md).
 
-# Print the BPF program
-epass print prog.o
-```
+## Roadmap and Future Work
 
-## Development
+- Support bpf-to-bpf calls
+- Support loadng ePass IR to kernel
+- Support compiling ePass IR to machine code directly in JIT
 
-### Build Commands
+## Contact and Citation
 
-```bash
-# Format code
-make format
+Feel free to open an issue for question, bug report or feature request! You could also email <xiangyiming2002@gmail.com>.
 
-# Configure build system (run for the first time)
-make configure
+## Acknowledgement
 
-# Build with generated constructors (run after you create a new instruction)
-make buildall
-
-# Default Build
-make build
-```
-
-### Testing
-
-```bash
-# Run integration tests
-cd test && ./run_tests.sh
-
-# Run Python test suite
-cd test && python test.py
-```
-
-### Generate Additional Assets
-
-```bash
-# Generate kernel objects
-make kernel
-
-# Build ePass object files for libbpf
-make buildobj
-```
-
-## Project Structure
-
-```
-ePass/
-├── core/                 # Main compiler implementation
-│   ├── include/          # Header files
-│   ├── docs/             # Technical documentation
-│   ├── passes/           # Optimization passes
-│   ├── aux/              # Auxiliary utilities
-│   ├── epasstool/        # CLI tool
-│   └── tests/            # Simple BPF tests
-├── test/                 # Integration tests and evaluation
-├── rejected/             # Collected rejected programs
-└── tools/                # Helper scripts and utilities
-```
-
-## Contributing
-
-1. Follow the existing code style and patterns
-2. Run `make format` before submitting changes
-3. Ensure all tests pass
-4. Update documentation as needed
-
-## Common Development Patterns
-
-### Iterating Through Instructions
-
-```c
-struct ir_basic_block **pos;
-array_for(pos, fun->reachable_bbs)
-{
-    struct ir_basic_block *bb = *pos;
-    struct ir_insn *insn;
-    list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
-        // Process instruction
-    }
-}
-```
-
-## TODO
-
-- [ ] bpf-to-bpf calls
-- [ ] Full test suite
+ePass is sponsored by [OrderLab](https://orderlab.io/) from University of Michigan.

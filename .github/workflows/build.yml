@@ -1,0 +1,25 @@
+name: Build ePass
+
+on:
+  push:
+    branches: [ "main", "dev" ]
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Dependency
+      run: sudo apt install -y libbpf-dev
+
+    - name: Configure CMake
+      run: cd core && make configure
+
+    - name: Build
+      run: cd core && make
+
