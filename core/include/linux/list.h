@@ -12,11 +12,13 @@
  *
  * WARNING: any const qualifier of @ptr is lost.
  */
+#ifndef container_of
 #define container_of(ptr, type, member)                      \
 	({                                                   \
 		void *__mptr = (void *)(ptr);                \
 		((type *)(__mptr - offsetof(type, member))); \
 	})
+#endif
 
 /*
  * These are non-NULL pointers that will result in page faults
