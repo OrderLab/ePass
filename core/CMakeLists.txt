@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 project(epass VERSION 0.2.0 LANGUAGES C)
 set(CMAKE_C_FLAGS
-    "${CMAKE_C_FLAGS} -Werror -Wunused-function -Wstrict-prototypes -Wenum-compare -Wunused-variable -Wunused-but-set-variable -Wsign-compare -O3"
+    "${CMAKE_C_FLAGS} -Werror -Wunused-function -Wstrict-prototypes -Wenum-compare -Wunused-variable -Wunused-but-set-variable -Wsign-compare -O2 -fstack-protector-strong -fno-omit-frame-pointer -fno-strict-aliasing -std=gnu11"
 )
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
