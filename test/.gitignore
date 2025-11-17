@@ -1,5 +1,6 @@
 output/
 .venv/
+vm/
 *.pdf
 evalout/
 env.py

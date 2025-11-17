@@ -1,8 +1,10 @@
 #!/bin/bash
 
-KERNEL_PATH=/home/linsy/Projects/ebpf/ePass-kernel
+GIT_REPO=$(git rev-parse --show-toplevel)
 
-DRIVE_PATH=/home/linsy/Projects/ebpf/vm/vm/ebpf.qcow2
+KERNEL_PATH=$GIT_REPO/ePass-kernel
+
+DRIVE_PATH=$GIT_REPO/test/vm/ebpf.qcow2
 
 # First enable bridge virbr0
 
