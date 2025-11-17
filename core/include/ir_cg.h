@@ -1,5 +1,10 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 #ifndef _IR_CG_H
 #define _IR_CG_H
+
+/*
+Functions and structs used internally in the code generator (CG).
+*/
 
 #include "ir.h"
 
@@ -122,6 +127,11 @@ void bpf_ir_cg_add_stack_offset_pre_cg(struct bpf_ir_env *env,
 
 void bpr_ir_cg_to_cssa(struct bpf_ir_env *env, struct ir_function *fun,
 		       void *param);
+
+/*
+The following functions are instruction constructors only for CG stage.
+Other instruction constructors are in bpf_ir.h.
+*/
 
 /* Instruction Constructors */
 
