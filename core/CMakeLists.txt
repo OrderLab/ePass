@@ -4,6 +4,13 @@ set(CMAKE_C_FLAGS
     "${CMAKE_C_FLAGS} -Werror -Wunused-function -Wstrict-prototypes -Wenum-compare -Wunused-variable -Wunused-but-set-variable -Wsign-compare -O2 -fstack-protector-strong -fno-omit-frame-pointer -fno-strict-aliasing -std=gnu11"
 )
 
+find_path(LIBBPF_INCLUDE_DIR bpf/libbpf.h)
+find_library(LIBBPF_LIBRARY bpf)
+
+if(NOT LIBBPF_INCLUDE_DIR OR NOT LIBBPF_LIBRARY)
+    message(FATAL_ERROR "libbpf not found. Please install it.")
+endif()
+
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 add_library(
   epass STATIC

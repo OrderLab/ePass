@@ -2,7 +2,9 @@
 
 # Generating kernel source files
 
-KERNEL_PATH=/home/linsy/Projects/ebpf/ePass-kernel
+GIT_REPO=$(git rev-parse --show-toplevel)
+
+KERNEL_PATH=$GIT_REPO/ePass-kernel
 
 if [ ! -d $KERNEL_PATH ]; then
   echo "Directory does not exists"
