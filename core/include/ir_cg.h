@@ -19,8 +19,6 @@ struct ir_insn *bpf_ir_create_insn_base_norm(struct bpf_ir_env *env,
 					     struct ir_basic_block *bb,
 					     struct ir_vr_pos dstpos);
 
-u32 bpf_ir_sizeof_vr_type(enum ir_vr_type type);
-
 void bpf_ir_erase_insn_norm(struct ir_insn *insn);
 
 void bpf_ir_init_insn_norm(struct bpf_ir_env *env, struct ir_insn *insn,

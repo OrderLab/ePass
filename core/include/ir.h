@@ -71,6 +71,8 @@ int bpf_ir_valid_alu_type(enum ir_alu_op_type type);
 
 int bpf_ir_valid_vr_type(enum ir_vr_type type);
 
+u32 bpf_ir_sizeof_vr_type(enum ir_vr_type type);
+
 /**
     Pre-IR BB
 

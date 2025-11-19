@@ -50,3 +50,4 @@ rm ${KERNEL_PATH}/include/linux/bpf_ir.h
 
 cp include/linux/bpf_ir.h ${KERNEL_PATH}/include/linux/
 cp include/ir_cg.h ${KERNEL_PATH}/kernel/bpf/ir/
+cp include/ir.h ${KERNEL_PATH}/kernel/bpf/ir/
