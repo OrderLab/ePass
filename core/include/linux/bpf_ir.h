@@ -1049,6 +1049,9 @@ struct custom_pass_cfg {
 	void (*param_unload)(void *param);
 };
 
+/**
+ * builtin_pass_cfg - Configuration for built-in passes
+ */
 struct builtin_pass_cfg {
 	char name[BPF_IR_MAX_PASS_NAME_SIZE];
 	void *param;

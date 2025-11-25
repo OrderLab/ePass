@@ -148,4 +148,35 @@ struct ssa_transform_env {
 void bpf_ir_run_passes(struct bpf_ir_env *env, struct ir_function *fun,
 		       const struct function_pass *passes, const size_t cnt);
 
+/**
+	Constraints types
+*/
+enum constraint_category {
+	CONSTRAINT_FUNC_ARG,
+	CONSTRAINT_FUNC_RET,
+	CONSTRAINT_PROG_RET,
+};
+
+enum constraint_type {
+	CONSTRAINT_IN_RANGE,
+	CONSTRAINT_EQ,
+	CONSTRAINT_EQSET,
+};
+
+/**
+	Verifier constraint structure
+*/
+struct verifier_constraint {
+	enum constraint_category cat;
+	enum constraint_type type;
+
+	struct ir_insn
+		*insn; // The instruction to check for FUNC_ARG and FUNC_RET
+
+	s64 low; // Also used for EQ
+	s64 high;
+
+	struct array eqset; // Array of s64
+};
+
 #endif
