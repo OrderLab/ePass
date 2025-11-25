@@ -369,6 +369,10 @@ void bpf_ir_ptrset_minus(struct ptrset *set1, struct ptrset *set2);
 
 /* DBG Macro End */
 
+/* Extended BPF instructions */
+
+#define BPF_ECALL 0xa0
+
 enum ir_alu_op_type {
 	IR_ALU_UNKNOWN, // To prevent from not manually setting this type
 	IR_ALU_32,

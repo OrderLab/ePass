@@ -9,9 +9,8 @@
  */
 
 void bpf_ir_handle_ecalls(struct bpf_ir_env *env, struct ir_function *fun,
-			    void *param)
+			  void *param)
 {
-    
 }
 
 const struct builtin_pass_cfg bpf_ir_ecall_pass =

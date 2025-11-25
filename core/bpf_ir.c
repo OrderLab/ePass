@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
+#include "linux/bpf_ir.h"
 #include "ir.h"
 
 static const s8 helper_func_arg_num[] = {
@@ -1434,6 +1435,49 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 					"unknown jmp instruction %d at %d\n",
 					code, insn.pos);
 				RAISE_ERROR("Not supported jmp instruction");
+			}
+		} else if (BPF_CLASS(code) == BPF_MISC) {
+			if (BPF_OP(code) == BPF_ECALL) {
+				// ecall instruction
+				// ECALL instruction should not appear in kernel mode (currently not supported)
+				struct ir_insn *new_insn =
+					create_insn_back(bb->ir_bb);
+				set_insn_raw_pos(new_insn, insn.pos);
+				new_insn->op = IR_INSN_ECALL;
+				new_insn->fid = insn.imm;
+				new_insn->value_num = insn.src_reg;
+				if (insn.imm < 0) {
+					new_insn->value_num = 0;
+					PRINT_LOG_ERROR(
+						env,
+						"Unknown ecall function %d at %d\n",
+						insn.imm, insn.pos);
+					RAISE_ERROR(
+						"Not supported function call\n");
+				} else {
+					for (size_t j = 0;
+					     j < new_insn->value_num; ++j) {
+						new_insn->values[j] =
+							read_variable(
+								env, tenv,
+								BPF_REG_1 + j,
+								bb);
+						add_user(env, new_insn,
+							 new_insn->values[j]);
+					}
+				}
+
+				write_variable(env, tenv, BPF_REG_0, bb,
+					       bpf_ir_value_insn(new_insn));
+				PRINT_LOG_ERROR(env,
+						"Found ecall instruction!\n");
+				RAISE_ERROR("End here");
+			} else {
+				PRINT_LOG_ERROR(
+					env,
+					"unknown misc instruction %d at %d\n",
+					code, insn.pos);
+				RAISE_ERROR("Not supported misc instruction");
 			}
 		} else {
 			// TODO
