@@ -1350,84 +1350,133 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 							insn.imm);
 					RAISE_ERROR(
 						"BPF-local functions not supported");
-				}
-				if (insn.src_reg == 2) {
+				} else if (insn.src_reg == 2) {
 					// platform-specific helper function imm
 					RAISE_ERROR(
 						"Platform-specific helper function not supported");
-				}
-				if (insn.imm < 0) {
-					new_insn->value_num = 0;
-					PRINT_LOG_ERROR(
-						env,
-						"Unknown helper function %d at %d\n",
-						insn.imm, insn.pos);
-					RAISE_ERROR(
-						"Not supported function call\n");
+				} else if (insn.src_reg == BPF_EPASS_CALL) {
+					// ecall instruction
+					// ECALL instruction should not appear in kernel mode (currently not supported)
+					struct ir_insn *new_insn =
+						create_insn_back(bb->ir_bb);
+					set_insn_raw_pos(new_insn, insn.pos);
+					new_insn->op = IR_INSN_ECALL;
+					new_insn->fid = insn.imm;
+					new_insn->value_num = insn.dst_reg;
+					if (insn.imm < 0) {
+						new_insn->value_num = 0;
+						PRINT_LOG_ERROR(
+							env,
+							"Unknown ecall function %d at %d\n",
+							insn.imm, insn.pos);
+						RAISE_ERROR(
+							"Not supported function call\n");
+					} else {
+						for (size_t j = 0;
+						     j < new_insn->value_num;
+						     ++j) {
+							new_insn->values[j] =
+								read_variable(
+									env,
+									tenv,
+									BPF_REG_1 +
+										j,
+									bb);
+							add_user(
+								env, new_insn,
+								new_insn->values
+									[j]);
+						}
+					}
+
+					write_variable(
+						env, tenv, BPF_REG_0, bb,
+						bpf_ir_value_insn(new_insn));
+
 				} else {
-					// Test if the helper function is supported
-					if (insn.imm < 0 ||
-					    (size_t)insn.imm >=
-						    sizeof(helper_func_arg_num) /
-							    sizeof(helper_func_arg_num
-									   [0])) {
-						bpf_ir_print_bpf_insn(env,
-								      &t_insn);
+					if (insn.imm < 0) {
+						new_insn->value_num = 0;
 						PRINT_LOG_ERROR(
 							env,
 							"Unknown helper function %d at %d\n",
 							insn.imm, insn.pos);
 						RAISE_ERROR(
-							"Unsupported helper function");
-					}
-					if (helper_func_arg_num[insn.imm] < 0) {
-						if (insn.imm == 6) {
-							// printk instruction
-							// Variable length, infer from previous instructions
-							new_insn->value_num = 2;
-							// used[x] means whether there exists a usage of register x + 1
-							for (u8 j = 2;
-							     j < MAX_FUNC_ARG;
-							     ++j) {
-								if (is_variable_defined(
-									    tenv,
-									    j + BPF_REG_1,
-									    bb)) {
-									new_insn->value_num =
-										j +
-										BPF_REG_1;
-								} else {
-									break;
+							"Not supported function call\n");
+					} else {
+						// Test if the helper function is supported
+						if (insn.imm < 0 ||
+						    (size_t)insn.imm >=
+							    sizeof(helper_func_arg_num) /
+								    sizeof(helper_func_arg_num
+										   [0])) {
+							bpf_ir_print_bpf_insn(
+								env, &t_insn);
+							PRINT_LOG_ERROR(
+								env,
+								"Unknown helper function %d at %d\n",
+								insn.imm,
+								insn.pos);
+							RAISE_ERROR(
+								"Unsupported helper function");
+						}
+						if (helper_func_arg_num[insn.imm] <
+						    0) {
+							if (insn.imm == 6) {
+								// printk instruction
+								// Variable length, infer from previous instructions
+								new_insn->value_num =
+									2;
+								// used[x] means whether there exists a usage of register x + 1
+								for (u8 j = 2;
+								     j <
+								     MAX_FUNC_ARG;
+								     ++j) {
+									if (is_variable_defined(
+										    tenv,
+										    j + BPF_REG_1,
+										    bb)) {
+										new_insn->value_num =
+											j +
+											BPF_REG_1;
+									} else {
+										break;
+									}
 								}
+							} else {
+								RAISE_ERROR(
+									"Unknown helper function");
 							}
 						} else {
-							RAISE_ERROR(
-								"Unknown helper function");
+							new_insn->value_num =
+								helper_func_arg_num
+									[insn.imm];
 						}
-					} else {
-						new_insn->value_num =
-							helper_func_arg_num
-								[insn.imm];
+						if (new_insn->value_num >
+						    MAX_FUNC_ARG) {
+							RAISE_ERROR(
+								"Too many arguments");
+						}
+						for (size_t j = 0;
+						     j < new_insn->value_num;
+						     ++j) {
+							new_insn->values[j] =
+								read_variable(
+									env,
+									tenv,
+									BPF_REG_1 +
+										j,
+									bb);
+							add_user(
+								env, new_insn,
+								new_insn->values
+									[j]);
+						}
 					}
-					if (new_insn->value_num >
-					    MAX_FUNC_ARG) {
-						RAISE_ERROR(
-							"Too many arguments");
-					}
-					for (size_t j = 0;
-					     j < new_insn->value_num; ++j) {
-						new_insn->values[j] =
-							read_variable(
-								env, tenv,
-								BPF_REG_1 + j,
-								bb);
-						add_user(env, new_insn,
-							 new_insn->values[j]);
-					}
-				}
 
-				write_variable(env, tenv, BPF_REG_0, bb,
-					       bpf_ir_value_insn(new_insn));
+					write_variable(
+						env, tenv, BPF_REG_0, bb,
+						bpf_ir_value_insn(new_insn));
+				}
 			} else {
 				// TODO
 				PRINT_LOG_ERROR(
@@ -1435,49 +1484,6 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 					"unknown jmp instruction %d at %d\n",
 					code, insn.pos);
 				RAISE_ERROR("Not supported jmp instruction");
-			}
-		} else if (BPF_CLASS(code) == BPF_MISC) {
-			if (BPF_OP(code) == BPF_ECALL) {
-				// ecall instruction
-				// ECALL instruction should not appear in kernel mode (currently not supported)
-				struct ir_insn *new_insn =
-					create_insn_back(bb->ir_bb);
-				set_insn_raw_pos(new_insn, insn.pos);
-				new_insn->op = IR_INSN_ECALL;
-				new_insn->fid = insn.imm;
-				new_insn->value_num = insn.src_reg;
-				if (insn.imm < 0) {
-					new_insn->value_num = 0;
-					PRINT_LOG_ERROR(
-						env,
-						"Unknown ecall function %d at %d\n",
-						insn.imm, insn.pos);
-					RAISE_ERROR(
-						"Not supported function call\n");
-				} else {
-					for (size_t j = 0;
-					     j < new_insn->value_num; ++j) {
-						new_insn->values[j] =
-							read_variable(
-								env, tenv,
-								BPF_REG_1 + j,
-								bb);
-						add_user(env, new_insn,
-							 new_insn->values[j]);
-					}
-				}
-
-				write_variable(env, tenv, BPF_REG_0, bb,
-					       bpf_ir_value_insn(new_insn));
-				PRINT_LOG_ERROR(env,
-						"Found ecall instruction!\n");
-				RAISE_ERROR("End here");
-			} else {
-				PRINT_LOG_ERROR(
-					env,
-					"unknown misc instruction %d at %d\n",
-					code, insn.pos);
-				RAISE_ERROR("Not supported misc instruction");
 			}
 		} else {
 			// TODO

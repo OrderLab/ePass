@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "ir.h"
 #include "ir_cg.h"
+#include "linux/bpf_ir.h"
 
 int bpf_ir_valid_alu_type(enum ir_alu_op_type type)
 {
@@ -483,6 +484,17 @@ static void print_ir_insn_full(struct bpf_ir_env *env, struct ir_insn *insn,
 		break;
 	case IR_INSN_REG:
 		PRINT_LOG_DEBUG(env, "(REG)");
+		break;
+	case IR_INSN_ECALL:
+		PRINT_LOG_DEBUG(env, "ecall efun#%d(", insn->fid);
+		if (insn->value_num >= 1) {
+			print_ir_value_full(env, insn->values[0], print_ir);
+		}
+		for (size_t i = 1; i < insn->value_num; ++i) {
+			PRINT_LOG_DEBUG(env, ", ");
+			print_ir_value_full(env, insn->values[i], print_ir);
+		}
+		PRINT_LOG_DEBUG(env, ")");
 		break;
 	default:
 		PRINT_LOG_ERROR(env, "Insn code: %d\n", insn->op);

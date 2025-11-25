@@ -114,6 +114,15 @@ void bpf_ir_cg_norm(struct bpf_ir_env *env, struct ir_function *fun);
 void bpf_ir_optimize_ir(struct bpf_ir_env *env, struct ir_function *fun,
 			void *data);
 
+void bpf_ir_optimize_code_compaction(struct bpf_ir_env *env,
+				     struct ir_function *fun, void *param);
+
+void translate_throw(struct bpf_ir_env *env, struct ir_function *fun,
+		     void *param);
+
+void bpf_ir_handle_ecalls(struct bpf_ir_env *env, struct ir_function *fun,
+			  void *param);
+
 void bpf_ir_cg_change_fun_arg(struct bpf_ir_env *env, struct ir_function *fun,
 			      void *param);
 

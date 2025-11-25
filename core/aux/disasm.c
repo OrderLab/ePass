@@ -119,9 +119,6 @@ void bpf_ir_print_bpf_insn(struct bpf_ir_env *env, const struct bpf_insn *insn)
 				env, "(%02x) %c%d = -%c%d\n", insn->code,
 				class == BPF_ALU ? 'w' : 'r', insn->dst_reg,
 				class == BPF_ALU ? 'w' : 'r', insn->dst_reg);
-		} else if (BPF_OP(insn->code) == BPF_ECALL) {
-			PRINT_LOG_DEBUG(env, "(%02x) call efun#%d (#arg: %d)\n",
-					insn->code, insn->imm, insn->src_reg);
 		} else if (BPF_SRC(insn->code) == BPF_X) {
 			PRINT_LOG_DEBUG(
 				env, "(%02x) %c%d %s %s%c%d\n", insn->code,
@@ -254,11 +251,14 @@ void bpf_ir_print_bpf_insn(struct bpf_ir_env *env, const struct bpf_insn *insn)
 		}
 	} else if (class == BPF_JMP32 || class == BPF_JMP) {
 		u8 opcode = BPF_OP(insn->code);
-
 		if (opcode == BPF_CALL) {
 			char tmp[64];
 
-			if (insn->src_reg == BPF_PSEUDO_CALL) {
+			if (insn->src_reg == BPF_EPASS_CALL) {
+				PRINT_LOG_DEBUG(
+					env, "(%02x) call efun#%d (#arg: %d)\n",
+					insn->code, insn->imm, insn->dst_reg);
+			} else if (insn->src_reg == BPF_PSEUDO_CALL) {
 				PRINT_LOG_DEBUG(env, "(%02x) call pc%s\n",
 						insn->code,
 						__func_get_name(insn, tmp,

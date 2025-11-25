@@ -371,7 +371,8 @@ void bpf_ir_ptrset_minus(struct ptrset *set1, struct ptrset *set2);
 
 /* Extended BPF instructions */
 
-#define BPF_ECALL 0xa0
+#define BPF_EPASS_CALL 6
+#define BPF_ECALL 0x00 // OPCODE for ecall instruction
 
 enum ir_alu_op_type {
 	IR_ALU_UNKNOWN, // To prevent from not manually setting this type
@@ -1012,22 +1013,6 @@ void print_ir_bb_err(struct bpf_ir_env *env, struct ir_basic_block *bb);
 /* IR Helper End */
 
 /* Passes Start */
-
-void remove_trivial_phi(struct bpf_ir_env *env, struct ir_function *fun,
-			void *param);
-
-void insn_counter(struct bpf_ir_env *env, struct ir_function *fun, void *param);
-
-void msan(struct bpf_ir_env *env, struct ir_function *fun, void *param);
-
-void bpf_ir_div_by_zero(struct bpf_ir_env *env, struct ir_function *fun,
-			void *param);
-
-void bpf_ir_optimize_code_compaction(struct bpf_ir_env *env,
-				     struct ir_function *fun, void *param);
-
-void translate_throw(struct bpf_ir_env *env, struct ir_function *fun,
-		     void *param);
 
 struct function_pass {
 	void (*pass)(struct bpf_ir_env *env, struct ir_function *, void *param);

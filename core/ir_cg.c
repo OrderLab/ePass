@@ -14,6 +14,7 @@ Pereira, F., and Palsberg, J., "Register Allocation via the Coloring of Chordal 
 
 /* CG Preparation Passes */
 static struct function_pass cg_init_passes[] = {
+	DEF_NON_OVERRIDE_FUNC_PASS(bpf_ir_handle_ecalls, "translate_ecall"),
 	DEF_NON_OVERRIDE_FUNC_PASS(translate_throw, "translate_throw"),
 	DEF_FUNC_PASS(bpf_ir_optimize_code_compaction, "optimize_compaction",
 		      false),

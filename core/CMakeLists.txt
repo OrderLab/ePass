@@ -31,6 +31,7 @@ add_library(
   passes/div_by_zero.c
   passes/jmp_complexity.c
   passes/constraint.c
+  passes/ecall.c
   aux/prog_check.c
   aux/disasm.c
   aux/kern_utils.c
