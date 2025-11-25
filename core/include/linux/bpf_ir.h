@@ -522,6 +522,7 @@ enum ir_insn_type {
 	IR_INSN_REG,
 	// Special instructions
 	IR_INSN_FUNCTIONARG, // The function argument store, not an actual instruction
+	IR_INSN_ECALL, // E-call virtual instructions, will be handled by ecall pass
 };
 
 struct ir_insn {

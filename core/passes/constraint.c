@@ -31,4 +31,4 @@ void bpf_ir_add_constraints(struct bpf_ir_env *env, struct ir_function *fun,
 }
 
 const struct builtin_pass_cfg bpf_ir_add_constraints_pass =
-	DEF_BUILTIN_PASS_ENABLE_CFG("add_constraints", NULL, NULL);
+	DEF_BUILTIN_PASS_CFG("add_constraints", NULL, NULL);
