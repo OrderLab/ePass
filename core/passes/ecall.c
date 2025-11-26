@@ -2,8 +2,19 @@
 #include "ir.h"
 #include "linux/bpf_ir.h"
 
-void translate_malloc(struct bpf_ir_env *env, struct ir_function *fun)
+void translate_heap(struct bpf_ir_env *env, struct ir_function *fun,
+		    struct ir_insn *insn)
 {
+	// Change all load & store to add a range check
+	// load x
+	// ->
+	// if x < size (unsigned)
+	// read from map and return map+x
+
+	// store x
+	// ->
+	// if x < size (unsigned)
+	// store to map at map+x
 }
 
 /**
@@ -23,7 +34,12 @@ void bpf_ir_handle_ecalls(struct bpf_ir_env *env, struct ir_function *fun,
 		struct ir_insn *insn;
 		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
 			if (insn->op == IR_INSN_ECALL) {
-				bpf_ir_erase_insn(env, insn);
+				switch (insn->fid) {
+				case 0:
+					translate_heap(env, fun, insn);
+				default:
+					break;
+				}
 			}
 		}
 	}

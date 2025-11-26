@@ -22,14 +22,11 @@ struct {
 	__type(value, char[HEAP_SIZE]);
 } data SEC(".maps");
 
-
-static __always_inline void init_heap(long size){
+static __always_inline void init_heap(long size)
+{
 	register long r1 asm("r1") = (long)(&data);
 	register long r2 asm("r2") = (long)size;
-	asm volatile(".byte 0x85, 0x62, 0,0,0,0,0,0\n"
-		     :
-		     : "r"(r1), "r"(r2)
-		     :);
+	asm volatile(".byte 0x85, 0x62, 0,0,0,0,0,0\n" : : "r"(r1), "r"(r2) :);
 	return;
 }
 
@@ -84,14 +81,15 @@ SEC("xdp")
 int prog(void *ctx)
 {
 	init_heap(HEAP_SIZE);
-	struct test_struct *bb = (struct test_struct *)malloc(2*sizeof(struct test_struct));
+	struct test_struct *bb =
+		(struct test_struct *)malloc(2 * sizeof(struct test_struct));
 	if (bb == NULL) {
 		return XDP_PASS;
 	}
 	bb->a = 42;
 	bb->next = bb + 1;
-	(bb+1)->a = 111;
-	(bb+1)->next = NULL;
+	(bb + 1)->a = 111;
+	(bb + 1)->next = NULL;
 	bpf_printk("bb next's data: %d\n", bb->next->a);
 	free(bb);
 	return XDP_PASS;
