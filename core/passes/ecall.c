@@ -52,6 +52,12 @@ void translate_heap(struct bpf_ir_env *env, struct ir_function *fun,
 	// store to map at map+x
 
 	// Can use verifier's info about reg's data type
+
+	struct array loadraw_insns;
+	INIT_ARRAY(&loadraw_insns, struct ir_insn *);
+	struct array storeraw_insns;
+	INIT_ARRAY(&storeraw_insns, struct ir_insn *);
+
 	struct ir_basic_block **pos;
 	array_for(pos, fun->reachable_bbs)
 	{
@@ -59,63 +65,70 @@ void translate_heap(struct bpf_ir_env *env, struct ir_function *fun,
 		struct ir_insn *insn;
 		list_for_each_entry(insn, &bb->ir_insn_head, list_ptr) {
 			if (insn->op == IR_INSN_STORERAW) {
+				bpf_ir_array_push(env, &storeraw_insns, &insn);
 			}
 			if (insn->op == IR_INSN_LOADRAW) {
-				struct ir_address_value addr_val =
-					insn->addr_val;
-				if (addr_val.value.type != IR_VALUE_INSN) {
-					continue;
-				}
-				if (!is_nonptr(addr_val.value)) {
-					// Pointer type, skip
-					continue;
-				}
-				struct ir_insn *val_insn =
-					addr_val.value.data.insn_d;
-				int offset = addr_val.offset;
-				if (offset != 0) {
-					val_insn = bpf_ir_create_bin_insn(
-						env, insn,
-						bpf_ir_value_insn(val_insn),
-						bpf_ir_value_const32(offset),
-						IR_INSN_ADD, IR_ALU_64,
-						INSERT_FRONT);
-				}
-
-				struct ir_insn *alloc_array =
-					bpf_ir_create_allocarray_insn(
-						env, insn, IR_VR_TYPE_64, 1,
-						INSERT_FRONT);
-
-				bpf_ir_create_storeraw_insn(
-					env, insn, IR_VR_TYPE_64,
-					bpf_ir_addr_val(
-						bpf_ir_value_insn(alloc_array),
-						0),
-					bpf_ir_value_insn(val_insn),
-					INSERT_FRONT);
-
-				struct ir_insn *elemptr =
-					bpf_ir_create_getelemptr_insn(
-						env, insn, alloc_array,
-						bpf_ir_value_const32(0),
-						INSERT_FRONT);
-
-				// Read data from map
-				struct ir_insn *insn2 = bpf_ir_create_call_insn(
-					env, insn, 1, INSERT_FRONT);
-				bpf_ir_add_call_arg(
-					env, insn2,
-					bpf_ir_value_insn(map_insn));
-				bpf_ir_add_call_arg(env, insn2,
-						    bpf_ir_value_insn(elemptr));
-				bpf_ir_change_value(env, insn,
-						    &insn->addr_val.value,
-						    bpf_ir_value_insn(insn2));
-				insn->addr_val.offset = 0;
+				bpf_ir_array_push(env, &loadraw_insns, &insn);
 			}
 		}
 	}
+
+	struct ir_insn **pos2;
+	array_for(pos2, loadraw_insns)
+	{
+		struct ir_insn *insn = *pos2;
+
+		struct ir_address_value addr_val = insn->addr_val;
+		if (addr_val.value.type != IR_VALUE_INSN) {
+			continue;
+		}
+		if (!is_nonptr(addr_val.value)) {
+			// Pointer type, skip
+			continue;
+		}
+		struct ir_insn *val_insn = addr_val.value.data.insn_d;
+		int offset = addr_val.offset;
+		if (offset != 0) {
+			val_insn = bpf_ir_create_bin_insn(
+				env, insn, bpf_ir_value_insn(val_insn),
+				bpf_ir_value_const32(offset), IR_INSN_ADD,
+				IR_ALU_64, INSERT_FRONT);
+		}
+
+		struct ir_insn *alloc_array = bpf_ir_create_allocarray_insn(
+			env, insn, IR_VR_TYPE_64, 1, INSERT_FRONT);
+
+		bpf_ir_create_storeraw_insn(
+			env, insn, IR_VR_TYPE_64,
+			bpf_ir_addr_val(bpf_ir_value_insn(alloc_array), 0),
+			bpf_ir_value_insn(val_insn), INSERT_FRONT);
+
+		struct ir_insn *elemptr = bpf_ir_create_getelemptr_insn(
+			env, insn, alloc_array, bpf_ir_value_const32(0),
+			INSERT_FRONT);
+
+		// Read data from map
+		struct ir_insn *insn2 =
+			bpf_ir_create_call_insn(env, insn, 1, INSERT_FRONT);
+		bpf_ir_add_call_arg(env, insn2, bpf_ir_value_insn(map_insn));
+		bpf_ir_add_call_arg(env, insn2, bpf_ir_value_insn(elemptr));
+
+		bpf_ir_change_value(env, insn, &insn->addr_val.value,
+				    bpf_ir_value_insn(insn2));
+		insn->addr_val.offset = 0;
+
+		// Check bounds
+
+		struct ir_basic_block *new_bb, *err_bb;
+		bpf_ir_bb_create_error_block(env, fun, insn2, INSERT_BACK,
+					     &err_bb, &new_bb);
+		bpf_ir_create_jbin_insn(env, insn2, bpf_ir_value_insn(insn2),
+					bpf_ir_value_const32(0), new_bb, err_bb,
+					IR_INSN_JEQ, IR_ALU_64, INSERT_BACK);
+	}
+
+	bpf_ir_array_free(&loadraw_insns);
+	bpf_ir_array_free(&storeraw_insns);
 }
 
 /**
