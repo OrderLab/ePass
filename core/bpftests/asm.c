@@ -1,7 +1,7 @@
 #include <linux/bpf.h>
 #include <bpf/bpf_helpers.h>
 
-#define HEAP_SIZE 1024;
+#define HEAP_SIZE 1024
 
 struct meta_entry {
 	long pos;
@@ -22,12 +22,18 @@ struct {
 	__type(value, char[HEAP_SIZE]);
 } data SEC(".maps");
 
-static __always_inline void init_heap(long size)
+static __always_inline int init_heap(long size)
 {
-	register long r1 asm("r1") = (long)(&data);
+	int i = 0;
+	char *head = bpf_map_lookup_elem(&data, &i);
+	if (head == NULL) {
+		return 0;
+	}
+
+	register long r1 asm("r1") = (long)(head);
 	register long r2 asm("r2") = (long)size;
 	asm volatile(".byte 0x85, 0x62, 0,0,0,0,0,0\n" : : "r"(r1), "r"(r2) :);
-	return;
+	return 1;
 }
 
 static __always_inline void *malloc(long size)
@@ -49,7 +55,8 @@ static __always_inline void *malloc(long size)
 	if (bpf_map_update_elem(&meta, &i, head, BPF_ANY) != 0) {
 		return NULL;
 	}
-	head->pos = rpos head->size = size;
+	head->pos = rpos;
+	head->size = size;
 	i = rid;
 	if (bpf_map_update_elem(&meta, &i, head, BPF_ANY) != 0) {
 		return NULL;
@@ -74,13 +81,15 @@ static __always_inline void free(void *x)
 
 struct test_struct {
 	int a;
-	struct test_struct *next;
+	volatile struct test_struct *next;
 };
 
 SEC("xdp")
 int prog(void *ctx)
 {
-	init_heap(HEAP_SIZE);
+	if (init_heap(HEAP_SIZE) == 0) {
+		return XDP_PASS;
+	}
 	struct test_struct *bb =
 		(struct test_struct *)malloc(2 * sizeof(struct test_struct));
 	if (bb == NULL) {
@@ -88,8 +97,8 @@ int prog(void *ctx)
 	}
 	bb->a = 42;
 	bb->next = bb + 1;
-	(bb + 1)->a = 111;
-	(bb + 1)->next = NULL;
+	// (bb + 1)->a = 111;
+	// (bb + 1)->next = NULL;
 	bpf_printk("bb next's data: %d\n", bb->next->a);
 	free(bb);
 	return XDP_PASS;

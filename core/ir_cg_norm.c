@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "ir.h"
 #include "ir_cg.h"
+#include "linux/bpf_ir.h"
 
 // Normalization
 
@@ -435,6 +436,10 @@ static void normalize_getelemptr(struct bpf_ir_env *env, struct ir_insn *insn)
 		DBGASSERT(v0->const_type == IR_ALU_32);
 		*v0 = bpf_ir_value_norm_stack_ptr();
 		s64 tmp = v0->data.constant_d + spill_pos; // Assume no overflow
+		if (tmp < 0) {
+			insn->op = IR_INSN_SUB;
+			tmp = -tmp;
+		}
 		*v1 = bpf_ir_value_const32(tmp);
 		normalize_alu(env, insn);
 	}

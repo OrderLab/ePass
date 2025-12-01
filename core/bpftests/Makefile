@@ -2,6 +2,9 @@
 obj: $(NAME).c
 	clang -O2 -I/usr/include/$(shell uname -m)-linux-gnu -target bpf -c $< -o output/$(NAME).o
 
+gobj: $(NAME).c
+	clang -O2 -I/usr/include/$(shell uname -m)-linux-gnu -target bpf -g -c $< -o output/$(NAME).o
+
 objnop: $(NAME).c
 	clang -O0 -I/usr/include/$(shell uname -m)-linux-gnu -target bpf -c $< -o output/$(NAME).o
 
