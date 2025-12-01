@@ -39,7 +39,7 @@ static __always_inline int init_heap(long size)
 static __always_inline void *malloc(long size)
 {
 	int i = 0;
-	long rv = 0;
+	// long rv = 0;
 	struct meta_entry *head = bpf_map_lookup_elem(&meta, &i);
 	if (head->pos == 255) {
 		head->pos = 0;

@@ -21,25 +21,25 @@ bool is_nonptr(struct ir_value v)
 }
 
 void translate_heap(struct bpf_ir_env *env, struct ir_function *fun,
-		    struct ir_insn *insn)
+		    struct ir_insn *ecall_insn)
 {
 	// Init
-	if (insn->value_num != 2) {
+	if (ecall_insn->value_num != 2) {
 		RAISE_ERROR("Init heap argument number error!");
 	}
-	struct ir_value arg0 = insn->values[0]; // Data map pointer
+	struct ir_value arg0 = ecall_insn->values[0]; // Data map pointer
 	if (arg0.type != IR_VALUE_INSN) {
 		RAISE_ERROR("Init heap argument 0 must be a data pointer!");
 	}
 	struct ir_insn *map_insn = arg0.data.insn_d;
 
-	struct ir_value arg1 = insn->values[1];
+	struct ir_value arg1 = ecall_insn->values[1];
 	if (arg1.type != IR_VALUE_CONSTANT) {
 		RAISE_ERROR("Init heap argument 1 must be a constant!");
 	}
 
 	// u64 heap_size = arg1.data.constant_d;
-	bpf_ir_erase_insn(env, insn);
+	bpf_ir_erase_insn(env, ecall_insn);
 	// Change all load & store to add a range check
 	// load x
 	// ->

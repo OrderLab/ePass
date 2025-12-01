@@ -1357,11 +1357,7 @@ static void transform_bb(struct bpf_ir_env *env, struct ssa_transform_env *tenv,
 				} else if (insn.src_reg == BPF_EPASS_CALL) {
 					// ecall instruction
 					// ECALL instruction should not appear in kernel mode (currently not supported)
-					struct ir_insn *new_insn =
-						create_insn_back(bb->ir_bb);
-					set_insn_raw_pos(new_insn, insn.pos);
 					new_insn->op = IR_INSN_ECALL;
-					new_insn->fid = insn.imm;
 					new_insn->value_num = insn.dst_reg;
 					if (insn.imm < 0) {
 						new_insn->value_num = 0;

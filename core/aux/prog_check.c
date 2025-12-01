@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "ir.h"
+#include "linux/bpf_ir.h"
 
 static void check_insn_users_use_insn(struct bpf_ir_env *env,
 				      struct ir_insn *insn)
@@ -115,6 +116,14 @@ static void check_insn(struct bpf_ir_env *env, struct ir_function *fun)
 					print_ir_insn_err(env, insn, NULL);
 					RAISE_ERROR(
 						"Value should be an allocarray instruction");
+				}
+			}
+
+			if (insn->op == IR_INSN_CALL) {
+				if (insn->fid == 0) {
+					print_ir_insn_err(env, insn, NULL);
+					RAISE_ERROR(
+						"Calling function ID cannot be 0");
 				}
 			}
 
