@@ -1089,6 +1089,16 @@ struct builtin_pass_cfg {
 		.force_enable = true                       \
 	}
 
+void insn_counter(struct bpf_ir_env *env, struct ir_function *fun, void *param);
+
+void msan(struct bpf_ir_env *env, struct ir_function *fun, void *param);
+
+void bpf_ir_div_by_zero(struct bpf_ir_env *env, struct ir_function *fun,
+			void *param);
+
+void remove_trivial_phi(struct bpf_ir_env *env, struct ir_function *fun,
+			void *param);
+
 /* Passes End */
 
 /* Code Gen Start */
