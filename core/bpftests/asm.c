@@ -41,6 +41,12 @@ static __always_inline void *malloc(long size)
 	int i = 0;
 	// long rv = 0;
 	struct meta_entry *head = bpf_map_lookup_elem(&meta, &i);
+	if (head == 0) {
+		return NULL;
+	}
+	if (size <= 0 || size >= HEAP_SIZE) {
+		return NULL;
+	}
 	if (head->pos == 255) {
 		head->pos = 0;
 	}
@@ -69,6 +75,9 @@ static __always_inline void *malloc(long size)
 	// 	     : "=r"(r0)
 	// 	     : "r"(r1), "r"(r2)
 	// 	     :);
+	if (rpos < 0 || rpos > 992) {
+		return NULL;
+	}
 	return (void *)rpos;
 }
 
