@@ -9,14 +9,14 @@ struct meta_entry {
 };
 
 struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(type, BPF_MAP_TYPE_ARRAY);
 	__uint(max_entries, 257);
 	__type(key, __u32);
 	__type(value, struct meta_entry);
 } meta SEC(".maps");
 
 struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(type, BPF_MAP_TYPE_ARRAY);
 	__uint(max_entries, 1);
 	__type(key, __u32);
 	__type(value, char[HEAP_SIZE]);
@@ -97,9 +97,9 @@ int prog(void *ctx)
 	}
 	bb->a = 42;
 	bb->next = bb + 1;
-	// (bb + 1)->a = 111;
-	// (bb + 1)->next = NULL;
-	bpf_printk("bb next's data: %d\n", bb->next->a);
+	(bb + 1)->a = 111;
+	(bb + 1)->next = NULL;
+	bpf_printk("bb: %d\n", bb);
 	free(bb);
 	return XDP_PASS;
 }

@@ -127,6 +127,27 @@ void translate_heap(struct bpf_ir_env *env, struct ir_function *fun,
 					IR_INSN_JEQ, IR_ALU_64, INSERT_BACK);
 	}
 
+	array_for(pos2, storeraw_insns)
+	{
+		struct ir_insn *insn = *pos2;
+
+		struct ir_address_value addr_val = insn->addr_val;
+		if (addr_val.value.type != IR_VALUE_INSN) {
+			continue;
+		}
+		if (!is_nonptr(addr_val.value)) {
+			// Pointer type, skip
+			continue;
+		}
+		struct ir_insn *val_insn = addr_val.value.data.insn_d;
+		struct ir_insn *ptr = bpf_ir_create_bin_insn(
+			env, insn, bpf_ir_value_insn(map_insn),
+			bpf_ir_value_insn(val_insn), IR_INSN_ADD, IR_ALU_64,
+			INSERT_FRONT);
+		bpf_ir_change_value(env, insn, &insn->addr_val.value,
+				    bpf_ir_value_insn(ptr));
+	}
+
 	bpf_ir_array_free(&loadraw_insns);
 	bpf_ir_array_free(&storeraw_insns);
 }
