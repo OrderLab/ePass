@@ -22,11 +22,7 @@ void testcall() {
 #define DATA_PIN_PATH "/sys/fs/bpf/data"
 
 /* detach programs and cleanup pinned maps */
-void cleanup(struct bpf_link *link1, struct bpf_link *link2) {
-  if (link1)
-    bpf_link__destroy(link1);
-  if (link2)
-    bpf_link__destroy(link2);
+void cleanup() {
   unlink(META_PIN_PATH);
   unlink(DATA_PIN_PATH);
 }
@@ -101,9 +97,10 @@ int reuse_pinned_maps(struct bpf_object *obj) {
 }
 
 int main() {
-  cleanup(NULL, NULL);
-  struct bpf_link *link1 = NULL, *link2 = NULL;
+  cleanup();
+  struct bpf_link *link1 = NULL, *link2 = NULL, *link3 = NULL;
   struct bpf_object *obj2 = NULL;
+  struct bpf_object *obj3 = NULL;
 
   /* Step 1: Load first program and attach */
   if (attach_prog("init_ll.o", "init_ll", &link1) != 0)
@@ -112,9 +109,9 @@ int main() {
 
   /* Optional: run program briefly */
   sleep(1);
-  testcall();
-  testcall();
-  testcall();
+  for(int i = 0; i < 16;++i){
+    testcall();
+  }
   sleep(1);
 
   /* Step 3: Detach first program */
@@ -126,20 +123,20 @@ int main() {
   obj2 = bpf_object__open_file("lookup_ll.o", NULL);
   if (libbpf_get_error(obj2)) {
     fprintf(stderr, "Failed to open lookup_ll.o\n");
-    cleanup(NULL, NULL);
+    cleanup();
     return 1;
   }
   /* Step 5: Reuse pinned maps */
   if (reuse_pinned_maps(obj2) != 0) {
     fprintf(stderr, "Failed to reuse pinned maps\n");
-    cleanup(NULL, NULL);
+    cleanup();
     return 1;
   }
   printf("lookup_ll will use existing maps\n");
 
   if (bpf_object__load(obj2)) {
     fprintf(stderr, "Failed to load lookup_ll.o\n");
-    cleanup(NULL, NULL);
+    cleanup();
     return 1;
   }
 
@@ -149,17 +146,18 @@ int main() {
       bpf_object__find_program_by_name(obj2, "lookup_ll");
   if (!prog2) {
     fprintf(stderr, "lookup_ll program not found\n");
-    cleanup(NULL, NULL);
+    cleanup();
     return 1;
   }
 
   link2 = bpf_program__attach_tracepoint(prog2, "syscalls", "sys_enter_mount");
   if (libbpf_get_error(link2)) {
     fprintf(stderr, "Failed to attach lookup_ll\n");
-    cleanup(NULL, NULL);
+    cleanup();
     return 1;
   }
   printf("lookup_ll attached\n");
+  bpf_object__close(obj2);
 
   /* Run for some time */
   sleep(1);
@@ -168,11 +166,58 @@ int main() {
   }
   sleep(1);
 
+  bpf_link__destroy(link2);
+
+  obj3 = bpf_object__open_file("delete_ll.o", NULL);
+  if (libbpf_get_error(obj3)) {
+    fprintf(stderr, "Failed to open delete_ll.o\n");
+    cleanup();
+    return 1;
+  }
+  /* Step 5: Reuse pinned maps */
+  if (reuse_pinned_maps(obj3) != 0) {
+    fprintf(stderr, "Failed to reuse pinned maps\n");
+    cleanup();
+    return 1;
+  }
+  printf("lookup_ll will use existing maps\n");
+
+  if (bpf_object__load(obj3)) {
+    fprintf(stderr, "Failed to load delete_ll.o\n");
+    cleanup();
+    return 1;
+  }
+
+
+  /* Step 6: Attach second program */
+  struct bpf_program *prog3 =
+      bpf_object__find_program_by_name(obj3, "delete_ll");
+  if (!prog3) {
+    fprintf(stderr, "delete_ll program not found\n");
+    cleanup();
+    return 1;
+  }
+
+  link3 = bpf_program__attach_tracepoint(prog3, "syscalls", "sys_enter_mount");
+  if (libbpf_get_error(link3)) {
+    fprintf(stderr, "Failed to attach delete_ll\n");
+    cleanup();
+    return 1;
+  }
+  printf("delete_ll attached\n");
+  bpf_object__close(obj3);
+
+  /* Run for some time */
+  sleep(1);
+  for(int i = 0; i< 32;++i){
+    testcall();
+  }
+  sleep(1);
+
   /* Step 7: Detach second program and cleanup maps */
-  cleanup(NULL, link2);
+  cleanup();
   printf("lookup_ll detached, pinned maps removed\n");
 
-  bpf_object__close(obj2);
 
   return 0;
 }

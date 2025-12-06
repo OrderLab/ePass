@@ -2,7 +2,7 @@
 #include <bpf/bpf_helpers.h>
 #include <linux/bpf.h>
 
-#define META_SIZE 40960
+#define META_SIZE 65000
 #define META_BLOCK_SIZE 32
 #define HEAP_SIZE ((META_SIZE + 1) * META_BLOCK_SIZE)
 
@@ -26,7 +26,7 @@ static __always_inline char *init_heap(long size) {
   return head;
 }
 
-static __noinline __u32 malloc(__u32 size) {
+static __noinline __u64 malloc(__u32 size) {
   __u32 i = 0;
   // long rv = 0;
   __u32 *head = bpf_map_lookup_elem(&meta, &i);
@@ -114,10 +114,10 @@ int lookup_ll(void *ctx) {
     return 0;
   } // Lookup
 
-  __u64 curr = 384064;
+  __u64 curr = 2048000;
   // long iter = 0;
   long starttime = bpf_ktime_get_ns();
-  for (int i = 0; i < 10000; ++i) {
+  for (int i = 0; i < 64000; ++i) {
     if (curr > HEAP_SIZE - 100) {
       break;
     }

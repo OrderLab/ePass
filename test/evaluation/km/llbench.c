@@ -4,7 +4,7 @@
 #include <linux/random.h>
 #include <linux/ktime.h>
 
-#define LIST_SIZE  (10000)
+#define LIST_SIZE  (64 * 1000)
 
 struct ll_node {
     u32 key;
@@ -31,8 +31,8 @@ static struct ll_node *ll_lookup(u32 key)
 {
     struct ll_node *cur = head;
     while (cur) {
-        if (cur->key == key)
-            return cur;
+        // if (cur->key == key)
+        //     return cur;
         cur = cur->next;
     }
     return NULL;
@@ -89,11 +89,11 @@ static void benchmark(void)
 
     /* lookup test: 1K random accesses */
     t_start = now_ns();
-    // for (i = 0; i < LIST_SIZE; i++) {
-    ll_lookup(11111);
-    // }
+    for (i = 0; i < 100; i++) {
+        ll_lookup(11111);
+    }
     t_end = now_ns();
-    latency = t_end - t_start;
+    latency = (t_end - t_start)/100;
 
     pr_info("llbench: lookup: %llu ns\n", latency);
 

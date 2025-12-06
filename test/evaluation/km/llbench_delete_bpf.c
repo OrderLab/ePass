@@ -26,6 +26,15 @@ static __always_inline char *init_heap(long size) {
   return head;
 }
 
+static __u64 gettop() {
+  __u32 i = 0;
+  __u32 *head = bpf_map_lookup_elem(&meta, &i);
+  if (head == 0) {
+    return 0;
+  }
+  return *head * META_BLOCK_SIZE;
+}
+
 static __noinline __u64 malloc(__u32 size) {
   __u32 i = 0;
   // long rv = 0;
@@ -89,7 +98,17 @@ static __noinline void free(__u32 idx) {
     }
     *cur_pos = 0;
   }
-  return;
+  // for (int i = 0; i < 2; i++) {
+  //   if (i >= blocks) {
+  //     return;
+  //   }
+  //   __u32 cur_idx = block_idx + i;
+  //   __u32 *cur_pos = bpf_map_lookup_elem(&meta, &cur_idx);
+  //   if (cur_pos == 0) {
+  //     return;
+  //   }
+  //   *cur_pos = 0;
+  // }
 }
 
 struct test_struct {
@@ -98,78 +117,25 @@ struct test_struct {
 };
 
 SEC("tracepoint/syscalls/sys_enter_mount")
-int init_ll(void *ctx) {
+int delete_ll(void *ctx) {
   char *data_ptr = init_heap(HEAP_SIZE);
   if (data_ptr == NULL) {
     return 0;
-  }
+  } // Lookup
+  __u64 top = gettop();
+  __u64 curr = top - META_BLOCK_SIZE;
 
-  // Insert test
-  __u64 head = malloc(sizeof(struct test_struct));
-  if(head != 0){
-    __u64 bb = head - META_BLOCK_SIZE;
-    if (head > HEAP_SIZE - 100) {
+  long starttime = bpf_ktime_get_ns();
+  for (int i = 0; i < 2000; ++i) {
+    if (curr > HEAP_SIZE - 100) {
       return 0;
     }
-    struct test_struct *ts = (struct test_struct *)(data_ptr + head);
-    ts->next = bb;
-    ts->a = 0;    
+    struct test_struct *ts = (struct test_struct *)(data_ptr + curr);
+    free(curr);
+    curr = ts->next;
   }
-  long starttime = bpf_ktime_get_ns();
-  for (int i = 0; i < 4000; ++i) {
-    __u64 bb = malloc(sizeof(struct test_struct));
-    if (bb > HEAP_SIZE - 100) {
-      break;
-    }
-    struct test_struct *ts = (struct test_struct *)(data_ptr + bb);
-    ts->a = i + 1;
-    ts->next = head;
-    head = bb;
-  }
-
   long endtime = bpf_ktime_get_ns();
-  bpf_printk("insert: %ld\n", endtime - starttime);
-  bpf_printk("head: %u\n", head);
-
-  // Lookup
-
-  // __u64 curr = head;
-  // // long iter = 0;
-  // starttime = bpf_ktime_get_ns();
-  // for (int i = 0; i < 1024; ++i) {
-  // // bpf_printk("curr: %u\n", curr);
-  //   if (curr > HEAP_SIZE - 100) {
-  //     break;
-  //   }
-  //   struct test_struct *ts = (struct test_struct *)(data_ptr + curr);
-  //   if (ts->a == 11111) {
-  //     // NOT POSSIBLE
-  //     return 0;
-  //   }
-  //   curr = ts->next;
-  // // bpf_printk("value: %d\n", ts->a);
-  //   // iter++;
-  // }
-  // bpf_printk("last curr: %llu\n", curr);
-  // endtime = bpf_ktime_get_ns();
-  // bpf_printk("lookup: %ld\n", endtime - starttime);
-
-  // Delete
-
-  // curr = head;
-  // long iter = 0;
-  // starttime = bpf_ktime_get_ns();
-  // for (int i = 0; i < 1024; ++i) {
-  //   if (curr > HEAP_SIZE - 100) {
-  //     break;
-  //   }
-  //   struct test_struct *ts = (struct test_struct *)(data_ptr + curr);
-  //   head = ts->next;
-  //   free(curr);
-  //   curr = head;
-  // }
-  // endtime = bpf_ktime_get_ns();
-  // bpf_printk("tottime3: %ld\n", endtime - starttime);
+  bpf_printk("delete: %ld\n", endtime - starttime);
   // bpf_printk("last curr: %llu\n", curr);
 
   return 0;

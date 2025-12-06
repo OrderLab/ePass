@@ -12,12 +12,15 @@ init_ll.o: llbench_bpf.c
 lookup_ll.o: llbench_lookup_bpf.c
 	clang -O2 -I/usr/include/$(shell uname -m)-linux-gnu -target bpf -g -c $< -o lookup_ll.o
 
+delete_ll.o: llbench_delete_bpf.c
+	clang -O2 -I/usr/include/$(shell uname -m)-linux-gnu -target bpf -g -c $< -o delete_ll.o
+
 cleanobj:
-	rm -f init_ll.o lookup_ll.o
+	rm -f init_ll.o lookup_ll.o delete_ll.o
 	sudo rm -f /sys/fs/bpf/llbench
 
-autoattach: cleanobj init_ll.o lookup_ll.o
-	sudo bpftool prog load init_ll.o /sys/fs/bpf/llbench autoattach
+autoattach: cleanobj init_ll.o lookup_ll.o delete_ll.o
+	sudo bpftool prog load lookup_ll.o /sys/fs/bpf/llbench autoattach
 
 clean:
 	$(MAKE) -C $(KDIR) M=$(PWD) clean
