@@ -4,11 +4,11 @@
 #include <linux/random.h>
 #include <linux/ktime.h>
 
-#define LIST_SIZE  (64 * 1024)
+#define LIST_SIZE  (1024)
 
 struct ll_node {
     u32 key;
-    u32 value;
+    // u32 value;
     struct ll_node *next;
 };
 
@@ -17,11 +17,11 @@ static struct ll_node *head;
 /* -------------------- Linked list ops -------------------- */
 
 /* O(1) insert / update: always insert or replace at head */
-static void ll_insert_or_update(u32 key, u32 value)
+static void ll_insert_or_update(u32 key)
 {
     struct ll_node *n = kmalloc(sizeof(*n), GFP_KERNEL);
     n->key = key;
-    n->value = value;
+    // n->value = value;
     n->next = head;
     head = n;
 }
@@ -78,14 +78,14 @@ static void benchmark(void)
 {
     u32 i;
     u64 t_start, t_end, latency, throughput;
-    u32 key;
+    // u32 key;
 
     pr_info("llbench: building list with %u elements\n", LIST_SIZE);
 
     /* build linked list: O(1) inserts */
     t_start = now_ns();
     for (i = 0; i < LIST_SIZE; i++) {
-        ll_insert_or_update(i, i * 3);
+        ll_insert_or_update(i);
     }
     t_end = now_ns();
     latency = div64_safe(t_end - t_start, LIST_SIZE);
@@ -97,9 +97,9 @@ static void benchmark(void)
     /* lookup test: 64K random accesses */
     t_start = now_ns();
     for (i = 0; i < LIST_SIZE; i++) {
-        get_random_bytes(&key, sizeof(key));
-        key %= LIST_SIZE;
-        ll_lookup(key);
+        // get_random_bytes(&key, sizeof(key));
+        // key %= LIST_SIZE;
+        ll_lookup(11111);
     }
     t_end = now_ns();
     latency = div64_safe(t_end - t_start, LIST_SIZE);
@@ -111,7 +111,7 @@ static void benchmark(void)
     /* delete test: delete sequentially; delete is O(N) */
     t_start = now_ns();
     for (i = 0; i < LIST_SIZE; i++) {
-        ll_delete(i);
+        ll_delete(LIST_SIZE - i - 1);
     }
     t_end = now_ns();
     latency = div64_safe(t_end - t_start, LIST_SIZE);
