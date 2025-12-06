@@ -2,8 +2,8 @@
 #include <bpf/bpf_helpers.h>
 #include <linux/bpf.h>
 
-#define META_SIZE 4096
-#define META_BLOCK_SIZE 128
+#define META_SIZE 40960
+#define META_BLOCK_SIZE 32
 #define HEAP_SIZE ((META_SIZE + 1) * META_BLOCK_SIZE)
 
 struct {
@@ -26,7 +26,7 @@ static __always_inline char *init_heap(long size) {
   return head;
 }
 
-static __noinline __u32 malloc(__u32 size) {
+static __noinline __u64 malloc(__u32 size) {
   __u32 i = 0;
   // long rv = 0;
   __u32 *head = bpf_map_lookup_elem(&meta, &i);
@@ -75,19 +75,15 @@ static __noinline __u32 malloc(__u32 size) {
   return (rid - 1) * META_BLOCK_SIZE;
 }
 
-static __always_inline void free(__u32 idx) {
+static __noinline void free(__u32 idx) {
   __u32 block_idx = idx / META_BLOCK_SIZE + 1;
   __u32 *meta_pos = bpf_map_lookup_elem(&meta, &block_idx);
   if (meta_pos == 0) {
     return;
   }
   __u32 blocks = *meta_pos;
-  if (blocks > META_SIZE) {
-    return;
-  }
-  for (int i = 0; i < blocks; i++) {
-    __u32 cur_idx = block_idx + i;
-    __u32 *cur_pos = bpf_map_lookup_elem(&meta, &cur_idx);
+  if (blocks >= 1) {
+    __u32 *cur_pos = bpf_map_lookup_elem(&meta, &block_idx);
     if (cur_pos == 0) {
       return;
     }
@@ -97,8 +93,8 @@ static __always_inline void free(__u32 idx) {
 }
 
 struct test_struct {
-  int a;
-  __u32 next;
+  __u64 a;
+  __u64 next;
 };
 
 SEC("tracepoint/syscalls/sys_enter_mount")
@@ -109,10 +105,19 @@ int init_ll(void *ctx) {
   }
 
   // Insert test
-  __u32 head = malloc(sizeof(struct test_struct));
+  __u64 head = malloc(sizeof(struct test_struct));
+  if(head != 0){
+    __u64 bb = head - META_BLOCK_SIZE;
+    if (head > HEAP_SIZE - 100) {
+      return 0;
+    }
+    struct test_struct *ts = (struct test_struct *)(data_ptr + head);
+    ts->next = bb;
+    ts->a = 0;    
+  }
   long starttime = bpf_ktime_get_ns();
-  for (int i = 0; i < 1024; ++i) {
-    __u32 bb = malloc(sizeof(struct test_struct));
+  for (int i = 0; i < 4000; ++i) {
+    __u64 bb = malloc(sizeof(struct test_struct));
     if (bb > HEAP_SIZE - 100) {
       break;
     }
@@ -124,35 +129,35 @@ int init_ll(void *ctx) {
 
   long endtime = bpf_ktime_get_ns();
   bpf_printk("insert: %ld\n", endtime - starttime);
-  // bpf_printk("head: %u\n", head);
+  bpf_printk("head: %u\n", head);
 
   // Lookup
 
-  long curr = head;
-  // long iter = 0;
-  starttime = bpf_ktime_get_ns();
-  for (int i = 0; i < 1024; ++i) {
-  // bpf_printk("curr: %u\n", curr);
-    if (curr > HEAP_SIZE - 100) {
-      break;
-    }
-    struct test_struct *ts = (struct test_struct *)(data_ptr + curr);
-    if (ts->a == 11111) {
-      // NOT POSSIBLE
-      return 0;
-    }
-    curr = ts->next;
-  // bpf_printk("value: %d\n", ts->a);
-    // iter++;
-  }
-  bpf_printk("last curr: %u\n", curr);
-  endtime = bpf_ktime_get_ns();
-  bpf_printk("lookup: %ld\n", endtime - starttime);
+  // __u64 curr = head;
+  // // long iter = 0;
+  // starttime = bpf_ktime_get_ns();
+  // for (int i = 0; i < 1024; ++i) {
+  // // bpf_printk("curr: %u\n", curr);
+  //   if (curr > HEAP_SIZE - 100) {
+  //     break;
+  //   }
+  //   struct test_struct *ts = (struct test_struct *)(data_ptr + curr);
+  //   if (ts->a == 11111) {
+  //     // NOT POSSIBLE
+  //     return 0;
+  //   }
+  //   curr = ts->next;
+  // // bpf_printk("value: %d\n", ts->a);
+  //   // iter++;
+  // }
+  // bpf_printk("last curr: %llu\n", curr);
+  // endtime = bpf_ktime_get_ns();
+  // bpf_printk("lookup: %ld\n", endtime - starttime);
 
   // Delete
 
   // curr = head;
-  // // long iter = 0;
+  // long iter = 0;
   // starttime = bpf_ktime_get_ns();
   // for (int i = 0; i < 1024; ++i) {
   //   if (curr > HEAP_SIZE - 100) {
@@ -165,7 +170,7 @@ int init_ll(void *ctx) {
   // }
   // endtime = bpf_ktime_get_ns();
   // bpf_printk("tottime3: %ld\n", endtime - starttime);
-  // bpf_printk("last curr: %u\n", curr);
+  // bpf_printk("last curr: %llu\n", curr);
 
   return 0;
 }

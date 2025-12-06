@@ -113,8 +113,9 @@ int main() {
   /* Optional: run program briefly */
   sleep(1);
   testcall();
+  testcall();
+  testcall();
   sleep(1);
-//   return 0;
 
   /* Step 3: Detach first program */
   bpf_link__destroy(link1);

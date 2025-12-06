@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define NUM_ELEMENTS 1024
+#define NUM_ELEMENTS 10240
 
 typedef struct Node {
     int value;
@@ -38,16 +38,20 @@ Node* find(Node *head, int target) {
 }
 
 int main() {
+    struct timespec start, end;
+    clock_gettime(CLOCK_MONOTONIC, &start);
     Node *head = create_list(NUM_ELEMENTS);
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    long long elapsed_ns = (end.tv_sec - start.tv_sec) * 1000000000LL + (end.tv_nsec - start.tv_nsec);
 
+    printf("Build time: %lld ns\n", elapsed_ns);
     int target = 512123;
 
-    struct timespec start, end;
     clock_gettime(CLOCK_MONOTONIC, &start);
     Node *found = find(head, target);
     clock_gettime(CLOCK_MONOTONIC, &end);
 
-    long long elapsed_ns = (end.tv_sec - start.tv_sec) * 1000000000LL + (end.tv_nsec - start.tv_nsec);
+    elapsed_ns = (end.tv_sec - start.tv_sec) * 1000000000LL + (end.tv_nsec - start.tv_nsec);
 
     if (found) {
         printf("Found value %d\n", found->value);

@@ -4,7 +4,7 @@
 #include <linux/random.h>
 #include <linux/ktime.h>
 
-#define LIST_SIZE  (1024)
+#define LIST_SIZE  (10000)
 
 struct ll_node {
     u32 key;
@@ -39,9 +39,10 @@ static struct ll_node *ll_lookup(u32 key)
 }
 
 /* O(N) delete */
-static bool ll_delete(u32 key)
+static bool ll_delete(void)
 {
     struct ll_node *cur = head;
+    u32 key = head->key;
     struct ll_node *prev = NULL;
 
     while (cur) {
@@ -66,18 +67,12 @@ static u64 now_ns(void)
     return ktime_get_ns();
 }
 
-/* safe integer division for throughput */
-static u64 div64_safe(u64 a, u64 b)
-{
-    return b ? div64_u64(a, b) : 0;
-}
-
 /* -------------------- Benchmark -------------------- */
 
 static void benchmark(void)
 {
     u32 i;
-    u64 t_start, t_end, latency, throughput;
+    u64 t_start, t_end, latency;
     // u32 key;
 
     pr_info("llbench: building list with %u elements\n", LIST_SIZE);
@@ -88,37 +83,29 @@ static void benchmark(void)
         ll_insert_or_update(i);
     }
     t_end = now_ns();
-    latency = div64_safe(t_end - t_start, LIST_SIZE);
-    throughput = div64_safe((u64)LIST_SIZE * 1000000000ULL, (t_end - t_start));
+    latency = t_end - t_start;
 
-    pr_info("llbench: insert/update: avg = %llu ns, throughput = %llu ops/s\n",
-            latency, throughput);
+    pr_info("llbench: insert/update: %llu ns\n", latency);
 
-    /* lookup test: 64K random accesses */
+    /* lookup test: 1K random accesses */
     t_start = now_ns();
-    for (i = 0; i < LIST_SIZE; i++) {
-        // get_random_bytes(&key, sizeof(key));
-        // key %= LIST_SIZE;
-        ll_lookup(11111);
-    }
+    // for (i = 0; i < LIST_SIZE; i++) {
+    ll_lookup(11111);
+    // }
     t_end = now_ns();
-    latency = div64_safe(t_end - t_start, LIST_SIZE);
-    throughput = div64_safe((u64)LIST_SIZE * 1000000000ULL, (t_end - t_start));
+    latency = t_end - t_start;
 
-    pr_info("llbench: lookup: avg = %llu ns, throughput = %llu ops/s\n",
-            latency, throughput);
+    pr_info("llbench: lookup: %llu ns\n", latency);
 
     /* delete test: delete sequentially; delete is O(N) */
     t_start = now_ns();
     for (i = 0; i < LIST_SIZE; i++) {
-        ll_delete(LIST_SIZE - i - 1);
+        ll_delete();
     }
     t_end = now_ns();
-    latency = div64_safe(t_end - t_start, LIST_SIZE);
-    throughput = div64_safe((u64)LIST_SIZE * 1000000000ULL, (t_end - t_start));
+    latency = t_end - t_start;
 
-    pr_info("llbench: delete: avg = %llu ns, throughput = %llu ops/s\n",
-            latency, throughput);
+    pr_info("llbench: delete: %llu ns\n", latency);
 }
 
 /* -------------------- Module init/exit -------------------- */
@@ -145,5 +132,4 @@ module_init(llbench_init);
 module_exit(llbench_exit);
 
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("ChatGPT");
 MODULE_DESCRIPTION("Linked list latency/throughput benchmark");
