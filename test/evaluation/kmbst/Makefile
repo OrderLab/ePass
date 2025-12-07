@@ -1,4 +1,11 @@
+obj-m += bstkm.o
 
+KDIR ?= /lib/modules/$(shell uname -r)/build
+PWD := $(shell pwd)
+
+all:
+	$(MAKE) -C $(KDIR) M=$(PWD) modules
+	
 bst.o: bst_bpf.c
 	clang -O2 -I/usr/include/$(shell uname -m)-linux-gnu -target bpf -g -c $< -o bst.o
 

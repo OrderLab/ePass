@@ -1,3 +1,5 @@
+#include <stdio.h>
+#include <stdlib.h>
 #define _GNU_SOURCE
 // #include <errno.h>
 // #include <stdio.h>
@@ -25,18 +27,46 @@ void delete(int key) {
   mount(source, target, fstype, generate_flags(2, key), data);
 }
 
+static inline unsigned int lcg_next(unsigned int *state) {
+    *state = (*state * 1664525 + 1013904223);
+    return *state;
+}
+
+static inline unsigned int rand_range(unsigned int *state, unsigned int max) {
+    return lcg_next(state) % max;
+}
+
+void shuffle(int *arr, int n, unsigned int seed) {
+    unsigned int state = seed;
+    for (int i = n - 1; i > 0; i--) {
+        int j = rand_range(&state, i + 1);
+        int tmp = arr[i];
+        arr[i] = arr[j];
+        arr[j] = tmp;
+    }
+}
+
 int main() {
-
-  for (int i = 1; i <= 10; i++) {
-    insert(i);
+  int num = 64 * 1024;
+  int *arr = malloc(num * sizeof(int));
+  for(int i = 0; i < num; i++) {
+    arr[i] = i + 1;
   }
-  // for (int i = 1; i <= 10; i++) {
-    // search(6);
-  // }
-  
-  search(6);
-  delete(6);
-  search(6);
+  shuffle(arr, num, 114514);
 
+  for(int i = 0; i < num; i++) {
+    insert(arr[i]);
+  }
+
+
+  for(int i = 0; i < num; i++) {
+    search(arr[i]);
+  }
+
+  for(int i = 0; i < num; i++) {
+    delete(arr[i]);
+  }
+
+  free(arr);
   return 0;
 }
