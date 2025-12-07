@@ -131,47 +131,6 @@ int init_ll(void *ctx) {
   bpf_printk("insert: %ld\n", endtime - starttime);
   bpf_printk("head: %u\n", head);
 
-  // Lookup
-
-  // __u64 curr = head;
-  // // long iter = 0;
-  // starttime = bpf_ktime_get_ns();
-  // for (int i = 0; i < 1024; ++i) {
-  // // bpf_printk("curr: %u\n", curr);
-  //   if (curr > HEAP_SIZE - 100) {
-  //     break;
-  //   }
-  //   struct test_struct *ts = (struct test_struct *)(data_ptr + curr);
-  //   if (ts->a == 11111) {
-  //     // NOT POSSIBLE
-  //     return 0;
-  //   }
-  //   curr = ts->next;
-  // // bpf_printk("value: %d\n", ts->a);
-  //   // iter++;
-  // }
-  // bpf_printk("last curr: %llu\n", curr);
-  // endtime = bpf_ktime_get_ns();
-  // bpf_printk("lookup: %ld\n", endtime - starttime);
-
-  // Delete
-
-  // curr = head;
-  // long iter = 0;
-  // starttime = bpf_ktime_get_ns();
-  // for (int i = 0; i < 1024; ++i) {
-  //   if (curr > HEAP_SIZE - 100) {
-  //     break;
-  //   }
-  //   struct test_struct *ts = (struct test_struct *)(data_ptr + curr);
-  //   head = ts->next;
-  //   free(curr);
-  //   curr = head;
-  // }
-  // endtime = bpf_ktime_get_ns();
-  // bpf_printk("tottime3: %ld\n", endtime - starttime);
-  // bpf_printk("last curr: %llu\n", curr);
-
   return 0;
 }
 
