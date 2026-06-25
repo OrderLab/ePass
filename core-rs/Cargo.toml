@@ -1,0 +1,11 @@
+[workspace]
+resolver = "2"
+members = ["epass-ir", "epasstool"]
+
+[workspace.package]
+version = "0.2.0"
+edition = "2021"
+license = "GPL-2.0-only"
+
+[profile.release]
+opt-level = 3

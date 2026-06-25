@@ -1,0 +1,13 @@
+[package]
+name = "epass-ir"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "ePass: an SSA-based intermediate representation and compiler framework for eBPF programs (userspace)."
+
+[dependencies]
+indexmap = "2"
+smallvec = "1"
+thiserror = "2"
+
+[dev-dependencies]
