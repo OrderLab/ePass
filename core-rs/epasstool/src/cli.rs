@@ -1,6 +1,6 @@
 //! Command-line parsing, mirroring the original C tool's interface.
 
-use epass_ir::{Opts, PrintMode};
+use epass_ir::Opts;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Mode {
@@ -57,32 +57,6 @@ Global options (--gopt):\n\
     );
 }
 
-/// Parse global options ("--gopt") of the form `key` or `key=value`,
-/// comma-separated.
-fn apply_gopt(opts: &mut Opts, gopt: &str) -> Result<(), CliError> {
-    for tok in gopt.split(',').map(str::trim).filter(|s| !s.is_empty()) {
-        let (key, val) = match tok.split_once('=') {
-            Some((k, v)) => (k, Some(v)),
-            None => (tok, None),
-        };
-        match key {
-            "verbose" => {
-                let v = val
-                    .and_then(|v| v.parse::<i32>().ok())
-                    .ok_or_else(|| CliError::Message("verbose requires an integer".into()))?;
-                opts.verbose = v;
-            }
-            "disable_coalesce" => opts.disable_coalesce = true,
-            "print_bpf" => opts.print_mode = PrintMode::Bpf,
-            "print_dump" => opts.print_mode = PrintMode::Dump,
-            "print_detail" => opts.print_mode = PrintMode::Detail,
-            "no_prog_check" => opts.disable_prog_check = true,
-            other => return Err(CliError::Message(format!("unknown global option '{other}'"))),
-        }
-    }
-    Ok(())
-}
-
 pub fn parse<I: Iterator<Item = String>>(mut args: I) -> Result<UserOpts, CliError> {
     let cmd = args.next().ok_or(CliError::Usage)?;
     let mode = match cmd.as_str() {
@@ -134,6 +108,6 @@ pub fn parse<I: Iterator<Item = String>>(mut args: I) -> Result<UserOpts, CliErr
     }
 
     let gopt = uo.gopt.clone();
-    apply_gopt(&mut uo.opts, &gopt)?;
+    uo.opts.apply_gopt(&gopt).map_err(CliError::Message)?;
     Ok(uo)
 }

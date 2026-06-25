@@ -15,6 +15,7 @@ pub mod cg;
 pub mod check;
 pub mod env;
 pub mod error;
+pub mod ffi;
 pub mod helpers;
 pub mod ir;
 pub mod lift;

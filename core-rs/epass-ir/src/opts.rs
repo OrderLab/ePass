@@ -43,3 +43,33 @@ impl Default for Opts {
         }
     }
 }
+
+impl Opts {
+    /// Apply a comma-separated global-option string (`key` or `key=value`),
+    /// e.g. `"verbose=2,disable_coalesce"`. Unknown keys return an error string.
+    pub fn apply_gopt(&mut self, gopt: &str) -> Result<(), String> {
+        for tok in gopt.split(',').map(str::trim).filter(|s| !s.is_empty()) {
+            let (key, val) = match tok.split_once('=') {
+                Some((k, v)) => (k, Some(v)),
+                None => (tok, None),
+            };
+            match key {
+                "verbose" => {
+                    self.verbose = val
+                        .and_then(|v| v.parse::<i32>().ok())
+                        .ok_or_else(|| "verbose requires an integer".to_string())?;
+                }
+                "disable_coalesce" => self.disable_coalesce = true,
+                "print_bpf" => self.print_mode = PrintMode::Bpf,
+                "print_dump" => self.print_mode = PrintMode::Dump,
+                "print_detail" => self.print_mode = PrintMode::Detail,
+                "print_bpf_detail" => self.print_mode = PrintMode::BpfDetail,
+                "no_prog_check" => self.disable_prog_check = true,
+                "printonly" => self.print_only = true,
+                "dotgraph" => self.dotgraph = true,
+                other => return Err(format!("unknown global option '{other}'")),
+            }
+        }
+        Ok(())
+    }
+}
