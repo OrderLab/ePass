@@ -19,7 +19,7 @@ int entry_prog(void *ctx)
 	__u32 index = 1;
 
 	// int a[5] = { 1, 2, 3, 4, 5 };
-    volatile int a = 100;
+	volatile int a = 100;
 	bpf_printk("p1 %p\n", &a);
 
 	// Tail call to index 1
@@ -33,7 +33,7 @@ int entry_prog(void *ctx)
 SEC("tracepoint/syscalls/sys_enter_mount")
 int next_prog(void *ctx)
 {
-    volatile int a;
+	volatile int a;
 	bpf_printk("p2 %p\n", &a);
 	bpf_printk("p2 %d\n", a);
 	return XDP_PASS;
