@@ -382,8 +382,22 @@ fn emit_insn(
             // Lowered earlier in a full pipeline; emit exit as a safe fallback.
             out.push(Emitted::simple(BpfInsn::new(bc::class::JMP | bc::op::EXIT, 0, 0, 0, 0)));
         }
-        InsnKind::Store | InsnKind::Load | InsnKind::GetElemPtr => {
-            return Err(internal!("typed memory op survived to emission"));
+        InsnKind::Store => {
+            // store <alloc>, <val>  ==>  assign val into the alloc's position.
+            let alloc_pos = match insn.values[0] {
+                Value::FlattenDst(p) | Value::VrPos(p) => p,
+                _ => return Err(internal!("store target is not an allocated slot")),
+            };
+            let src = loc_of(insn.values[1]);
+            emit_assign(out, alloc_pos, src)?;
+        }
+        InsnKind::Load => {
+            // %x = load <alloc>  ==>  assign the alloc's position into %x.
+            let src = loc_of(insn.values[0]);
+            emit_assign(out, dpos, src)?;
+        }
+        InsnKind::GetElemPtr => {
+            return Err(internal!("getelemptr survived to emission (unsupported)"));
         }
         InsnKind::Phi => return Err(internal!("phi survived to emission")),
         InsnKind::Reg { .. } | InsnKind::FunctionArg { .. } => {}

@@ -97,8 +97,12 @@ impl CgState {
 pub fn compile(env: &mut Env, func: &mut Function) -> Result<()> {
     let timer = Timer::start();
 
-    // CG-prep passes (ecall/throw lowering, optimization) are applied by the
-    // pipeline before `compile`; here we run the allocation-specific prep.
+    // Code-generation prep. In the C implementation these run as a fixed
+    // `cg_init_passes` list; the optimizer is always enabled here.
+    crate::passes::optimization::optimize_ir(env, func)?;
+    crate::pass::postprocess(env, func)?;
+    log_ir(env, func, "after optimize_ir");
+
     let mut cg = prepare::init_cg(env, func)?;
 
     prepare::change_call(env, func, &mut cg)?;
