@@ -4,9 +4,6 @@
 [submodule "third-party/ePass-falcolib"]
 	path = third-party/ePass-falcolib
 	url = git@github.com:OrderLab/ePass-falcolib.git
-[submodule "ePass-kernel"]
-	path = ePass-kernel
-	url = git@github.com:OrderLab/ePass-kernel.git
 [submodule "third-party/ePass-libbpf"]
 	path = third-party/ePass-libbpf
 	url = git@github.com:OrderLab/ePass-libbpf.git
