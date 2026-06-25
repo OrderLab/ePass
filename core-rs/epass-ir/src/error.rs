@@ -25,10 +25,6 @@ pub enum Error {
     /// Register allocation could not find a valid assignment.
     #[error("register allocation failed: {0}")]
     RegAlloc(String),
-
-    /// The program exceeds a configured limit.
-    #[error("limit exceeded: {0}")]
-    LimitExceeded(String),
 }
 
 impl Error {
@@ -36,7 +32,7 @@ impl Error {
     pub fn errno(&self) -> i32 {
         match self {
             Error::Unsupported(_) | Error::Internal(_) | Error::RegAlloc(_) => -38, // -ENOSYS
-            Error::InvalidProgram(_) | Error::LimitExceeded(_) => -22,              // -EINVAL
+            Error::InvalidProgram(_) => -22,                                        // -EINVAL
         }
     }
 }

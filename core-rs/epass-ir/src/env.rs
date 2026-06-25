@@ -27,9 +27,6 @@ pub struct Env {
     pub lift_time_ns: u128,
     pub run_time_ns: u128,
     pub cg_time_ns: u128,
-
-    /// Verifier error code, if ePass is invoked alongside the verifier (-1 = none).
-    pub verifier_err: i32,
 }
 
 impl Env {
@@ -41,7 +38,6 @@ impl Env {
             lift_time_ns: 0,
             run_time_ns: 0,
             cg_time_ns: 0,
-            verifier_err: -1,
         }
     }
 

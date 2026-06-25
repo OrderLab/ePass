@@ -49,7 +49,6 @@ Options:\n\
 \x20 -o <arg>           Write the modified program to a file\n\n\
 Global options (--gopt):\n\
 \x20 verbose=<n>        Set verbosity level\n\
-\x20 force              Run ePass even if unnecessary\n\
 \x20 disable_coalesce   Disable register coalescing\n\
 \x20 print_bpf          Print disassembled BPF (default)\n\
 \x20 print_dump         Print packed u64 dump\n\
@@ -73,7 +72,6 @@ fn apply_gopt(opts: &mut Opts, gopt: &str) -> Result<(), CliError> {
                     .ok_or_else(|| CliError::Message("verbose requires an integer".into()))?;
                 opts.verbose = v;
             }
-            "force" => opts.force = true,
             "disable_coalesce" => opts.disable_coalesce = true,
             "print_bpf" => opts.print_mode = PrintMode::Bpf,
             "print_dump" => opts.print_mode = PrintMode::Dump,

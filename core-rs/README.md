@@ -58,7 +58,7 @@ epasstool read -F log -o out.txt prog.txt
 epasstool print --gopt print_dump prog.o
 ```
 
-Global options (`--gopt`, comma-separated): `verbose=<n>`, `force`,
+Global options (`--gopt`, comma-separated): `verbose=<n>`,
 `disable_coalesce`, `print_bpf`, `print_dump`, `print_detail`, `no_prog_check`.
 
 ## Using the library

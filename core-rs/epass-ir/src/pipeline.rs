@@ -12,11 +12,6 @@ use crate::{log_debug, log_info};
 /// writing the rewritten bytecode back into `env.insns`.
 pub fn autorun(env: &mut Env, passes: &PassManager) -> Result<()> {
     let len = env.insns.len();
-    if env.opts.max_insns > 0 && len as u32 > env.opts.max_insns {
-        return Err(crate::error::Error::LimitExceeded(format!(
-            "program too large ({len} instructions)"
-        )));
-    }
 
     if env.opts.print_only {
         return Ok(());
