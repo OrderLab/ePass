@@ -5,42 +5,46 @@
 use crate::env::{Env, LogLevel, Timer};
 use crate::error::Result;
 use crate::ir::Function;
-use crate::{cfg, check, log_debug};
+use crate::{cfg, check, internal, invalid, log_debug};
+use indexmap::IndexMap;
 
 /// A transformation or analysis over a function.
 pub trait Pass {
-    /// A short, stable name (used for logging and per-run enable/disable).
+    /// A short, stable name (used for logging and pass options).
     fn name(&self) -> &str;
+
+    /// Whether this pass runs when absent from `--popt`.
+    fn enabled_by_default(&self) -> bool {
+        false
+    }
+
+    /// Whether the pass can be disabled with `!pass_name`.
+    fn allow_disable(&self) -> bool {
+        true
+    }
+
+    /// Initialize/configure this pass from its pass-option argument.
+    ///
+    /// Called once while building the pass manager, before ordering and before
+    /// any IR mutation. Most passes take no options and inherit this default.
+    fn init(&mut self, arg: Option<&str>) -> Result<()> {
+        if arg.is_some() {
+            return Err(invalid!("pass '{}' takes no options", self.name()));
+        }
+        Ok(())
+    }
+
+    /// Adjust this pass's position in the pass list.
+    ///
+    /// The pass manager verifies that the returned list only inserted, removed,
+    /// or moved entries with this pass's own name. Other passes' relative order
+    /// and multiplicity must remain unchanged.
+    fn register_pass(&self, order: Vec<String>) -> Result<Vec<String>> {
+        Ok(order)
+    }
 
     /// Run the pass. Mutating the function is allowed.
     fn run(&self, env: &mut Env, func: &mut Function) -> Result<()>;
-}
-
-/// Allow plain closures to be used as passes.
-pub struct FnPass<F> {
-    name: &'static str,
-    f: F,
-}
-
-impl<F> FnPass<F>
-where
-    F: Fn(&mut Env, &mut Function) -> Result<()>,
-{
-    pub fn new(name: &'static str, f: F) -> Self {
-        FnPass { name, f }
-    }
-}
-
-impl<F> Pass for FnPass<F>
-where
-    F: Fn(&mut Env, &mut Function) -> Result<()>,
-{
-    fn name(&self) -> &str {
-        self.name
-    }
-    fn run(&self, env: &mut Env, func: &mut Function) -> Result<()> {
-        (self.f)(env, func)
-    }
 }
 
 /// Recompute CFG metadata and validate the IR after a pass mutated it.
@@ -146,17 +150,119 @@ fn prune_phi_inputs(func: &mut Function) {
     }
 }
 
+/// Parsed pass-option entry.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ParsedPassOpt {
+    name: String,
+    disabled: bool,
+    arg: Option<String>,
+}
+
 /// Runs an ordered list of passes.
 #[derive(Default)]
 pub struct PassManager {
-    pub pre: Vec<Box<dyn Pass>>,
-    pub custom: Vec<Box<dyn Pass>>,
-    pub post: Vec<Box<dyn Pass>>,
+    passes: IndexMap<String, Box<dyn Pass>>,
+    order: Vec<String>,
 }
 
 impl PassManager {
     pub fn new() -> Self {
         PassManager::default()
+    }
+
+    /// Build a pass manager from available pass objects and a `--popt` string.
+    pub fn from_passes(mut passes: Vec<Box<dyn Pass>>, popt: &str) -> Result<Self> {
+        let mut map: IndexMap<String, Box<dyn Pass>> = IndexMap::new();
+        for pass in passes.drain(..) {
+            let name = pass.name().to_string();
+            if map.contains_key(&name) {
+                return Err(invalid!("duplicate pass registration '{name}'"));
+            }
+            map.insert(name, pass);
+        }
+
+        let parsed = parse_popt(popt)?;
+        let mut enabled: IndexMap<String, bool> = map
+            .iter()
+            .map(|(name, pass)| (name.clone(), pass.enabled_by_default()))
+            .collect();
+        let mut args: IndexMap<String, Option<String>> = map.keys().map(|name| (name.clone(), None)).collect();
+        let mut explicit: IndexMap<String, bool> = map.keys().map(|name| (name.clone(), false)).collect();
+
+        for opt in parsed {
+            let Some(pass) = map.get(opt.name.as_str()) else {
+                return Err(invalid!("unknown pass '{}'", opt.name));
+            };
+            if opt.disabled {
+                if opt.arg.is_some() {
+                    return Err(invalid!("disabled pass '{}' cannot have options", opt.name));
+                }
+                if !pass.allow_disable() {
+                    return Err(invalid!("pass '{}' cannot be disabled", opt.name));
+                }
+                enabled.insert(opt.name.clone(), false);
+                explicit.insert(opt.name, true);
+            } else {
+                enabled.insert(opt.name.clone(), true);
+                args.insert(opt.name.clone(), opt.arg);
+                explicit.insert(opt.name, true);
+            }
+        }
+
+        // Initialize enabled passes (default-enabled passes get None unless the
+        // user supplied an explicit option).
+        let keys: Vec<String> = map.keys().cloned().collect();
+        for name in &keys {
+            if *enabled.get(name).unwrap_or(&false) {
+                let arg = args.get(name).and_then(|x| x.as_deref());
+                map.get_mut(name).unwrap().init(arg)?;
+            }
+        }
+
+        let mut order: Vec<String> = keys
+            .iter()
+            .filter(|name| *enabled.get(*name).unwrap_or(&false))
+            .cloned()
+            .collect();
+
+        const MAX_ORDER_ITERS: usize = 32;
+        let enabled_names = order.clone();
+        let mut stable = false;
+        for _ in 0..MAX_ORDER_ITERS {
+            let before_iter = order.clone();
+            for name in &enabled_names {
+                if !order.iter().any(|n| n == name) {
+                    // The pass removed itself; don't ask it to order again.
+                    continue;
+                }
+                let pass = map.get(name).unwrap();
+                let old = order.clone();
+                let new = pass.register_pass(order)?;
+                verify_only_own_changes(pass.name(), &old, &new)?;
+                order = new;
+            }
+            if order == before_iter {
+                stable = true;
+                break;
+            }
+        }
+        if !stable {
+            return Err(internal!("pass registration order did not converge after {MAX_ORDER_ITERS} iterations"));
+        }
+
+        Ok(PassManager { passes: map, order })
+    }
+
+    /// Add a pass directly to this manager, enabled at the end of the current order.
+    /// Useful for tests or custom callers that construct their own pipeline.
+    pub fn add_pass(&mut self, pass: Box<dyn Pass>) -> Result<()> {
+        let name = pass.name().to_string();
+        if self.passes.contains_key(&name) {
+            return Err(invalid!("duplicate pass '{name}'"));
+        }
+        self.order.push(name.clone());
+        self.passes.insert(name, pass);
+        Ok(())
     }
 
     fn run_one(&self, env: &mut Env, func: &mut Function, pass: &dyn Pass) -> Result<()> {
@@ -170,19 +276,86 @@ impl PassManager {
         Ok(())
     }
 
-    /// Run pre, then custom, then post passes.
+    /// Run passes in the finalized order.
     pub fn run(&self, env: &mut Env, func: &mut Function) -> Result<()> {
         let timer = Timer::start();
-        for p in &self.pre {
-            self.run_one(env, func, p.as_ref())?;
-        }
-        for p in &self.custom {
-            self.run_one(env, func, p.as_ref())?;
-        }
-        for p in &self.post {
-            self.run_one(env, func, p.as_ref())?;
+        for name in &self.order {
+            let pass = self
+                .passes
+                .get(name.as_str())
+                .ok_or_else(|| internal!("pass order references unknown pass '{name}'"))?;
+            self.run_one(env, func, pass.as_ref())?;
         }
         env.run_time_ns += timer.elapsed_ns();
         Ok(())
     }
+}
+
+fn verify_only_own_changes(own: &str, old: &[String], new: &[String]) -> Result<()> {
+    let old_without: Vec<_> = old.iter().filter(|n| n.as_str() != own).cloned().collect();
+    let new_without: Vec<_> = new.iter().filter(|n| n.as_str() != own).cloned().collect();
+    if old_without != new_without {
+        return Err(internal!("pass '{own}' illegally modified other passes during registration"));
+    }
+    let own_count = new.iter().filter(|n| n.as_str() == own).count();
+    if own_count > 1 {
+        return Err(internal!("pass '{own}' duplicated itself; duplicate pass instances are not supported yet"));
+    }
+    Ok(())
+}
+
+fn parse_popt(popt: &str) -> Result<Vec<ParsedPassOpt>> {
+    let mut out = Vec::new();
+    for item in split_top_level_commas(popt)? {
+        let item = item.trim();
+        if item.is_empty() {
+            continue;
+        }
+        let (disabled, rest) = match item.strip_prefix('!') {
+            Some(r) => (true, r.trim()),
+            None => (false, item),
+        };
+        let (name, arg) = if let Some(open) = rest.find('(') {
+            if !rest.ends_with(')') {
+                return Err(invalid!("unterminated pass option parentheses in '{item}'"));
+            }
+            let name = rest[..open].trim();
+            let arg = rest[open + 1..rest.len() - 1].to_string();
+            (name, Some(arg))
+        } else {
+            (rest, None)
+        };
+        if name.is_empty() {
+            return Err(invalid!("empty pass name in '{item}'"));
+        }
+        out.push(ParsedPassOpt { name: name.to_string(), disabled, arg });
+    }
+    Ok(out)
+}
+
+fn split_top_level_commas(s: &str) -> Result<Vec<&str>> {
+    let mut parts = Vec::new();
+    let mut depth = 0i32;
+    let mut start = 0usize;
+    for (idx, ch) in s.char_indices() {
+        match ch {
+            '(' => depth += 1,
+            ')' => {
+                depth -= 1;
+                if depth < 0 {
+                    return Err(invalid!("unmatched ')' in pass options"));
+                }
+            }
+            ',' if depth == 0 => {
+                parts.push(&s[start..idx]);
+                start = idx + 1;
+            }
+            _ => {}
+        }
+    }
+    if depth != 0 {
+        return Err(invalid!("unterminated pass option parentheses"));
+    }
+    parts.push(&s[start..]);
+    Ok(parts)
 }

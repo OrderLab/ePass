@@ -6,15 +6,14 @@
 //! 2. `remove_unused_alloc` — erase `alloc`s that are only ever stored to
 //!    (never loaded), together with those stores.
 //!
-//! In the C pipeline this runs as a non-overridable code-generation prep pass;
-//! here it is exposed both as a [`Pass`] and as [`optimize_ir`] for the code
-//! generator to call directly.
+//! In the Rust pipeline this is a default pass ordered after phi cleanup and
+//! before code generation.
 
 use crate::env::Env;
 use crate::error::Result;
 use crate::ir::insn::InsnKind;
 use crate::ir::{Function, InsnId};
-use crate::pass::{FnPass, Pass};
+use crate::pass::Pass;
 
 /// Options controlling the optimizer (parsed from a pass-option string).
 #[derive(Debug, Clone, Copy, Default)]
@@ -26,10 +25,10 @@ pub struct OptimizeOpts {
 }
 
 impl OptimizeOpts {
-    /// Parse a space-separated option string (`"no_dead_elim noopt"`).
+    /// Parse a pass-option string (`"no_dead_elim,noopt"` or `"no_dead_elim noopt"`).
     pub fn parse(s: &str) -> Self {
         let mut o = OptimizeOpts::default();
-        for tok in s.split_whitespace() {
+        for tok in s.split(|c: char| c == ',' || c.is_whitespace()).filter(|t| !t.is_empty()) {
             match tok {
                 "no_dead_elim" => o.no_dead_elim = true,
                 "noopt" => o.no_opt = true,
@@ -122,7 +121,52 @@ pub fn optimize_ir(env: &mut Env, func: &mut Function) -> Result<()> {
     optimize_ir_opts(env, func, OptimizeOpts::default())
 }
 
+#[derive(Debug, Clone, Copy, Default)]
+pub struct OptimizeIrPass {
+    opts: OptimizeOpts,
+}
+
+impl Pass for OptimizeIrPass {
+    fn name(&self) -> &str {
+        "optimize_ir"
+    }
+
+    fn enabled_by_default(&self) -> bool {
+        true
+    }
+
+    fn allow_disable(&self) -> bool {
+        true
+    }
+
+    fn init(&mut self, arg: Option<&str>) -> Result<()> {
+        self.opts = arg.map(OptimizeOpts::parse).unwrap_or_default();
+        Ok(())
+    }
+
+    fn register_pass(&self, mut order: Vec<String>) -> Result<Vec<String>> {
+        let name = self.name();
+        if let Some(pos) = order.iter().position(|p| p == name) {
+            let own = order.remove(pos);
+            // The optimizer should run after phi cleanup, and after const_prop if
+            // phi was disabled in a custom build. Put it behind the latest known
+            // cleanup pass, otherwise keep it at the end.
+            let insert_after = order
+                .iter()
+                .rposition(|p| p == "phi" || p == "const_prop")
+                .map(|i| i + 1)
+                .unwrap_or(order.len());
+            order.insert(insert_after, own);
+        }
+        Ok(order)
+    }
+
+    fn run(&self, env: &mut Env, func: &mut Function) -> Result<()> {
+        optimize_ir_opts(env, func, self.opts)
+    }
+}
+
 /// Construct the pass object.
 pub fn pass() -> impl Pass {
-    FnPass::new("optimize_ir", optimize_ir)
+    OptimizeIrPass::default()
 }

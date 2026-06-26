@@ -10,7 +10,7 @@ use crate::error::Result;
 use crate::ir::insn::{BinOp, Cond, InsnKind};
 use crate::ir::value::{AluOp, BuiltinConst, ConstKind, Value};
 use crate::ir::{Function, InsnId};
-use crate::pass::{FnPass, Pass};
+use crate::pass::Pass;
 
 fn plain_const(v: Value) -> Option<(i64, AluOp)> {
     match v {
@@ -234,6 +234,40 @@ pub fn const_prop(_env: &mut Env, func: &mut Function) -> Result<()> {
     Ok(())
 }
 
+#[derive(Default)]
+pub struct ConstPropPass;
+
+impl Pass for ConstPropPass {
+    fn name(&self) -> &str {
+        "const_prop"
+    }
+
+    fn enabled_by_default(&self) -> bool {
+        true
+    }
+
+    fn allow_disable(&self) -> bool {
+        true
+    }
+
+    fn register_pass(&self, mut order: Vec<String>) -> Result<Vec<String>> {
+        let name = self.name();
+        if let Some(pos) = order.iter().position(|p| p == name) {
+            let own = order.remove(pos);
+            if let Some(phi_pos) = order.iter().position(|p| p == "phi") {
+                order.insert(phi_pos, own);
+            } else {
+                order.push(own);
+            }
+        }
+        Ok(order)
+    }
+
+    fn run(&self, env: &mut Env, func: &mut Function) -> Result<()> {
+        const_prop(env, func)
+    }
+}
+
 pub fn pass() -> impl Pass {
-    FnPass::new("const_prop", const_prop)
+    ConstPropPass
 }

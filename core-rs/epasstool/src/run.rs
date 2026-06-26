@@ -3,7 +3,7 @@
 use std::fs;
 use std::io::Read;
 
-use epass_ir::{autorun, default_passes, logfmt, run_passes_only, BpfInsn, Env, LogLevel, PrintMode};
+use epass_ir::{autorun, logfmt, passes_from_popt, run_passes_only, BpfInsn, Env, LogLevel, PrintMode};
 
 use crate::cli::{Mode, OutputFormat, UserOpts};
 use crate::elf;
@@ -51,7 +51,7 @@ pub fn process(uo: &UserOpts, prog: Vec<BpfInsn>) -> Result<Vec<BpfInsn>, Error>
             Ok(prog)
         }
         Mode::Read => {
-            let passes = default_passes();
+            let passes = passes_from_popt(&uo.popt)?;
             let result = if uo.no_compile {
                 run_passes_only(&mut env, &passes).map(|_| prog.clone())
             } else {

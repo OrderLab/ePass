@@ -66,7 +66,7 @@ fn lift_loop_with_phi_then_simplify() {
 
     // Run the trivial-phi pass through the manager (also re-validates).
     let mut pm = epass_ir::PassManager::new();
-    pm.pre.push(Box::new(epass_ir::passes::phi::pass()));
+    pm.add_pass(Box::new(epass_ir::passes::phi::pass())).expect("add pass");
     pm.run(&mut env, &mut func).expect("phi pass failed");
     check::prog_check(&env, &func).expect("prog_check after phi failed");
 }

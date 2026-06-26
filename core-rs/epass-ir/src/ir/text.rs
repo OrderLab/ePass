@@ -253,7 +253,26 @@ impl<'a> Parser<'a> {
                 id
             }
             x if x.starts_with("neg") => { let id = mk(func, InsnKind::Neg); func.insn_mut(id).alu_op = parse_alu_suffix(&x[3..], line_no)?; self.pending_vals.push((id, parse_value_list(rest_after(op, body))?)); id }
-            x if x.starts_with("end.") => return Err(unsupported!("IR parser does not yet support {x} at line {line_no}")),
+            x if x.starts_with("end.") => {
+                let spec = &x[4..];
+                let (kind, width_s) = if let Some(w) = spec.strip_prefix("be") {
+                    (EndKind::ToBe, w)
+                } else if let Some(w) = spec.strip_prefix("le") {
+                    (EndKind::ToLe, w)
+                } else {
+                    return Err(invalid!("IR parse line {line_no}: bad end op {x}"));
+                };
+                let width = width_s.parse().map_err(|_| invalid!("IR parse line {line_no}: bad end width"))?;
+                let id = mk(func, InsnKind::End { kind, swap_width: width });
+                func.insn_mut(id).alu_op = AluOp::Alu32;
+                self.pending_vals.push((id, parse_value_list(rest_after(op, body))?));
+                id
+            }
+            "getelemptr" => {
+                let id = mk(func, InsnKind::GetElemPtr);
+                self.pending_vals.push((id, parse_value_list(rest_after(op, body))?));
+                id
+            }
             "call" => {
                 let rest = rest_after(op, body).trim();
                 let hash = rest.strip_prefix('#').ok_or_else(|| invalid!("IR parse line {line_no}: call missing #fid"))?;
@@ -265,6 +284,7 @@ impl<'a> Parser<'a> {
                 id
             }
             "ret" => { let id = mk(func, InsnKind::Ret); self.pending_vals.push((id, parse_value_list(rest_after(op, body))?)); id }
+            "throw" => mk(func, InsnKind::Throw),
             "ja" => { let id = mk(func, InsnKind::Ja); self.pending_jumps.push((id, Some(words.next().ok_or_else(|| invalid!("IR parse line {line_no}: ja missing target"))?.to_string()), None)); id }
             "phi" => {
                 let id = mk(func, InsnKind::Phi);
@@ -272,6 +292,24 @@ impl<'a> Parser<'a> {
                 id
             }
             "assign" => { let id = mk(func, InsnKind::Assign); self.pending_vals.push((id, parse_value_list(rest_after(op, body))?)); id }
+            x if x.starts_with("ecall(") => {
+                let args_s = x.strip_prefix("ecall(").and_then(|s| s.strip_suffix(')'))
+                    .ok_or_else(|| invalid!("IR parse line {line_no}: ecall missing args"))?;
+                let id = mk(func, InsnKind::Ecall);
+                self.pending_vals.push((id, parse_value_list(args_s)?));
+                id
+            }
+            "reg" => {
+                let r = words.next().ok_or_else(|| invalid!("IR parse line {line_no}: reg missing id"))?;
+                let reg_id = r.strip_prefix('R').ok_or_else(|| invalid!("IR parse line {line_no}: bad reg id"))?
+                    .parse().map_err(|_| invalid!("IR parse line {line_no}: bad reg id"))?;
+                mk(func, InsnKind::Reg { reg_id })
+            }
+            "funcarg" => {
+                let arg_id = words.next().ok_or_else(|| invalid!("IR parse line {line_no}: funcarg missing id"))?
+                    .parse().map_err(|_| invalid!("IR parse line {line_no}: bad funcarg id"))?;
+                mk(func, InsnKind::FunctionArg { arg_id })
+            }
             x if parse_cond_op(x).is_some() => {
                 let (cond, alu) = parse_cond_op(x).unwrap();
                 let rest = rest_after(op, body);

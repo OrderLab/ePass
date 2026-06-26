@@ -40,10 +40,31 @@ pub fn print_ir(func: &Function) -> String {
     ir::print::print_function(func)
 }
 
-/// Build the default pass pipeline (matching the C userspace tool defaults).
+/// Build the default pass pipeline with no pass options.
 pub fn default_passes() -> PassManager {
-    let mut pm = PassManager::new();
-    pm.pre.push(Box::new(passes::const_prop::pass()));
-    pm.pre.push(Box::new(passes::phi::pass()));
-    pm
+    passes_from_popt("").expect("builtin default pass pipeline is valid")
+}
+
+/// Build the builtin pass pipeline from a pass-option string.
+///
+/// `popt` enables/disables/configures passes, but pass order is decided by each
+/// pass's `register_pass` implementation. Examples:
+/// - `dump_ir(/tmp/a.epir)` enables the optional IR dump pass;
+/// - `!const_prop` disables constant propagation;
+/// - `!phi` is rejected because `phi` is not disableable.
+pub fn passes_from_popt(popt: &str) -> Result<PassManager> {
+    PassManager::from_passes(
+        vec![
+            Box::new(passes::dump_ir::pass()),
+            Box::new(passes::const_prop::pass()),
+            Box::new(passes::phi::pass()),
+            Box::new(passes::optimization::pass()),
+        ],
+        popt,
+    )
+}
+
+/// Backward-compatible alias for callers using the old name.
+pub fn default_passes_with_popt(popt: &str) -> PassManager {
+    passes_from_popt(popt).expect("pass options produced an invalid builtin pipeline")
 }

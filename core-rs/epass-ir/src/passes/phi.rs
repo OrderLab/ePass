@@ -5,7 +5,7 @@ use crate::env::Env;
 use crate::error::Result;
 use crate::invalid;
 use crate::ir::{Function, InsnId, InsnKind, Value};
-use crate::pass::{FnPass, Pass};
+use crate::pass::Pass;
 
 /// Try to remove one trivial phi. Returns `Ok(true)` if it was removed.
 fn try_remove(func: &mut Function, phi: InsnId) -> Result<bool> {
@@ -63,7 +63,41 @@ pub fn remove_trivial_phi(_env: &mut Env, func: &mut Function) -> Result<()> {
     Ok(())
 }
 
+#[derive(Default)]
+pub struct PhiPass;
+
+impl Pass for PhiPass {
+    fn name(&self) -> &str {
+        "phi"
+    }
+
+    fn enabled_by_default(&self) -> bool {
+        true
+    }
+
+    fn allow_disable(&self) -> bool {
+        false
+    }
+
+    fn register_pass(&self, mut order: Vec<String>) -> Result<Vec<String>> {
+        let name = self.name();
+        if let Some(pos) = order.iter().position(|p| p == name) {
+            let own = order.remove(pos);
+            if let Some(opt_pos) = order.iter().position(|p| p == "optimize_ir") {
+                order.insert(opt_pos, own);
+            } else {
+                order.push(own);
+            }
+        }
+        Ok(order)
+    }
+
+    fn run(&self, env: &mut Env, func: &mut Function) -> Result<()> {
+        remove_trivial_phi(env, func)
+    }
+}
+
 /// Construct the pass object.
 pub fn pass() -> impl Pass {
-    FnPass::new("remove_trivial_phi", remove_trivial_phi)
+    PhiPass
 }
