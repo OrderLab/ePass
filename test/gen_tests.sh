@@ -4,7 +4,7 @@
 
 mkdir -p output
 
-files=$(find . \( -path ./env -o -path ./pass \) -prune -o -name '*.c' -print)
+files=$(find . \( -path ./env -o -path ./pass -o -path ./kmtest \) -prune -o -name '*.c' -print)
 
 rm Makefile
 all_objs=""

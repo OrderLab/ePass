@@ -187,7 +187,16 @@ fn spill_one_use(
 }
 
 /// Greedy coloring along the SEO (optimal for chordal graphs).
-pub fn coloring(env: &mut Env, func: &mut Function, cg: &mut CgState) -> Result<()> {
+///
+/// Returns `Ok(None)` when every value was colored. On a non-chordal graph the
+/// MCS order is not a perfect elimination order, so greedy coloring can run out
+/// of registers at a node even when the graph is K-colorable; in that case this
+/// returns `Ok(Some(v))` naming the value `v` it could not place, so the caller
+/// can post-spill and re-run register allocation (matching the "post-spilling"
+/// fallback of Pereira & Palsberg). Any value colored before the failure keeps
+/// its assignment, but the caller is expected to reset state via a fresh RA
+/// iteration (`clean_iteration`) before retrying.
+pub fn coloring(env: &mut Env, func: &mut Function, cg: &mut CgState) -> Result<Option<InsnId>> {
     let _ = (env, func);
     let seo = cg.seo.clone();
     for v in seo {
@@ -213,12 +222,50 @@ pub fn coloring(env: &mut Env, func: &mut Function, cg: &mut CgState) -> Result<
             }
         }
         if !assigned {
-            return Err(crate::error::Error::RegAlloc(
-                "no register available during coloring".into(),
-            ));
+            return Ok(Some(v));
         }
     }
-    Ok(())
+    Ok(None)
+}
+
+/// Choose a value to post-spill when greedy coloring cannot place `failed`.
+///
+/// Prefer `failed` itself; if it is not spillable (e.g. it is the already-minimal
+/// def range left behind by an earlier spill), fall back to its highest-degree
+/// spillable interference neighbor, which relieves the same pressure point.
+pub fn pick_spill_victim(func: &Function, cg: &CgState, failed: InsnId) -> Result<InsnId> {
+    let spillable = |v: InsnId| -> bool {
+        let e = cg.extra(v);
+        !e.nonvr
+            && !e.spilled_once
+            && e.vr_pos.spilled == 0
+            && !matches!(
+                func.insn(v).kind,
+                InsnKind::Call { .. }
+                    | InsnKind::Ecall
+                    | InsnKind::AllocArray { .. }
+                    | InsnKind::Alloc { .. }
+            )
+    };
+    if spillable(failed) {
+        return Ok(failed);
+    }
+    let mut best: Option<InsnId> = None;
+    let mut best_deg = 0usize;
+    for &a in &cg.extra(failed).adj {
+        if spillable(a) {
+            let deg = cg.extra(a).adj.len();
+            if best.is_none() || deg > best_deg {
+                best = Some(a);
+                best_deg = deg;
+            }
+        }
+    }
+    best.ok_or_else(|| {
+        crate::error::Error::RegAlloc(
+            "coloring failed and no spillable value is available".into(),
+        )
+    })
 }
 
 /// Best-effort copy coalescing for assign / store / load chains.

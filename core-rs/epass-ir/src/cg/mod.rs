@@ -115,9 +115,20 @@ pub fn compile(env: &mut Env, func: &mut Function) -> Result<()> {
     prepare::spill_const(env, func, &mut cg)?;
     log_ir(env, func, "after spill prep");
 
-    // Register-allocation fixpoint. Each iteration spills every oversized
-    // clique; a value is spilled at most once, so this converges quickly.
-    let max_iter = 10;
+    // Register-allocation fixpoint. Each iteration:
+    //   1. (re)build liveness + interference,
+    //   2. pre-spill any clique larger than the register count, and
+    //   3. greedily color along the MCS order.
+    //
+    // On a chordal graph this converges in one pass (pre-spilling guarantees a
+    // K-colorable graph, Pereira & Palsberg Theorem 2). The RA interference
+    // graph here is *not* chordal — the caller-saved / two-address / phi
+    // constraint edges break the SSA dominance property the chordality proof
+    // relies on — so the MCS order is not a perfect elimination order and greedy
+    // coloring can fail even when the graph is K-colorable. When that happens we
+    // post-spill the offending value (paper's "post-spilling" fallback) and
+    // re-run. Each value is spilled at most once, so this terminates.
+    let max_iter = 64;
     let mut iteration = 0;
     loop {
         if iteration > max_iter {
@@ -129,16 +140,33 @@ pub fn compile(env: &mut Env, func: &mut Function) -> Result<()> {
         liveness::build_interference(env, func, &mut cg)?;
 
         let to_spill = alloc::pre_spill(env, func, &mut cg)?;
-        log_debug!(env, "RA iteration {} spills {}\n", iteration, to_spill.len());
-        if to_spill.is_empty() {
-            break;
+        log_debug!(env, "RA iteration {} pre-spills {}\n", iteration, to_spill.len());
+        if !to_spill.is_empty() {
+            alloc::spill(env, func, &mut cg, &to_spill)?;
+            iteration += 1;
+            continue;
         }
-        alloc::spill(env, func, &mut cg, &to_spill)?;
-        iteration += 1;
+
+        // No oversized clique: attempt to color. On a non-chordal graph this can
+        // still fail; if so, post-spill the failing value and retry.
+        match alloc::coloring(env, func, &mut cg)? {
+            None => break,
+            Some(failed) => {
+                let victim = alloc::pick_spill_victim(func, &cg, failed)?;
+                log_debug!(
+                    env,
+                    "RA iteration {} coloring failed at %{}, post-spilling %{}\n",
+                    iteration,
+                    failed.0,
+                    victim.0
+                );
+                alloc::spill(env, func, &mut cg, &[victim])?;
+                iteration += 1;
+            }
+        }
     }
     log_debug!(env, "RA converged in {} iterations\n", iteration);
 
-    alloc::coloring(env, func, &mut cg)?;
     log_ir(env, func, "after coloring");
 
     if !env.opts.disable_coalesce {
