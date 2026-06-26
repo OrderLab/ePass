@@ -8,6 +8,16 @@ use crate::lift;
 use crate::pass::PassManager;
 use crate::{log_debug, log_info};
 
+fn initial_function(env: &mut Env) -> Result<crate::ir::Function> {
+    if let Some(path) = env.opts.load_ir.clone() {
+        let mut func = crate::ir::text::load_function_from_file(path)?;
+        crate::pass::postprocess(env, &mut func)?;
+        Ok(func)
+    } else {
+        lift::lift(env)
+    }
+}
+
 /// Lift, run the given passes, and compile the program in `env.insns`,
 /// writing the rewritten bytecode back into `env.insns`.
 pub fn autorun(env: &mut Env, passes: &PassManager) -> Result<()> {
@@ -17,7 +27,7 @@ pub fn autorun(env: &mut Env, passes: &PassManager) -> Result<()> {
         return Ok(());
     }
 
-    let mut func = lift::lift(env)?;
+    let mut func = initial_function(env)?;
     log_debug!(env, "{}", crate::ir::print::print_function(&func));
 
     passes.run(env, &mut func)?;
@@ -34,6 +44,7 @@ pub fn autorun(env: &mut Env, passes: &PassManager) -> Result<()> {
 
 /// Lift and run passes but skip code generation (the `--pass-only` path).
 pub fn run_passes_only(env: &mut Env, passes: &PassManager) -> Result<()> {
-    let _ = lift::lift(env).and_then(|mut func| passes.run(env, &mut func))?;
+    let mut func = initial_function(env)?;
+    passes.run(env, &mut func)?;
     Ok(())
 }

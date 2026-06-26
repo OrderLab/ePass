@@ -9,6 +9,7 @@
 
 pub mod insn;
 pub mod print;
+pub mod text;
 pub mod value;
 
 pub use insn::{BinOp, Cond, EndKind, Insn, InsnKind};
@@ -345,6 +346,18 @@ impl Function {
     /// slot is identified by equality with `old`.
     pub fn change_value(&mut self, user: InsnId, old: Value, new: Value) {
         self.replace_value_in(user, old, new);
+    }
+
+    /// Add a normal operand value to `user`, updating def-use chains.
+    pub fn add_value_operand(&mut self, user: InsnId, value: Value) {
+        self.insn_mut(user).values.push(value);
+        self.add_use(value, user);
+    }
+
+    /// Add a phi operand `(value, predecessor block)`, updating def-use chains.
+    pub fn add_phi_operand(&mut self, phi: InsnId, value: Value, bb: BbId) {
+        self.insn_mut(phi).phi.push(PhiValue { value, bb });
+        self.add_use(value, phi);
     }
 
     /// Remove all non-phi operand values from `user`, updating def-use chains.

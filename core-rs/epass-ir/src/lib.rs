@@ -29,6 +29,7 @@ pub use bytecode::BpfInsn;
 pub use env::{Env, LogLevel};
 pub use error::{Error, Result};
 pub use ir::{BbId, BasicBlock, Function, Insn, InsnId, InsnKind, Value};
+pub use ir::text::{dump_function as dump_ir, load_function_from_file as load_ir_file, load_function_from_str as load_ir_str, DumpOptions};
 pub use lift::lift;
 pub use opts::{Opts, PrintMode};
 pub use pass::{Pass, PassManager};

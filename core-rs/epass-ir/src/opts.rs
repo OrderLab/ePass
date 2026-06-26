@@ -29,6 +29,8 @@ pub struct Opts {
     pub disable_coalesce: bool,
     /// How to render printed programs.
     pub print_mode: PrintMode,
+    /// Load initial IR from a text `.epir` file instead of lifting bytecode.
+    pub load_ir: Option<String>,
 }
 
 impl Default for Opts {
@@ -40,6 +42,7 @@ impl Default for Opts {
             disable_prog_check: false,
             disable_coalesce: false,
             print_mode: PrintMode::Bpf,
+            load_ir: None,
         }
     }
 }
@@ -67,6 +70,11 @@ impl Opts {
                 "no_prog_check" => self.disable_prog_check = true,
                 "printonly" => self.print_only = true,
                 "dotgraph" => self.dotgraph = true,
+                "load_ir" => {
+                    self.load_ir = Some(
+                        val.ok_or_else(|| "load_ir requires a path".to_string())?.to_string(),
+                    );
+                }
                 other => return Err(format!("unknown global option '{other}'")),
             }
         }
