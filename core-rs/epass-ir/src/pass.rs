@@ -48,6 +48,8 @@ pub fn postprocess(env: &mut Env, func: &mut Function) -> Result<()> {
     // Recompute successors from terminators, then chain layout + end blocks.
     recompute_succs(func)?;
     cfg::finalize(env, func)?;
+    drop_unreachable_edges(func);
+    prune_phi_inputs(func);
     check::prog_check(env, func)?;
     Ok(())
 }
@@ -84,6 +86,64 @@ fn recompute_succs(func: &mut Function) -> Result<()> {
         }
     }
     Ok(())
+}
+
+/// Drop predecessor/successor edges that cross from the reachable subgraph to an
+/// unreachable block after a CFG rewrite. The BB arena keeps unreachable blocks
+/// around, but later analyses walk `preds`, so reachable blocks must not retain
+/// stale predecessors from dead blocks.
+fn drop_unreachable_edges(func: &mut Function) {
+    let reachable: std::collections::HashSet<_> = func.reachable_bbs.iter().copied().collect();
+    let bbs = func.all_bbs.clone();
+    for bb in bbs {
+        func.bb_mut(bb).preds.retain(|p| reachable.contains(p));
+        if reachable.contains(&bb) {
+            func.bb_mut(bb).succs.retain(|s| reachable.contains(s));
+        }
+    }
+}
+
+/// Remove phi operands whose incoming block is no longer a predecessor after a
+/// CFG rewrite. This keeps SSA edge uses aligned with the current CFG and lets
+/// later phi-simplification see constants/trivial phis exposed by branch folding.
+fn prune_phi_inputs(func: &mut Function) {
+    use crate::ir::InsnKind;
+    let bbs = func.reachable_bbs.clone();
+    let reachable: std::collections::HashSet<_> = bbs.iter().copied().collect();
+    for bb in bbs {
+        let preds: Vec<_> = func
+            .bb(bb)
+            .preds
+            .iter()
+            .copied()
+            .filter(|p| reachable.contains(p))
+            .collect();
+        let phis: Vec<_> = func
+            .bb(bb)
+            .insns
+            .iter()
+            .copied()
+            .take_while(|&id| matches!(func.insn(id).kind, InsnKind::Phi))
+            .collect();
+        for phi in phis {
+            let old = func.insn(phi).phi.clone();
+            let mut new_phi = Vec::with_capacity(old.len());
+            let mut removed_values = Vec::new();
+            for entry in old {
+                if preds.contains(&entry.bb) {
+                    new_phi.push(entry);
+                } else {
+                    removed_values.push(entry.value);
+                }
+            }
+            for value in removed_values {
+                if !new_phi.iter().any(|entry| entry.value == value) {
+                    func.remove_use(value, phi);
+                }
+            }
+            func.insn_mut(phi).phi = new_phi;
+        }
+    }
 }
 
 /// Runs an ordered list of passes.

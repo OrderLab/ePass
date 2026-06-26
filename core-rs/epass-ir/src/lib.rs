@@ -42,6 +42,7 @@ pub fn print_ir(func: &Function) -> String {
 /// Build the default pass pipeline (matching the C userspace tool defaults).
 pub fn default_passes() -> PassManager {
     let mut pm = PassManager::new();
+    pm.pre.push(Box::new(passes::const_prop::pass()));
     pm.pre.push(Box::new(passes::phi::pass()));
     pm
 }

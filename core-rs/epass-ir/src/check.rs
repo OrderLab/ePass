@@ -69,6 +69,51 @@ pub fn prog_check(env: &Env, func: &Function) -> Result<()> {
             }
         }
 
+        // Phi placement and predecessor consistency.
+        let mut seen_non_phi = false;
+        for &id in &block.insns {
+            let insn = func.insn(id);
+            if matches!(insn.kind, InsnKind::Phi) {
+                if seen_non_phi {
+                    return Err(internal!(
+                        "phi instruction %{} in bb{} appears after a non-phi instruction",
+                        id.0,
+                        bb.0
+                    ));
+                }
+                if insn.phi.len() != block.preds.len() {
+                    return Err(internal!(
+                        "phi instruction %{} in bb{} has {} inputs but block has {} predecessors",
+                        id.0,
+                        bb.0,
+                        insn.phi.len(),
+                        block.preds.len()
+                    ));
+                }
+                let mut seen = HashSet::new();
+                for entry in &insn.phi {
+                    if !block.preds.contains(&entry.bb) {
+                        return Err(internal!(
+                            "phi instruction %{} in bb{} has input from non-predecessor bb{}",
+                            id.0,
+                            bb.0,
+                            entry.bb.0
+                        ));
+                    }
+                    if !seen.insert(entry.bb.0) {
+                        return Err(internal!(
+                            "phi instruction %{} in bb{} has duplicate input from bb{}",
+                            id.0,
+                            bb.0,
+                            entry.bb.0
+                        ));
+                    }
+                }
+            } else {
+                seen_non_phi = true;
+            }
+        }
+
         // Operand liveness + def-use consistency.
         for &id in &block.insns {
             let insn = func.insn(id);

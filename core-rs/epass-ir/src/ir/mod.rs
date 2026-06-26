@@ -347,6 +347,28 @@ impl Function {
         self.replace_value_in(user, old, new);
     }
 
+    /// Remove all non-phi operand values from `user`, updating def-use chains.
+    ///
+    /// Phi operands live in [`Insn::phi`] and are intentionally not touched by
+    /// this helper.
+    pub fn clear_values(&mut self, user: InsnId) {
+        let values: Vec<Value> = self.insn(user).values.to_vec();
+        for v in values {
+            self.remove_use(v, user);
+        }
+        self.insn_mut(user).values.clear();
+    }
+
+    /// Rewrite a conditional terminator into an unconditional jump to `target`.
+    pub fn rewrite_cond_to_ja(&mut self, id: InsnId, target: BbId) {
+        self.clear_values(id);
+        let insn = self.insn_mut(id);
+        insn.kind = InsnKind::Ja;
+        insn.bb1 = Some(target);
+        insn.bb2 = None;
+        insn.alu_op = AluOp::Unknown;
+    }
+
     // ---- erasure ----
 
     /// Tombstone an instruction, detaching it from its block and dropping its
