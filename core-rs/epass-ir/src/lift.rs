@@ -396,7 +396,21 @@ impl<'e> Ssa<'e> {
 
         let pre_insns = self.blocks[block].insns.clone();
         for p in &pre_insns {
-            self.translate(block, p)?;
+            if let Err(e) = self.translate(block, p) {
+                // libbpf CO-RE can intentionally poison instructions in branches
+                // that it also makes statically unreachable; the verifier prunes
+                // those branches, but ePass lifts before verifier pruning. Treat a
+                // per-instruction translation failure as a dummy no-op: emit no IR,
+                // do not update SSA defs, and do not affect CFG. If such an
+                // instruction is actually reachable, the rewritten program should
+                // still fail verifier validation rather than being silently accepted.
+                crate::log_warn!(
+                    self.env,
+                    "warning: replacing instruction at pos {} with dummy no-op: {}\n",
+                    p.pos,
+                    e
+                );
+            }
         }
         self.blocks[block].filled = true;
 
