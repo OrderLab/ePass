@@ -7,11 +7,13 @@
 //! apply changes. Helper methods on [`Function`] encapsulate the common cases
 //! (insertion, def-use maintenance, value replacement).
 
+pub mod builder;
 pub mod insn;
 pub mod print;
 pub mod text;
 pub mod value;
 
+pub use builder::{InsertPoint, IrBuilder};
 pub use insn::{BinOp, Cond, EndKind, Insn, InsnKind};
 pub use value::{
     AddrValue, AluOp, BuiltinConst, ConstKind, LoadImmExtra, PhiValue, RawPos, RawPosKind, Value,
@@ -19,6 +21,8 @@ pub use value::{
 };
 
 use crate::bytecode::MAX_FUNC_ARG;
+use crate::error::Result;
+use crate::invalid;
 
 /// Handle to an instruction in [`Function::insns`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -199,6 +203,188 @@ impl Function {
     pub fn disconnect(&mut self, from: BbId, to: BbId) {
         self.bbs[from.index()].succs.retain(|&s| s != to);
         self.bbs[to.index()].preds.retain(|&p| p != from);
+    }
+
+    /// The terminator instruction of `bb`, if its last instruction transfers control.
+    pub fn terminator(&self, bb: BbId) -> Option<InsnId> {
+        self.bb(bb).last().filter(|&id| self.insn(id).is_jmp())
+    }
+
+    pub fn is_terminated(&self, bb: BbId) -> bool {
+        self.terminator(bb).is_some()
+    }
+
+    pub fn successor_targets(&self, bb: BbId) -> Vec<BbId> {
+        let Some(term) = self.terminator(bb) else { return Vec::new(); };
+        let insn = self.insn(term);
+        match insn.kind {
+            InsnKind::Ja => insn.bb1.into_iter().collect(),
+            InsnKind::CondJmp { .. } => [insn.bb1, insn.bb2].into_iter().flatten().collect(),
+            _ => Vec::new(),
+        }
+    }
+
+    pub fn set_ja_target(&mut self, ja: InsnId, target: BbId) -> Result<()> {
+        if !matches!(self.insn(ja).kind, InsnKind::Ja) {
+            return Err(invalid!("instruction %{} is not a ja", ja.0));
+        }
+        let bb = self.insn(ja).parent_bb;
+        if let Some(old) = self.insn(ja).bb1 {
+            self.disconnect(bb, old);
+        }
+        self.insn_mut(ja).bb1 = Some(target);
+        self.insn_mut(ja).bb2 = None;
+        self.connect(bb, target);
+        Ok(())
+    }
+
+    pub fn set_cond_targets(&mut self, cond: InsnId, fallthrough: BbId, taken: BbId) -> Result<()> {
+        if !matches!(self.insn(cond).kind, InsnKind::CondJmp { .. }) {
+            return Err(invalid!("instruction %{} is not a conditional jump", cond.0));
+        }
+        let bb = self.insn(cond).parent_bb;
+        for old in [self.insn(cond).bb1, self.insn(cond).bb2].into_iter().flatten() {
+            self.disconnect(bb, old);
+        }
+        {
+            let insn = self.insn_mut(cond);
+            insn.bb1 = Some(fallthrough);
+            insn.bb2 = Some(taken);
+        }
+        self.connect(bb, fallthrough);
+        self.connect(bb, taken);
+        Ok(())
+    }
+
+    /// Redirect a terminator edge `from -> old_to` to `from -> new_to`.
+    ///
+    /// This updates the terminator and CFG edge lists. Phi inputs in the old/new
+    /// successor are not invented; callers that retarget semantic edges should
+    /// update phis as appropriate. Use [`Function::split_edge`] when inserting a
+    /// block on an existing edge, as it updates phi predecessor labels safely.
+    pub fn replace_successor(&mut self, from: BbId, old_to: BbId, new_to: BbId) -> Result<()> {
+        let term = self.terminator(from).ok_or_else(|| invalid!("bb{} has no terminator", from.0))?;
+        match self.insn(term).kind {
+            InsnKind::Ja => {
+                if self.insn(term).bb1 != Some(old_to) {
+                    return Err(invalid!("bb{} ja does not target bb{}", from.0, old_to.0));
+                }
+                self.set_ja_target(term, new_to)?;
+            }
+            InsnKind::CondJmp { .. } => {
+                let mut b1 = self.insn(term).bb1;
+                let mut b2 = self.insn(term).bb2;
+                let mut found = false;
+                if b1 == Some(old_to) { b1 = Some(new_to); found = true; }
+                if b2 == Some(old_to) { b2 = Some(new_to); found = true; }
+                if !found {
+                    return Err(invalid!("bb{} conditional does not target bb{}", from.0, old_to.0));
+                }
+                self.set_cond_targets(term, b1.unwrap(), b2.unwrap())?;
+            }
+            _ => unreachable!(),
+        }
+        Ok(())
+    }
+
+    /// Insert a new block on edge `from -> to`, returning the new block.
+    /// Phi inputs in `to` that came from `from` are relabeled to the new block.
+    pub fn split_edge(&mut self, from: BbId, to: BbId) -> Result<BbId> {
+        if !self.bb(from).succs.contains(&to) {
+            return Err(invalid!("edge bb{} -> bb{} does not exist", from.0, to.0));
+        }
+        let new_bb = self.create_bb();
+        let ja = self.create_insn(new_bb, InsnKind::Ja, InsertPos::Back);
+        self.insn_mut(ja).bb1 = Some(to);
+        self.replace_successor(from, to, new_bb)?;
+        self.connect(new_bb, to);
+
+        let phis: Vec<_> = self
+            .bb(to)
+            .insns
+            .iter()
+            .copied()
+            .take_while(|&id| matches!(self.insn(id).kind, InsnKind::Phi))
+            .collect();
+        for phi in phis {
+            for entry in &mut self.insn_mut(phi).phi {
+                if entry.bb == from {
+                    entry.bb = new_bb;
+                }
+            }
+        }
+        Ok(new_bb)
+    }
+
+    /// Split the parent block so that `insn` and following instructions move to a
+    /// fresh successor block. Returns the fresh block.
+    pub fn split_block_before(&mut self, insn: InsnId) -> Result<BbId> {
+        if matches!(self.insn(insn).kind, InsnKind::Phi) {
+            return Err(invalid!("cannot split block before phi instruction %{}", insn.0));
+        }
+        let old_bb = self.insn(insn).parent_bb;
+        let pos = self
+            .bb(old_bb)
+            .insns
+            .iter()
+            .position(|&id| id == insn)
+            .ok_or_else(|| invalid!("instruction %{} is not in its parent block", insn.0))?;
+
+        let new_bb = self.create_bb();
+        let moved: Vec<_> = self.bbs[old_bb.index()].insns.split_off(pos);
+        for id in &moved {
+            self.insn_mut(*id).parent_bb = new_bb;
+        }
+        self.bbs[new_bb.index()].insns = moved;
+
+        let old_succs = self.bbs[old_bb.index()].succs.clone();
+        for succ in old_succs.clone() {
+            self.disconnect(old_bb, succ);
+            self.connect(new_bb, succ);
+            // Edges to old successors now come from the new block; relabel phis.
+            let phis: Vec<_> = self
+                .bb(succ)
+                .insns
+                .iter()
+                .copied()
+                .take_while(|&id| matches!(self.insn(id).kind, InsnKind::Phi))
+                .collect();
+            for phi in phis {
+                for entry in &mut self.insn_mut(phi).phi {
+                    if entry.bb == old_bb {
+                        entry.bb = new_bb;
+                    }
+                }
+            }
+        }
+
+        let ja = self.create_insn(old_bb, InsnKind::Ja, InsertPos::Back);
+        self.insn_mut(ja).bb1 = Some(new_bb);
+        self.connect(old_bb, new_bb);
+        Ok(new_bb)
+    }
+
+    /// Split the parent block after `insn`, moving following instructions to a
+    /// fresh successor block.
+    pub fn split_block_after(&mut self, insn: InsnId) -> Result<BbId> {
+        if self.insn(insn).is_jmp() {
+            return Err(invalid!("cannot split block after terminator %{}", insn.0));
+        }
+        let next = self.next_insn(insn).ok_or_else(|| invalid!("instruction %{} has no following instruction to split", insn.0))?;
+        self.split_block_before(next)
+    }
+
+    pub fn create_ret_block(&mut self, value: Value) -> BbId {
+        let bb = self.create_bb();
+        let ret = self.create_insn(bb, InsnKind::Ret, InsertPos::Back);
+        self.add_value_operand(ret, value);
+        bb
+    }
+
+    pub fn create_throw_block(&mut self) -> BbId {
+        let bb = self.create_bb();
+        self.create_insn(bb, InsnKind::Throw, InsertPos::Back);
+        bb
     }
 
     // ---- instruction creation / placement ----
