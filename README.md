@@ -2,81 +2,121 @@
 
 [![Build ePass](https://github.com/OrderLab/ePass/actions/workflows/build.yml/badge.svg)](https://github.com/OrderLab/ePass/actions/workflows/build.yml)
 
-ePass is an in-kernel LLVM-like compiler framework that introduces an SSA-based intermediate representation (IR) for eBPF programs. It provides a lifter that lifts eBPF bytecode to ePass IR, a pass runner that runs user-defined passes, and a code generator that compiles IR to eBPF bytecode. Users could write flexible passes using our LLVM-like APIs to analyze and manipulate the IR.
-ePass also provides an in-kernel supervisor that cooperates ePass core with the verifier to improve its flexibility (i.e. reduce false rejections) and safety (i.e. reduce false acceptance at runtime). It could also be used in userspace for testing.
+ePass is an SSA-based compiler framework for eBPF programs. It lifts eBPF
+bytecode into an LLVM-like IR, runs configurable IR passes, and lowers IR back to
+eBPF bytecode for kernel verifier/JIT consumption.
 
-## Key Features
+The actively developed core is the Rust userspace library under `core-rs/`. The
+old C implementation under `deprecated/core/` remains as historical reference.
 
-- **IR-based compilation**: Converts BPF programs to an SSA-based intermediate representation for code rewriting
-- **Flexible passes**: ePass core provides various APIs to analyze and manipulate the IR, allowing users to write flexible passes including static analyzing, runtime checks, and optimization.
-- **Verifier aware**: ePass works with the existing verifier. The verifier is better for static verification while ePass focuses more on code rewriting and runtime verification.
-- **User-friendly debugging**: ePass supports compiling to both kernel and userspace for easier debugging.
+## Current architecture
 
-> ⚠️ Warning: ePass is under active development and we are improving its usability and safety for production use. We welcome any suggestions and feedback. Feel free to open issues or [contact us](#contact-and-citation).
+```text
+eBPF bytecode
+  -> lift
+  -> ePass SSA IR
+  -> pass manager
+  -> register allocation + codegen
+  -> eBPF bytecode
+  -> kernel verifier
+```
 
-## Design Goals
+Key components:
 
-- Flexible passes for diverse use cases
-- Working with existing verifier instead of replacing its
-- Keeping kernel safety
-- Support both userspace and kernel
+- `core-rs/epass-ir`: pure userspace Rust library. No kernel headers and no
+  libbpf dependency.
+- `core-rs/epasstool`: CLI for dump-format and ELF-object workflows. ELF support
+  uses libbpf only in the CLI.
+- `third-party/ePass-libbpf`: patched libbpf that can call the Rust C ABI
+  (`epass_run`) before loading programs.
+- `third-party/ePass-bpftool`: bpftool built against the patched libbpf for
+  verifier testing.
 
-## Prerequisites
+## Features
 
-- **clang >= 17**
-- **Ninja** (optional, for faster compilation)
-- **libbpf**
+- SSA IR with arena allocation and typed handles (`InsnId`, `BbId`).
+- eBPF bytecode lifter with CFG discovery and SSA construction.
+- Pass manager with default-enabled and optional passes, pass-specific options,
+  pass-owned ordering, and post-pass validation.
+- Built-in passes: `const_prop`, `phi`, `optimize_ir`, optional `dump_ir`.
+- Register allocation and codegen back to eBPF bytecode.
+- Parseable `.epir` IR text dump/load format for debugging.
+- `IrBuilder` and CFG editing utilities for pass authors.
+- C ABI for patched libbpf integration.
 
-## Project Components
+## Build
 
-- `ePass core`: the core compiler framework, including a userspace CLI
-- `ePass kernel`: Linux kernel 6.5 with ePass core built-in, along with the kernel component and kernel passes
-- `ePass libbpf`: libbpf with ePass support for userspace ePass testing
+Rust core and CLI:
 
-There are some testing projects including `bpftool`, `xdp-tools`, `falcolib` in `third-party`. They depend on `ePass libbpf`.
+```bash
+cd core-rs
+cargo build --release
+cargo test --release
+```
 
-### ePass Overview
+Patched libbpf and bpftool for verifier testing:
 
-![Overview](./docs/overview.png)
+```bash
+cd third-party/ePass-libbpf/src
+make -j
 
-### ePass Core
+cd ../../ePass-bpftool/src
+make -j
+```
 
-![Core Architecture](./docs/core_design.png)
+## CLI quick start
 
-#### ePass Built-in Passes (Selected demo passes)
+```bash
+cd core-rs
 
-- Instruction counter pass: runtime instruction limit check
-- MSan pass: memory sanitizer for stack memory access
-- Masking pass: fix a false-rejection due to lack of type
-- Helper validation pass: validate helper function arguments to avoid CVE
-- Code compaction pass: an optimization pass to reduce code size
+# Rewrite an ELF object's selected BPF program and emit dump-format output.
+./target/release/epasstool read -s prog -F log -o out.txt ../test/output/progs_simple1.o
 
-## Quick Start
+# Process dump-format input: one packed u64 per line.
+./target/release/epasstool read -F log -o out.txt prog.txt
 
-There are two ways to use ePass. The first way is to build a linux kernel with ePass builtin, which is used for production. Users could specify ePass options when calling the `BPF` system call. See [Kernel Testing](docs/KERNEL_TESTING.md).
+# Print without rewriting.
+./target/release/epasstool print --gopt print_dump ../test/output/progs_simple1.o
 
-The second way is to build ePass in userspace and testing programs without changing the kernel, which is used mainly for testing. Users could specify ePass options via environment variable and use `ePass libbpf`. Programs will be modified in userspace before sending to the kernel. See [Userspace Testing](docs/USERSPACE_TESTING.md).
+# Dump lifted IR before normal passes.
+./target/release/epasstool read -P --popt 'dump_ir(/tmp/prog.epir)' -s prog ../test/output/progs_simple1.o
 
-We recommend users trying ePass in userspace before switching to the ePass kernel version!
+# Load IR directly instead of lifting bytecode, then run passes and codegen.
+./target/release/epasstool read --gopt load_ir=/tmp/prog.epir -F log -o out.txt dummy.txt
+```
 
-## Testing
+## libbpf / verifier testing
 
-See [Testing](./docs/TESTING.md).
+The patched libbpf runs ePass when enabled by environment variable:
 
-## Development and Contribution
+```bash
+sudo LIBBPF_ENABLE_EPASS=1 \
+     LIBBPF_EPASS_GOPT='verbose=1' \
+     third-party/ePass-bpftool/src/bpftool prog load test.o /sys/fs/bpf/test
+```
 
-See [Development](./docs/CONTRIBUTION_GUIDE.md).
+The rewritten bytecode is submitted to the kernel verifier. Use `bpftool prog
+show pinned ...` to compare `xlated` byte sizes and confirm the modified program
+was loaded.
 
-## Roadmap and Future Work
+## Documentation
 
-- Support bpf-to-bpf calls
-- Support loadng ePass IR to kernel
-- Support compiling ePass IR to machine code directly in JIT
+- [Rust core architecture](docs/CORE_RS.md)
+- [Pass manager and pass options](docs/PASS_MANAGER.md)
+- [Writing passes](docs/WRITING_PASSES.md)
+- [IR text format](docs/IR_TEXT.md)
+- [IR builder and instruction construction](docs/CREATE_INSTRUCTION.md)
+- [Userspace / libbpf testing](docs/USERSPACE_TESTING.md)
+- [Testing](docs/TESTING.md)
 
-## Contact and Citation
+## Status
 
-Feel free to open an issue for question, bug report or feature request! You could also email <xiangyiming2002@gmail.com>.
+- Core lifter, IR, pass framework, codegen, IR text load/dump, and verifier
+  testing path are active in `core-rs`.
+- Several old C demo/instrumentation passes (MSan, insn counter, masking,
+  helper validation, etc.) are not yet fully ported.
+- bpf-to-bpf calls and atomic memory ops remain unsupported/limited.
 
-## Acknowledgement
+## Contact
 
-ePass is sponsored by [OrderLab](https://orderlab.io/) from University of Michigan.
+Feel free to open an issue or email <xiangyiming2002@gmail.com>.

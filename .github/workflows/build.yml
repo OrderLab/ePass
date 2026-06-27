@@ -2,24 +2,34 @@ name: Build ePass
 
 on:
   push:
-    branches: [ "main", "dev" ]
-
-env:
-  BUILD_TYPE: Release
+    branches: ["main", "dev"]
+  pull_request:
+    branches: ["main", "dev"]
 
 jobs:
-  build:
+  rust-core:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Install Dependency
-      run: sudo apt install -y libbpf-dev
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang \
+            libbpf-dev \
+            libelf-dev \
+            pkg-config \
+            zlib1g-dev
 
-    - name: Configure CMake
-      run: cd core && make configure
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
 
-    - name: Build
-      run: cd core && make
+      - name: Build core-rs
+        run: cargo build --release --workspace
+        working-directory: core-rs
 
+      - name: Test core-rs
+        run: cargo test --release --workspace
+        working-directory: core-rs

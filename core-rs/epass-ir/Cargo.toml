@@ -1,0 +1,18 @@
+[package]
+name = "epass-ir"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "ePass: an SSA-based intermediate representation and compiler framework for eBPF programs (userspace)."
+
+[lib]
+# `rlib` lets the Rust `epasstool` use this crate normally; `staticlib`/`cdylib`
+# produce C-linkable `libepass_ir.a` / `libepass_ir.so` for the libbpf integration.
+crate-type = ["rlib", "staticlib", "cdylib"]
+
+[dependencies]
+indexmap = "2"
+smallvec = "1"
+thiserror = "2"
+
+[dev-dependencies]

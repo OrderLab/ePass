@@ -1,0 +1,14 @@
+[package]
+name = "epasstool"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Userspace CLI for the ePass eBPF IR compiler."
+
+[[bin]]
+name = "epasstool"
+path = "src/main.rs"
+
+[dependencies]
+epass-ir = { path = "../epass-ir" }
+libbpf-sys = "1"
