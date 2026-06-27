@@ -1,65 +1,97 @@
 # Userspace Testing
 
-The main development happens in `core` directory. To start, `cd` into `core`.
+The active userspace implementation is `core-rs`. The old C `core/` is kept as
+reference.
 
-### Build
-
-```bash
-make configure # Do it once
-
-make build
-```
-
-### Install
+## Build Rust core and CLI
 
 ```bash
-make install
+cd core-rs
+cargo build --release
+cargo test --release
 ```
 
-### Basic Usage
+The CLI binary is:
+
+```text
+core-rs/target/release/epasstool
+```
+
+## Basic CLI usage
 
 ```bash
-# Run ePass on the program
-epass read prog.o
+# Rewrite an ELF program and write dump-format output.
+core-rs/target/release/epasstool read -s prog -F log -o out.txt test/output/progs_simple1.o
 
-# Run ePass on the program with gopt and popt
-epass read --popt popts --gopt gopts prog.o
+# Print original BPF in dump format.
+core-rs/target/release/epasstool print --gopt print_dump test/output/progs_simple1.o
 
-# Print the BPF program
-epass print prog.o
+# Dump lifted IR before passes.
+core-rs/target/release/epasstool read -P --popt 'dump_ir(/tmp/prog.epir)' -s prog test/output/progs_simple1.o
+
+# Load IR instead of lifting bytecode.
+core-rs/target/release/epasstool read --gopt load_ir=/tmp/prog.epir -F log -o out.txt dummy.txt
 ```
 
-For `gopt` and `popt`, see [ePass Options](./EPASS_OPTIONS.md).
+See [EPASS_OPTIONS.md](EPASS_OPTIONS.md) for `--gopt` and `--popt`.
 
-### Use ePass with `libbpf`
+## Patched libbpf
 
-We may want to load a ePass-modified program to the kernel to see its effect. ePass provides a modified libbpf that allows users to run ePass before loading programs to the kernel. The advantage is that you do not need to change the kernel. However, running ePass in userspace cannot leverage the verifier, so it cannot use verifier information, cannot run verifier dependent passes, and cannot run kernel passes.
+`third-party/ePass-libbpf` is patched to call ePass before program load when
+`LIBBPF_ENABLE_EPASS=1` is set.
 
-First, initializing all submodules.
-
-```bash
-git submodule update --init --recursive
-```
-
-Now open the `libbpf` source code directory and build:
+Build:
 
 ```bash
 cd third-party/ePass-libbpf/src
 make -j
 ```
 
-To install `ePass libbpf`, install:
+This builds both `libbpf.a` and `libbpf.so`. The static archive includes the
+Rust C ABI library `libepass_ir.a`.
+
+## Patched bpftool
+
+Many system bpftool builds are statically linked, so build the repository copy:
 
 ```bash
-sudo make install
+cd third-party/ePass-bpftool/src
+make -j
 ```
 
-After installing ePass libbpf, you could run any programs that depends on the `libbpf` shared library with `ePass` commands.
-
-For `bpftool`, you need to build `bpftool` because by default it statically link `libbpf`.
-
-An example of using ePass to load `test.o` eBPF program using `bpftool`:
+Load a program through ePass and the kernel verifier:
 
 ```bash
-sudo LIBBPF_ENABLE_EPASS=1 LIBBPF_EPASS_GOPT="verbose=3" LIBBPF_EPASS_POPT="msan" bpftool prog load test.o /sys/fs/bpf/test
+sudo LIBBPF_ENABLE_EPASS=1 \
+     LIBBPF_EPASS_GOPT='verbose=1' \
+     third-party/ePass-bpftool/src/bpftool prog load test/output/progs_simple1.o /sys/fs/bpf/test
 ```
+
+Clean up:
+
+```bash
+sudo rm -f /sys/fs/bpf/test
+```
+
+To prove the rewritten program was loaded, compare kernel `xlated` size:
+
+```bash
+sudo third-party/ePass-bpftool/src/bpftool prog show pinned /sys/fs/bpf/test
+```
+
+## Dynamic libbpf consumers
+
+Any application dynamically linked against libbpf can use the patched shared
+library by setting `LD_LIBRARY_PATH` to `third-party/ePass-libbpf/src`, then
+setting `LIBBPF_ENABLE_EPASS=1`.
+
+## Useful environment variables
+
+| Variable | Meaning |
+|----------|---------|
+| `LIBBPF_ENABLE_EPASS=1` | Enable ePass rewrite before load. |
+| `LIBBPF_EPASS_GOPT='...'` | Global options passed to ePass. |
+| `LIBBPF_ENABLE_AUTORELOAD=1` | If rewritten load fails, retry original instructions. |
+
+Pass options are currently CLI-side (`--popt`) for `epasstool`. The libbpf C ABI
+uses the default pass pipeline unless extended to pass popt separately.
