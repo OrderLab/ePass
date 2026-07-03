@@ -32,3 +32,27 @@ fn load_ir_gopt_bypasses_lift_and_compiles() {
     autorun(&mut env2, &default_passes()).expect("autorun load_ir");
     assert_eq!(env2.insns.last().unwrap().code, class::JMP | op::EXIT);
 }
+
+#[test]
+fn ra_pressure_reload_spill_converges() {
+    // Load the EPIR test case that creates high register pressure at a use
+    // point.  Before the fix (reload temps not marked spilled_once), the RA
+    // allocator could recursively spill reload temps and fail to converge.
+    // We disable const_prop and optimize_ir so that loadimm values are not
+    // constant-folded away, preserving the high register pressure.
+    let path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/epir/ra_pressure_reload_spill.epir"
+    );
+    let mut opts = Opts::default();
+    opts.verbose = 3;
+    opts.apply_gopt(&format!("load_ir={}", path)).unwrap();
+    let mut env = Env::new(opts, vec![]);
+    let passes = epass_ir::passes_from_popt("!const_prop,!optimize_ir").unwrap();
+    let result = autorun(&mut env, &passes);
+    result.expect("RA should converge");
+    eprintln!("produced {} instructions", env.insns.len());
+    assert!(!env.insns.is_empty(), "should produce output instructions");
+    let last = env.insns.last().unwrap();
+    eprintln!("last insn: code={:#04x}", last.code);
+}

@@ -169,6 +169,9 @@ fn spill_one_use(
                 if entry.value == Value::Insn(v) {
                     let load = func.build_load_bb(entry.bb, alloc, InsertPos::BackBeforeJmp);
                     ensure_extra(cg, func, load);
+                    // This reload is a fragment of an already-spilled parent;
+                    // it must never be selected as a spill victim itself.
+                    cg.extra_mut(load).spilled_once = true;
                     // Update the phi operand.
                     func.remove_use(entry.value, user);
                     func.insn_mut(user).phi[idx].value = Value::Insn(load);
@@ -180,6 +183,9 @@ fn spill_one_use(
         _ => {
             let load = func.build_load_at(user, alloc, InsertPos::Front);
             ensure_extra(cg, func, load);
+            // This reload is a fragment of an already-spilled parent;
+            // it must never be selected as a spill victim itself.
+            cg.extra_mut(load).spilled_once = true;
             func.change_value(user, Value::Insn(v), Value::Insn(load));
             Ok(())
         }

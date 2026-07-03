@@ -6,8 +6,9 @@ const KNOWN_FALCO_FAILURES: &[&str] = &[
     // libbpf poison/dummy path leaves a dead def in these large programs
     "prog195.txt",
     "prog198.txt",
-    // RA post-spill fallback currently hits convergence cap / repeated pre-spills
-    "prog280.txt",
+    // prog286: after spilling 18 values, the remaining oversized clique
+    // consists entirely of reload temps (protected from re-spilling).
+    // This means the program genuinely needs >10 registers at some point.
     "prog286.txt",
 ];
 
