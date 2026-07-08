@@ -1,0 +1,77 @@
+; ePass IR v1
+
+bb0: ; preds=[] succs=[bb1,bb3]
+  %0 = loadimm.imm64 0
+  %1 = loadraw.u8 [%0+0]
+  jne32 %1, 1:i32 -> bb3 else bb1
+
+bb1: ; preds=[bb0] succs=[bb2,bb6]
+  %2 = loadraw.u64 [%arg0+112]
+  %3 = add64 %2, 112:i32
+  %4 = add64 %sp, -56:i32
+  %5 = call #113(%4, 8:i32, %3)
+  %6 = add64 %2, 104:i32
+  %7 = loadraw.u64 [%sp-56+sp]
+  %8 = add64 %sp, -56:i32
+  %9 = call #113(%8, 8:i32, %6)
+  %10 = add64 %2, 96:i32
+  %11 = loadraw.u64 [%sp-56+sp]
+  %12 = add64 %sp, -56:i32
+  %13 = call #113(%12, 8:i32, %10)
+  %14 = loadraw.u64 [%sp-56+sp]
+  %15 = call #14()
+  %16 = lsh64 %14, 32:i32
+  %17 = rsh64 %16, 32:i32
+  jeq64 %17, 0:i32 -> bb6 else bb2
+
+bb2: ; preds=[bb1] succs=[bb5]
+  %18 = add64 %sp, -16:i32
+  storeraw.u64 [%sp-64+sp], %18
+  %19 = call #16(%18, 16:i32)
+  %20 = lsh64 %17, 32:i32
+  %21 = arsh64 %20, 32:i32
+  storeraw.u64 [%sp-24+sp], %21
+  %22 = lsh64 %7, 32:i32
+  %23 = arsh64 %22, 32:i32
+  storeraw.u64 [%sp-32+sp], %23
+  %24 = lsh64 %11, 32:i32
+  %25 = arsh64 %24, 32:i32
+  storeraw.u64 [%sp-40+sp], %25
+  ja bb5
+
+bb3: ; preds=[bb0] succs=[bb4,bb6]
+  %26 = loadraw.u64 [%arg0+112]
+  %27 = loadraw.u64 [%arg0+104]
+  %28 = loadraw.u64 [%arg0+96]
+  %29 = call #14()
+  %30 = lsh64 %28, 32:i32
+  %31 = rsh64 %30, 32:i32
+  jeq64 %31, 0:i32 -> bb6 else bb4
+
+bb4: ; preds=[bb3] succs=[bb5]
+  %32 = add64 %sp, -16:i32
+  storeraw.u64 [%sp-64+sp], %32
+  %33 = call #16(%32, 16:i32)
+  %34 = lsh64 %31, 32:i32
+  %35 = arsh64 %34, 32:i32
+  storeraw.u64 [%sp-24+sp], %35
+  %36 = lsh64 %26, 32:i32
+  %37 = arsh64 %36, 32:i32
+  storeraw.u64 [%sp-32+sp], %37
+  %38 = lsh64 %27, 32:i32
+  %39 = arsh64 %38, 32:i32
+  storeraw.u64 [%sp-40+sp], %39
+
+bb5: ; preds=[bb2,bb4] succs=[bb6]
+  %40 = phi [%15, bb2], [%29, bb4]
+  %41 = loadraw.u64 [%sp-64+sp]
+  storeraw.u64 [%sp-48+sp], %41
+  %42 = rsh64 %40, 32:i32
+  storeraw.u64 [%sp-56+sp], %42
+  %43 = add64 %sp, -56:i32
+  %44 = loadimm.imm64 0
+  %45 = call #177(%44, 81:i32, %43, 40:i32)
+
+bb6: ; preds=[bb1,bb3,bb5] succs=[]
+  ret 0:i32
+

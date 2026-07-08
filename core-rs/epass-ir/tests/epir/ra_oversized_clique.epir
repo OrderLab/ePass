@@ -1,0 +1,73 @@
+; ePass IR v1
+; Reproduces "oversized clique with no spillable VR".
+;
+; A block with 12 Phis, each with 2 predecessors.  The Phis all
+; interfere with each other (clique size 12 > 10 registers).
+; When a Phi is spilled, the reload is placed at the predecessor
+; block end.  Since both predecessors jump to the same merge block,
+; the reloads cluster at the same point.
+;
+; After all non-Phi values are spilled, the remaining clique consists
+; of Phis and their reloads (all spilled_once=true).
+;
+; Must be compiled with !const_prop so loadimm values are not folded.
+
+bb0: ; preds=[] succs=[bb_merge]
+  %v0  = loadimm.imm64 0
+  %v1  = loadimm.imm64 1
+  %v2  = loadimm.imm64 2
+  %v3  = loadimm.imm64 3
+  %v4  = loadimm.imm64 4
+  %v5  = loadimm.imm64 5
+  %v6  = loadimm.imm64 6
+  %v7  = loadimm.imm64 7
+  %v8  = loadimm.imm64 8
+  %v9  = loadimm.imm64 9
+  %v10 = loadimm.imm64 10
+  %v11 = loadimm.imm64 11
+  ja bb_merge
+
+bb1: ; preds=[] succs=[bb_merge]
+  %w0  = loadimm.imm64 100
+  %w1  = loadimm.imm64 101
+  %w2  = loadimm.imm64 102
+  %w3  = loadimm.imm64 103
+  %w4  = loadimm.imm64 104
+  %w5  = loadimm.imm64 105
+  %w6  = loadimm.imm64 106
+  %w7  = loadimm.imm64 107
+  %w8  = loadimm.imm64 108
+  %w9  = loadimm.imm64 109
+  %w10 = loadimm.imm64 110
+  %w11 = loadimm.imm64 111
+  ja bb_merge
+
+bb_merge: ; preds=[bb0,bb1] succs=[]
+  ; 12 Phis, all live simultaneously.
+  %p0  = phi [%v0, bb0], [%w0, bb1]
+  %p1  = phi [%v1, bb0], [%w1, bb1]
+  %p2  = phi [%v2, bb0], [%w2, bb1]
+  %p3  = phi [%v3, bb0], [%w3, bb1]
+  %p4  = phi [%v4, bb0], [%w4, bb1]
+  %p5  = phi [%v5, bb0], [%w5, bb1]
+  %p6  = phi [%v6, bb0], [%w6, bb1]
+  %p7  = phi [%v7, bb0], [%w7, bb1]
+  %p8  = phi [%v8, bb0], [%w8, bb1]
+  %p9  = phi [%v9, bb0], [%w9, bb1]
+  %p10 = phi [%v10, bb0], [%w10, bb1]
+  %p11 = phi [%v11, bb0], [%w11, bb1]
+
+  ; Use all Phis so they are live.
+  %t0  = add64 %p0, %p1
+  %t1  = add64 %t0, %p2
+  %t2  = add64 %t1, %p3
+  %t3  = add64 %t2, %p4
+  %t4  = add64 %t3, %p5
+  %t5  = add64 %t4, %p6
+  %t6  = add64 %t5, %p7
+  %t7  = add64 %t6, %p8
+  %t8  = add64 %t7, %p9
+  %t9  = add64 %t8, %p10
+  %t10 = add64 %t9, %p11
+
+  ret %t10

@@ -1,0 +1,65 @@
+; ePass IR v1
+
+bb0: ; preds=[] succs=[bb1,bb2]
+  storeraw.u8 [%sp-1+sp], 1:i32
+  %0 = add64 %sp, -1:i32
+  %1 = loadimm.imm64 0
+  %2 = call #1(%1, %0)
+  jne64 %2, 0:i32 -> bb2 else bb1
+
+bb1: ; preds=[bb0] succs=[bb6]
+  storeraw.u32 [%sp-8+sp], 0:i32
+  storeraw.u32 [%sp-108+sp], 1:i32
+  storeraw.u32 [%sp-104+sp], 0:i32
+  storeraw.u32 [%sp-100+sp], 0:i32
+  storeraw.u32 [%sp-12+sp], 0:i32
+  storeraw.u32 [%sp-16+sp], 0:i32
+  storeraw.u32 [%sp-20+sp], 0:i32
+  storeraw.u32 [%sp-24+sp], 0:i32
+  storeraw.u32 [%sp-28+sp], 0:i32
+  storeraw.u32 [%sp-32+sp], 0:i32
+  storeraw.u32 [%sp-36+sp], 0:i32
+  storeraw.u32 [%sp-40+sp], 0:i32
+  storeraw.u32 [%sp-44+sp], 0:i32
+  storeraw.u32 [%sp-48+sp], 0:i32
+  storeraw.u32 [%sp-52+sp], 0:i32
+  storeraw.u32 [%sp-56+sp], 0:i32
+  storeraw.u32 [%sp-60+sp], 0:i32
+  storeraw.u32 [%sp-64+sp], 0:i32
+  storeraw.u32 [%sp-68+sp], 0:i32
+  storeraw.u32 [%sp-72+sp], 0:i32
+  storeraw.u32 [%sp-76+sp], 0:i32
+  storeraw.u32 [%sp-80+sp], 0:i32
+  storeraw.u32 [%sp-84+sp], 0:i32
+  storeraw.u32 [%sp-88+sp], 0:i32
+  storeraw.u32 [%sp-92+sp], 0:i32
+  storeraw.u32 [%sp-96+sp], 0:i32
+  storeraw.u8 [%sp-104+sp], 44:i32
+  %3 = add64 %sp, -1:i32
+  %4 = add64 %sp, -108:i32
+  %5 = loadimm.imm64 0
+  %6 = call #2(%5, %3, %4, 1:i32)
+  ja bb6
+
+bb2: ; preds=[bb0] succs=[bb3,bb5]
+  %7 = loadraw.u32 [%2+0]
+  jgt32 %7, 99:i32 -> bb5 else bb3
+
+bb3: ; preds=[bb2] succs=[bb4,bb5]
+  %8 = add64 %2, 4:i32
+  %9 = add64 %8, %7
+  storeraw.u8 [%9+0], 44:i32
+  jeq32 %7, 99:i32 -> bb5 else bb4
+
+bb4: ; preds=[bb3] succs=[bb5]
+  storeraw.u8 [%9+1], 44:i32
+  %10 = add32 %7, 2:i32
+
+bb5: ; preds=[bb2,bb3,bb4] succs=[bb6]
+  %11 = phi [%7, bb2], [100:i32, bb3], [%10, bb4]
+  %12 = phi [%2, bb2], [%2, bb3], [%2, bb4]
+  storeraw.u32 [%12+0], %11
+
+bb6: ; preds=[bb1,bb5] succs=[]
+  ret 0:i32
+

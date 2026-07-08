@@ -6,10 +6,6 @@ const KNOWN_FALCO_FAILURES: &[&str] = &[
     // libbpf poison/dummy path leaves a dead def in these large programs
     "prog195.txt",
     "prog198.txt",
-    // prog286: after spilling 18 values, the remaining oversized clique
-    // consists entirely of reload temps (protected from re-spilling).
-    // This means the program genuinely needs >10 registers at some point.
-    "prog286.txt",
 ];
 
 fn have_timeout() -> bool {
@@ -38,7 +34,10 @@ fn falco_dump_corpus_rewrites_except_known_failures() {
     files.sort();
 
     if files.is_empty() {
-        eprintln!("skipping falco tests: no .txt programs in {}", falco.display());
+        eprintln!(
+            "skipping falco tests: no .txt programs in {}",
+            falco.display()
+        );
         return;
     }
 
@@ -100,5 +99,9 @@ fn falco_dump_corpus_rewrites_except_known_failures() {
         known_failed,
         unexpected.len()
     );
-    assert!(unexpected.is_empty(), "unexpected Falco failures:\n{}", unexpected.join("\n\n"));
+    assert!(
+        unexpected.is_empty(),
+        "unexpected Falco failures:\n{}",
+        unexpected.join("\n\n")
+    );
 }

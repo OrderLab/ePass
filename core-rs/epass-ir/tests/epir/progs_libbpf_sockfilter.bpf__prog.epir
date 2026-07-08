@@ -1,0 +1,55 @@
+; ePass IR v1
+
+bb0: ; preds=[] succs=[bb1,bb6]
+  %0 = add64 %sp, -6:i32
+  %1 = call #26(%arg0, 12:i32, %0, 2:i32)
+  %2 = loadraw.u16 [%sp-6+sp]
+  %3 = end.be16 %2
+  storeraw.u16 [%sp-6+sp], %3
+  jne32 %2, 8:i32 -> bb6 else bb1
+
+bb1: ; preds=[bb0] succs=[bb2,bb6]
+  %4 = add64 %sp, -2:i32
+  %5 = call #26(%arg0, 20:i32, %4, 2:i32)
+  %6 = loadraw.u16 [%sp-2+sp]
+  %7 = and32 %6, 65343:i32
+  jne32 %7, 0:i32 -> bb6 else bb2
+
+bb2: ; preds=[bb1] succs=[bb3,bb6]
+  %8 = loadimm.imm64 0
+  %9 = call #131(%8, 24:i32, 0:i32)
+  jeq64 %9, 0:i32 -> bb6 else bb3
+
+bb3: ; preds=[bb2] succs=[bb4,bb5]
+  %10 = add64 %9, 12:i32
+  %11 = call #26(%arg0, 23:i32, %10, 1:i32)
+  %12 = loadraw.u32 [%9+12]
+  jeq32 %12, 47:i32 -> bb5 else bb4
+
+bb4: ; preds=[bb3] succs=[bb5]
+  %13 = call #26(%arg0, 26:i32, %9, 4:i32)
+  %14 = add64 %9, 4:i32
+  %15 = call #26(%arg0, 30:i32, %14, 4:i32)
+
+bb5: ; preds=[bb3,bb4] succs=[bb6]
+  %16 = phi [%9, bb3], [%9, bb4]
+  %17 = phi [%arg0, bb3], [%arg0, bb4]
+  %18 = add64 %sp, -3:i32
+  %19 = call #26(%17, 14:i32, %18, 1:i32)
+  %20 = loadraw.u8 [%sp-3+sp]
+  %21 = lsh32 %20, 2:i32
+  %22 = and32 %21, 60:i32
+  %23 = add32 %22, 14:i32
+  %24 = add64 %16, 8:i32
+  %25 = call #26(%17, %23, %24, 4:i32)
+  %26 = loadraw.u32 [%17+4]
+  storeraw.u32 [%16+16], %26
+  %27 = loadraw.u32 [%17+40]
+  storeraw.u32 [%16+20], %27
+  %28 = call #132(%16, 0:i32)
+  %29 = loadraw.u32 [%17+0]
+
+bb6: ; preds=[bb0,bb1,bb2,bb5] succs=[]
+  %30 = phi [0:i32, bb0], [0:i32, bb1], [0:i32, bb2], [%29, bb5]
+  ret %30
+

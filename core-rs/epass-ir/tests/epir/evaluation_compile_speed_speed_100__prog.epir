@@ -1,0 +1,582 @@
+; ePass IR v1
+
+bb0: ; preds=[] succs=[bb1,bb3]
+  %0 = call #5()
+  storeraw.u8 [%sp-2+sp], 0:i32
+  storeraw.u16 [%sp-4+sp], 26227:i32
+  storeraw.u32 [%sp-8+sp], 1684435809:i32
+  jeq64 %0, 0:i32 -> bb3 else bb1
+
+bb1: ; preds=[bb0] succs=[bb2]
+
+bb2: ; preds=[bb1,bb2] succs=[bb3,bb2]
+  %1 = phi [%1, bb2], [%0, bb1]
+  %2 = phi [%3, bb2], [0:i32, bb1]
+  %4 = add64 %sp, -8:i32
+  %5 = call #6(%4, %2)
+  %3 = add64 %2, 1:i32
+  jlt64 %3, %1 -> bb2 else bb3
+
+bb3: ; preds=[bb0,bb2] succs=[bb4,bb76]
+  %6 = call #5()
+  jeq64 %6, 0:i32 -> bb76 else bb4
+
+bb4: ; preds=[bb3] succs=[bb5]
+
+bb5: ; preds=[bb4,bb5] succs=[bb6,bb5]
+  %7 = phi [%7, bb5], [%6, bb4]
+  %8 = phi [%9, bb5], [0:i32, bb4]
+  %10 = call #5()
+  %11 = add64 %sp, -8:i32
+  %12 = call #6(%11, %10)
+  %9 = add64 %8, 1:i32
+  jlt64 %9, %7 -> bb5 else bb6
+
+bb6: ; preds=[bb5] succs=[bb7]
+
+bb7: ; preds=[bb6,bb7] succs=[bb8,bb7]
+  %13 = phi [%13, bb7], [%7, bb6]
+  %14 = phi [%15, bb7], [0:i32, bb6]
+  %16 = call #5()
+  %17 = add64 %sp, -8:i32
+  %18 = call #6(%17, %16)
+  %15 = add64 %14, 1:i32
+  jlt64 %15, %13 -> bb7 else bb8
+
+bb8: ; preds=[bb7] succs=[bb9]
+
+bb9: ; preds=[bb8,bb9] succs=[bb10,bb9]
+  %19 = phi [%19, bb9], [%13, bb8]
+  %20 = phi [%21, bb9], [0:i32, bb8]
+  %22 = call #5()
+  %23 = add64 %sp, -8:i32
+  %24 = call #6(%23, %22)
+  %21 = add64 %20, 1:i32
+  jlt64 %21, %19 -> bb9 else bb10
+
+bb10: ; preds=[bb9] succs=[bb11]
+
+bb11: ; preds=[bb10,bb11] succs=[bb12,bb11]
+  %25 = phi [%25, bb11], [%19, bb10]
+  %26 = phi [%27, bb11], [0:i32, bb10]
+  %28 = call #5()
+  %29 = add64 %sp, -8:i32
+  %30 = call #6(%29, %28)
+  %27 = add64 %26, 1:i32
+  jlt64 %27, %25 -> bb11 else bb12
+
+bb12: ; preds=[bb11] succs=[bb13]
+
+bb13: ; preds=[bb12,bb13] succs=[bb14,bb13]
+  %31 = phi [%31, bb13], [%25, bb12]
+  %32 = phi [%33, bb13], [0:i32, bb12]
+  %34 = call #5()
+  %35 = loadimm.imm64 7
+  %36 = call #6(%35, %34)
+  %37 = lsh64 %34, 32:i32
+  %38 = arsh64 %37, 32:i32
+  %39 = add64 %32, %38
+  %40 = loadimm.imm64 13
+  %41 = call #6(%40, 2:i32, %39)
+  %33 = add64 %32, 1:i32
+  jlt64 %33, %31 -> bb13 else bb14
+
+bb14: ; preds=[bb13] succs=[bb15]
+
+bb15: ; preds=[bb14,bb15] succs=[bb16,bb15]
+  %42 = phi [%42, bb15], [%31, bb14]
+  %43 = phi [%44, bb15], [0:i32, bb14]
+  %45 = call #5()
+  %46 = loadimm.imm64 7
+  %47 = call #6(%46, %45)
+  %48 = lsh64 %45, 32:i32
+  %49 = arsh64 %48, 32:i32
+  %50 = add64 %43, %49
+  %51 = loadimm.imm64 13
+  %52 = call #6(%51, 2:i32, %50)
+  %44 = add64 %43, 1:i32
+  jlt64 %44, %42 -> bb15 else bb16
+
+bb16: ; preds=[bb15] succs=[bb17]
+
+bb17: ; preds=[bb16,bb17] succs=[bb18,bb17]
+  %53 = phi [%53, bb17], [%42, bb16]
+  %54 = phi [%55, bb17], [0:i32, bb16]
+  %56 = call #5()
+  %57 = loadimm.imm64 7
+  %58 = call #6(%57, %56)
+  %59 = lsh64 %56, 32:i32
+  %60 = arsh64 %59, 32:i32
+  %61 = add64 %54, %60
+  %62 = loadimm.imm64 13
+  %63 = call #6(%62, 2:i32, %61)
+  %55 = add64 %54, 1:i32
+  jlt64 %55, %53 -> bb17 else bb18
+
+bb18: ; preds=[bb17] succs=[bb19]
+
+bb19: ; preds=[bb18,bb19] succs=[bb20,bb19]
+  %64 = phi [%64, bb19], [%53, bb18]
+  %65 = phi [%66, bb19], [0:i32, bb18]
+  %67 = call #5()
+  %68 = loadimm.imm64 7
+  %69 = call #6(%68, %67)
+  %70 = lsh64 %67, 32:i32
+  %71 = arsh64 %70, 32:i32
+  %72 = add64 %65, %71
+  %73 = loadimm.imm64 13
+  %74 = call #6(%73, 2:i32, %72)
+  %66 = add64 %65, 1:i32
+  jlt64 %66, %64 -> bb19 else bb20
+
+bb20: ; preds=[bb19] succs=[bb21]
+
+bb21: ; preds=[bb20,bb21] succs=[bb22,bb21]
+  %75 = phi [%75, bb21], [%64, bb20]
+  %76 = phi [%77, bb21], [0:i32, bb20]
+  %78 = call #5()
+  %79 = loadimm.imm64 7
+  %80 = call #6(%79, %78)
+  %81 = lsh64 %78, 32:i32
+  %82 = arsh64 %81, 32:i32
+  %83 = add64 %76, %82
+  %84 = loadimm.imm64 13
+  %85 = call #6(%84, 2:i32, %83)
+  %77 = add64 %76, 1:i32
+  jlt64 %77, %75 -> bb21 else bb22
+
+bb22: ; preds=[bb21] succs=[bb23]
+
+bb23: ; preds=[bb22,bb23] succs=[bb24,bb23]
+  %86 = phi [%86, bb23], [%75, bb22]
+  %87 = phi [%88, bb23], [0:i32, bb22]
+  %89 = call #5()
+  %90 = loadimm.imm64 7
+  %91 = call #6(%90, %89)
+  %92 = lsh64 %89, 32:i32
+  %93 = arsh64 %92, 32:i32
+  %94 = add64 %87, %93
+  %95 = loadimm.imm64 13
+  %96 = call #6(%95, 2:i32, %94)
+  %88 = add64 %87, 1:i32
+  jlt64 %88, %86 -> bb23 else bb24
+
+bb24: ; preds=[bb23] succs=[bb25]
+
+bb25: ; preds=[bb24,bb25] succs=[bb26,bb25]
+  %97 = phi [%97, bb25], [%86, bb24]
+  %98 = phi [%99, bb25], [0:i32, bb24]
+  %100 = call #5()
+  %101 = loadimm.imm64 7
+  %102 = call #6(%101, %100)
+  %103 = lsh64 %100, 32:i32
+  %104 = arsh64 %103, 32:i32
+  %105 = add64 %98, %104
+  %106 = loadimm.imm64 13
+  %107 = call #6(%106, 2:i32, %105)
+  %99 = add64 %98, 1:i32
+  jlt64 %99, %97 -> bb25 else bb26
+
+bb26: ; preds=[bb25] succs=[bb27]
+
+bb27: ; preds=[bb26,bb27] succs=[bb28,bb27]
+  %108 = phi [%108, bb27], [%97, bb26]
+  %109 = phi [%110, bb27], [0:i32, bb26]
+  %111 = call #5()
+  %112 = loadimm.imm64 7
+  %113 = call #6(%112, %111)
+  %114 = lsh64 %111, 32:i32
+  %115 = arsh64 %114, 32:i32
+  %116 = add64 %109, %115
+  %117 = loadimm.imm64 13
+  %118 = call #6(%117, 2:i32, %116)
+  %110 = add64 %109, 1:i32
+  jlt64 %110, %108 -> bb27 else bb28
+
+bb28: ; preds=[bb27] succs=[bb29]
+
+bb29: ; preds=[bb28,bb29] succs=[bb30,bb29]
+  %119 = phi [%119, bb29], [%108, bb28]
+  %120 = phi [%121, bb29], [0:i32, bb28]
+  %122 = call #5()
+  %123 = loadimm.imm64 7
+  %124 = call #6(%123, %122)
+  %125 = lsh64 %122, 32:i32
+  %126 = arsh64 %125, 32:i32
+  %127 = add64 %120, %126
+  %128 = loadimm.imm64 13
+  %129 = call #6(%128, 2:i32, %127)
+  %121 = add64 %120, 1:i32
+  jlt64 %121, %119 -> bb29 else bb30
+
+bb30: ; preds=[bb29] succs=[bb31]
+
+bb31: ; preds=[bb30,bb31] succs=[bb32,bb31]
+  %130 = phi [%130, bb31], [%119, bb30]
+  %131 = phi [%132, bb31], [0:i32, bb30]
+  %133 = call #5()
+  %134 = loadimm.imm64 7
+  %135 = call #6(%134, %133)
+  %136 = lsh64 %133, 32:i32
+  %137 = arsh64 %136, 32:i32
+  %138 = add64 %131, %137
+  %139 = loadimm.imm64 13
+  %140 = call #6(%139, 2:i32, %138)
+  %132 = add64 %131, 1:i32
+  jlt64 %132, %130 -> bb31 else bb32
+
+bb32: ; preds=[bb31] succs=[bb33]
+
+bb33: ; preds=[bb32,bb33] succs=[bb34,bb33]
+  %141 = phi [%141, bb33], [%130, bb32]
+  %142 = phi [%143, bb33], [0:i32, bb32]
+  %144 = call #5()
+  %145 = loadimm.imm64 7
+  %146 = call #6(%145, %144)
+  %147 = lsh64 %144, 32:i32
+  %148 = arsh64 %147, 32:i32
+  %149 = add64 %142, %148
+  %150 = loadimm.imm64 13
+  %151 = call #6(%150, 2:i32, %149)
+  %143 = add64 %142, 1:i32
+  jlt64 %143, %141 -> bb33 else bb34
+
+bb34: ; preds=[bb33] succs=[bb35]
+
+bb35: ; preds=[bb34,bb35] succs=[bb36,bb35]
+  %152 = phi [%152, bb35], [%141, bb34]
+  %153 = phi [%154, bb35], [0:i32, bb34]
+  %155 = call #5()
+  %156 = loadimm.imm64 7
+  %157 = call #6(%156, %155)
+  %158 = lsh64 %155, 32:i32
+  %159 = arsh64 %158, 32:i32
+  %160 = add64 %153, %159
+  %161 = loadimm.imm64 13
+  %162 = call #6(%161, 2:i32, %160)
+  %154 = add64 %153, 1:i32
+  jlt64 %154, %152 -> bb35 else bb36
+
+bb36: ; preds=[bb35] succs=[bb37]
+
+bb37: ; preds=[bb36,bb37] succs=[bb38,bb37]
+  %163 = phi [%163, bb37], [%152, bb36]
+  %164 = phi [%165, bb37], [0:i32, bb36]
+  %166 = call #5()
+  %167 = loadimm.imm64 7
+  %168 = call #6(%167, %166)
+  %169 = lsh64 %166, 32:i32
+  %170 = arsh64 %169, 32:i32
+  %171 = add64 %164, %170
+  %172 = loadimm.imm64 13
+  %173 = call #6(%172, 2:i32, %171)
+  %165 = add64 %164, 1:i32
+  jlt64 %165, %163 -> bb37 else bb38
+
+bb38: ; preds=[bb37] succs=[bb39]
+
+bb39: ; preds=[bb38,bb39] succs=[bb40,bb39]
+  %174 = phi [%174, bb39], [%163, bb38]
+  %175 = phi [%176, bb39], [0:i32, bb38]
+  %177 = call #5()
+  %178 = loadimm.imm64 7
+  %179 = call #6(%178, %177)
+  %180 = lsh64 %177, 32:i32
+  %181 = arsh64 %180, 32:i32
+  %182 = add64 %175, %181
+  %183 = loadimm.imm64 13
+  %184 = call #6(%183, 2:i32, %182)
+  %176 = add64 %175, 1:i32
+  jlt64 %176, %174 -> bb39 else bb40
+
+bb40: ; preds=[bb39] succs=[bb41]
+
+bb41: ; preds=[bb40,bb41] succs=[bb42,bb41]
+  %185 = phi [%185, bb41], [%174, bb40]
+  %186 = phi [%187, bb41], [0:i32, bb40]
+  %188 = call #5()
+  %189 = loadimm.imm64 7
+  %190 = call #6(%189, %188)
+  %191 = lsh64 %188, 32:i32
+  %192 = arsh64 %191, 32:i32
+  %193 = add64 %186, %192
+  %194 = loadimm.imm64 13
+  %195 = call #6(%194, 2:i32, %193)
+  %187 = add64 %186, 1:i32
+  jlt64 %187, %185 -> bb41 else bb42
+
+bb42: ; preds=[bb41] succs=[bb43]
+
+bb43: ; preds=[bb42,bb43] succs=[bb44,bb43]
+  %196 = phi [%196, bb43], [%185, bb42]
+  %197 = phi [%198, bb43], [0:i32, bb42]
+  %199 = call #5()
+  %200 = loadimm.imm64 7
+  %201 = call #6(%200, %199)
+  %202 = lsh64 %199, 32:i32
+  %203 = arsh64 %202, 32:i32
+  %204 = add64 %197, %203
+  %205 = loadimm.imm64 13
+  %206 = call #6(%205, 2:i32, %204)
+  %198 = add64 %197, 1:i32
+  jlt64 %198, %196 -> bb43 else bb44
+
+bb44: ; preds=[bb43] succs=[bb45]
+
+bb45: ; preds=[bb44,bb45] succs=[bb46,bb45]
+  %207 = phi [%207, bb45], [%196, bb44]
+  %208 = phi [%209, bb45], [0:i32, bb44]
+  %210 = call #5()
+  %211 = loadimm.imm64 7
+  %212 = call #6(%211, %210)
+  %213 = lsh64 %210, 32:i32
+  %214 = arsh64 %213, 32:i32
+  %215 = add64 %208, %214
+  %216 = loadimm.imm64 13
+  %217 = call #6(%216, 2:i32, %215)
+  %209 = add64 %208, 1:i32
+  jlt64 %209, %207 -> bb45 else bb46
+
+bb46: ; preds=[bb45] succs=[bb47]
+
+bb47: ; preds=[bb46,bb47] succs=[bb48,bb47]
+  %218 = phi [%218, bb47], [%207, bb46]
+  %219 = phi [%220, bb47], [0:i32, bb46]
+  %221 = call #5()
+  %222 = loadimm.imm64 7
+  %223 = call #6(%222, %221)
+  %224 = lsh64 %221, 32:i32
+  %225 = arsh64 %224, 32:i32
+  %226 = add64 %219, %225
+  %227 = loadimm.imm64 13
+  %228 = call #6(%227, 2:i32, %226)
+  %220 = add64 %219, 1:i32
+  jlt64 %220, %218 -> bb47 else bb48
+
+bb48: ; preds=[bb47] succs=[bb49]
+
+bb49: ; preds=[bb48,bb49] succs=[bb50,bb49]
+  %229 = phi [%229, bb49], [%218, bb48]
+  %230 = phi [%231, bb49], [0:i32, bb48]
+  %232 = call #5()
+  %233 = loadimm.imm64 7
+  %234 = call #6(%233, %232)
+  %235 = lsh64 %232, 32:i32
+  %236 = arsh64 %235, 32:i32
+  %237 = add64 %230, %236
+  %238 = loadimm.imm64 13
+  %239 = call #6(%238, 2:i32, %237)
+  %231 = add64 %230, 1:i32
+  jlt64 %231, %229 -> bb49 else bb50
+
+bb50: ; preds=[bb49] succs=[bb51]
+
+bb51: ; preds=[bb50,bb51] succs=[bb52,bb51]
+  %240 = phi [%240, bb51], [%229, bb50]
+  %241 = phi [%242, bb51], [0:i32, bb50]
+  %243 = call #5()
+  %244 = loadimm.imm64 7
+  %245 = call #6(%244, %243)
+  %246 = lsh64 %243, 32:i32
+  %247 = arsh64 %246, 32:i32
+  %248 = add64 %241, %247
+  %249 = loadimm.imm64 13
+  %250 = call #6(%249, 2:i32, %248)
+  %242 = add64 %241, 1:i32
+  jlt64 %242, %240 -> bb51 else bb52
+
+bb52: ; preds=[bb51] succs=[bb53]
+
+bb53: ; preds=[bb52,bb53] succs=[bb54,bb53]
+  %251 = phi [%251, bb53], [%240, bb52]
+  %252 = phi [%253, bb53], [0:i32, bb52]
+  %254 = call #5()
+  %255 = loadimm.imm64 7
+  %256 = call #6(%255, %254)
+  %257 = lsh64 %254, 32:i32
+  %258 = arsh64 %257, 32:i32
+  %259 = add64 %252, %258
+  %260 = loadimm.imm64 13
+  %261 = call #6(%260, 2:i32, %259)
+  %253 = add64 %252, 1:i32
+  jlt64 %253, %251 -> bb53 else bb54
+
+bb54: ; preds=[bb53] succs=[bb55]
+
+bb55: ; preds=[bb54,bb55] succs=[bb56,bb55]
+  %262 = phi [%262, bb55], [%251, bb54]
+  %263 = phi [%264, bb55], [0:i32, bb54]
+  %265 = call #5()
+  %266 = loadimm.imm64 7
+  %267 = call #6(%266, %265)
+  %268 = lsh64 %265, 32:i32
+  %269 = arsh64 %268, 32:i32
+  %270 = add64 %263, %269
+  %271 = loadimm.imm64 13
+  %272 = call #6(%271, 2:i32, %270)
+  %264 = add64 %263, 1:i32
+  jlt64 %264, %262 -> bb55 else bb56
+
+bb56: ; preds=[bb55] succs=[bb57]
+
+bb57: ; preds=[bb56,bb57] succs=[bb58,bb57]
+  %273 = phi [%273, bb57], [%262, bb56]
+  %274 = phi [%275, bb57], [0:i32, bb56]
+  %276 = call #5()
+  %277 = loadimm.imm64 7
+  %278 = call #6(%277, %276)
+  %279 = lsh64 %276, 32:i32
+  %280 = arsh64 %279, 32:i32
+  %281 = add64 %274, %280
+  %282 = loadimm.imm64 13
+  %283 = call #6(%282, 2:i32, %281)
+  %275 = add64 %274, 1:i32
+  jlt64 %275, %273 -> bb57 else bb58
+
+bb58: ; preds=[bb57] succs=[bb59]
+
+bb59: ; preds=[bb58,bb59] succs=[bb60,bb59]
+  %284 = phi [%284, bb59], [%273, bb58]
+  %285 = phi [%286, bb59], [0:i32, bb58]
+  %287 = call #5()
+  %288 = loadimm.imm64 7
+  %289 = call #6(%288, %287)
+  %290 = lsh64 %287, 32:i32
+  %291 = arsh64 %290, 32:i32
+  %292 = add64 %285, %291
+  %293 = loadimm.imm64 13
+  %294 = call #6(%293, 2:i32, %292)
+  %286 = add64 %285, 1:i32
+  jlt64 %286, %284 -> bb59 else bb60
+
+bb60: ; preds=[bb59] succs=[bb61]
+
+bb61: ; preds=[bb60,bb61] succs=[bb62,bb61]
+  %295 = phi [%295, bb61], [%284, bb60]
+  %296 = phi [%297, bb61], [0:i32, bb60]
+  %298 = call #5()
+  %299 = loadimm.imm64 7
+  %300 = call #6(%299, %298)
+  %301 = lsh64 %298, 32:i32
+  %302 = arsh64 %301, 32:i32
+  %303 = add64 %296, %302
+  %304 = loadimm.imm64 13
+  %305 = call #6(%304, 2:i32, %303)
+  %297 = add64 %296, 1:i32
+  jlt64 %297, %295 -> bb61 else bb62
+
+bb62: ; preds=[bb61] succs=[bb63]
+
+bb63: ; preds=[bb62,bb63] succs=[bb64,bb63]
+  %306 = phi [%306, bb63], [%295, bb62]
+  %307 = phi [%308, bb63], [0:i32, bb62]
+  %309 = call #5()
+  %310 = loadimm.imm64 7
+  %311 = call #6(%310, %309)
+  %312 = lsh64 %309, 32:i32
+  %313 = arsh64 %312, 32:i32
+  %314 = add64 %307, %313
+  %315 = loadimm.imm64 13
+  %316 = call #6(%315, 2:i32, %314)
+  %308 = add64 %307, 1:i32
+  jlt64 %308, %306 -> bb63 else bb64
+
+bb64: ; preds=[bb63] succs=[bb65]
+
+bb65: ; preds=[bb64,bb65] succs=[bb66,bb65]
+  %317 = phi [%317, bb65], [%306, bb64]
+  %318 = phi [%319, bb65], [0:i32, bb64]
+  %320 = call #5()
+  %321 = loadimm.imm64 7
+  %322 = call #6(%321, %320)
+  %323 = lsh64 %320, 32:i32
+  %324 = arsh64 %323, 32:i32
+  %325 = add64 %318, %324
+  %326 = loadimm.imm64 13
+  %327 = call #6(%326, 2:i32, %325)
+  %319 = add64 %318, 1:i32
+  jlt64 %319, %317 -> bb65 else bb66
+
+bb66: ; preds=[bb65] succs=[bb67]
+
+bb67: ; preds=[bb66,bb67] succs=[bb68,bb67]
+  %328 = phi [%328, bb67], [%317, bb66]
+  %329 = phi [%330, bb67], [0:i32, bb66]
+  %331 = call #5()
+  %332 = loadimm.imm64 7
+  %333 = call #6(%332, %331)
+  %334 = lsh64 %331, 32:i32
+  %335 = arsh64 %334, 32:i32
+  %336 = add64 %329, %335
+  %337 = loadimm.imm64 13
+  %338 = call #6(%337, 2:i32, %336)
+  %330 = add64 %329, 1:i32
+  jlt64 %330, %328 -> bb67 else bb68
+
+bb68: ; preds=[bb67] succs=[bb69]
+
+bb69: ; preds=[bb68,bb69] succs=[bb70,bb69]
+  %339 = phi [%339, bb69], [%328, bb68]
+  %340 = phi [%341, bb69], [0:i32, bb68]
+  %342 = call #5()
+  %343 = loadimm.imm64 7
+  %344 = call #6(%343, %342)
+  %345 = lsh64 %342, 32:i32
+  %346 = arsh64 %345, 32:i32
+  %347 = add64 %340, %346
+  %348 = loadimm.imm64 13
+  %349 = call #6(%348, 2:i32, %347)
+  %341 = add64 %340, 1:i32
+  jlt64 %341, %339 -> bb69 else bb70
+
+bb70: ; preds=[bb69] succs=[bb71]
+
+bb71: ; preds=[bb70,bb71] succs=[bb72,bb71]
+  %350 = phi [%350, bb71], [%339, bb70]
+  %351 = phi [%352, bb71], [0:i32, bb70]
+  %353 = call #5()
+  %354 = loadimm.imm64 7
+  %355 = call #6(%354, %353)
+  %356 = lsh64 %353, 32:i32
+  %357 = arsh64 %356, 32:i32
+  %358 = add64 %351, %357
+  %359 = loadimm.imm64 13
+  %360 = call #6(%359, 2:i32, %358)
+  %352 = add64 %351, 1:i32
+  jlt64 %352, %350 -> bb71 else bb72
+
+bb72: ; preds=[bb71] succs=[bb73]
+
+bb73: ; preds=[bb72,bb73] succs=[bb74,bb73]
+  %361 = phi [%361, bb73], [%350, bb72]
+  %362 = phi [%363, bb73], [0:i32, bb72]
+  %364 = call #5()
+  %365 = loadimm.imm64 7
+  %366 = call #6(%365, %364)
+  %367 = lsh64 %364, 32:i32
+  %368 = arsh64 %367, 32:i32
+  %369 = add64 %362, %368
+  %370 = loadimm.imm64 13
+  %371 = call #6(%370, 2:i32, %369)
+  %363 = add64 %362, 1:i32
+  jlt64 %363, %361 -> bb73 else bb74
+
+bb74: ; preds=[bb73] succs=[bb75]
+
+bb75: ; preds=[bb74,bb75] succs=[bb76,bb75]
+  %372 = phi [%372, bb75], [%361, bb74]
+  %373 = phi [%374, bb75], [0:i32, bb74]
+  %375 = call #5()
+  %376 = loadimm.imm64 7
+  %377 = call #6(%376, %375)
+  %378 = lsh64 %375, 32:i32
+  %379 = arsh64 %378, 32:i32
+  %380 = add64 %373, %379
+  %381 = loadimm.imm64 13
+  %382 = call #6(%381, 2:i32, %380)
+  %374 = add64 %373, 1:i32
+  jlt64 %374, %372 -> bb75 else bb76
+
+bb76: ; preds=[bb3,bb75] succs=[]
+  ret 0:i32
+

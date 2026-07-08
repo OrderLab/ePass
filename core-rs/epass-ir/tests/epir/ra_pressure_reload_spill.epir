@@ -1,0 +1,37 @@
+; ePass IR v1
+; Regression test: high register pressure at a use point.
+; 12 loadimm values are all live at the chain of adds.
+; Before the fix (reload temps not marked spilled_once), the RA
+; allocator could recursively spill reload temps and fail to converge.
+; After the fix, this converges correctly.
+;
+; Must be compiled with !const_prop so loadimm values are not folded.
+
+bb0: ; preds=[] succs=[]
+  %v0  = loadimm.imm64 0
+  %v1  = loadimm.imm64 1
+  %v2  = loadimm.imm64 2
+  %v3  = loadimm.imm64 3
+  %v4  = loadimm.imm64 4
+  %v5  = loadimm.imm64 5
+  %v6  = loadimm.imm64 6
+  %v7  = loadimm.imm64 7
+  %v8  = loadimm.imm64 8
+  %v9  = loadimm.imm64 9
+  %v10 = loadimm.imm64 10
+  %v11 = loadimm.imm64 11
+
+  ; Chain all 12 through adds so every value is used.
+  %t0  = add64 %v0, %v1
+  %t1  = add64 %t0, %v2
+  %t2  = add64 %t1, %v3
+  %t3  = add64 %t2, %v4
+  %t4  = add64 %t3, %v5
+  %t5  = add64 %t4, %v6
+  %t6  = add64 %t5, %v7
+  %t7  = add64 %t6, %v8
+  %t8  = add64 %t7, %v9
+  %t9  = add64 %t8, %v10
+  %t10 = add64 %t9, %v11
+
+  ret %t10

@@ -1,0 +1,14 @@
+; ePass IR v1
+
+bb0: ; preds=[] succs=[bb1,bb2]
+  %0 = loadimm.imm64 0
+  %1 = call #131(%0, 4:i32, 0:i32)
+  jeq64 %1, 0:i32 -> bb2 else bb1
+
+bb1: ; preds=[bb0] succs=[bb2]
+  %2 = call #132(%1, 0:i32)
+
+bb2: ; preds=[bb0,bb1] succs=[]
+  %3 = phi [1:i32, bb0], [2:i32, bb1]
+  ret %3
+
