@@ -1,0 +1,5 @@
+; ePass IR v1
+
+bb0: ; preds=[] succs=[]
+  ret 0:i32
+

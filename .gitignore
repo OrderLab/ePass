@@ -55,4 +55,3 @@ Mkfile.old
 dkms.conf
 /core-rs/target
 /paper
-/core-rs/epass-ir/tests/epir

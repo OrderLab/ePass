@@ -67,6 +67,12 @@ pub fn analyze(env: &mut Env, func: &mut Function, cg: &mut CgState) -> Result<(
         let users = func.insn(v).users.clone();
         let mut visited: HashSet<BbId> = HashSet::new();
         for s in users {
+            if !cg.extra.contains_key(&s) {
+                // Def-use chains can still contain users in unreachable blocks.
+                // CG metadata is allocated only for reachable instructions, so
+                // these uses are irrelevant to register allocation.
+                continue;
+            }
             if matches!(func.insn(s).kind, InsnKind::Phi) {
                 // For a phi user, liveness propagates from the predecessor block
                 // corresponding to each operand equal to `v`.
@@ -112,6 +118,9 @@ fn live_out_at_statement(
     s: InsnId,
     v: InsnId,
 ) {
+    if !cg.extra.contains_key(&s) {
+        return;
+    }
     push_unique(&mut cg.extra_mut(s).live_out, v);
     let dst = cg.extra(s).dst;
     match dst {
@@ -137,6 +146,9 @@ fn live_in_at_statement(
     s: InsnId,
     v: InsnId,
 ) {
+    if !cg.extra.contains_key(&s) {
+        return;
+    }
     push_unique(&mut cg.extra_mut(s).live_in, v);
     match func.prev_insn(s) {
         None => {

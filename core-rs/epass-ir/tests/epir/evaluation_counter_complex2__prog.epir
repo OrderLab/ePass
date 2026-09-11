@@ -1,0 +1,40 @@
+; ePass IR v1
+
+bb0: ; preds=[] succs=[bb1]
+  %0 = loadimm.imm64 0
+  %1 = add64 %sp, -100:i32
+
+bb1: ; preds=[bb0,bb4] succs=[bb2]
+  %2 = phi [%3, bb4], [0:i32, bb0]
+  %4 = phi [%5, bb4], [%1, bb0]
+  %6 = phi [%7, bb4], [%0, bb0]
+  %8 = add64 %6, 1:i32
+  ja bb2
+
+bb2: ; preds=[bb1,bb6] succs=[bb3,bb6]
+  %9 = phi [%4, bb1], [%9, bb6]
+  %7 = phi [%8, bb1], [%10, bb6]
+  %11 = phi [%2, bb1], [%12, bb6]
+  %13 = loadraw.u8 [%7-1]
+  jeq32 %13, 104:i32 -> bb6 else bb3
+
+bb3: ; preds=[bb2] succs=[bb4,bb5]
+  jeq32 %13, 0:i32 -> bb5 else bb4
+
+bb4: ; preds=[bb3] succs=[bb5,bb1]
+  storeraw.u8 [%9+0], %13
+  %5 = add64 %9, 1:i32
+  %3 = add32 %11, 1:i32
+  jslt32 %11, 999:i32 -> bb1 else bb5
+
+bb5: ; preds=[bb7,bb3,bb4] succs=[]
+  ret 0:i32
+
+bb6: ; preds=[bb2] succs=[bb7,bb2]
+  %10 = add64 %7, 1:i32
+  %12 = add32 %11, 1:i32
+  jslt32 %11, 999:i32 -> bb2 else bb7
+
+bb7: ; preds=[bb6] succs=[bb5]
+  ja bb5
+

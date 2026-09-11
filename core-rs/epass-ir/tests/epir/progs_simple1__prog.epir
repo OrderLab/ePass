@@ -1,0 +1,7 @@
+; ePass IR v1
+
+bb0: ; preds=[] succs=[]
+  %0 = loadimm.imm64 0
+  %1 = call #6(%0, 7:i32)
+  ret 1:i32
+

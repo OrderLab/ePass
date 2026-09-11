@@ -5,7 +5,7 @@ use crate::env::Env;
 use crate::error::Result;
 use crate::ir::insn::InsnKind;
 use crate::ir::value::VrType;
-use crate::ir::{Function, InsnId, InsertPos, Value};
+use crate::ir::{Function, InsertPos, InsnId, Value};
 use crate::{internal, invalid};
 
 use super::prepare::{create_alloc, ensure_extra};
@@ -67,8 +67,15 @@ pub fn pre_spill(env: &mut Env, func: &mut Function, cg: &mut CgState) -> Result
         cg.extra_mut(v).w += 1;
         let adj = cg.extra(v).adj.clone();
         for u in adj {
-            // u is in the clique if it appears earlier in the SEO.
-            if seo[..i].contains(&u) {
+            // On a chordal graph, every earlier neighbor of `v` in a perfect
+            // elimination order is mutually adjacent and therefore belongs to
+            // this clique. Our interference graph is not always chordal, so an
+            // MCS order is not necessarily perfect; only keep `u` if it is
+            // adjacent to every value already in `q`. Otherwise `q` is merely an
+            // earlier-neighbor set, and treating it as an oversized clique can
+            // force bogus spills or fail with "no spillable VR" even when the
+            // graph is colorable.
+            if seo[..i].contains(&u) && q.iter().all(|&x| cg.extra(u).adj.contains(&x)) {
                 q.push(u);
                 cg.extra_mut(u).w += 1;
             }
@@ -110,7 +117,10 @@ pub fn spill(
 ) -> Result<()> {
     let _ = env;
     for &v in to_spill {
-        if matches!(func.insn(v).kind, InsnKind::Call { .. } | InsnKind::AllocArray { .. }) {
+        if matches!(
+            func.insn(v).kind,
+            InsnKind::Call { .. } | InsnKind::AllocArray { .. }
+        ) {
             return Err(internal!("attempted to spill a call/allocarray"));
         }
         let users = func.insn(v).users.clone();
@@ -157,11 +167,7 @@ fn spill_one_use(
 ) -> Result<()> {
     match func.insn(user).kind.clone() {
         // A store of the spilled value into its own slot: nothing to do.
-        InsnKind::Store
-            if func.insn(user).values.first() == Some(&Value::Insn(user)) =>
-        {
-            Ok(())
-        }
+        InsnKind::Store if func.insn(user).values.first() == Some(&Value::Insn(user)) => Ok(()),
         InsnKind::Phi => {
             // Reload at the end of each predecessor block contributing v.
             let entries = func.insn(user).phi.clone();
@@ -169,6 +175,9 @@ fn spill_one_use(
                 if entry.value == Value::Insn(v) {
                     let load = func.build_load_bb(entry.bb, alloc, InsertPos::BackBeforeJmp);
                     ensure_extra(cg, func, load);
+                    // This reload is a fragment of an already-spilled parent;
+                    // it must never be selected as a spill victim itself.
+                    cg.extra_mut(load).spilled_once = true;
                     // Update the phi operand.
                     func.remove_use(entry.value, user);
                     func.insn_mut(user).phi[idx].value = Value::Insn(load);
@@ -180,6 +189,9 @@ fn spill_one_use(
         _ => {
             let load = func.build_load_at(user, alloc, InsertPos::Front);
             ensure_extra(cg, func, load);
+            // This reload is a fragment of an already-spilled parent;
+            // it must never be selected as a spill victim itself.
+            cg.extra_mut(load).spilled_once = true;
             func.change_value(user, Value::Insn(v), Value::Insn(load));
             Ok(())
         }
@@ -262,9 +274,7 @@ pub fn pick_spill_victim(func: &Function, cg: &CgState, failed: InsnId) -> Resul
         }
     }
     best.ok_or_else(|| {
-        crate::error::Error::RegAlloc(
-            "coloring failed and no spillable value is available".into(),
-        )
+        crate::error::Error::RegAlloc("coloring failed and no spillable value is available".into())
     })
 }
 

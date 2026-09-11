@@ -1,0 +1,36 @@
+; ePass IR v1
+
+bb0:
+  %a0 = loadimm.imm64 0
+  %a1 = loadimm.imm64 1
+  %a2 = loadimm.imm64 2
+  %a3 = loadimm.imm64 3
+  %a4 = loadimm.imm64 4
+  %a5 = loadimm.imm64 5
+  ja bb1
+
+bb1:
+  %p0 = phi [%a0, bb0], [%n0, bb2]
+  %p1 = phi [%a1, bb0], [%n1, bb2]
+  %p2 = phi [%a2, bb0], [%n2, bb2]
+  %p3 = phi [%a3, bb0], [%n3, bb2]
+  %p4 = phi [%a4, bb0], [%n4, bb2]
+  %p5 = phi [%a5, bb0], [%n5, bb2]
+  %s1 = add64 %p0, %p1
+  %s2 = add64 %s1, %p2
+  %s3 = add64 %s2, %p3
+  %s4 = add64 %s3, %p4
+  %sum = add64 %s4, %p5
+  jgt64 %sum, 1000000:i64 -> bb3 else bb2
+
+bb2:
+  %n0 = add64 %p0, 1:i64
+  %n1 = add64 %p1, 1:i64
+  %n2 = add64 %p2, 1:i64
+  %n3 = add64 %p3, 1:i64
+  %n4 = add64 %p4, 1:i64
+  %n5 = add64 %p5, 1:i64
+  ja bb1
+
+bb3:
+  ret %sum

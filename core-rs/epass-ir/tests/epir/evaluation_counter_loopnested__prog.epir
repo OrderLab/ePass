@@ -1,0 +1,17 @@
+; ePass IR v1
+
+bb0: ; preds=[] succs=[bb1,bb3]
+  %0 = call #5()
+  jeq64 %0, 0:i32 -> bb3 else bb1
+
+bb1: ; preds=[bb0] succs=[bb2]
+
+bb2: ; preds=[bb1,bb2] succs=[bb3,bb2]
+  %1 = phi [%2, bb2], [5000:i32, bb1]
+  %3 = call #5()
+  %2 = add32 %1, -1:i32
+  jne32 %2, 0:i32 -> bb2 else bb3
+
+bb3: ; preds=[bb0,bb2] succs=[]
+  ret 0:i32
+

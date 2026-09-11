@@ -1,0 +1,12 @@
+; ePass IR v1
+
+bb0: ; preds=[] succs=[bb1,bb2]
+  %0 = loadraw.u32 [%arg0+0]
+  jlt32 %0, 100:i32 -> bb2 else bb1
+
+bb1: ; preds=[bb0] succs=[bb2]
+
+bb2: ; preds=[bb0,bb1] succs=[]
+  %1 = phi [1:i32, bb0], [2:i32, bb1]
+  ret %1
+

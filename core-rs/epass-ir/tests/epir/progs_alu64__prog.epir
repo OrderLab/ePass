@@ -1,0 +1,8 @@
+; ePass IR v1
+
+bb0: ; preds=[] succs=[]
+  storeraw.u16 [%sp-2+sp], 49:i32
+  %0 = add64 %sp, -2:i32
+  %1 = call #6(%0, 2:i32)
+  ret 0:i32
+

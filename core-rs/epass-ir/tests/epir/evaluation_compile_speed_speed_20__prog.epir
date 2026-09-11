@@ -1,0 +1,48 @@
+; ePass IR v1
+
+bb0: ; preds=[] succs=[bb1,bb3]
+  %0 = call #5()
+  storeraw.u8 [%sp-2+sp], 0:i32
+  storeraw.u16 [%sp-4+sp], 26227:i32
+  storeraw.u32 [%sp-8+sp], 1684435809:i32
+  jeq64 %0, 0:i32 -> bb3 else bb1
+
+bb1: ; preds=[bb0] succs=[bb2]
+
+bb2: ; preds=[bb1,bb2] succs=[bb3,bb2]
+  %1 = phi [%1, bb2], [%0, bb1]
+  %2 = phi [%3, bb2], [0:i32, bb1]
+  %4 = add64 %sp, -8:i32
+  %5 = call #6(%4, %2)
+  %3 = add64 %2, 1:i32
+  jlt64 %3, %1 -> bb2 else bb3
+
+bb3: ; preds=[bb0,bb2] succs=[bb4,bb8]
+  %6 = call #5()
+  jeq64 %6, 0:i32 -> bb8 else bb4
+
+bb4: ; preds=[bb3] succs=[bb5]
+
+bb5: ; preds=[bb4,bb5] succs=[bb6,bb5]
+  %7 = phi [%7, bb5], [%6, bb4]
+  %8 = phi [%9, bb5], [0:i32, bb4]
+  %10 = call #5()
+  %11 = add64 %sp, -8:i32
+  %12 = call #6(%11, %10)
+  %9 = add64 %8, 1:i32
+  jlt64 %9, %7 -> bb5 else bb6
+
+bb6: ; preds=[bb5] succs=[bb7]
+
+bb7: ; preds=[bb6,bb7] succs=[bb8,bb7]
+  %13 = phi [%13, bb7], [%7, bb6]
+  %14 = phi [%15, bb7], [0:i32, bb6]
+  %16 = call #5()
+  %17 = add64 %sp, -8:i32
+  %18 = call #6(%17, %16)
+  %15 = add64 %14, 1:i32
+  jlt64 %15, %13 -> bb7 else bb8
+
+bb8: ; preds=[bb3,bb7] succs=[]
+  ret 0:i32
+

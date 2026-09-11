@@ -1,0 +1,101 @@
+; ePass IR v1
+
+bb0: ; preds=[] succs=[bb1]
+
+bb1: ; preds=[bb0,bb2] succs=[bb2,bb3]
+  %0 = phi [%1, bb2], [0:i32, bb0]
+  %2 = phi [%1, bb2], [0:i32, bb0]
+  %3 = phi [%4, bb2], [0:i32, bb0]
+  %5 = phi [%6, bb2], [0:i32, bb0]
+  %7 = phi [%8, bb2], [0:i32, bb0]
+  %9 = sub32 1:i32, %7
+  %10 = mul32 %5, %5
+  %11 = mul32 %10, %9
+  %12 = mul32 %3, %3
+  %13 = mul32 %7, %7
+  %14 = add32 %13, %12
+  %15 = mul32 %2, %2
+  %16 = add32 %14, %15
+  %17 = add32 %16, %11
+  jsgt32 %17, 3:i32 -> bb3 else bb2
+
+bb2: ; preds=[bb1] succs=[bb3,bb1]
+  %18 = mul32 %7, %0
+  %19 = lsh32 %18, 1:i32
+  %8 = add32 %19, 2:i32
+  %20 = mul32 %8, %3
+  %21 = mul32 %20, %8
+  %22 = sub32 3:i32, %21
+  %23 = sub32 %15, %13
+  %1 = add32 %23, 1:i32
+  %4 = mul32 %22, %1
+  %6 = add32 %5, 1:i32
+  jne32 %6, 100:i32 -> bb1 else bb3
+
+bb3: ; preds=[bb1,bb2] succs=[]
+  %24 = phi [%5, bb1], [100:i32, bb2]
+  %25 = loadimm.imm64 10
+  %26 = loadraw.u8 [%25+0]
+  %27 = lsh32 %26, 24:i32
+  %28 = arsh32 %27, 24:i32
+  %29 = loadimm.imm64 0
+  %30 = call #6(%29, 1:i32, %28)
+  %31 = loadraw.u8 [%25+1]
+  %32 = lsh32 %31, 24:i32
+  %33 = arsh32 %32, 24:i32
+  %34 = loadimm.imm64 0
+  %35 = call #6(%34, 1:i32, %33)
+  %36 = loadraw.u8 [%25+2]
+  %37 = lsh32 %36, 24:i32
+  %38 = arsh32 %37, 24:i32
+  %39 = loadimm.imm64 0
+  %40 = call #6(%39, 1:i32, %38)
+  %41 = loadraw.u8 [%25+3]
+  %42 = lsh32 %41, 24:i32
+  %43 = arsh32 %42, 24:i32
+  %44 = loadimm.imm64 0
+  %45 = call #6(%44, 1:i32, %43)
+  %46 = loadraw.u8 [%25+4]
+  %47 = lsh32 %46, 24:i32
+  %48 = arsh32 %47, 24:i32
+  %49 = loadimm.imm64 0
+  %50 = call #6(%49, 1:i32, %48)
+  %51 = loadraw.u8 [%25+5]
+  %52 = lsh32 %51, 24:i32
+  %53 = arsh32 %52, 24:i32
+  %54 = loadimm.imm64 0
+  %55 = call #6(%54, 1:i32, %53)
+  %56 = loadraw.u8 [%25+6]
+  %57 = lsh32 %56, 24:i32
+  %58 = arsh32 %57, 24:i32
+  %59 = loadimm.imm64 0
+  %60 = call #6(%59, 1:i32, %58)
+  %61 = loadraw.u8 [%25+7]
+  %62 = lsh32 %61, 24:i32
+  %63 = arsh32 %62, 24:i32
+  %64 = loadimm.imm64 0
+  %65 = call #6(%64, 1:i32, %63)
+  %66 = loadraw.u8 [%25+8]
+  %67 = lsh32 %66, 24:i32
+  %68 = arsh32 %67, 24:i32
+  %69 = loadimm.imm64 0
+  %70 = call #6(%69, 1:i32, %68)
+  %71 = loadraw.u8 [%25+9]
+  %72 = lsh32 %71, 24:i32
+  %73 = arsh32 %72, 24:i32
+  %74 = loadimm.imm64 0
+  %75 = call #6(%74, 1:i32, %73)
+  %76 = loadimm.imm64 3
+  %77 = loadimm.imm64 10
+  %78 = call #6(%76, 1:i32, %77)
+  %79 = loadimm.imm64 3
+  %80 = loadimm.imm64 0
+  %81 = call #6(%79, 1:i32, %80)
+  %82 = loadraw.u8 [%25+0]
+  %83 = lsh32 %82, 24:i32
+  %84 = arsh32 %83, 24:i32
+  %85 = loadimm.imm64 0
+  %86 = call #6(%85, 1:i32, %84)
+  storeraw.u8 [%25+0], %24
+  ret 0:i32
+
