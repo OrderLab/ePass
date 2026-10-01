@@ -10,10 +10,11 @@ step "tests (release)"
 cargo test --release --workspace --quiet
 
 step "clippy: no-panic lints on epass-core"
-cargo clippy -p epass-core --all-targets -- -D warnings
+cargo clippy -p epass-core --all-targets --features text -- -D warnings
 
 step "no_std build (x86_64-unknown-none)"
 cargo build -p epass-core --target x86_64-unknown-none --quiet
+cargo build -p epass-core --target x86_64-unknown-none --features text --quiet
 
 if rustup toolchain list | grep -q '^1.85'; then
   step "MSRV 1.85 (Linux 7.2 minimum rustc)"

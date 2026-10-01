@@ -22,8 +22,11 @@
 #[cfg(test)]
 extern crate std;
 
+pub mod analysis;
+pub mod bin;
 pub mod ctx;
 pub mod error;
+pub mod ir;
 pub mod log;
 pub mod mem;
 

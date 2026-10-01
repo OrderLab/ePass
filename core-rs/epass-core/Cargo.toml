@@ -12,6 +12,8 @@ path = "src/lib.rs"
 
 [features]
 default = []
+# The .epir text parser (userspace debugging format).
+text = []
 
 # epass-core must never depend on another crate: the kernel build compiles
 # these sources directly with rustc.

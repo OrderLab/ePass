@@ -6,4 +6,4 @@ license.workspace = true
 description = "Userspace host for epass-core: system allocator, fault injection, wall clock."
 
 [dependencies]
-epass-core = { path = "../epass-core" }
+epass-core = { path = "../epass-core", features = ["text"] }
