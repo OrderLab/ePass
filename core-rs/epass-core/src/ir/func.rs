@@ -25,6 +25,9 @@ pub struct InsnData {
     pub op: Op,
     /// Source bytecode index, for diagnostics and the offset map.
     pub origin: Option<u32>,
+    /// Register the original program kept this value in (an allocation
+    /// hint; not part of the IR semantics or formats).
+    pub hint: Option<u8>,
     block: BlockId,
     prev: Option<InsnId>,
     next: Option<InsnId>,
@@ -290,6 +293,11 @@ impl<'h> Function<'h> {
         Ok(())
     }
 
+    pub fn set_hint(&mut self, i: InsnId, hint: Option<u8>) -> Result<()> {
+        self.insn_mut(i)?.hint = hint;
+        Ok(())
+    }
+
     pub fn set_origin(&mut self, i: InsnId, origin: Option<u32>) -> Result<()> {
         self.insn_mut(i)?.origin = origin;
         Ok(())
@@ -316,6 +324,7 @@ impl<'h> Function<'h> {
         let id = self.insns.alloc(InsnData {
             op,
             origin: None,
+            hint: None,
             block,
             prev: None,
             next: None,
@@ -350,6 +359,7 @@ impl<'h> Function<'h> {
         let id = self.insns.alloc(InsnData {
             op: Op::Phi,
             origin: None,
+            hint: None,
             block,
             prev: None,
             next: None,

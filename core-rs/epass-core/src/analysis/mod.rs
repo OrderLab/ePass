@@ -5,4 +5,4 @@ pub mod dom;
 pub mod facts;
 
 pub use dom::{Cfg, DomTree};
-pub use facts::{frame_extent, Class, ClassFact, Classes, Extent, Provenance, StackFact, UpperZero};
+pub use facts::{frame_extent, Class, ClassFact, Classes, Extent, Magnitude, Provenance, StackFact, UpperZero};

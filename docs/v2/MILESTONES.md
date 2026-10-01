@@ -34,3 +34,22 @@ This is the implementation plan for the agreed design in [`design.md`](../../des
 | M6 | Tooling cutover | `epasstool` on `epass-core` (ELF, dump, `.epir`, blob conversion); C ABI `epass_compile`; ePass-libbpf on the new ABI; old `epass-ir` removed; structural tests (16 KB thread, allocation-fault injection, compile time, memory); docs | the whole workspace is green; 200k-instruction straight-line program in under 5 s |
 | M7 | Kernel integration | `kernel/` overlay for Linux 7.2.8: Rust built-in object, C glue in `bpf_prog_load` before `bpf_check`, uapi fields, policy via sysfs, facts view over verifier ops and BTF, `func_info`/`line_info` remap, budget via `cond_resched`; `CONFIG_RUST=y` config | kernel builds; boots in the incus VM; in-kernel smoke test (ePass compiles and loads a program; kernel output byte-identical to userspace) |
 | M8 | Loader integration and acceptance | libbpf and bpftool support for the new fields; in-VM end-to-end run over bpftests, Falco and `CORRECT_PROGS`; policy force/deny; IR submission; acceptance procedure and measurement report | set of accepted programs unchanged against the baseline; `EPERM` cases behave as specified; dmesg clean; documents written |
+
+## Implementation notes (deviations and additions to design.md)
+
+Recorded as each milestone lands. The M6 docs fold these in.
+
+### M5
+
+- **Memory phis.** A spilled phi is not reloaded into a temporary at each predecessor. It becomes a *memory phi*: its inputs are written straight into its spill slot on each incoming edge (`PVal::Slot`). This avoids the "too many simultaneous phi temporaries" failure at `ra_colors=4`.
+- **Location-based sequentializer.** The edge parallel copy works over registers and slots alike (`cg/ssaout.rs`). Cycles break through a free register or the `Scratch` slot. A slot-to-slot move with no free register goes through r0, which is saved in a second scratch slot (`Scratch2`). The sequentializer is checked exhaustively: every permutation of up to 5 locations, each one a register or a slot, with and without free registers.
+- **Slot sharing.** Spill slots whose live ranges don't interfere share frame space (first-round interference graph). Without this, large Falco programs ran out of the 512-byte frame.
+- **Register hints.** The lifter records the original register of each value (`InsnData.hint`, not part of the IR formats), and coloring tries it first. Falco: 148,438 → 130,450 instructions.
+- **Frame extent.**
+  - A pointer passed to a helper counts at its lowest possible offset, because helpers access `[ptr, ptr+size)` upward.
+  - Pointer spills are tracked only when they are exact 8-byte stores. The verifier rejects narrower pointer spills ("invalid size of register spill"), and codegen keeps every store, so such a program is rejected either way.
+- **Counted-loop bound** (`analysis/facts.rs`, `iv_range`).
+  - Shape: `p = phi(c0, p + s)`, where the back edge is reached only through the not-equal edge of `p == e` or `p + s == e`, and `e - c0` is an exact multiple of `s` in the walking direction.
+  - Result: `p` is bounded by `[c0, e]` (or one step short of `e`) without wrapping.
+  - This bounds `r10 + c + iv` frame walks. Falco prog195 and prog198 now compile.
+- **Falco result:** 337/339. The two rejected programs load a callback address (`ld_imm64` `BPF_PSEUDO_FUNC`), which is phase 2 per design.md §11.

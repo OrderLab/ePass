@@ -235,7 +235,7 @@ fn value_facts() {
     ];
     let f = lift(&insns(&p), &DefaultFacts::default(), &ctx).unwrap();
     let cfg = Cfg::compute(&f, &ctx).unwrap();
-    let prov = Provenance::compute(&f, &cfg, &UpperZero::compute(&f, &cfg, &ctx).unwrap(), &ctx).unwrap();
+    let prov = Provenance::compute(&f, &cfg, &epass_core::analysis::Magnitude::compute(&f, &cfg, &ctx).unwrap(), &ctx).unwrap();
     let ext = frame_extent(&f, &prov, &cfg, &ctx).unwrap();
     assert_eq!(ext.lowest, -20);
     assert!(!ext.unknown);
@@ -270,12 +270,40 @@ fn value_facts() {
         }
     }
     assert!(saw_lookup && saw_add32);
-    // A frame pointer stored to memory makes the extent unknown.
-    let esc = prog![stx(Size::DW, R10, R10, -8), mov64_imm(R0, 0), exit()];
-    let f = lift(&insns(&esc), &DefaultFacts::default(), &ctx).unwrap();
-    let cfg = Cfg::compute(&f, &ctx).unwrap();
-    let prov = Provenance::compute(&f, &cfg, &UpperZero::compute(&f, &cfg, &ctx).unwrap(), &ctx).unwrap();
-    assert!(frame_extent(&f, &prov, &cfg, &ctx).unwrap().unknown);
+    let extent = |p: &[u64]| {
+        let f = lift(&insns(p), &DefaultFacts::default(), &ctx).unwrap();
+        let cfg = Cfg::compute(&f, &ctx).unwrap();
+        let mag = epass_core::analysis::Magnitude::compute(&f, &cfg, &ctx).unwrap();
+        let prov = Provenance::compute(&f, &cfg, &mag, &ctx).unwrap();
+        frame_extent(&f, &prov, &cfg, &ctx).unwrap()
+    };
+    // A frame pointer stored outside the frame escapes: extent unknown.
+    let esc = prog![stx(Size::DW, R1, R10, 0), mov64_imm(R0, 0), exit()];
+    assert!(extent(&esc).unknown);
+    // Spilled to an exact 8-byte frame slot and reloaded, it is tracked.
+    let spill = prog![
+        stx(Size::DW, R10, R10, -8),
+        ldx(Size::DW, R2, R10, -8),
+        st(Size::DW, R2, -100, 0),
+        mov64_imm(R0, 0),
+        exit()
+    ];
+    let e = extent(&spill);
+    assert!(!e.unknown);
+    assert_eq!(e.lowest, -100);
+    // A narrower store leaves no usable pointer: the verifier rejects
+    // partial pointer spills, and codegen keeps the store, so the reload is
+    // a scalar.
+    let narrow = prog![
+        stx(Size::W, R10, R10, -8),
+        ldx(Size::DW, R2, R10, -8),
+        st(Size::DW, R2, -100, 0),
+        mov64_imm(R0, 0),
+        exit()
+    ];
+    let e = extent(&narrow);
+    assert!(!e.unknown);
+    assert_eq!(e.lowest, -8);
 }
 
 fn falco_dir() -> std::path::PathBuf {
@@ -319,7 +347,7 @@ fn falco_corpus_lifts_and_validates() {
         match lift(&prog, &DefaultFacts::default(), &ctx) {
             Ok(f) => {
                 let cfg = Cfg::compute(&f, &ctx).unwrap();
-                let prov = Provenance::compute(&f, &cfg, &UpperZero::compute(&f, &cfg, &ctx).unwrap(), &ctx).unwrap();
+                let prov = Provenance::compute(&f, &cfg, &epass_core::analysis::Magnitude::compute(&f, &cfg, &ctx).unwrap(), &ctx).unwrap();
                 let ext = frame_extent(&f, &prov, &cfg, &ctx).unwrap();
                 if ext.unknown {
                     unknown_extent += 1;
@@ -363,3 +391,70 @@ fn deep_cfg_lifts_on_a_16k_stack() {
     assert!(blocks > 120_000);
 }
 
+
+/// Counted-loop phis get a bound only when the exit test provably stops
+/// the walk before it wraps.
+#[test]
+fn magnitude_bounds_counted_loops() {
+    use epass_core::analysis::Magnitude;
+    use epass_core::ir::parse::parse;
+    // `%0` is the phi in every case; `None` means no bound (64 bits).
+    let cases: &[(&str, &str, u8)] = &[
+        (
+            "falco: phi(40, iv-8), exit when iv-8 == -8",
+            "func main {\nbb0:\n  br bb1\nbb1:\n  %0 = phi [40, bb0], [%1, bb2]\n  %1 = add.64 %0, -8\n  condbr.64.eq %1, -8, bb3, bb2\nbb2:\n  br bb1\nbb3:\n  ret %0\n}",
+            6,
+        ),
+        (
+            "guard on the phi itself, ne form, header exit",
+            "func main {\nbb0:\n  br bb1\nbb1:\n  %0 = phi [0, bb0], [%1, bb2]\n  condbr.64.ne %0, 10, bb2, bb3\nbb2:\n  %1 = add.64 %0, 1\n  br bb1\nbb3:\n  ret %0\n}",
+            4,
+        ),
+        (
+            "sub form, guard reached through an inner diamond",
+            "func main {\nbb0:\n  br bb1\nbb1:\n  %0 = phi [16, bb0], [%1, bb5]\n  %1 = sub.64 %0, 4\n  condbr.64.eq %1, 0, bb6, bb2\nbb2:\n  %2 = load.u64 [%arg1+0]\n  condbr.64.eq %2, 0, bb3, bb4\nbb3:\n  br bb5\nbb4:\n  br bb5\nbb5:\n  br bb1\nbb6:\n  ret %0\n}",
+            5,
+        ),
+        (
+            "stride does not divide the span: wraps past the exit",
+            "func main {\nbb0:\n  br bb1\nbb1:\n  %0 = phi [41, bb0], [%1, bb2]\n  %1 = add.64 %0, -8\n  condbr.64.eq %1, -8, bb3, bb2\nbb2:\n  br bb1\nbb3:\n  ret %0\n}",
+            64,
+        ),
+        (
+            "walks away from the exit value",
+            "func main {\nbb0:\n  br bb1\nbb1:\n  %0 = phi [0, bb0], [%1, bb2]\n  %1 = add.64 %0, 8\n  condbr.64.eq %1, -8, bb3, bb2\nbb2:\n  br bb1\nbb3:\n  ret %0\n}",
+            64,
+        ),
+        (
+            "a path bypasses the guard",
+            "func main {\nbb0:\n  br bb1\nbb1:\n  %0 = phi [40, bb0], [%1, bb4]\n  %1 = add.64 %0, -8\n  %2 = load.u64 [%arg1+0]\n  condbr.64.eq %2, 0, bb4, bb2\nbb2:\n  condbr.64.eq %1, -8, bb3, bb4\nbb3:\n  ret %0\nbb4:\n  br bb1\n}",
+            64,
+        ),
+        (
+            "32-bit compare only sees the low half",
+            "func main {\nbb0:\n  br bb1\nbb1:\n  %0 = phi [40, bb0], [%1, bb2]\n  %1 = add.64 %0, -8\n  condbr.32.eq %1, -8, bb3, bb2\nbb2:\n  br bb1\nbb3:\n  ret %0\n}",
+            64,
+        ),
+        (
+            "negative range is not a magnitude",
+            "func main {\nbb0:\n  br bb1\nbb1:\n  %0 = phi [8, bb0], [%1, bb2]\n  %1 = add.64 %0, -8\n  condbr.64.eq %1, -24, bb3, bb2\nbb2:\n  br bb1\nbb3:\n  ret %0\n}",
+            64,
+        ),
+    ];
+    for (what, src, want) in cases {
+        let host = StdHost::new();
+        let heap = Heap::new(&host, 1 << 26);
+        let ctx = Ctx::new(&heap, small_limits(), Level::Warn).unwrap();
+        let f = parse(src, &heap, &ctx).unwrap();
+        epass_core::ir::verify::verify(&f, &ctx, false).unwrap();
+        let cfg = Cfg::compute(&f, &ctx).unwrap();
+        let m = Magnitude::compute(&f, &cfg, &ctx).unwrap();
+        let phi = cfg
+            .rpo()
+            .iter()
+            .flat_map(|&b| f.iter_block(b).collect::<Vec<_>>())
+            .find(|&i| matches!(f.op(i).unwrap(), Op::Phi))
+            .unwrap();
+        assert_eq!(m.bits(Value::Insn(phi)), *want, "{what}");
+    }
+}

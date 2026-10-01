@@ -25,6 +25,7 @@ extern crate std;
 pub mod analysis;
 pub mod bin;
 pub mod bpf;
+pub mod cg;
 pub mod ctx;
 pub mod error;
 pub mod facts;

@@ -499,6 +499,7 @@ pub fn lift<'h>(prog: &[BpfInsn], facts: &dyn Facts, ctx: &Ctx<'h>) -> Result<Fu
                     }
                     let phi = f.insert_phi(y, inputs.as_slice())?;
                     f.set_origin(phi, f.block(y)?.origin)?;
+                    f.set_hint(phi, Some(r as u8))?;
                     if let Some(c) = phi_of.at_mut(y)?.get_mut(r) {
                         *c = phi.to_u32();
                     }
@@ -571,7 +572,12 @@ pub fn lift<'h>(prog: &[BpfInsn], facts: &dyn Facts, ctx: &Ctx<'h>) -> Result<Fu
         let k = *bc_of.at(b)?;
         if k != NONE {
             let bb = *blocks.get(k as usize).ok_or(Error::internal("block"))?;
+            let mut before = [0usize; NVARS];
+            for (h, st) in before.iter_mut().zip(stacks.iter()) {
+                *h = st.len();
+            }
             translate_block(&mut f, b, &bb, prog, &slot_kind, &mut stacks, facts, ctx)?;
+            hint_writes(&mut f, &stacks, &before)?;
         }
         // Fill successor phi inputs for the edge from b.
         for &s in f.successors(b)?.as_slice() {
@@ -629,6 +635,22 @@ fn write(stacks: &mut [FVec<'_, Value>; NVARS], r: u8, v: Value, pc: usize) -> R
         .get_mut(r as usize)
         .ok_or(bad("write to r10 or an invalid register", pc))?
         .push(v)
+}
+
+/// Record the original register of every instruction result defined while
+/// translating a block (the allocator tries it first).
+fn hint_writes(f: &mut Function<'_>, stacks: &[FVec<'_, Value>; NVARS], before: &[usize; NVARS]) -> Result<()> {
+    for (r, st) in stacks.iter().enumerate() {
+        let from = before.get(r).copied().unwrap_or(0);
+        for &v in st.as_slice().get(from..).unwrap_or(&[]) {
+            if let Value::Insn(i) = v {
+                if f.insn(i)?.hint.is_none() {
+                    f.set_hint(i, Some(r as u8))?;
+                }
+            }
+        }
+    }
+    Ok(())
 }
 
 fn sext32(imm: i32) -> u64 {
