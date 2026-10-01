@@ -7,3 +7,6 @@ description = "Userspace host for epass-core: system allocator, fault injection,
 
 [dependencies]
 epass-core = { path = "../epass-core", features = ["text"] }
+
+[dev-dependencies]
+epass-interp = { path = "../epass-interp" }

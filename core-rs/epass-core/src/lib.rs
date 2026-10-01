@@ -24,9 +24,12 @@ extern crate std;
 
 pub mod analysis;
 pub mod bin;
+pub mod bpf;
 pub mod ctx;
 pub mod error;
+pub mod facts;
 pub mod ir;
+pub mod lift;
 pub mod log;
 pub mod mem;
 

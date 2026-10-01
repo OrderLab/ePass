@@ -52,6 +52,7 @@ name = "epass-std"
 version = "0.2.0"
 dependencies = [
  "epass-core",
+ "epass-interp",
 ]
 
 [[package]]
