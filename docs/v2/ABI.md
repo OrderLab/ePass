@@ -11,6 +11,12 @@ int  epass_compile(const struct epass_host *host, const struct epass_facts *fact
 void epass_output_free(struct epass_output *out);
 ```
 
+```c
+int epass_policy_check(const struct epass_host *host, const char *str, u32 len);
+```
+
+`epass_policy_check` validates a policy string and summarizes it. It returns the mode (`EPASS_MODE_OFF`, `_OPTIN` or `_ALWAYS`, masked by `EPASS_POLICY_MODE_MASK`) together with the flags `EPASS_POLICY_FORCED`, `EPASS_POLICY_IR` and `EPASS_POLICY_USER_POPT`, or a negative errno. The kernel calls it when the sysctl is written, and uses the summary to skip `epass_compile` for programs ePass would not touch.
+
 ## Return value
 
 | Return | Meaning | `out` |

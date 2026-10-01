@@ -79,3 +79,22 @@ Recorded as each milestone lands. The M6 docs fold these in.
   - 200,000 straight-line instructions: 0.36 s, 72 MB peak heap (368 B/instruction). The kernel preset caps input at 65,536 instructions and 64 MB.
   - Largest Falco peak: 3.7 MB (prog196, 8,398 instructions).
   - All of `bpftests/*.c` that clang can build compile (28 of 30), except `asm.c` (ecall in bytecode) and `localcall.c` (bpf-to-bpf).
+
+### M7
+
+- **Where the code lives.** Kernel code is in `kernel/` (overlay, patches, `apply.sh`, the selftest) and applies to vanilla v7.2.8. The working tree used for development is a git-tracked 7.2.8 extraction, from which `kernel/patches/` is exported with `git format-patch`.
+- **No kernel-crate bindings.** The Rust object only uses `core`. It exports the C ABI, and `kernel/bpf/epass.c` supplies the host and the facts as C callbacks. This follows the `drm_panic_qr.rs` precedent: a built-in Rust object called from C.
+  - `epass_policy_check` was added to the ABI, so the policy sysctl validates on write and the hot path decides without compiling.
+- **Kernel constraints found while porting.**
+  - The kernel's `compiler_builtins` panics on 128-bit division, and `iv_range` used i128. It now uses checked i64 arithmetic, and `check.sh` scans the no_std object for 128-bit and float intrinsics.
+  - The crate is built with `-Coverflow-checks=off`, because `CONFIG_RUST_OVERFLOW_CHECKS` would turn any wrap into a `BUG()`. Signed division folding is written with `checked_div`/`checked_rem`, so no div-by-zero panic path remains. The only panic symbol left in the object is core's sort-order check, which is unreachable for integer keys.
+  - `prog->aux->ops` is `bpf_prog_ops`, and the verifier ops are static in verifier.c. Patch 0002 adds `bpf_epass_func_proto()`.
+- **Decisions on design.md open questions.**
+  - Pass options and IR need CAP_BPF; global options don't.
+  - The policy lives in a sysctl, `kernel.bpf_epass_policy`. CAP_SYS_ADMIN writes it; the default is `mode=optin`.
+  - `BPF_F_EPASS` is `1U << 30`, chosen to stay clear of upstream's next flags.
+  - CO-RE relocations and bpf-to-bpf programs keep the original instructions, and are rejected only when a pass is forced.
+  - ePass runs before `security_bpf_prog_load()`, so LSMs see the program that is verified.
+  - Signatures (`attr->signature`) are checked over the submitted program before ePass runs.
+- **line_info.** It is remapped in the kernel. The glue builds a sorted, deduplicated copy, and `check_btf_line()` reads from it through a one-line hook. func_info needs no remap: with a single function its only record is at offset 0, and `offsets[0]` is always 0.
+- **Test VM.** An incus VM (`ubuntu/noble`) runs the kernel, configured from the VM's own config plus `localmodconfig`. The host needed `ovmf`, `qemu-system-modules-spice`, `debhelper` and `libdw-dev`, and `incusbr0` had to be added to firewalld's trusted zone (Docker's FORWARD DROP also needs `DOCKER-USER` accept rules for the bridge).

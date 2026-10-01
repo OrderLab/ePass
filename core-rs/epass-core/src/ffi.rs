@@ -476,6 +476,56 @@ fn copy_log(ctx: &Ctx<'_>, h: &epass_host, o: &mut epass_output) -> Result<()> {
     Ok(())
 }
 
+pub const EPASS_POLICY_MODE_MASK: c_int = 3;
+pub const EPASS_POLICY_FORCED: c_int = 1 << 2;
+pub const EPASS_POLICY_IR: c_int = 1 << 3;
+pub const EPASS_POLICY_USER_POPT: c_int = 1 << 4;
+
+/// Validate a policy string and summarize it: the mode (0 off, 1 optin,
+/// 2 always) in the low bits, plus `EPASS_POLICY_*` flags; or a negative
+/// errno. Lets the host decide cheaply whether ePass runs at all.
+///
+/// # Safety
+/// `host` must be valid (it only provides scratch memory); `s` is NULL with
+/// `len == 0` or valid for `len` bytes.
+#[no_mangle]
+pub unsafe extern "C" fn epass_policy_check(host: *const epass_host, s: *const c_char, len: u32) -> c_int {
+    // SAFETY: NULL or valid (contract).
+    let Some(h) = (unsafe { host.as_ref() }) else { return EINVAL };
+    if h.alloc.is_none() || h.free.is_none() {
+        return EINVAL;
+    }
+    let ch = CHost { h };
+    let heap = Heap::new(&ch, Limits::KERNEL.max_bytes);
+    // SAFETY: the string is valid for its length (contract).
+    let text = match unsafe { text(s, len) } {
+        Ok(t) => t,
+        Err(e) => return e.errno(),
+    };
+    let summary = match Policy::parse(text, &heap) {
+        Ok(p) => {
+            let mode = match p.mode {
+                crate::pm::Mode::Off => 0,
+                crate::pm::Mode::OptIn => 1,
+                crate::pm::Mode::Always => 2,
+            };
+            let mut r = mode;
+            if p.has_forced() {
+                r |= EPASS_POLICY_FORCED;
+            }
+            if p.allow_ir {
+                r |= EPASS_POLICY_IR;
+            }
+            if p.allow_user_popt {
+                r |= EPASS_POLICY_USER_POPT;
+            }
+            r
+        }
+        Err(e) => e.errno(),
+    };
+    summary
+}
+
 /// Release an output's buffers.
 ///
 /// # Safety

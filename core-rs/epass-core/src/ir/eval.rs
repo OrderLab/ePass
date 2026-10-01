@@ -28,26 +28,33 @@ pub fn bin(op: BinOp, w: Width, a: u64, b: u64) -> u64 {
         BinOp::Mul => a.wrapping_mul(b),
         BinOp::UDiv => a.checked_div(b).unwrap_or(0),
         BinOp::UMod => a.checked_rem(b).unwrap_or(a),
-        BinOp::SDiv => {
-            if b == 0 {
-                0
-            } else {
-                match w {
-                    Width::W32 => (sa as i32).wrapping_div(sb as i32) as i64 as u64,
-                    Width::W64 => sa.wrapping_div(sb) as u64,
-                }
-            }
-        }
-        BinOp::SMod => {
-            if b == 0 {
-                a
-            } else {
-                match w {
-                    Width::W32 => (sa as i32).wrapping_rem(sb as i32) as i64 as u64,
-                    Width::W64 => sa.wrapping_rem(sb) as u64,
-                }
-            }
-        }
+        // Division by zero yields 0 (sdiv) or the dividend (smod); MIN / -1
+        // wraps. `checked_*` keeps every division visibly guarded, so the
+        // object has no panic path.
+        BinOp::SDiv => match w {
+            Width::W32 => match (sa as i32).checked_div(sb as i32) {
+                Some(q) => q as i64 as u64,
+                None if sb as i32 == 0 => 0,
+                None => (sa as i32).wrapping_neg() as i64 as u64,
+            },
+            Width::W64 => match sa.checked_div(sb) {
+                Some(q) => q as u64,
+                None if sb == 0 => 0,
+                None => sa.wrapping_neg() as u64,
+            },
+        },
+        BinOp::SMod => match w {
+            Width::W32 => match (sa as i32).checked_rem(sb as i32) {
+                Some(r) => r as i64 as u64,
+                None if sb as i32 == 0 => a,
+                None => 0,
+            },
+            Width::W64 => match sa.checked_rem(sb) {
+                Some(r) => r as u64,
+                None if sb == 0 => a,
+                None => 0,
+            },
+        },
         BinOp::And => a & b,
         BinOp::Or => a | b,
         BinOp::Xor => a ^ b,

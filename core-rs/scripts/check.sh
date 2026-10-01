@@ -18,6 +18,15 @@ cargo build -p epass-core --target x86_64-unknown-none --quiet
 cargo build -p epass-core --target x86_64-unknown-none --features text --quiet
 cargo build -p epass-core --target x86_64-unknown-none --features ffi --quiet
 
+step "kernel constraints: no 128-bit or float intrinsics in epass-core"
+# The kernel's compiler_builtins panics on these (rust/compiler_builtins.rs).
+cargo build -p epass-core --release --target x86_64-unknown-none --features ffi --quiet
+bad=$(nm -u target/x86_64-unknown-none/release/libepass_core.rlib 2>/dev/null \
+  | awk '/ U /{print $2}' | grep -E '^__(.*ti[34]|.*[sd]f[23]|.*[sd]i[sd]f|fix.*f.*i|float.*)$' | sort -u || true)
+if [ -n "$bad" ]; then
+  echo "epass-core references intrinsics the kernel does not provide:"; echo "$bad"; exit 1
+fi
+
 if rustup toolchain list | grep -q '^1.85'; then
   step "MSRV 1.85 (Linux 7.2 minimum rustc)"
   cargo +1.85 build -p epass-core --target x86_64-unknown-none --features ffi --quiet

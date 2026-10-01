@@ -371,3 +371,15 @@ fn default_host_works() {
     assert_eq!(rc, 0);
     unsafe { epass_output_free(out.as_mut_ptr()) };
 }
+
+#[test]
+fn policy_check_summarizes() {
+    let check = |s: &str| unsafe { epass_policy_check(epass_default_host(), s.as_ptr().cast(), s.len() as u32) };
+    assert_eq!(check(""), 1 | EPASS_POLICY_IR | EPASS_POLICY_USER_POPT);
+    assert_eq!(check("mode=off"), EPASS_POLICY_IR | EPASS_POLICY_USER_POPT);
+    assert_eq!(check("mode=always,ir=0,user_popt=0"), 2);
+    assert_eq!(check("+dump_ir,ir=0") & (EPASS_POLICY_FORCED | EPASS_POLICY_IR), EPASS_POLICY_FORCED);
+    assert_eq!(check("mode=sometimes"), -22);
+    assert_eq!(check("+nosuchpass"), -22);
+    assert_eq!(unsafe { epass_policy_check(std::ptr::null(), std::ptr::null(), 0) }, -22);
+}

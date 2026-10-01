@@ -594,14 +594,16 @@ fn iv_range(f: &Function<'_>, dom: &DomTree<'_>, p: InsnId) -> Result<Option<(i6
         }
     }
     let Some((x, e)) = found else { return Ok(None) };
-    let (k_min, last) = if x == p { (0, e as i128) } else { (1, e as i128 - s as i128) };
-    let span = e as i128 - c0 as i128;
-    if span % s as i128 != 0 || span / (s as i128) < k_min {
+    // Exact integer arithmetic without i128 (the kernel has no 128-bit
+    // division): give up whenever an i64 step would overflow.
+    let (k_min, last) = if x == p { (0, Some(e)) } else { (1, e.checked_sub(s)) };
+    let (Some(last), Some(span)) = (last, e.checked_sub(c0)) else {
         return Ok(None);
+    };
+    match (span.checked_rem(s), span.checked_div(s)) {
+        (Some(0), Some(k)) if k >= k_min => Ok(Some((c0.min(last), c0.max(last)))),
+        _ => Ok(None),
     }
-    // `last` lies between c0 and e, so it fits.
-    let last = last as i64;
-    Ok(Some((c0.min(last), c0.max(last))))
 }
 
 // ------------------------------------------------------------ value class

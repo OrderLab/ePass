@@ -174,6 +174,21 @@ int epass_compile(const struct epass_host *host, const struct epass_facts *facts
 /* Release out's buffers; safe on a zeroed or already freed output. */
 void epass_output_free(struct epass_output *out);
 
+/*
+ * Validate a policy string. Returns its mode (EPASS_MODE_*) in
+ * EPASS_POLICY_MODE_MASK plus EPASS_POLICY_* flags, or a negative errno.
+ * The host only provides scratch memory. Hosts call this when the policy is
+ * set, and use the result to skip epass_compile when ePass cannot run.
+ */
+#define EPASS_POLICY_MODE_MASK 3
+#define EPASS_MODE_OFF 0
+#define EPASS_MODE_OPTIN 1
+#define EPASS_MODE_ALWAYS 2
+#define EPASS_POLICY_FORCED (1 << 2)    /* some pass is forced */
+#define EPASS_POLICY_IR (1 << 3)        /* IR input allowed */
+#define EPASS_POLICY_USER_POPT (1 << 4) /* loader popt allowed */
+int epass_policy_check(const struct epass_host *host, const char *str, epass_u32 len);
+
 #ifndef __KERNEL__
 /* libepass.a only: a host over malloc/free that logs nothing. */
 const struct epass_host *epass_default_host(void);

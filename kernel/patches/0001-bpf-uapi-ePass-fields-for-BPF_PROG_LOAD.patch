@@ -1,0 +1,91 @@
+From ca49cb81847299d18d5fecdb7ff6972332dc4bc2 Mon Sep 17 00:00:00 2001
+From: Yiming Xiang <yx6439@eid.utexas.edu>
+Date: Wed, 30 Sep 2026 21:30:10 -0500
+Subject: [PATCH 1/2] bpf: uapi: ePass fields for BPF_PROG_LOAD
+
+Add BPF_F_EPASS and the epass_gopt/epass_popt/epass_ir fields: loaders
+pass ePass global and pass options, or submit ePass IR instead of
+bytecode (insn_cnt == 0). The kernel runs ePass before the verifier under
+the administrator policy.
+---
+ include/uapi/linux/bpf.h       | 19 +++++++++++++++++++
+ tools/include/uapi/linux/bpf.h | 19 +++++++++++++++++++
+ 2 files changed, 38 insertions(+)
+
+diff --git a/include/uapi/linux/bpf.h b/include/uapi/linux/bpf.h
+index 89b36de5f..a3d10fad2 100644
+--- a/include/uapi/linux/bpf.h
++++ b/include/uapi/linux/bpf.h
+@@ -1316,6 +1316,11 @@ enum bpf_perf_event_type {
+ /* The verifier internal test flag. Behavior is undefined */
+ #define BPF_F_TEST_REG_INVARIANTS	(1U << 7)
+ 
++/* Request ePass for this program (BPF_PROG_LOAD; see epass_gopt). Under
++ * the "optin" policy mode, ePass runs only on requested programs.
++ */
++#define BPF_F_EPASS		(1U << 30)
++
+ /* link_create.kprobe_multi.flags used in LINK_CREATE command for
+  * BPF_TRACE_KPROBE_MULTI attach type to create return probe.
+  */
+@@ -1669,6 +1674,20 @@ union bpf_attr {
+ 		 * verification.
+ 		 */
+ 		__s32		keyring_id;
++		/* ePass (CONFIG_BPF_EPASS): compiler passes run before the
++		 * verifier under the administrator policy
++		 * (kernel.bpf_epass_policy). epass_gopt/epass_popt are the
++		 * global and pass option strings (not NUL-terminated). With
++		 * epass_ir_len, the program is an ePass binary IR blob at
++		 * epass_ir and insn_cnt must be 0. Pass options and IR need
++		 * CAP_BPF.
++		 */
++		__aligned_u64	epass_gopt;
++		__aligned_u64	epass_popt;
++		__aligned_u64	epass_ir;
++		__u32		epass_gopt_len;
++		__u32		epass_popt_len;
++		__u32		epass_ir_len;
+ 	};
+ 
+ 	struct { /* anonymous struct used by BPF_OBJ_* commands */
+diff --git a/tools/include/uapi/linux/bpf.h b/tools/include/uapi/linux/bpf.h
+index 89b36de5f..a3d10fad2 100644
+--- a/tools/include/uapi/linux/bpf.h
++++ b/tools/include/uapi/linux/bpf.h
+@@ -1316,6 +1316,11 @@ enum bpf_perf_event_type {
+ /* The verifier internal test flag. Behavior is undefined */
+ #define BPF_F_TEST_REG_INVARIANTS	(1U << 7)
+ 
++/* Request ePass for this program (BPF_PROG_LOAD; see epass_gopt). Under
++ * the "optin" policy mode, ePass runs only on requested programs.
++ */
++#define BPF_F_EPASS		(1U << 30)
++
+ /* link_create.kprobe_multi.flags used in LINK_CREATE command for
+  * BPF_TRACE_KPROBE_MULTI attach type to create return probe.
+  */
+@@ -1669,6 +1674,20 @@ union bpf_attr {
+ 		 * verification.
+ 		 */
+ 		__s32		keyring_id;
++		/* ePass (CONFIG_BPF_EPASS): compiler passes run before the
++		 * verifier under the administrator policy
++		 * (kernel.bpf_epass_policy). epass_gopt/epass_popt are the
++		 * global and pass option strings (not NUL-terminated). With
++		 * epass_ir_len, the program is an ePass binary IR blob at
++		 * epass_ir and insn_cnt must be 0. Pass options and IR need
++		 * CAP_BPF.
++		 */
++		__aligned_u64	epass_gopt;
++		__aligned_u64	epass_popt;
++		__aligned_u64	epass_ir;
++		__u32		epass_gopt_len;
++		__u32		epass_popt_len;
++		__u32		epass_ir_len;
+ 	};
+ 
+ 	struct { /* anonymous struct used by BPF_OBJ_* commands */
+-- 
+2.53.0
+
