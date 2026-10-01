@@ -66,7 +66,7 @@ pub struct Provenance<'h> {
 const WIDEN_AFTER: u8 = 4;
 
 impl<'h> Provenance<'h> {
-    pub fn compute(f: &Function<'h>, cfg: &Cfg<'h>, uz: &UpperZero<'h>, ctx: &Ctx<'h>) -> Result<Self> {
+    pub fn compute(f: &Function<'h>, cfg: &Cfg<'h>, uz: &UpperZero<'h>, ctx: &Ctx<'_>) -> Result<Self> {
         let heap = f.heap();
         let mut p = Provenance {
             facts: IdxVec::filled(heap, f.insn_id_bound(), StackFact::Unseen)?,
@@ -301,7 +301,7 @@ impl<'h> Classes<'h> {
     pub fn compute(
         f: &Function<'h>,
         cfg: &Cfg<'h>,
-        ctx: &Ctx<'h>,
+        ctx: &Ctx<'_>,
         ret_class: &dyn Fn(&Op) -> RetClass,
     ) -> Result<Self> {
         let mut c = Classes {
@@ -413,7 +413,7 @@ pub struct UpperZero<'h> {
 }
 
 impl<'h> UpperZero<'h> {
-    pub fn compute(f: &Function<'h>, cfg: &Cfg<'h>, ctx: &Ctx<'h>) -> Result<Self> {
+    pub fn compute(f: &Function<'h>, cfg: &Cfg<'h>, ctx: &Ctx<'_>) -> Result<Self> {
         // Optimistic for phis (start true), so loops of zero-extended values
         // are recognized; the iteration only ever lowers facts to false.
         let mut z = UpperZero {

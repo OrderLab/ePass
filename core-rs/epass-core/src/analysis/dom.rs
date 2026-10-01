@@ -24,7 +24,7 @@ impl fmt::Debug for Cfg<'_> {
 }
 
 impl<'h> Cfg<'h> {
-    pub fn compute(f: &Function<'h>, ctx: &Ctx<'h>) -> Result<Self> {
+    pub fn compute(f: &Function<'h>, ctx: &Ctx<'_>) -> Result<Self> {
         let heap = f.heap();
         let n = f.block_id_bound();
         let mut index = IdxVec::filled(heap, n, UNREACHED)?;
@@ -93,7 +93,7 @@ impl fmt::Debug for DomTree<'_> {
 }
 
 impl<'h> DomTree<'h> {
-    pub fn compute(f: &Function<'h>, cfg: &Cfg<'h>, ctx: &Ctx<'h>) -> Result<Self> {
+    pub fn compute(f: &Function<'h>, cfg: &Cfg<'h>, ctx: &Ctx<'_>) -> Result<Self> {
         let heap = f.heap();
         let n = f.block_id_bound();
         // idom by rpo index; UNREACHED = undefined.

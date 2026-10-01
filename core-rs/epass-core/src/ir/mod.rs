@@ -14,6 +14,8 @@
 //! by the CFG-editing methods of [`Function`].
 
 pub mod builder;
+pub mod cleanup;
+pub mod eval;
 pub mod func;
 pub mod verify;
 

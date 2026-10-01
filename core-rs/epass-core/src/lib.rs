@@ -32,6 +32,8 @@ pub mod ir;
 pub mod lift;
 pub mod log;
 pub mod mem;
+pub mod passes;
+pub mod pm;
 
 pub use ctx::{Budget, Ctx, Limits};
 pub use error::{Error, ErrorKind, Result};

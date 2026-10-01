@@ -1,6 +1,6 @@
 //! Per-compilation context: heap, log, limits and the cooperative budget.
 
-use core::cell::Cell;
+use core::cell::{Cell, RefCell};
 use core::fmt;
 
 use crate::error::{Error, Result};
@@ -86,7 +86,8 @@ impl Budget {
 /// Everything a compilation stage needs besides the IR itself.
 pub struct Ctx<'h> {
     pub heap: &'h Heap<'h>,
-    pub log: Log<'h>,
+    /// The compilation log. Use [`Ctx::log`] to write; borrows never panic.
+    pub log: RefCell<Log<'h>>,
     pub limits: Limits,
     budget: Budget,
 }
@@ -111,7 +112,7 @@ impl<'h> Ctx<'h> {
         };
         Ok(Ctx {
             heap,
-            log,
+            log: RefCell::new(log),
             limits,
             budget: Budget::new(limits.yield_every, deadline),
         })
@@ -141,6 +142,25 @@ impl<'h> Ctx<'h> {
     pub fn budget(&self) -> &Budget {
         &self.budget
     }
+
+    /// Append a formatted message to the log (dropped if the log is busy).
+    pub fn log(&self, level: Level, args: fmt::Arguments<'_>) {
+        if let Ok(mut l) = self.log.try_borrow_mut() {
+            l.write_fmt(level, args);
+        }
+    }
+
+    pub fn log_enabled(&self, level: Level) -> bool {
+        self.log.try_borrow().is_ok_and(|l| l.enabled(level))
+    }
+}
+
+/// `ctx_log!(ctx, Level::Info, "fmt {}", x)`: append to the context log.
+#[macro_export]
+macro_rules! ctx_log {
+    ($ctx:expr, $level:expr, $($arg:tt)*) => {
+        $ctx.log($level, ::core::format_args!($($arg)*))
+    };
 }
 
 #[cfg(test)]
