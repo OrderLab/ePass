@@ -1,0 +1,32 @@
+[package]
+name = "epass-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+# Linux 7.2's minimum rustc; the same sources are compiled inside the kernel.
+rust-version = "1.85"
+description = "ePass v2 core: no_std eBPF SSA compiler usable in the kernel and in userspace."
+
+[lib]
+path = "src/lib.rs"
+
+[features]
+default = []
+
+# epass-core must never depend on another crate: the kernel build compiles
+# these sources directly with rustc.
+[dependencies]
+
+[lints.rust]
+unsafe_code = "deny"
+unsafe_op_in_unsafe_fn = "deny"
+missing_debug_implementations = "warn"
+
+[lints.clippy]
+indexing_slicing = "deny"
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+unreachable = "deny"
+todo = "deny"
+unimplemented = "deny"

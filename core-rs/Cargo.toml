@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["epass-ir", "epasstool"]
+members = ["epass-core", "epass-std", "epass-interp", "epass-ir", "epasstool"]
 
 [workspace.package]
 version = "0.2.0"
