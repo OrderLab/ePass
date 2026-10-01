@@ -1,6 +1,6 @@
 # ePass v2 milestones
 
-This is the implementation plan for the agreed design in [`design.md`](../../design.md). Each milestone is one commit (or a short series of commits) on the `refactor/kernel` branch, pushed when its exit criteria pass. The tree builds and `cargo test --release --workspace` passes at the end of every milestone.
+This is the implementation plan for the agreed design in [`design.md`](../design.md). Each milestone is one commit (or a short series of commits) on the `refactor/kernel` branch, pushed when its exit criteria pass. The tree builds and `cargo test --release --workspace` passes at the end of every milestone.
 
 ## Decisions taken at plan time (2026-09-30)
 

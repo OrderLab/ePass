@@ -77,10 +77,11 @@ sudo incus exec epass-vm -- sh -c 'cat /boot/config-$(uname -r)' > $O/.config
 sudo incus exec epass-vm -- lsmod > $O/../lsmod-vm
 make LLVM=1 O=$O olddefconfig
 yes '' | make LLVM=1 O=$O LSMOD=$O/../lsmod-vm localmodconfig
-make LLVM=1 O=$O epass.config           # kernel/configs/epass.config
+make LLVM=1 O=$O epass.config           # kernel/configs/epass.config (also turns MODVERSIONS off)
 scripts/config --file $O/.config --set-str SYSTEM_TRUSTED_KEYS '' --set-str SYSTEM_REVOCATION_KEYS '' \
-     --disable MODVERSIONS --set-str LOCALVERSION -epass --disable LOCALVERSION_AUTO
+     --set-str LOCALVERSION -epass --disable LOCALVERSION_AUTO
 make LLVM=1 O=$O olddefconfig
+grep -q '^CONFIG_BPF_EPASS=y' $O/.config || echo 'ePass is not enabled (check CONFIG_RUST deps)'
 make LLVM=1 O=$O -j$(nproc) bindeb-pkg     # $O/../linux-image-7.2.8-epass_*.deb
 
 # install and boot it in the VM
@@ -92,7 +93,7 @@ Notes:
 
 - Host packages needed: `ovmf`, `qemu-system-modules-spice` (incus VMs), `debhelper`, `libdw-dev` (bindeb-pkg).
 - On hosts that run Docker and firewalld, the VM gets no DHCP lease until `incusbr0` is in firewalld's trusted zone.
-- `MODVERSIONS` is disabled because Rust requires `GENDWARFKSYMS` with it.
+- `epass.config` disables `MODVERSIONS`, because Rust requires `GENDWARFKSYMS` with it. Rust has other dependencies too, e.g. no `RANDSTRUCT`. If `CONFIG_RUST` drops out, `BPF_EPASS` silently goes with it, so check the result.
 
 ## Test
 

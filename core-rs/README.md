@@ -1,6 +1,6 @@
 # ePass core (v2)
 
-`core-rs` is the ePass v2 compiler: an SSA compiler for eBPF programs whose core runs unchanged in userspace and inside the Linux kernel. The design is in [`../design.md`](../design.md) and the milestones in [`../docs/v2/MILESTONES.md`](../docs/v2/MILESTONES.md).
+`core-rs` is the ePass v2 compiler: an SSA compiler for eBPF programs whose core runs unchanged in userspace and inside the Linux kernel. The design is in [`../docs/design.md`](../docs/design.md) and the milestones in [`../docs/v2/MILESTONES.md`](../docs/v2/MILESTONES.md).
 
 ## Workspace
 

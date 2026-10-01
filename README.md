@@ -8,7 +8,7 @@ the IR back to bytecode for the kernel verifier and JIT.
 
 **v2** (branch `refactor/kernel`) is a rewrite whose core runs unchanged in
 userspace and inside the Linux kernel. It's in [`core-rs/`](core-rs/), the design is in
-[`design.md`](design.md), and the plan is in
+[`docs/design.md`](docs/design.md), and the plan is in
 [`docs/v2/MILESTONES.md`](docs/v2/MILESTONES.md). The old C core under
 `deprecated/core/` is historical reference.
 
@@ -62,7 +62,7 @@ sudo LIBBPF_ENABLE_EPASS=1 LIBBPF_EPASS_GOPT=verbose=2 ./my_loader prog.o
 - [C ABI](docs/v2/ABI.md)
 - [IR v2](docs/v2/IR.md)
 - [Writing passes](docs/v2/WRITING_PASSES.md)
-- [Design](design.md) and [milestones](docs/v2/MILESTONES.md)
+- [Design](docs/design.md) and [milestones](docs/v2/MILESTONES.md)
 - [Falcolib build notes](docs/FALCOLIB_BUILD.md)
 - v1 docs (archived): [docs/v1/](docs/v1/)
 

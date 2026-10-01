@@ -18,16 +18,20 @@ set -u
 BPFTOOL=${BPFTOOL:-bpftool}
 POLICY=/proc/sys/kernel/bpf_epass_policy
 PIN=/sys/fs/bpf/epass_acc
+[ -w $POLICY ] || { echo "no $POLICY: this kernel has no ePass (CONFIG_BPF_EPASS)" >&2; exit 1; }
 saved_policy=$(cat $POLICY)
 
-measure() {	# mode obj -> "ok;progs;xlated;verified" or "fail;0;0;0"
+measure() {	# mode obj -> "ok;progs;xlated;jited" or "fail;0;0;0"
 	local mode=$1 obj=$2 env=() rc
 	rm -rf $PIN
 	case $mode in
 	user) env=(LIBBPF_ENABLE_EPASS=1) ;;
 	kernel) env=(LIBBPF_ENABLE_EPASS=1 LIBBPF_EPASS_KERNEL=1) ;;
 	esac
-	[ "$mode" = always ] && echo "mode=always" > $POLICY
+	if [ "$mode" = always ] && ! echo "mode=always" > $POLICY; then
+		echo "cannot set the policy" >&2
+		exit 1
+	fi
 	env "${env[@]}" timeout 20 $BPFTOOL prog loadall "$obj" $PIN >/dev/null 2>&1
 	rc=$?
 	[ "$mode" = always ] && echo "mode=optin" > $POLICY
