@@ -27,8 +27,11 @@ pub mod bin;
 pub mod bpf;
 pub mod cg;
 pub mod ctx;
+pub mod driver;
 pub mod error;
 pub mod facts;
+#[cfg(feature = "ffi")]
+pub mod ffi;
 pub mod ir;
 pub mod lift;
 pub mod log;

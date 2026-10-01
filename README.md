@@ -3,119 +3,75 @@
 [![Build ePass](https://github.com/OrderLab/ePass/actions/workflows/build.yml/badge.svg)](https://github.com/OrderLab/ePass/actions/workflows/build.yml)
 
 ePass is an SSA-based compiler framework for eBPF programs. It lifts eBPF
-bytecode into an LLVM-like IR, runs configurable IR passes, and lowers IR back to
-eBPF bytecode for kernel verifier/JIT consumption.
+bytecode into an SSA IR, runs passes under an administrator policy, and lowers
+the IR back to bytecode for the kernel verifier and JIT.
 
-The actively developed core is the Rust userspace library under `core-rs/`. The
-old C implementation under `deprecated/core/` remains as historical reference.
+**v2** (branch `refactor/kernel`) is a rewrite whose core runs unchanged in
+userspace and inside the Linux kernel. It's in [`core-rs/`](core-rs/), the design is in
+[`design.md`](design.md), and the plan is in
+[`docs/v2/MILESTONES.md`](docs/v2/MILESTONES.md). The old C core under
+`deprecated/core/` is historical reference.
 
-## Current architecture
+## Architecture
 
 ```text
-eBPF bytecode
-  -> lift
-  -> ePass SSA IR
-  -> pass manager
-  -> register allocation + codegen
-  -> eBPF bytecode
-  -> kernel verifier
+bytecode or IR blob ─▶ lift / decode + validate ─▶ SSA IR ─▶ passes (policy + popt)
+                    ─▶ codegen (regalloc, SSA-out, frame, layout, relax) ─▶ bytecode ─▶ verifier
 ```
 
-Key components:
+- `core-rs/epass-core`: `#![no_std]`, no dependencies, no panics, fallible
+  allocation everywhere. The same sources build into the kernel. Its C ABI is
+  `epass_compile` (`core-rs/epass-core/include/epass.h`).
+- `core-rs/epass-capi`: `libepass.a`/`.so` for userspace loaders.
+- `core-rs/epasstool`: CLI for ELF objects, dump files, `.epir` text and IR blobs.
+- `core-rs/epass-interp`: reference interpreter. All of codegen is tested
+  against it.
+- `third-party/ePass-libbpf` (branch `refactor/kernel`): libbpf that runs ePass
+  before loading, and remaps `func_info`/`line_info`.
+- Kernel integration: ePass inside `BPF_PROG_LOAD` with an administrator policy,
+  on Linux 7.2. This is milestone M7.
 
-- `core-rs/epass-ir`: pure userspace Rust library. No kernel headers and no
-  libbpf dependency.
-- `core-rs/epasstool`: CLI for dump-format and ELF-object workflows. ELF support
-  uses libbpf only in the CLI.
-- `third-party/ePass-libbpf`: patched libbpf that can call the Rust C ABI
-  (`epass_run`) before loading programs.
-- `third-party/ePass-bpftool`: bpftool built against the patched libbpf for
-  verifier testing.
-
-## Features
-
-- SSA IR with arena allocation and typed handles (`InsnId`, `BbId`).
-- eBPF bytecode lifter with CFG discovery and SSA construction.
-- Pass manager with default-enabled and optional passes, pass-specific options,
-  pass-owned ordering, and post-pass validation.
-- Built-in passes: `const_prop`, `phi`, `optimize_ir`, optional `dump_ir`.
-- Register allocation and codegen back to eBPF bytecode.
-- Parseable `.epir` IR text dump/load format for debugging.
-- `IrBuilder` and CFG editing utilities for pass authors.
-- C ABI for patched libbpf integration.
-
-## Build
-
-Rust core and CLI:
+## Build and test
 
 ```bash
 cd core-rs
 cargo build --release
-cargo test --release
+./scripts/check.sh        # tests, clippy, no_std, MSRV 1.85, C ABI smoke test
+
+cd ../third-party/ePass-libbpf/src && make -j   # links core-rs libepass.a
 ```
 
-Patched libbpf and bpftool for verifier testing:
+## Quick start
 
 ```bash
-cd third-party/ePass-libbpf/src
-make -j
+T=core-rs/target/release/epasstool
+$T read -s prog -o out.txt prog.o               # compile an ELF program to dump format
+$T read -F asm prog.txt                         # dump in, assembly out
+$T read --gopt verbose=2 --popt dump_ir prog.o  # show the IR in the log
+$T lift prog.txt -o prog.epir && $T read prog.epir -F asm
 
-cd ../../ePass-bpftool/src
-make -j
+sudo LIBBPF_ENABLE_EPASS=1 LIBBPF_EPASS_GOPT=verbose=2 ./my_loader prog.o
 ```
-
-## CLI quick start
-
-```bash
-cd core-rs
-
-# Rewrite an ELF object's selected BPF program and emit dump-format output.
-./target/release/epasstool read -s prog -F log -o out.txt ../test/output/progs_simple1.o
-
-# Process dump-format input: one packed u64 per line.
-./target/release/epasstool read -F log -o out.txt prog.txt
-
-# Print without rewriting.
-./target/release/epasstool print --gopt print_dump ../test/output/progs_simple1.o
-
-# Dump lifted IR before normal passes.
-./target/release/epasstool read -P --popt 'dump_ir(/tmp/prog.epir)' -s prog ../test/output/progs_simple1.o
-
-# Load IR directly instead of lifting bytecode, then run passes and codegen.
-./target/release/epasstool read --gopt load_ir=/tmp/prog.epir -F log -o out.txt dummy.txt
-```
-
-## libbpf / verifier testing
-
-The patched libbpf runs ePass when enabled by environment variable:
-
-```bash
-sudo LIBBPF_ENABLE_EPASS=1 \
-     LIBBPF_EPASS_GOPT='verbose=1' \
-     third-party/ePass-bpftool/src/bpftool prog load test.o /sys/fs/bpf/test
-```
-
-The rewritten bytecode is submitted to the kernel verifier. Use `bpftool prog
-show pinned ...` to compare `xlated` byte sizes and confirm the modified program
-was loaded.
 
 ## Documentation
 
-- [Rust core architecture](docs/CORE_RS.md)
-- [Pass manager and pass options](docs/PASS_MANAGER.md)
-- [Writing passes](docs/WRITING_PASSES.md)
-- [IR text format](docs/IR_TEXT.md)
-- [IR builder and instruction construction](docs/CREATE_INSTRUCTION.md)
-- [Userspace / libbpf testing](docs/USERSPACE_TESTING.md)
-- [Testing](docs/TESTING.md)
+- [Usage: CLI, options, policy, libbpf, tests](docs/v2/USAGE.md)
+- [C ABI](docs/v2/ABI.md)
+- [IR v2](docs/v2/IR.md)
+- [Writing passes](docs/v2/WRITING_PASSES.md)
+- [Design](design.md) and [milestones](docs/v2/MILESTONES.md)
+- [Falcolib build notes](docs/FALCOLIB_BUILD.md)
+- v1 docs (archived): [docs/v1/](docs/v1/)
 
 ## Status
 
-- Core lifter, IR, pass framework, codegen, IR text load/dump, and verifier
-  testing path are active in `core-rs`.
-- Several old C demo/instrumentation passes (MSan, insn counter, masking,
-  helper validation, etc.) are not yet fully ported.
-- bpf-to-bpf calls and atomic memory ops remain unsupported/limited.
+- Done:
+  - the v2 core (lifter, IR, passes, codegen);
+  - the C ABI, epasstool, and libbpf userspace mode;
+  - the semantic and structural test gates (M0–M6).
+- Not supported yet: bpf-to-bpf calls and callbacks. These are rejected, and
+  loaders fall back to the original program.
+- In progress: kernel integration (M7) and in-VM acceptance (M8).
 
 ## Contact
 

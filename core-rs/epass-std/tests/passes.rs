@@ -256,3 +256,16 @@ fn default_pipeline_on_falco() {
     assert_eq!(ok, 337);
     assert!(after <= before);
 }
+
+/// Regression (bpftests complex.c): a chain of removable zexts must not
+/// leave a use of an already removed one.
+#[test]
+fn zext_elim_handles_chains() {
+    let t = run_pass(
+        "func main {\nbb0:\n  %0 = load.u32 [%arg1+0]\n  %1 = zext.32.64 %0\n  %2 = zext.32.64 %1\n  %3 = zext.32.64 %2\n  %4 = add.64 %3, %2\n  ret %4\n}",
+        "zext_elim",
+        opts(),
+    );
+    assert_eq!(t.matches("zext").count(), 0, "{t}");
+    assert!(t.contains("add.64 %0, %0"), "{t}");
+}

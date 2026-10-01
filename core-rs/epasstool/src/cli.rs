@@ -1,113 +1,139 @@
-//! Command-line parsing, mirroring the original C tool's interface.
-
-use epass_ir::Opts;
+//! Command-line parsing.
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Mode {
+pub enum Command {
+    /// Lift, run passes, compile.
     Read,
+    /// Print a program (bytecode or IR) without transforming it.
     Print,
+    /// Lift bytecode to IR.
+    Lift,
+    /// Convert IR between `.epir` text and the binary blob.
+    Convert,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum OutputFormat {
-    /// Raw section bytes.
-    Sec,
-    /// Dump format (one `u64` per line).
-    Log,
+pub enum Format {
+    /// One decimal `u64` per instruction (`log` is an alias).
+    Dump,
+    /// Raw little-endian instruction bytes (`sec` is an alias).
+    Raw,
+    /// Disassembly.
+    Asm,
+    /// `.epir` IR text.
+    Epir,
+    /// Binary IR blob.
+    Blob,
+}
+
+impl Format {
+    fn parse(s: &str) -> Option<Format> {
+        Some(match s {
+            "dump" | "log" => Format::Dump,
+            "raw" | "sec" => Format::Raw,
+            "asm" => Format::Asm,
+            "epir" => Format::Epir,
+            "blob" => Format::Blob,
+            _ => return None,
+        })
+    }
+
+    /// The format implied by an output file name.
+    pub fn of_path(p: &str) -> Option<Format> {
+        let ext = std::path::Path::new(p).extension()?.to_str()?;
+        Some(match ext {
+            "epir" => Format::Epir,
+            "blob" | "epb" => Format::Blob,
+            "bin" | "raw" => Format::Raw,
+            "s" | "asm" => Format::Asm,
+            _ => return None,
+        })
+    }
 }
 
 #[derive(Debug, Clone)]
-pub struct UserOpts {
-    pub mode: Mode,
-    pub prog: String,
-    pub prog_out: Option<String>,
-    pub output_format: OutputFormat,
+pub struct Opts {
+    pub cmd: Command,
+    pub file: String,
+    pub out: Option<String>,
+    pub format: Option<Format>,
     pub section: Option<String>,
-    pub no_compile: bool,
+    pub pass_only: bool,
     pub gopt: String,
     pub popt: String,
-    pub opts: Opts,
+    pub policy: String,
+    pub quiet: bool,
 }
 
-pub enum CliError {
-    Usage,
-    Message(String),
-}
+pub const USAGE: &str = "\
+Usage: epasstool <command> [options] <file>
 
-pub fn print_usage() {
-    eprintln!(
-        "Usage: epasstool <command> [options] <file>\n\n\
-Commands:\n\
-\x20 read   Read (lift, transform and compile) the specified file\n\
-\x20 print  Print the specified file\n\n\
-Options:\n\
-\x20 --pass-only, -P    Skip compilation\n\
-\x20 --gopt <arg>       Specify a global option (comma-separated)\n\
-\x20 --popt <arg>       Specify a pass option\n\
-\x20 --sec, -s <arg>    Specify the ELF section/program name\n\
-\x20 -F <arg>           Output format: sec | log (default)\n\
-\x20 -o <arg>           Write the modified program to a file\n\n\
-Global options (--gopt):\n\
-\x20 verbose=<n>        Set verbosity level\n\
-\x20 disable_coalesce   Disable register coalescing\n\
-\x20 print_bpf          Print disassembled BPF (default)\n\
-\x20 print_dump         Print packed u64 dump\n\
-\x20 print_detail       Print detailed per-field view\n\
-\x20 no_prog_check      Disable the IR validity checker\n"
-    );
-}
+Commands:
+  read      lift, run passes and compile; write or print the result
+  print     print a program (bytecode as assembly, IR as .epir)
+  lift      lift bytecode to IR
+  convert   convert IR between .epir text and binary blob
 
-pub fn parse<I: Iterator<Item = String>>(mut args: I) -> Result<UserOpts, CliError> {
-    let cmd = args.next().ok_or(CliError::Usage)?;
-    let mode = match cmd.as_str() {
-        "read" => Mode::Read,
-        "print" => Mode::Print,
-        _ => return Err(CliError::Usage),
+Inputs: ELF objects, dump files (one u64 per line), .epir text, IR blobs.
+
+Options:
+  --gopt <s>         global options, e.g. verbose=2,isa=v3,ra_colors=6
+  --popt <s>         pass options, e.g. const_prop,!zext_elim,dump_ir
+  --policy <s>       administrator policy (default: permissive)
+  -P, --pass-only    read: run passes but do not compile; output IR
+  -s, --sec <name>   ELF program to process (default: all)
+  -F <fmt>           output format: dump (alias log), raw (alias sec), asm,
+                     epir, blob (default: from -o's extension, else dump for
+                     bytecode and epir for IR)
+  -o <file>          write the output to a file instead of stdout
+  -q                 do not print the compilation log
+
+Global options (--gopt):
+  verbose=0..3  isa=v1..v4  ra_colors=4..10  throw_ret=N  check  nocheck
+  verify_each  endian=little|big
+";
+
+pub fn parse<I: Iterator<Item = String>>(mut args: I) -> Result<Opts, String> {
+    let cmd = match args.next().as_deref() {
+        Some("read") => Command::Read,
+        Some("print") => Command::Print,
+        Some("lift") => Command::Lift,
+        Some("convert") => Command::Convert,
+        Some(c) => return Err(format!("unknown command '{c}'")),
+        None => return Err("missing command".into()),
     };
-
-    let mut uo = UserOpts {
-        mode,
-        prog: String::new(),
-        prog_out: None,
-        output_format: OutputFormat::Log,
+    let mut o = Opts {
+        cmd,
+        file: String::new(),
+        out: None,
+        format: None,
         section: None,
-        no_compile: false,
+        pass_only: false,
         gopt: String::new(),
         popt: String::new(),
-        opts: Opts::default(),
+        policy: String::new(),
+        quiet: false,
     };
-
-    while let Some(arg) = args.next() {
-        match arg.as_str() {
-            "--pass-only" | "-P" if mode == Mode::Read => uo.no_compile = true,
-            "--gopt" => uo.gopt = args.next().ok_or(CliError::Usage)?,
-            "--popt" => uo.popt = args.next().ok_or(CliError::Usage)?,
-            "--sec" | "-s" => uo.section = Some(args.next().ok_or(CliError::Usage)?),
-            "-o" if mode == Mode::Read => uo.prog_out = Some(args.next().ok_or(CliError::Usage)?),
-            "-F" if mode == Mode::Read => {
-                let f = args.next().ok_or(CliError::Usage)?;
-                uo.output_format = match f.as_str() {
-                    "sec" => OutputFormat::Sec,
-                    "log" => OutputFormat::Log,
-                    _ => return Err(CliError::Usage),
-                };
+    let need = |a: Option<String>, flag: &str| a.ok_or_else(|| format!("{flag} needs an argument"));
+    while let Some(a) = args.next() {
+        match a.as_str() {
+            "--gopt" => o.gopt = need(args.next(), "--gopt")?,
+            "--popt" => o.popt = need(args.next(), "--popt")?,
+            "--policy" => o.policy = need(args.next(), "--policy")?,
+            "-P" | "--pass-only" => o.pass_only = true,
+            "-s" | "--sec" => o.section = Some(need(args.next(), "-s")?),
+            "-o" => o.out = Some(need(args.next(), "-o")?),
+            "-q" => o.quiet = true,
+            "-F" => {
+                let f = need(args.next(), "-F")?;
+                o.format = Some(Format::parse(&f).ok_or_else(|| format!("unknown format '{f}'"))?);
             }
-            other if !other.starts_with('-') => {
-                if uo.prog.is_empty() {
-                    uo.prog = other.to_string();
-                } else {
-                    return Err(CliError::Usage);
-                }
-            }
-            _ => return Err(CliError::Usage),
+            s if !s.starts_with('-') && o.file.is_empty() => o.file = s.to_string(),
+            s => return Err(format!("unexpected argument '{s}'")),
         }
     }
-
-    if uo.prog.is_empty() {
-        return Err(CliError::Usage);
+    if o.file.is_empty() {
+        return Err("missing input file".into());
     }
-
-    let gopt = uo.gopt.clone();
-    uo.opts.apply_gopt(&gopt).map_err(CliError::Message)?;
-    Ok(uo)
+    Ok(o)
 }

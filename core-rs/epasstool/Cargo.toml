@@ -3,12 +3,16 @@ name = "epasstool"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Userspace CLI for the ePass eBPF IR compiler."
+description = "Userspace CLI for the ePass v2 eBPF compiler."
 
 [[bin]]
 name = "epasstool"
 path = "src/main.rs"
 
 [dependencies]
-epass-ir = { path = "../epass-ir" }
+epass-core = { path = "../epass-core", features = ["text"] }
+epass-std = { path = "../epass-std" }
 libbpf-sys = "1"
+
+[dev-dependencies]
+epass-interp = { path = "../epass-interp" }

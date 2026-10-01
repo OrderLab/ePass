@@ -9,17 +9,25 @@ step() { printf '\n== %s\n' "$*"; }
 step "tests (release)"
 cargo test --release --workspace --quiet
 
-step "clippy: no-panic lints on epass-core"
-cargo clippy -p epass-core --all-targets --features text -- -D warnings
+step "clippy: no-panic lints on epass-core, then the workspace"
+cargo clippy -p epass-core --all-targets --features text,ffi -- -D warnings
+cargo clippy --workspace --all-targets -- -D warnings
 
 step "no_std build (x86_64-unknown-none)"
 cargo build -p epass-core --target x86_64-unknown-none --quiet
 cargo build -p epass-core --target x86_64-unknown-none --features text --quiet
+cargo build -p epass-core --target x86_64-unknown-none --features ffi --quiet
 
 if rustup toolchain list | grep -q '^1.85'; then
   step "MSRV 1.85 (Linux 7.2 minimum rustc)"
-  cargo +1.85 build -p epass-core --target x86_64-unknown-none --quiet
+  cargo +1.85 build -p epass-core --target x86_64-unknown-none --features ffi --quiet
 fi
+
+step "C ABI: epass.h + libepass.a smoke test"
+smoke="$(mktemp -d)/smoke"
+cc -std=c11 -Wall -Wextra -Werror -I epass-core/include epass-capi/tests/c/smoke.c \
+  target/release/libepass.a -lpthread -ldl -lm -o "$smoke"
+"$smoke"
 
 if [ "${MIRI:-0}" = 1 ]; then
   step "miri"

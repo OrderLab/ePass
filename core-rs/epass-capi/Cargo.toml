@@ -1,0 +1,18 @@
+[package]
+name = "epass-capi"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "libepass.a / libepass.so: the ePass C ABI (epass.h) for userspace loaders."
+
+[lib]
+name = "epass"
+# staticlib/cdylib for C loaders (ePass-libbpf); rlib for the Rust ABI tests.
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[dependencies]
+epass-core = { path = "../epass-core", features = ["ffi"] }
+
+[dev-dependencies]
+epass-interp = { path = "../epass-interp" }
+epass-std = { path = "../epass-std" }

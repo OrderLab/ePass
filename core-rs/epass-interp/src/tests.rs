@@ -241,3 +241,21 @@ fn compare_detects_differences() {
     let bad = run(&prog![st(Size::DW, R10, -8, 2), mov64_imm(R0, 0), exit()], &Input::default());
     assert!(compare(&orig, &bad).is_err());
 }
+
+#[test]
+fn uninit_reads_follow_the_verifier() {
+    use crate::asm::*;
+    use crate::uninit_reads;
+    // r1 and r10 are initialized; r2 is not; calls clobber r1-r5.
+    assert!(uninit_reads(&prog![mov64_reg(R0, R1), exit()]).is_empty());
+    assert_eq!(uninit_reads(&prog![mov64_reg(R0, R2), exit()]), vec![(0, 2)]);
+    assert_eq!(uninit_reads(&prog![call(5), mov64_reg(R0, R1), exit()]), vec![(1, 1)]);
+    // Defined on one path only.
+    let p = prog![jmp_imm(Jmp::Jeq, R1, 0, 1), mov64_imm(R3, 1), mov64_reg(R0, R3), exit()];
+    assert_eq!(uninit_reads(&p), vec![(2, 3)]);
+    // Defined on both paths, and around a loop.
+    let p = prog![mov64_imm(R3, 0), alu64_imm(Alu::Add, R3, 1), jmp_imm(Jmp::Jlt, R3, 5, -2), mov64_reg(R0, R3), exit()];
+    assert!(uninit_reads(&p).is_empty());
+    // exit reads r0.
+    assert_eq!(uninit_reads(&prog![exit()]), vec![(0, 0)]);
+}

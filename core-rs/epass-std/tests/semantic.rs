@@ -75,8 +75,15 @@ fn disasm(p: &[u64]) -> String {
 
 /// Compile `p` with each color budget and compare on each input.
 fn check_equiv(name: &str, p: &[u64], inputs: &[Input], colors: &[u8]) -> Result<(), String> {
+    let clean = epass_interp::uninit_reads(p).is_empty();
     for &c in colors {
         let out = compile_with(p, c).map_err(|e| format!("{name} (colors={c}): {e}"))?;
+        // The verifier would reject reads of uninitialized registers that
+        // the original never made.
+        let bad = epass_interp::uninit_reads(&out);
+        if clean && !bad.is_empty() {
+            return Err(format!("{name} (colors={c}): output reads uninitialized registers {bad:?}\n{}", disasm(&out)));
+        }
         for input in inputs {
             let a = run(p, input);
             let b = run(&out, input);
@@ -257,7 +264,14 @@ impl Gen {
                     });
                 }
                 6 => {
-                    out.push(match self.rng.below(5) {
+                    let k = self.rng.below(6);
+                    if k == 5 {
+                        // A zero-extension chain (zext_elim removes all but
+                        // the first).
+                        out.push(mov32_reg(dst, src));
+                    }
+                    out.push(match k {
+                        5 => mov32_reg(dst, dst),
                         0 => mov32_reg(dst, src),
                         1 => mov32_imm(dst, self.rng.imm()),
                         2 => movsx64(dst, src, self.rng.pick(&[8, 16, 32])),
@@ -419,7 +433,7 @@ impl Gen {
         // After the loop, only registers defined on every iteration path
         // from entry are safe; be conservative.
         *defined = entry_defined | (d & entry_defined);
-        self.written = saved_w & self.written;
+        self.written &= saved_w;
     }
 
     fn program(&mut self) -> Vec<u64> {
@@ -561,6 +575,7 @@ fn falco_compiles_and_keeps_the_frame() {
         .collect();
     files.sort();
     let (mut ok, mut rejected, mut before, mut after) = (0, Vec::new(), 0usize, 0usize);
+    let mut unclean = 0;
     let t0 = std::time::Instant::now();
     for path in &files {
         let text = std::fs::read_to_string(path).unwrap();
@@ -574,6 +589,12 @@ fn falco_compiles_and_keeps_the_frame() {
                 ok += 1;
                 before += p.len();
                 after += out.len();
+                if epass_interp::uninit_reads(&p).is_empty() {
+                    let bad = epass_interp::uninit_reads(&out);
+                    assert!(bad.is_empty(), "{}: output reads uninitialized registers {bad:?}", path.display());
+                } else {
+                    unclean += 1;
+                }
                 let (orig, orig_low) = frame_offsets(&p);
                 let (new, _) = frame_offsets(&out);
                 let d = orig_low.div_euclid(8) * 8;
@@ -594,6 +615,11 @@ fn falco_compiles_and_keeps_the_frame() {
         t0.elapsed()
     );
     assert!(ok >= 337, "only {ok} programs compiled: {rejected:?}");
+    // `uninit_reads` is path-insensitive: 14 programs read registers only
+    // on paths the verifier prunes (e.g. `r1 = 0; if r1 == 0` around CO-RE
+    // poison), so only the other programs are checked.
+    eprintln!("falco: {unclean} programs not checked for uninitialized reads (dead paths)");
+    assert!(unclean <= 14, "{unclean} inputs flagged");
     for r in &rejected {
         assert!(r.contains("callbacks"), "unexpected rejection: {r}");
     }

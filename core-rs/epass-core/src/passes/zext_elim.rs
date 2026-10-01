@@ -24,19 +24,22 @@ pub const INFO: PassInfo = PassInfo {
 fn run<'h>(f: &mut Function<'h>, cx: &PassCx<'_, 'h>, _args: Option<&str>) -> Result<()> {
     let cfg = Cfg::compute(f, cx.ctx)?;
     let uz = UpperZero::compute(f, &cfg, cx.ctx)?;
-    let mut todo: FVec<'h, (InsnId, Value)> = FVec::new(f.heap());
+    let mut todo: FVec<'h, InsnId> = FVec::new(f.heap());
     for &b in cfg.rpo() {
         for i in f.iter_block(b) {
             cx.ctx.tick()?;
             if let Op::Ext { from: 32, signed: false, .. } = f.op(i)? {
-                let src = f.operand(i, 0)?;
-                if uz.of(src) {
-                    todo.push((i, src))?;
+                if uz.of(f.operand(i, 0)?) {
+                    todo.push(i)?;
                 }
             }
         }
     }
-    for &(i, src) in todo.iter() {
+    for &i in todo.iter() {
+        // Read the operand now: in a chain `b = zext(a); a = zext(x)`,
+        // removing `a` already rewrote b's operand to `x` (which is upper
+        // zero, or `a` would not have been removed).
+        let src = f.operand(i, 0)?;
         f.replace_all_uses(i, src)?;
         f.set_operand(i, 0, Value::Undef)?;
         f.remove(i)?;

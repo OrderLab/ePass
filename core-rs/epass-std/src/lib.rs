@@ -4,6 +4,8 @@
 //! adds test hooks: fail the n-th allocation, interrupt at the n-th yield,
 //! and count live allocations so tests can check for leaks.
 
+pub mod disasm;
+
 use std::alloc::{self, Layout};
 use std::cell::Cell;
 use std::ptr::NonNull;

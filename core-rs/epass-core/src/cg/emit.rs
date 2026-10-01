@@ -86,6 +86,23 @@ pub fn layout_frame<'h>(m: &MFunc<'h>, ext: Extent, scratch: bool) -> Result<Fra
 pub fn block_order<'h>(m: &MFunc<'h>, rpo: &[BlockId]) -> Result<FVec<'h, BlockId>> {
     let heap = m.heap;
     let mut placed: IdxVec<'h, BlockId, bool> = IdxVec::filled(heap, m.blocks.len(), false)?;
+    let mut index: IdxVec<'h, BlockId, u32> = IdxVec::filled(heap, m.blocks.len(), u32::MAX)?;
+    for (k, &b) in rpo.iter().enumerate() {
+        *index.at_mut(b)? = k as u32;
+    }
+    // A join is entered by fallthrough only once all its forward
+    // predecessors are placed; otherwise one arm of every diamond would
+    // trail to the end of the program and need long jumps.
+    let ready = |placed: &IdxVec<'h, BlockId, bool>, n: BlockId| -> Result<bool> {
+        let at = *index.at(n)?;
+        for &p in m.block(n)?.preds.iter() {
+            let pi = index.get(p).copied().unwrap_or(u32::MAX);
+            if pi < at && !*placed.at(p)? {
+                return Ok(false);
+            }
+        }
+        Ok(true)
+    };
     let mut out = FVec::new(heap);
     for &start in rpo {
         let mut cur = start;
@@ -104,7 +121,7 @@ pub fn block_order<'h>(m: &MFunc<'h>, rpo: &[BlockId]) -> Result<FVec<'h, BlockI
                 _ => None,
             };
             match next {
-                Some(n) if !*placed.at(n)? => cur = n,
+                Some(n) if !*placed.at(n)? && ready(&placed, n)? => cur = n,
                 _ => break,
             }
         }

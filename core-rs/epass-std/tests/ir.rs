@@ -327,7 +327,7 @@ fn mutated_blobs_never_panic() {
                 _ => {
                     // Overwrite a random u32 with a random small or huge value.
                     let i = (rng.next() as usize % b.len()) & !3;
-                    let v: u32 = if rng.next() % 2 == 0 { (rng.next() % 64) as u32 } else { u32::MAX - (rng.next() % 4) as u32 };
+                    let v: u32 = if rng.next().is_multiple_of(2) { (rng.next() % 64) as u32 } else { u32::MAX - (rng.next() % 4) as u32 };
                     if i + 4 <= b.len() {
                         b[i..i + 4].copy_from_slice(&v.to_le_bytes());
                     }

@@ -780,10 +780,8 @@ impl<'a> Machine<'a> {
             }
             _ => return Err(Fault::BadInsn { pc, code: i.code }),
         };
-        if op == 0x30 || op == 0x90 {
-            if i.off != 0 && i.off != 1 {
-                return Err(Fault::BadInsn { pc, code: i.code });
-            }
+        if (op == 0x30 || op == 0x90) && i.off != 0 && i.off != 1 {
+            return Err(Fault::BadInsn { pc, code: i.code });
         }
         self.regs[dst] = zx(res, bits);
         Ok(())
@@ -955,3 +953,101 @@ pub fn compare(orig: &RunResult, new: &RunResult) -> Result<(), Mismatch> {
 
 #[cfg(test)]
 mod tests;
+
+/// Register reads the verifier would reject as uninitialized ("R%d
+/// !read_ok"): a must-initialized dataflow over the bytecode, starting
+/// from {r1, r10}. Calls define r0 and leave r1-r5 uninitialized; helper
+/// arguments are not checked (their arity is per-helper). Returns
+/// `(pc, register)` pairs, sorted.
+pub fn uninit_reads(prog: &[u64]) -> Vec<(usize, u8)> {
+    let n = prog.len();
+    let insns: Vec<Insn> = prog.iter().map(|&r| Insn::decode(r)).collect();
+    // (uses, defs, kills) as register masks, and successors.
+    let effect = |pc: usize| -> (u16, u16, u16, Vec<usize>) {
+        let i = insns[pc];
+        let bit = |r: u8| 1u16 << r;
+        let class = i.code & 7;
+        let op = i.code & 0xf0;
+        let x = i.code & 0x08 != 0;
+        let next = vec![pc + 1];
+        match class {
+            0x04 | 0x07 => {
+                let mut u = 0;
+                if op != 0xb0 {
+                    u |= bit(i.dst);
+                }
+                if x && op != 0x80 && op != 0xd0 {
+                    u |= bit(i.src);
+                }
+                (u, bit(i.dst), 0, next)
+            }
+            0x01 => (bit(i.src), bit(i.dst), 0, next),
+            0x02 => (bit(i.dst), 0, 0, next),
+            0x03 => {
+                let mut u = bit(i.dst) | bit(i.src);
+                let mut d = 0;
+                if i.code & 0xe0 == 0xc0 {
+                    if i.imm == 0xf1 || i.imm == 0xf0 {
+                        u |= 1;
+                        d |= 1;
+                    } else if i.imm & 1 != 0 {
+                        d |= bit(i.src);
+                    }
+                }
+                (u, d, 0, next)
+            }
+            0x00 if i.code == 0x18 => (0, bit(i.dst), 0, vec![pc + 2]),
+            0x00 => {
+                let u = bit(6) | if i.code & 0xe0 == 0x40 { bit(i.src) } else { 0 };
+                (u, 1, 0x3e, next)
+            }
+            _ => match op {
+                0x00 if class == 0x06 => (0, 0, 0, vec![(pc as i64 + 1 + i.imm as i64) as usize]),
+                0x00 => (0, 0, 0, vec![(pc as i64 + 1 + i.off as i64) as usize]),
+                0x80 => (0, 1, 0x3e, next),
+                0x90 => (1, 0, 0, vec![]),
+                0xe0 => (0, 0, 0, vec![pc + 1, (pc as i64 + 1 + i.off as i64) as usize]),
+                _ => {
+                    let u = bit(i.dst) | if x { bit(i.src) } else { 0 };
+                    (u, 0, 0, vec![pc + 1, (pc as i64 + 1 + i.off as i64) as usize])
+                }
+            },
+        }
+    };
+    let all = 0x7ffu16;
+    let mut init_in = vec![all; n];
+    let mut seen = vec![false; n];
+    if n == 0 {
+        return Vec::new();
+    }
+    init_in[0] = (1 << 1) | (1 << 10);
+    seen[0] = true;
+    let mut work = vec![0usize];
+    while let Some(pc) = work.pop() {
+        let (_, d, k, succ) = effect(pc);
+        let out = (init_in[pc] & !k) | d;
+        for s in succ {
+            if s < n {
+                let new = if seen[s] { init_in[s] & out } else { out };
+                if !seen[s] || new != init_in[s] {
+                    seen[s] = true;
+                    init_in[s] = new;
+                    work.push(s);
+                }
+            }
+        }
+    }
+    let mut bad = Vec::new();
+    for pc in 0..n {
+        if !seen[pc] {
+            continue;
+        }
+        let (u, ..) = effect(pc);
+        for r in 0..11u8 {
+            if u & (1 << r) != 0 && init_in[pc] & (1 << r) == 0 {
+                bad.push((pc, r));
+            }
+        }
+    }
+    bad
+}

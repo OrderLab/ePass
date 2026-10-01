@@ -1,203 +1,76 @@
-# ePass Rust Core
+# ePass core (v2)
 
-`core-rs` is the actively-developed userspace ePass compiler core. It is a
-from-scratch Rust re-architecture of the original C `core/` implementation.
+`core-rs` is the ePass v2 compiler: an SSA compiler for eBPF programs whose core runs unchanged in userspace and inside the Linux kernel. The design is in [`../design.md`](../design.md) and the milestones in [`../docs/v2/MILESTONES.md`](../docs/v2/MILESTONES.md).
 
-The core library (`epass-ir`) has no kernel or libbpf dependency. It exposes an
-SSA IR, a pass manager, a register-allocating code generator, an IR text
-serializer/parser, and a small C ABI used by patched libbpf.
-
-## Workspace layout
+## Workspace
 
 ```text
 core-rs/
-├── epass-ir/      # pure Rust compiler library
-└── epasstool/     # CLI; uses epass-ir and libbpf-sys for ELF I/O
+├── epass-core/    #![no_std], zero dependencies: the compiler (also built into the kernel)
+│   └── include/epass.h   the C ABI
+├── epass-std/     userspace host (system allocator, fault injection), disassembler,
+│                  and the integration test suites
+├── epass-interp/  reference eBPF interpreter: the semantic oracle for tests
+├── epass-capi/    libepass.a / libepass.so for userspace loaders (ePass-libbpf)
+├── epasstool/     CLI: ELF, dump, .epir and blob inputs
+└── scripts/check.sh   every gate (tests, clippy, no_std, MSRV 1.85, C ABI, optional Miri)
 ```
 
 ## Pipeline
 
 ```text
-eBPF bytecode
-  -> lift
-  -> SSA IR
-  -> pass manager
-  -> codegen prep
-  -> liveness + register allocation
-  -> normalization/emission
-  -> eBPF bytecode
+bytecode ──lift──▶ SSA IR ◀──decode── IR blob (untrusted; validated)
+                     │
+                pass manager (policy + popt → one fixed order; validated after each pass)
+                     │
+              codegen: critical-edge split → MIR → liveness → interference
+                       → MCS coloring with hints, spill-everywhere, memory phis, slot sharing
+                       → coalescing → parallel-copy SSA-out → frame below the program's
+                       → chain layout → encode with gotol relaxation + offset map
+                     │
+                     ▼
+                  bytecode ──▶ verifier
 ```
 
-The default pass pipeline is pass-owned and ordered by pass registration:
+`epass_core::driver::run` does all of this in one call, and applies the administrator policy (fail open or closed). The C ABI, epasstool and the kernel glue all go through it.
 
-```text
-const_prop -> phi -> optimize_ir
-```
+## epass-core modules
 
-Optional passes, such as `dump_ir`, are enabled with `--popt` and order
-themselves. For example:
+| Module | Contents |
+|---|---|
+| `mem` | `Host` trait, per-compilation `Heap` with a byte limit, fallible containers (`FVec`, `ChunkVec`, `IdxVec`/`Arena`, `BitSet`). Holds most of the `unsafe` |
+| `ctx`, `log`, `error` | `Ctx` (heap, ring-buffer log, `Limits`, cooperative `Budget`), small `Copy` errors mapped to errnos |
+| `bpf`, `facts` | ISA constants; the facts view (helper/kfunc signatures, ISA level) |
+| `ir` | functions, blocks, intrusive instruction and use lists, builder, validator, constant evaluation, `.epir` printer and parser (`text` feature) |
+| `bin` | binary IR blob |
+| `lift` | iterative Cytron SSA construction from bytecode |
+| `analysis` | CFG/RPO, dominators, stack provenance and frame extent, magnitude (with counted-loop bounds), value classes, upper-zero |
+| `pm`, `passes` | declarative pass registry, policy and popt, the built-in passes |
+| `cg` | MIR, register allocation, SSA-out, frame layout, block layout, encoding |
+| `driver` | gopt, ISA target, policy dispositions, offset map |
+| `ffi` | the C ABI (`ffi` feature). The other module with `unsafe` |
 
-```bash
-epasstool read -P --popt 'dump_ir(/tmp/prog.epir)' prog.o
-```
+Rules enforced by `check.sh`:
 
-runs:
+- no panics: clippy denies unwrap, expect, indexing, panic and unreachable;
+- every allocation is fallible;
+- no recursion;
+- MSRV 1.85 (Linux 7.2's minimum);
+- builds for `x86_64-unknown-none`.
 
-```text
-dump_ir -> const_prop -> phi -> optimize_ir
-```
-
-## Main modules
-
-| Module | Responsibility |
-|--------|----------------|
-| `bytecode` | `BpfInsn` and BPF opcode constants; packed `u64` encode/decode |
-| `ir` | Arena IR (`Function`, `BasicBlock`, `Insn`, `Value`), `IrBuilder`, CFG utilities, printer, `.epir` text I/O |
-| `lift` | eBPF bytecode -> SSA IR with CFG discovery and SSA construction |
-| `cfg` | Reachable block layout and end-block computation |
-| `check` | IR verifier; includes def-use, branch, and phi predecessor checks |
-| `pass` | Pass trait, pass option parsing, pass-owned ordering, postprocess |
-| `passes` | Builtins: `dump_ir`, `const_prop`, `phi`, `optimize_ir` |
-| `cg` | Code generation: liveness, interference, RA, spilling, SSA-out, emission |
-| `pipeline` | End-to-end driver (`autorun`, `run_passes_only`) |
-| `ffi` | C ABI (`epass_run`) for patched libbpf |
-
-## Build and test
+## Quick start
 
 ```bash
 cargo build --release
-cargo test --release
+./target/release/epasstool read -F asm bpftests/falco/prog10.txt
+./scripts/check.sh
 ```
 
-## CLI examples
+See [`../docs/v2/USAGE.md`](../docs/v2/USAGE.md) for the CLI, gopt/popt/policy and libbpf. [`../docs/v2/ABI.md`](../docs/v2/ABI.md) covers the C ABI, [`../docs/v2/IR.md`](../docs/v2/IR.md) the IR, and [`../docs/v2/WRITING_PASSES.md`](../docs/v2/WRITING_PASSES.md) writing passes.
 
-```bash
-# Rewrite an ELF BPF program and dump rewritten bytecode.
-./target/release/epasstool read -s prog -F log -o out.txt ../test/output/progs_simple1.o
+## Results (2026-09-30)
 
-# Process dump-format text input.
-./target/release/epasstool read -F log -o out.txt prog.txt
-
-# Print a program.
-./target/release/epasstool print --gopt print_dump ../test/output/progs_simple1.o
-
-# Dump lifted IR before other passes.
-./target/release/epasstool read -P --popt 'dump_ir(/tmp/prog.epir)' -s prog ../test/output/progs_simple1.o
-
-# Load IR directly, bypassing lift, then run passes/codegen.
-./target/release/epasstool read --gopt load_ir=/tmp/prog.epir -F log -o out.txt dummy.txt
-
-# Disable a disableable default pass.
-./target/release/epasstool read --popt '!const_prop' -s prog ../test/output/progs_simple1.o
-```
-
-## Global options (`--gopt`)
-
-Comma-separated:
-
-- `verbose=<n>`
-- `disable_coalesce`
-- `print_bpf`
-- `print_dump`
-- `print_detail`
-- `print_bpf_detail`
-- `no_prog_check`
-- `printonly`
-- `dotgraph`
-- `load_ir=<path>`
-
-## Pass options (`--popt`)
-
-Pass options do not determine order. They enable/disable/configure passes; each
-pass owns its ordering.
-
-Syntax:
-
-```text
-pass
-pass(arg)
-!pass
-```
-
-Examples:
-
-```text
-dump_ir(/tmp/a.epir)
-dump_ir(path=/tmp/a.epir)
-!const_prop
-optimize_ir(no_dead_elim)
-```
-
-`phi` is not disableable.
-
-## Library usage
-
-```rust
-use epass_ir::{autorun, default_passes, Env, Opts, BpfInsn};
-
-let mut env = Env::new(Opts::default(), program /* Vec<BpfInsn> */);
-let passes = default_passes();
-autorun(&mut env, &passes)?;
-let rewritten = env.insns;
-```
-
-Dump/load IR:
-
-```rust
-let text = epass_ir::dump_ir(&func);
-let func = epass_ir::load_ir_str(&text)?;
-```
-
-Build IR in passes:
-
-```rust
-use epass_ir::ir::{IrBuilder, InsertPos, Value, AluOp, BinOp};
-
-let mut b = IrBuilder::before_terminator(func, bb);
-let x = b.bin(BinOp::Add, AluOp::Alu64, Value::const64(1), Value::const64(2));
-```
-
-## Validation
-
-Useful checks:
-
-```bash
-cargo test --release
-
-# Generate EPIR test corpus
-./target/release/epasstool read -P --popt 'dump_ir(/tmp/prog.epir)' -s prog ../test/output/progs_simple1.o
-
-# Verifier path through patched libbpf/bpftool
-sudo LIBBPF_ENABLE_EPASS=1 third-party/ePass-bpftool/src/bpftool prog load test.o /sys/fs/bpf/test
-```
-
-## More documentation
-
-- [Rust core architecture](../docs/CORE_RS.md)
-- [Pass manager](../docs/PASS_MANAGER.md)
-- [Writing passes](../docs/WRITING_PASSES.md)
-- [Instruction construction / `IrBuilder`](../docs/CREATE_INSTRUCTION.md)
-- [IR text format](../docs/IR_TEXT.md)
-- [Testing](../docs/TESTING.md)
-
-## Status
-
-Implemented:
-
-- lifter and SSA IR;
-- pass manager with pass-owned ordering;
-- `const_prop`, `phi`, `optimize_ir`, optional `dump_ir`;
-- `.epir` dump/load;
-- `IrBuilder` and CFG/BB utilities;
-- register allocation with post-spill fallback;
-- C ABI for libbpf.
-
-Not yet fully ported from old C core:
-
-- MSan;
-- instruction counter;
-- masking;
-- helper validation;
-- div-by-zero instrumentation;
-- code compaction demo pass;
-- verifier-dependent kernel passes.
+- Falco corpus: 337 of 339 compile. The other two use callbacks (`BPF_PSEUDO_FUNC`, phase 2). The total goes from 148,438 to 126,560 instructions (−14.7%) in about 330 ms.
+- Differential testing against the interpreter: 10,000 random programs × 3 register budgets, the defect regression set, and 30k-instruction generated programs, with no mismatches.
+- 200,000 straight-line instructions compile in about 0.36 s, with a 72 MB peak heap. The largest Falco program peaks at 3.7 MB.
+- The whole pipeline runs on a 16 KB stack. Allocation failure at every allocation, and interruption at every yield point, end cleanly with no leaks.

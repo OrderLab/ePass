@@ -53,3 +53,29 @@ Recorded as each milestone lands. The M6 docs fold these in.
   - Result: `p` is bounded by `[c0, e]` (or one step short of `e`) without wrapping.
   - This bounds `r10 + c + iv` frame walks. Falco prog195 and prog198 now compile.
 - **Falco result:** 337/339. The two rejected programs load a callback address (`ld_imm64` `BPF_PSEUDO_FUNC`), which is phase 2 per design.md §11.
+
+### M6
+
+- **C ABI shape** (`epass-core/include/epass.h`, `docs/v2/ABI.md`).
+  - `epass_compile` returns 0 (use the output), 1 (load the original: skipped or failed open, with `out->error`) or a negative errno (reject). The policy semantics therefore live in the core, and the glue only follows the return value.
+  - Facts are C callbacks; NULL means the built-in helper table.
+  - Limits travel in `epass_policy`, with a user or kernel preset.
+  - Output buffers come from the host allocator.
+  - The kernel uses the same entry point. Its glue supplies a C host (kvmalloc, cond_resched) and facts (verifier protos), so the Rust object needs no kernel-crate bindings.
+- **Contiguous allocations.** `FVec` allocates contiguously up to 16 MB, not one 64 KB chunk as design.md §3 says. The kernel host must therefore use `kvmalloc`/`kvfree`. Alignment is at most 8.
+- **Entry registers.** At entry only r1 is a parameter; r0 and r2–r9 are `undef`. Before this fix, a helper of unknown arity (e.g. `trace_printk` with optional arguments) made ePass preserve r4/r5 from entry, a read the verifier rejects. The semantic gate now checks that output never reads a register the input left uninitialized (`epass_interp::uninit_reads`).
+- **Bugs found while porting.**
+  - `zext_elim` left a use of a removed `zext` in a chain of zexts (bpftests `complex.c`). The generator now emits such chains.
+  - Chain block layout parked one arm of every diamond at the end of the program, which needed `gotol` beyond 32K instructions. A join is now entered by fallthrough only after all its forward predecessors are placed.
+  - Unhinted temporaries got r0, causing extra copies. Hints are now propagated across two-address ties and copies. Falco: 130,450 → 126,560 instructions.
+- **gopt keys:** `verbose`, `isa`, `ra_colors`, `throw_ret`, `check`/`nocheck`, `verify_each`, `endian`.
+  - Default ISA target: the input's own level for bytecode, the platform's for IR, capped at the platform's.
+  - Removed v1 keys: `print_*` (use `-F`), `load_ir` (pass `.epir` or a blob as the input), `disable_coalesce`, `dotgraph`.
+  - `dump_ir` writes to the log, not to a file.
+- **ePass-libbpf** (`refactor/kernel`, 5e84bc3).
+  - It now uses `epass_compile`, reads popt from `LIBBPF_EPASS_POPT`, and fails open instead of failing the load.
+  - `func_info`/`line_info` are remapped through the offset map (stable sort, one record per offset), instead of `line_info` being dropped.
+- **Measurements** (release, this host):
+  - 200,000 straight-line instructions: 0.36 s, 72 MB peak heap (368 B/instruction). The kernel preset caps input at 65,536 instructions and 64 MB.
+  - Largest Falco peak: 3.7 MB (prog196, 8,398 instructions).
+  - All of `bpftests/*.c` that clang can build compile (28 of 30), except `asm.c` (ecall in bytecode) and `localcall.c` (bpf-to-bpf).

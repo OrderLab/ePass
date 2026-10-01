@@ -733,7 +733,49 @@ pub fn lower<'h>(f: &Function<'h>, isa: Isa, big_endian: bool) -> Result<MFunc<'
             }
         }
     }
-    Ok(lw.m)
+    let mut m = lw.m;
+    propagate_hints(&mut m)?;
+    Ok(m)
+}
+
+/// Give unhinted temporaries (materialized constants, frame-pointer
+/// copies, parameter copies) the register of the value they feed or come
+/// from, so a two-address tie or a copy can share one register and vanish.
+fn propagate_hints(m: &mut MFunc<'_>) -> Result<()> {
+    let hint = |m: &MFunc<'_>, v: VReg| m.vregs.get(v).and_then(|i| i.hint);
+    let ids: FVec<'_, BlockId> = {
+        let mut v = FVec::new(m.heap);
+        for b in m.block_ids() {
+            v.push(b)?;
+        }
+        v
+    };
+    for &b in ids.iter() {
+        let n = m.blocks.at(b)?.insns.len();
+        for k in 0..n {
+            let op = m.blocks.at(b)?.insns.get(k).map(|i| i.op);
+            let (to, from) = match op {
+                Some(MOp::Alu { dst, a, .. })
+                | Some(MOp::Neg { dst, a, .. })
+                | Some(MOp::Ext { dst, a, .. })
+                | Some(MOp::Bswap { dst, a, .. })
+                | Some(MOp::Copy { dst, src: Src::V(a) }) => (a, dst),
+                _ => continue,
+            };
+            // Source from a fixed register: the destination prefers it.
+            if to.0 < NREG {
+                if from.0 >= NREG && hint(m, from).is_none() {
+                    m.vregs.at_mut(from)?.hint = Some(to.0 as u8);
+                }
+                continue;
+            }
+            if hint(m, to).is_none() {
+                let h = if from.0 < NREG { Some(from.0 as u8) } else { hint(m, from) };
+                m.vregs.at_mut(to)?.hint = h;
+            }
+        }
+    }
+    Ok(())
 }
 
 /// Debug dump of MIR into the compilation log (Debug level).

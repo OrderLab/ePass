@@ -189,7 +189,11 @@ fn unsupported_and_invalid_inputs_are_errors() {
 #[test]
 fn unknown_helper_in_userspace_passes_all_registers() {
     let t = lift_text(&prog![mov64_imm(R1, 7), call(250), exit()]);
-    assert!(has(&t, "call.unknown helper#250(7, %arg2, %arg3, %arg4, %arg5)"), "{t}");
+    // r2-r5 are uninitialized at entry (the verifier rejects reading
+    // them), so they are undef, not parameters ePass would have to keep.
+    assert!(has(&t, "call.unknown helper#250(7, undef, undef, undef, undef)"), "{t}");
+    let t = lift_text(&prog![mov64_imm(R1, 7), mov64_imm(R3, 9), call(250), exit()]);
+    assert!(has(&t, "call.unknown helper#250(7, undef, 9, undef, undef)"), "{t}");
     // trace_printk: optional arguments become undef.
     let t = lift_text(&prog![
         st(Size::DW, R10, -8, 0),
@@ -199,7 +203,7 @@ fn unknown_helper_in_userspace_passes_all_registers() {
         call(6),
         exit()
     ]);
-    assert!(has(&t, "call helper#6(%0, 8, %arg3, %arg4, %arg5)"), "{t}");
+    assert!(has(&t, "call helper#6(%0, 8, undef, undef, undef)"), "{t}");
     let t = lift_text(&prog![
         st(Size::DW, R10, -8, 0),
         mov64_reg(R1, R10),

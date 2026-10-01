@@ -537,12 +537,12 @@ pub fn lift<'h>(prog: &[BpfInsn], facts: &dyn Facts, ctx: &Ctx<'h>) -> Result<Fu
         FVec::new(heap),
         FVec::new(heap),
     ];
+    // At program entry only r1 (the context) and r10 are initialized; the
+    // verifier rejects any read of the others. Modelling them as undefined
+    // (not as parameters) keeps ePass from reading them itself, e.g. when it
+    // passes all five registers to a helper of unknown arity.
     for (r, st) in stacks.iter_mut().enumerate() {
-        st.push(if (1..=5).contains(&r) {
-            Value::Param(r as u8)
-        } else {
-            Value::Undef
-        })?;
+        st.push(if r == 1 { Value::Param(1) } else { Value::Undef })?;
     }
     // Walk frames: (block, entered, saved stack heights).
     let mut walk: FVec<'h, (BlockId, bool, [u32; NVARS])> = FVec::new(heap);
