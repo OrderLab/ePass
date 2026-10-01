@@ -125,7 +125,7 @@ How the policy and the loader's popt combine:
 - IR input, or any forced pass, fails closed: the load is rejected.
 - An interrupt (a fatal signal in the kernel) always rejects.
 
-## libbpf (userspace mode)
+## libbpf (userspace and kernel mode)
 
 `third-party/ePass-libbpf` (branch `refactor/kernel`) links `libepass.a` and runs ePass in `bpf_object_load_prog` before each load:
 
@@ -140,6 +140,11 @@ sudo LIBBPF_ENABLE_EPASS=1 \
 
 - `func_info` and `line_info` are remapped through ePass's offset map.
 - With `LIBBPF_ENABLE_AUTORELOAD=1`, a verifier rejection of ePass's output retries with the original instructions and records.
+
+**Kernel mode.** Add `LIBBPF_EPASS_KERNEL=1` and libbpf doesn't run ePass itself. It loads with `BPF_F_EPASS` and passes `LIBBPF_EPASS_GOPT`/`LIBBPF_EPASS_POPT` in the new `BPF_PROG_LOAD` fields. The kernel then runs ePass under its policy and remaps line_info itself; see [kernel/README.md](../../kernel/README.md).
+
+- Programs can also set the options directly: `bpf_prog_load_opts` has `epass_gopt`, `epass_popt`, `epass_ir` and `epass_ir_len`.
+- ePass-bpftool works in both modes through the same variables, e.g. `LIBBPF_ENABLE_EPASS=1 LIBBPF_EPASS_KERNEL=1 bpftool prog loadall prog.o /sys/fs/bpf/p`.
 
 ## Tests
 

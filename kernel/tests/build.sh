@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
-# Build the in-VM selftest: a static binary linking core-rs libepass.a, plus
-# the IR blob it loads. Needs the patched uapi headers of the kernel tree:
+# Build the in-VM test tools, all static (the VM has its own libc):
+#   epass_selftest, p1.blob   kernel ePass selftest (links libepass.a)
+#   bpftool                   ePass-bpftool on ePass-libbpf (acceptance.sh)
+#   epass_logs                per-program in-kernel ePass outcome (libbpf)
+# Needs the patched uapi headers of the kernel tree:
 #   kernel/tests/build.sh <kernel tree> <out dir>
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -25,4 +28,18 @@ p1 = [ins(0x85, imm=7), ins(0xb7, 2, imm=5), ins(0xb7, 3, imm=7), ins(0x2f, 2, 3
 open(sys.argv[1], "w").write("".join(f"{x}\n" for x in p1))
 PY
 "$root/core-rs/target/release/epasstool" lift -q "$out/p1.txt" -o "$out/p1.blob"
-echo "built $out/epass_selftest and $out/p1.blob"
+# ePass-bpftool (it builds ePass-libbpf, which links libepass.a) and the
+# per-program log loader, both on ePass-libbpf.
+tp="$root/third-party"
+if [ -f "$tp/ePass-bpftool/src/Makefile" ]; then
+  mkdir -p "$out/bpftool-build"
+  make -s -C "$tp/ePass-bpftool/src" -j"$(nproc)" EXTRA_LDFLAGS=-static feature-libelf-zstd=1 \
+    OUTPUT="$out/bpftool-build/" >/dev/null
+  cp "$out/bpftool-build/bpftool" "$out/bpftool"
+  make -s -C "$tp/ePass-libbpf/src" -j"$(nproc)" BUILD_STATIC_ONLY=1 OBJDIR="$out/libbpf" \
+    DESTDIR="$out/libbpf-inst" INCLUDEDIR=/include all install_headers >/dev/null
+  cc -O2 -static -I "$out/libbpf-inst/include" -I "$tp/ePass-libbpf/include/uapi" \
+    "$here/epass_logs.c" "$out/libbpf/libbpf.a" -lelf -lz -lzstd -lpthread -ldl -lm \
+    -o "$out/epass_logs"
+fi
+echo "built in $out: $(cd "$out" && ls epass_selftest p1.blob bpftool epass_logs 2>/dev/null | tr '\n' ' ')"

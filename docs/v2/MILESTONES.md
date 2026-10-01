@@ -98,3 +98,17 @@ Recorded as each milestone lands. The M6 docs fold these in.
   - Signatures (`attr->signature`) are checked over the submitted program before ePass runs.
 - **line_info.** It is remapped in the kernel. The glue builds a sorted, deduplicated copy, and `check_btf_line()` reads from it through a one-line hook. func_info needs no remap: with a single function its only record is at offset 0, and `offsets[0]` is always 0.
 - **Test VM.** An incus VM (`ubuntu/noble`) runs the kernel, configured from the VM's own config plus `localmodconfig`. The host needed `ovmf`, `qemu-system-modules-spice`, `debhelper` and `libdw-dev`, and `incusbr0` had to be added to firewalld's trusted zone (Docker's FORWARD DROP also needs `DOCKER-USER` accept rules for the bridge).
+
+### M8
+
+- **ePass-libbpf** (`refactor/kernel`, d0d1ed5).
+  - The uapi is synced with 7.2 plus the ePass fields. libbpf 1.6's attr ended at `fd_array_cnt`, and 7.2 inserts the signature fields before ours.
+  - `bpf_prog_load_opts` has `epass_gopt`, `epass_popt`, `epass_ir` and `epass_ir_len`.
+  - `LIBBPF_EPASS_KERNEL=1` switches the hook from userspace ePass to `BPF_F_EPASS` plus kernel options.
+- **bpftool.** No source changes: ePass-bpftool builds on ePass-libbpf, so the environment variables apply. `kernel/tests/build.sh` builds it statically (it needs `feature-libelf-zstd=1` for the static libelf), together with the selftest and `epass_logs`.
+- **Acceptance** (docs/v2/ACCEPTANCE.md, raw data in acceptance-results.csv).
+  - 111 test objects: `test/` built against the VM kernel's `vmlinux.h`, plus the kernel samples. 81 load at base, and the same 81 load with ePass in userspace, in the kernel, and under `mode=always`.
+  - All 69 available CORRECT_PROGS are accepted in all modes.
+  - In-kernel ePass compiles all 121 programs of the accepted objects. The xlated total is 54,136 → 53,440 bytes.
+  - The policy and IR cases pass in the selftest (56/56), and dmesg is clean.
+- **Code size.** ePass sometimes grows programs (19 of 81 objects, worst +29%). The cause is a repeated constant phi input that gets materialized on every incoming edge. Hoisting such constants is the next codegen item.

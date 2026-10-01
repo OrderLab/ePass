@@ -76,7 +76,10 @@ sudo LIBBPF_ENABLE_EPASS=1 LIBBPF_EPASS_GOPT=verbose=2 ./my_loader prog.o
     337/339 Falco programs compile in-kernel.
 - Not supported yet: bpf-to-bpf calls and callbacks. These are rejected, and
   loaders fall back to the original program.
-- Next: libbpf/bpftool support for the kernel fields and in-VM acceptance (M8).
+- In-VM acceptance (M8, [report](docs/v2/ACCEPTANCE.md)):
+  - libbpf and bpftool support kernel mode;
+  - the set of accepted objects is unchanged in userspace, kernel and `mode=always` runs (81 of 111; all 69 CORRECT_PROGS);
+  - in-kernel ePass compiles all 121 programs of those objects, and dmesg stays clean.
 
 ## Contact
 
