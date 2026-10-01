@@ -1,6 +1,6 @@
 # ePass v2 acceptance (M8)
 
-Date: 2026-09-30. Kernel: Linux 7.2.8 with `kernel/` applied (`7.2.8-epass+`, `CONFIG_BPF_EPASS=y`, clang 21 / `LLVM=1`), in an incus VM (Ubuntu noble, 16 vCPUs, 16 GiB). The raw results are in [acceptance-results.csv](acceptance-results.csv).
+Date: 2026-09-30. Kernel: Linux 7.2.8 with ePass (OrderLab/ePass-kernel `refactor/kernel`, `7.2.8-epass+`, `CONFIG_BPF_EPASS=y`, clang 21 / `LLVM=1`), in an incus VM (Ubuntu noble, 16 vCPUs, 16 GiB). The raw results are in [acceptance-results.csv](acceptance-results.csv).
 
 ## Procedure
 
@@ -11,7 +11,7 @@ Date: 2026-09-30. Kernel: Linux 7.2.8 with `kernel/` applied (`7.2.8-epass+`, `C
    - `epass_logs`.
 
    ```bash
-   kernel/tests/build.sh <kernel tree> /tmp/tb
+   kernel/tests/build.sh /tmp/tb        # uapi headers from third-party/ePass-kernel
    ```
 
 3. Build the test objects. `vmlinux.h` must come from the VM's kernel.

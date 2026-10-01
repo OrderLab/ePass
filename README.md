@@ -28,8 +28,9 @@ bytecode or IR blob ─▶ lift / decode + validate ─▶ SSA IR ─▶ passes 
   against it.
 - `third-party/ePass-libbpf` (branch `refactor/kernel`): libbpf that runs ePass
   before loading, and remaps `func_info`/`line_info`.
-- [`kernel/`](kernel/): the Linux 7.2.y integration (patches, overlay, `apply.sh`,
-  in-VM selftest). ePass runs inside `BPF_PROG_LOAD` under the policy in
+- [`third-party/ePass-kernel`](kernel/README.md) (branch `refactor/kernel` of
+  OrderLab/ePass-kernel): Linux 7.2.8 with ePass; [`kernel/`](kernel/) has the
+  core sync script and the in-VM tests. ePass runs inside `BPF_PROG_LOAD` under the policy in
   `/proc/sys/kernel/bpf_epass_policy`; loaders pass options or IR in new
   `BPF_PROG_LOAD` fields.
 

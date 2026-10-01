@@ -6,26 +6,29 @@ The kernel runs ePass inside `BPF_PROG_LOAD`, before the verifier.
 - **Policy.** An administrator policy decides what runs.
 - **Implementation.** The compiler is the same `core-rs/epass-core` source as in userspace, built into the kernel as a Rust object. The kernel side (`kernel/bpf/epass.c`) is plain C on top of the C ABI in `epass-core/include/epass.h`.
 
-```text
-kernel/
-├── apply.sh            apply everything below to a 7.2.y tree (idempotent)
-├── patches/            changes to existing kernel files (git format-patch)
-│   ├── 0001  uapi: BPF_F_EPASS, epass_gopt/epass_popt/epass_ir in BPF_PROG_LOAD
-│   └── 0002  bpf_prog_load() hook, line_info remap, log, Kconfig/Makefile
-├── overlay/            new files
-│   ├── include/linux/bpf_epass.h
-│   ├── kernel/bpf/epass.c          host, facts, policy sysctl, load glue
-│   └── kernel/bpf/epass/Makefile   builds the synced core as epass_core.o
-├── config/epass.config Kconfig fragment
-└── tests/              in-VM selftest (raw bpf() + libepass.a)
+The kernel tree is the submodule **`third-party/ePass-kernel`**, branch `refactor/kernel` of [OrderLab/ePass-kernel](https://github.com/OrderLab/ePass-kernel). Its commits are:
+
+| Commit | Contents |
+|---|---|
+| `Linux 7.2.8 (vanilla)` | the kernel.org 7.2.8 release, as the root commit |
+| `bpf: uapi: ePass fields for BPF_PROG_LOAD` | `BPF_F_EPASS`, `epass_gopt`/`epass_popt`/`epass_ir` (kernel and `tools/` copies) |
+| `bpf: run ePass in BPF_PROG_LOAD` | the `bpf_prog_load()` hook, line_info remap, verifier log, `bpf_epass_func_proto()`, `kernel/bpf/epass.c` (host, facts, policy sysctl, load glue), `include/linux/bpf_epass.h`, Kconfig/Makefile, `kernel/configs/epass.config` |
+| `bpf: epass: sync core from ePass <rev>` | generated: the compiler crate `kernel/bpf/epass/epass_core.rs` and its modules, and `epass.h` |
+
+Edit the kernel side directly in the submodule and commit there. The compiler itself is never edited in the kernel tree: change `core-rs/epass-core`, then sync it.
+
+```bash
+kernel/sync-core.sh                       # core-rs/epass-core -> third-party/ePass-kernel/kernel/bpf/epass/
+git -C third-party/ePass-kernel commit -am "bpf: epass: sync core from ePass $(git log -1 --format=%h -- core-rs/epass-core)"
+git -C third-party/ePass-kernel push       # then commit the new submodule pointer here
 ```
 
-`apply.sh` also syncs `core-rs/epass-core/src` into `kernel/bpf/epass/`:
-- `lib.rs` becomes the crate root `epass_core.rs`;
+The sync makes these changes to the core:
+- `lib.rs` becomes the crate root `epass_core.rs`, with the kernel lint allowances and the source revision;
 - `epass.h` is copied alongside;
 - the userspace-only text parser is dropped.
 
-Rerun it after changing the core.
+This repository's `kernel/` holds only `sync-core.sh` and `tests/`.
 
 ## Interface
 
@@ -51,7 +54,7 @@ The syntax and the precedence table are in [docs/v2/USAGE.md](../docs/v2/USAGE.m
 **Behavior:**
 
 - ePass runs after the program type is known, and before the LSM hook and the verifier. Both see the rewritten program.
-- If ePass rewrites the program, `line_info` is remapped to the new instructions (sorted, one record per offset), and the ePass log is written at the start of the verifier log.
+- If ePass rewrites the program, `line_info` is remapped to the new instructions (sorted, one record per offset), and the ePass log is appended to the verifier log.
 - On a fail-open error (bytecode input with optional passes only), the original program is loaded, and the log says why.
 - IR input, forced passes, option errors and policy conflicts reject the load. Rejections before the verifier still copy the ePass log into `log_buf`.
 - Programs with CO-RE relocations (`core_relo_cnt`) or several `func_info` records (bpf-to-bpf) keep their original instructions. With a forced pass they're rejected with `-EOPNOTSUPP`.
@@ -62,26 +65,26 @@ The syntax and the precedence table are in [docs/v2/USAGE.md](../docs/v2/USAGE.m
 ## Build and boot (incus VM)
 
 ```bash
-# one-time: a git-tracked 7.2.8 tree, an Ubuntu VM
-tar xf linux-7.2.8.tar.xz && cd linux-7.2.8 && git init -q && git add -A && git commit -qm vanilla
+# one-time: the kernel tree and an Ubuntu VM
+git submodule update --init third-party/ePass-kernel
 sudo incus launch images:ubuntu/noble epass-vm --vm -c limits.cpu=16 -c limits.memory=16GiB \
      -c security.secureboot=false -d root,size=40GiB
 
-# apply ePass, configure from the VM's own config, build packages
-~/dev/ePass/kernel/apply.sh .
-O=../build-vm; mkdir -p $O
+# configure from the VM's own config, build packages
+cd third-party/ePass-kernel
+O=~/dev/linux/build-vm; mkdir -p $O
 sudo incus exec epass-vm -- sh -c 'cat /boot/config-$(uname -r)' > $O/.config
-sudo incus exec epass-vm -- lsmod > ../lsmod-vm
+sudo incus exec epass-vm -- lsmod > $O/../lsmod-vm
 make LLVM=1 O=$O olddefconfig
-yes '' | make LLVM=1 O=$O LSMOD=../lsmod-vm localmodconfig
+yes '' | make LLVM=1 O=$O LSMOD=$O/../lsmod-vm localmodconfig
+make LLVM=1 O=$O epass.config           # kernel/configs/epass.config
 scripts/config --file $O/.config --set-str SYSTEM_TRUSTED_KEYS '' --set-str SYSTEM_REVOCATION_KEYS '' \
-     --disable MODVERSIONS --enable RUST --enable DEBUG_INFO_BTF --enable BPF_EPASS \
-     --set-str LOCALVERSION -epass --disable LOCALVERSION_AUTO
+     --disable MODVERSIONS --set-str LOCALVERSION -epass --disable LOCALVERSION_AUTO
 make LLVM=1 O=$O olddefconfig
-make LLVM=1 O=$O -j$(nproc) bindeb-pkg     # ../linux-image-7.2.8-epass_*.deb
+make LLVM=1 O=$O -j$(nproc) bindeb-pkg     # $O/../linux-image-7.2.8-epass_*.deb
 
 # install and boot it in the VM
-sudo incus file push ../linux-image-7.2.8-epass_*_amd64.deb epass-vm/root/
+sudo incus file push $O/../linux-image-7.2.8-epass_*_amd64.deb epass-vm/root/
 sudo incus exec epass-vm -- sh -c 'dpkg -i /root/linux-image-7.2.8-epass_*.deb && reboot'
 ```
 
@@ -94,7 +97,7 @@ Notes:
 ## Test
 
 ```bash
-kernel/tests/build.sh <tree> /tmp/epass-selftest
+kernel/tests/build.sh /tmp/epass-selftest     # uapi headers from the submodule
 sudo incus file push /tmp/epass-selftest/{epass_selftest,p1.blob} epass-vm/root/
 sudo incus exec epass-vm -- /root/epass_selftest /root
 ```

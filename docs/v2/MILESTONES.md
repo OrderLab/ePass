@@ -11,6 +11,8 @@ This is the implementation plan for the agreed design in [`design.md`](../../des
   - a script that applies both onto a vanilla `v7.2.8` tree and syncs `core-rs/epass-core/src` into it.
 
   This keeps every milestone reviewable, and pushable to one branch, without pushing a kernel history. A kernel tree with the overlay applied can later be pushed to `OrderLab/ePass-kernel` if wanted.
+
+  **Changed 2026-10-01 (user request).** The kernel is now a real kernel tree: branch `refactor/kernel` of OrderLab/ePass-kernel, used as the submodule `third-party/ePass-kernel`. Its commits are the vanilla 7.2.8 snapshot (as root, like the `dev` branch's `init`), the uapi change, the ePass hook and glue, and generated core syncs. `kernel/` in this repository keeps only `sync-core.sh` and the tests; the overlay, the patches and `apply.sh` are gone.
 - **Loader submodules.** Changes to `third-party/ePass-libbpf` and `third-party/ePass-bpftool` go on a `refactor/kernel` branch in each submodule repository. This repository's submodule pointers are bumped in the same milestone.
 - **Transition.** The new `core-rs/epass-core` is built next to the existing `core-rs/epass-ir` until M6, when `epasstool` and the C ABI switch over and `epass-ir` is removed. Until then the old crate stays the reference for behavior that hasn't been ported yet.
 - **Test VM.** An incus VM (run with sudo) boots the custom kernel. Experiments run over ssh inside it.
@@ -82,7 +84,7 @@ Recorded as each milestone lands. The M6 docs fold these in.
 
 ### M7
 
-- **Where the code lives.** Kernel code is in `kernel/` (overlay, patches, `apply.sh`, the selftest) and applies to vanilla v7.2.8. The working tree used for development is a git-tracked 7.2.8 extraction, from which `kernel/patches/` is exported with `git format-patch`.
+- **Where the code lives.** At M7, kernel code was in `kernel/` (overlay, patches, `apply.sh`, the selftest) and applied to vanilla v7.2.8. Since 2026-10-01 it lives in the ePass-kernel submodule; see the plan-time decisions above.
 - **No kernel-crate bindings.** The Rust object only uses `core`. It exports the C ABI, and `kernel/bpf/epass.c` supplies the host and the facts as C callbacks. This follows the `drm_panic_qr.rs` precedent: a built-in Rust object called from C.
   - `epass_policy_check` was added to the ABI, so the policy sysctl validates on write and the hot path decides without compiling.
 - **Kernel constraints found while porting.**

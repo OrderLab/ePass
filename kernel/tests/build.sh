@@ -3,13 +3,14 @@
 #   epass_selftest, p1.blob   kernel ePass selftest (links libepass.a)
 #   bpftool                   ePass-bpftool on ePass-libbpf (acceptance.sh)
 #   epass_logs                per-program in-kernel ePass outcome (libbpf)
-# Needs the patched uapi headers of the kernel tree:
-#   kernel/tests/build.sh <kernel tree> <out dir>
+# Needs the uapi headers of the ePass kernel (default: the submodule
+# third-party/ePass-kernel):
+#   kernel/tests/build.sh <out dir> [kernel tree]
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
-root="$here/../.."
-tree="$(cd "${1:?kernel tree}" && pwd)"
-out="$(mkdir -p "${2:?out dir}" && cd "$2" && pwd)"
+root="$(cd "$here/../.." && pwd)"
+out="$(mkdir -p "${1:?out dir}" && cd "$1" && pwd)"
+tree="$(cd "${2:-$root/third-party/ePass-kernel}" && pwd)"
 
 make -s -C "$tree" O="$out/hdr-build" headers_install INSTALL_HDR_PATH="$out/hdr" >/dev/null
 cargo build -q --release --manifest-path "$root/core-rs/Cargo.toml" -p epass-capi -p epasstool
